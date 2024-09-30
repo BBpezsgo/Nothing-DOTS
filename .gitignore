@@ -1,0 +1,16 @@
+# Unity
+
+/Library
+/Logs
+/Temp
+/UserSettings
+*.csproj
+*.sln
+*.meta
+/Packages/packages-lock.json
+/Assets/Packages
+/Assets/SceneDependencyCache
+
+# Imported Packages
+
+/Assets/Thirdparty

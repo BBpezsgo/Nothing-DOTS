@@ -1,0 +1,44 @@
+[External("sleep")]
+void Sleep(i32 miliseconds);
+
+const i32 BASE = 256;
+
+const u8* MOVE_FORWARD = BASE + 0;
+const u8* MOVE_STEER = BASE + 1;
+
+const u8* TURRET_SHOOT = BASE + 2;
+
+const u8* TURRET_ROTATION = BASE + 3;
+const u8* TURRET_ANGLE = BASE + 4;
+
+const u8* TURRET_ROTATION_C = BASE + 5;
+const u8* TURRET_ANGLE_C = BASE + 6;
+
+*TURRET_ROTATION = 45 as u8;
+*TURRET_ANGLE = 45 as u8;
+
+while ((*TURRET_ROTATION != *TURRET_ROTATION_C) || (*TURRET_ANGLE != *TURRET_ANGLE_C))
+{
+    Sleep(500);
+}
+
+*TURRET_SHOOT = 1 as u8;
+
+while (1)
+{
+    *MOVE_FORWARD = 10 as u8;
+    Sleep(500);
+    *MOVE_FORWARD = 0 as u8;
+
+    *MOVE_STEER = 10 as u8;
+    Sleep(500);
+    *MOVE_STEER = 0 as u8;
+
+    *MOVE_FORWARD = 246 as u8;
+    Sleep(500);
+    *MOVE_FORWARD = 0 as u8;
+
+    *MOVE_STEER = 246 as u8;
+    Sleep(500);
+    *MOVE_STEER = 0 as u8;
+}
