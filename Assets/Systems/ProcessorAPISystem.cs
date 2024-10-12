@@ -14,7 +14,7 @@ partial struct ProcessorAPISystem : ISystem
         _transformLookup = state.GetComponentLookup<LocalTransform>(false);
     }
 
-    public void OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         _turretLookup.Update(ref state);
         _transformLookup.Update(ref state);

@@ -7,7 +7,7 @@ using UnityEngine;
 public partial struct TurretRotationSystem : ISystem
 {
     [BurstCompile]
-    public void OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         foreach ((RefRW<LocalTransform> transform, RefRO<Turret> turret) in
                     SystemAPI.Query<RefRW<LocalTransform>, RefRO<Turret>>())

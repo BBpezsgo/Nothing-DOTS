@@ -1,5 +1,4 @@
 using Unity.Entities;
-using Unity.Rendering;
 using UnityEngine;
 
 public class UnitAuthoring : MonoBehaviour
@@ -10,7 +9,6 @@ public class UnitAuthoring : MonoBehaviour
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Unit>(entity);
-            AddComponent<URPMaterialPropertyBaseColor>(entity);
         }
     }
 }

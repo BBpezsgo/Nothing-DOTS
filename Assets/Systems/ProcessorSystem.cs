@@ -17,7 +17,7 @@ partial struct ProcessorSystem : ISystem
         StackSize = Processor.StackSize,
     };
 
-    public void OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         foreach ((Processor processor, Entity entity) in
                     SystemAPI.Query<Processor>()

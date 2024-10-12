@@ -6,7 +6,7 @@ using Unity.Transforms;
 public partial struct UnitMovementSystem : ISystem
 {
     [BurstCompile]
-    public void OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         float dt = SystemAPI.Time.DeltaTime;
 

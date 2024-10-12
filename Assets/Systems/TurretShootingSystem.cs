@@ -8,7 +8,7 @@ using Unity.Transforms;
 public partial struct TurretShootingSystem : ISystem
 {
     [BurstCompile]
-    public void OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         foreach ((RefRW<Turret> turret, RefRO<LocalToWorld> localToWorld) in
                     SystemAPI.Query<RefRW<Turret>, RefRO<LocalToWorld>>())

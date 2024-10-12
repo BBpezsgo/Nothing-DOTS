@@ -1,5 +1,4 @@
 using Unity.Entities;
-using Unity.Rendering;
 using UnityEngine;
 
 public class ProjectileAuthoring : MonoBehaviour
@@ -10,7 +9,6 @@ public class ProjectileAuthoring : MonoBehaviour
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Projectile>(entity);
-            AddComponent<URPMaterialPropertyBaseColor>(entity);
         }
     }
 }

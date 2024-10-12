@@ -7,7 +7,7 @@ using Unity.Transforms;
 partial struct ProjectileSystem : ISystem
 {
     [BurstCompile]
-    public void OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
 
