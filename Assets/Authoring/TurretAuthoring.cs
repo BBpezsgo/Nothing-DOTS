@@ -1,6 +1,4 @@
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Rendering;
 using UnityEngine;
 
 public class TurretAuthoring : MonoBehaviour
@@ -17,10 +15,6 @@ public class TurretAuthoring : MonoBehaviour
             {
                 ProjectilePrefab = GetEntity(authoring.CannonBallPrefab, TransformUsageFlags.Dynamic),
                 ShootPosition = GetEntity(authoring.CannonBallSpawn, TransformUsageFlags.Dynamic)
-            });
-            AddComponent(entity, new URPMaterialPropertyBaseColor
-            {
-                Value = new float4(.3f, .3f, .3f, 1f)
             });
         }
     }
