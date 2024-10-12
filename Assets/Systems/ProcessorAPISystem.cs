@@ -1,3 +1,4 @@
+using LanguageCore.Runtime;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -19,17 +20,20 @@ partial struct ProcessorAPISystem : ISystem
         _turretLookup.Update(ref state);
         _transformLookup.Update(ref state);
 
-        foreach ((Processor processor, RefRW<LocalTransform> transform, Entity entity) in
-                    SystemAPI.Query<Processor, RefRW<LocalTransform>>()
+        foreach ((Processor processor, RefRW<Unit> unit, RefRW<LocalToWorld> transform, Entity entity) in
+                    SystemAPI.Query<Processor, RefRW<Unit>, RefRW<LocalToWorld>>()
                     .WithEntityAccess())
         {
             System.Span<byte> memory = processor.MappedMemory;
             if (memory.IsEmpty) continue;
 
-            // float3 translation = default;
-            // translation.x = unchecked((sbyte)memory[0]);
-            // translation.z = unchecked((sbyte)memory[1]);
-            // transform.ValueRW.Position += translation * SystemAPI.Time.DeltaTime;
+            unit.ValueRW.Input = new float2(
+                (float)unchecked((sbyte)memory[0]) / 128f,
+                (float)unchecked((sbyte)memory[1]) / 128f
+            );
+
+            memory.Set(7, transform.ValueRO.Position.x);
+            memory.Set(11, transform.ValueRO.Position.z);
 
             if (state.EntityManager.HasBuffer<Child>(entity))
             {

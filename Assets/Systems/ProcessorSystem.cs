@@ -6,6 +6,7 @@ using LanguageCore.BBLang.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 using Unity.Entities;
+using UnityEngine;
 
 #nullable enable
 
@@ -31,6 +32,7 @@ partial struct ProcessorSystem : ISystem
                 {
                     processor.SleepUntil = DateTime.UtcNow.TimeOfDay.TotalSeconds + ((double)miliseconds / 1000d);
                 });
+                externalFunctions.AddExternalFunction("printf", (float v) => Debug.Log(v));
                 CompilerResult compiled = Compiler.CompileFile(
                     new Uri(processor.SourceFile.ToString(), UriKind.Absolute),
                     externalFunctions,

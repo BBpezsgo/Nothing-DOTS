@@ -8,23 +8,15 @@ public partial struct UnitMovementSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        float dt = SystemAPI.Time.DeltaTime;
+        float deltaTime = SystemAPI.Time.DeltaTime;
 
-        foreach ((RefRW<LocalTransform> transform, Entity entity) in
-                    SystemAPI.Query<RefRW<LocalTransform>>()
-                    .WithAll<Unit>()
-                    .WithEntityAccess())
+        foreach ((RefRW<LocalTransform> transform, RefRW<Unit> unit) in
+                    SystemAPI.Query<RefRW<LocalTransform>, RefRW<Unit>>())
         {
-            float3 pos = transform.ValueRO.Position;
+            unit.ValueRW.Speed = math.lerp(unit.ValueRO.Speed, unit.ValueRO.Input.y, deltaTime);
 
-            pos.y = (float)entity.Index;
-
-            float angle = (0.5f + noise.cnoise(pos / 10f)) * 4.0f * math.PI;
-            float3 dir = float3.zero;
-            math.sincos(angle, out dir.x, out dir.z);
-
-            transform.ValueRW.Position += dir * dt * 5.0f;
-            transform.ValueRW.Rotation = quaternion.RotateY(angle);
+            transform.ValueRW.Position += unit.ValueRO.Speed * deltaTime * transform.ValueRO.Forward();
+            transform.ValueRW.Rotation = math.mul(transform.ValueRO.Rotation, quaternion.RotateY(math.radians(unit.ValueRO.Input.x * deltaTime)));
         }
     }
 }
