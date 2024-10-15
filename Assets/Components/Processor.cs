@@ -12,8 +12,11 @@ public class Processor : IComponentData
 
     public FixedString64Bytes SourceFile;
     public bool CompileSecuedued;
+    public long CompiledAt;
+    public double HotReloadAt;
     public BytecodeProcessor? BytecodeProcessor;
     public double SleepUntil;
+    public FixedString64Bytes StdOutBuffer;
 
     public Span<byte> MappedMemory => BytecodeProcessor is null ? Span<byte>.Empty : ((Span<byte>)BytecodeProcessor.Memory)[(HeapSize + StackSize)..];
 }

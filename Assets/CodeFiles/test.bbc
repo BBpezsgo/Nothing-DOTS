@@ -1,35 +1,61 @@
+using "/home/BB/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+
 [External("sleep")]
 void Sleep(i32 miliseconds);
 
-[External("printf")]
-void Print(f32 value);
+struct MappedMemory
+{
+    i8 InputForward;
+    i8 InputSteer;
+    u8 InputShoot;
+    f32 TurretTargetRotation;
+    f32 TurretTargetAngle;
+    f32 TurretCurrentRotation;
+    f32 TurretCurrentAngle;
+    f32 PositionX;
+    f32 PositionY;
+    f32 ForwardX;
+    f32 ForwardY;
+}
 
-const i32 BASE = 256;
+const MappedMemory* Mapped = 257;
 
-const u8* MOVE_FORWARD = BASE + 0;
-const u8* MOVE_STEER = BASE + 1;
+// Mapped.InputForward = 127 as u8;
+// Mapped.InputSteer = 127 as u8;
 
-const u8* TURRET_SHOOT = BASE + 2;
+void PrintLine(Vector2 v)
+{
+    Print('(');
+    Print(v.x);
+    Print(',');
+    Print(v.y);
+    Print(')');
+    PrintLine();
+}
 
-const u8* TURRET_ROTATION = BASE + 3;
-const u8* TURRET_ANGLE = BASE + 4;
+const f32 PI = 3.14159265359f;
 
-const u8* TURRET_ROTATION_C = BASE + 5;
-const u8* TURRET_ANGLE_C = BASE + 6;
-
-const f32* POSITION_X = BASE + 7;
-const f32* POSITION_Y = BASE + 11;
-
-*TURRET_ROTATION = 45 as u8;
-*TURRET_ANGLE = 45 as u8;
-
-*MOVE_FORWARD = 10 as u8;
-*MOVE_STEER = 10 as u8;
+[External("atan2")]
+f32 Atan2(f32 x, f32 y);
 
 while (1)
 {
-    if ((*TURRET_ROTATION == *TURRET_ROTATION_C) && (*TURRET_ANGLE == *TURRET_ANGLE_C))
+    Vector2 dir;
+    dir.x = 0f - Mapped.PositionX;
+    dir.y = 0f - Mapped.PositionY;
+    Normalise(&dir);
+    f32 t = Atan2(dir.x, dir.y);
+    f32 t2 = Atan2(Mapped.ForwardX, Mapped.ForwardY);
+
+    Mapped.TurretTargetRotation = (t - t2);
+    Mapped.TurretTargetAngle = PI / 4f;
+
+    if (Abs(Mapped.TurretTargetRotation - Mapped.TurretCurrentRotation) < 0.1f)
     {
-        *TURRET_SHOOT = 1 as u8;
+        *(258 as u8*) = (u8)1;
     }
 }

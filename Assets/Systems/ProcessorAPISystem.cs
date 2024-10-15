@@ -1,7 +1,16 @@
-using LanguageCore.Runtime;
+using System.Runtime.InteropServices;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
+
+using u8 = System.Byte;
+using i8 = System.SByte;
+using u16 = System.UInt16;
+using i16 = System.Int16;
+using u32 = System.UInt32;
+using i32 = System.Int32;
+using f32 = System.Single;
 
 [UpdateAfter(typeof(ProcessorSystem))]
 partial struct ProcessorAPISystem : ISystem
@@ -15,7 +24,23 @@ partial struct ProcessorAPISystem : ISystem
         _transformLookup = state.GetComponentLookup<LocalTransform>(false);
     }
 
-    void ISystem.OnUpdate(ref SystemState state)
+    [StructLayout(LayoutKind.Sequential)]
+    struct MappedMemory
+    {
+        public i8 InputForward;
+        public i8 InputSteer;
+        public u8 InputShoot;
+        public f32 TurretTargetRotation;
+        public f32 TurretTargetAngle;
+        public f32 TurretCurrentRotation;
+        public f32 TurretCurrentAngle;
+        public f32 PositionX;
+        public f32 PositionY;
+        public f32 ForwardX;
+        public f32 ForwardY;
+    }
+
+    unsafe void ISystem.OnUpdate(ref SystemState state)
     {
         _turretLookup.Update(ref state);
         _transformLookup.Update(ref state);
@@ -27,40 +52,61 @@ partial struct ProcessorAPISystem : ISystem
             System.Span<byte> memory = processor.MappedMemory;
             if (memory.IsEmpty) continue;
 
-            unit.ValueRW.Input = new float2(
-                (float)unchecked((sbyte)memory[0]) / 128f,
-                (float)unchecked((sbyte)memory[1]) / 128f
-            );
-
-            memory.Set(7, transform.ValueRO.Position.x);
-            memory.Set(11, transform.ValueRO.Position.z);
-
-            if (state.EntityManager.HasBuffer<Child>(entity))
+            fixed (byte* _mapped = memory)
             {
-                foreach (Child child in state.EntityManager.GetBuffer<Child>(entity))
+                MappedMemory* mapped = (MappedMemory*)_mapped;
+
+                unit.ValueRW.Input = new float2(
+                    mapped->InputForward / 128f,
+                    mapped->InputSteer / 128f
+                );
+
+                mapped->PositionX = transform.ValueRO.Position.x;
+                mapped->PositionY = transform.ValueRO.Position.z;
+                mapped->ForwardX = transform.ValueRO.Forward.x;
+                mapped->ForwardY = transform.ValueRO.Forward.z;
+
+                if (state.EntityManager.HasBuffer<Child>(entity))
                 {
-                    RefRW<Turret> turret = _turretLookup.GetRefRWOptional(child.Value);
-                    if (!turret.IsValid) continue;
-                    RefRW<LocalTransform> turretTransform = _transformLookup.GetRefRWOptional(child.Value);
-                    if (!turretTransform.IsValid) continue;
-
-                    if (memory[2] != 0)
+                    foreach (Child child in state.EntityManager.GetBuffer<Child>(entity))
                     {
-                        turret.ValueRW.ShootRequested = true;
-                        memory[2] = 0;
+                        RefRW<Turret> turret = _turretLookup.GetRefRWOptional(child.Value);
+                        if (!turret.IsValid) continue;
+                        RefRW<LocalTransform> turretTransform = _transformLookup.GetRefRWOptional(child.Value);
+                        if (!turretTransform.IsValid) continue;
+
+                        if (mapped->InputShoot != 0)
+                        {
+                            turret.ValueRW.ShootRequested = true;
+                            mapped->InputShoot = 0;
+                        }
+
+                        turret.ValueRW.TargetRotation = mapped->TurretTargetRotation;
+                        turret.ValueRW.TargetAngle = mapped->TurretTargetAngle;
+
+                        float3 euler = math.EulerXYZ(turretTransform.ValueRO.Rotation);
+                        mapped->TurretCurrentRotation = euler.y;
+                        mapped->TurretCurrentAngle = euler.x;
+
+                        break;
                     }
-
-                    turret.ValueRW.TargetRotation = unchecked((sbyte)memory[3]);
-                    turret.ValueRW.TargetAngle = unchecked((sbyte)memory[4]);
-
-                    float3 euler = math.EulerXYZ(turretTransform.ValueRO.Rotation);
-                    sbyte currentRotation = (sbyte)math.degrees(euler.x);
-                    sbyte currentAngle = (sbyte)math.degrees(euler.y);
-                    memory[5] = unchecked((byte)currentRotation);
-                    memory[6] = unchecked((byte)currentAngle);
-
-                    break;
                 }
+
+                if (false)
+                    Debug.Log(
+                        $"{{\n" +
+                        $"  InputForward: {mapped->InputForward};\n" +
+                        $"  InputSteer: {mapped->InputSteer};\n" +
+                        $"  InputShoot: {mapped->InputShoot};\n" +
+                        $"  TurretTargetRotation: {mapped->TurretTargetRotation};\n" +
+                        $"  TurretTargetAngle: {mapped->TurretTargetAngle};\n" +
+                        $"  TurretCurrentRotation: {mapped->TurretCurrentRotation};\n" +
+                        $"  TurretCurrentAngle: {mapped->TurretCurrentAngle};\n" +
+                        $"  PositionX: {mapped->PositionX};\n" +
+                        $"  PositionY: {mapped->PositionY};\n" +
+                        $"  ForwardX: {mapped->ForwardX};\n" +
+                        $"  ForwardY: {mapped->ForwardY};\n" +
+                        $"}}");
             }
         }
     }
