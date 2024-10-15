@@ -302,8 +302,6 @@ MonoBehaviour:
   SelectedBuilding: {fileID: 0}
   BuildingHologramPrefab: {fileID: 7887398088158380673, guid: 1f2fb5a5b6f94074a8e5b4a68ef30af6, type: 3}
   BuildingHologram: {fileID: 0}
-  BuildableBuildingPrefab: {fileID: 0}
-  BuildableMaterial: {fileID: 0}
   HologramMaterial: {fileID: 2100000, guid: b64ca592dd7282b41ae0d21379be43cb, type: 2}
   IsValidPosition: 0
   ValidHologramColor: {r: 1, g: 1, b: 1, a: 1}
@@ -566,7 +564,7 @@ Transform:
   m_GameObject: {fileID: 1042564336}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.08658828, y: 1.3070087, z: 2.1398652}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

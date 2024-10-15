@@ -11,10 +11,10 @@ public class BuildingDatabaseAuthoring : MonoBehaviour
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new BuildingDatabase());
-            DynamicBuffer<BufferedEntityPrefab> buildings = AddBuffer<BufferedEntityPrefab>(entity);
+            DynamicBuffer<BufferedBuilding> buildings = AddBuffer<BufferedBuilding>(entity);
             for (int i = 0; i < authoring.Buildings.Length; i++)
             {
-                buildings.Add(GetEntity(authoring.Buildings[i], TransformUsageFlags.Dynamic));
+                buildings.Add(new(GetEntity(authoring.Buildings[i], TransformUsageFlags.Dynamic), authoring.Buildings[i].name));
             }
         }
     }

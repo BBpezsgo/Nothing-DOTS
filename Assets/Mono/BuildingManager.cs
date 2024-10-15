@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using NaughtyAttributes;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -14,11 +15,11 @@ public class BuildingManager : MonoBehaviour
 {
     static BuildingManager instance;
 
-    [SerializeField, ReadOnly] GameObject? SelectedBuilding;
-    [SerializeField] GameObject BuildingHologramPrefab;
-    [SerializeField, ReadOnly] GameObject BuildingHologram;
+    BufferedBuilding SelectedBuilding;
+    [SerializeField, NotNull] GameObject? BuildingHologramPrefab;
+    [SerializeField, ReadOnly, NotNull] GameObject? BuildingHologram;
 
-    [SerializeField] public Material HologramMaterial;
+    [SerializeField, NotNull] Material? HologramMaterial;
 
     [SerializeField, ReadOnly] bool IsValidPosition = false;
 
@@ -26,14 +27,11 @@ public class BuildingManager : MonoBehaviour
     [SerializeField] Color InvalidHologramColor = Color.red;
     [SerializeField, Range(-10f, 10f)] float HologramEmission = 1.1f;
 
-    public bool IsBuilding => SelectedBuilding != null;
-
-    [Header("Buildings")]
-    [SerializeField] GameObject[] Buildings;
+    public bool IsBuilding => SelectedBuilding.Prefab != default;
 
     [Header("UI")]
-    [SerializeField] VisualTreeAsset BuildingButton;
-    [SerializeField] UIDocument BuildingUI;
+    [SerializeField, NotNull] VisualTreeAsset? BuildingButton;
+    [SerializeField, NotNull] UIDocument? BuildingUI;
 
     void Awake()
     {
@@ -48,7 +46,7 @@ public class BuildingManager : MonoBehaviour
 
     void OnKeyEsc()
     {
-        SelectedBuilding = null;
+        SelectedBuilding = default;
         if (BuildingHologram != null)
         { BuildingHologram.SetActive(false); }
 
@@ -64,23 +62,6 @@ public class BuildingManager : MonoBehaviour
         VisualElement container = BuildingUI.rootVisualElement.Q<VisualElement>("unity-content-container");
         container.Clear();
 
-        for (int i = 0; i < Buildings.Length; i++)
-        {
-            TemplateContainer newElement = BuildingButton.Instantiate();
-
-            Button button = newElement.Q<Button>();
-            button.name = $"btn-{i}";
-            button.clickable.clickedWithEventInfo += Clickable_clickedWithEventInfo;
-
-            newElement.Q<VisualElement>("image").style.display = new StyleEnum<DisplayStyle>(DisplayStyle.None);
-            button.text = $"{Buildings[i].name}";
-
-            container.Add(newElement);
-        }
-    }
-
-    void PlaceBuilding(Vector3 position, GameObject building)
-    {
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
         EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
@@ -89,16 +70,28 @@ public class BuildingManager : MonoBehaviour
             return;
         }
 
-        DynamicBuffer<BufferedEntityPrefab> entityPrefabs = entityManager.GetBuffer<BufferedEntityPrefab>(buildingDatabase, true);
+        DynamicBuffer<BufferedBuilding> buildings = entityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
 
-        int buildingIndex = Buildings.IndexOf(building);
-        if (buildingIndex == -1)
+        for (int i = 0; i < buildings.Length; i++)
         {
-            Debug.LogWarning($"Building index not found");
-            return;
-        }
+            TemplateContainer newElement = BuildingButton.Instantiate();
 
-        Entity newEntity = entityManager.Instantiate(entityPrefabs[buildingIndex].Entity);
+            Button button = newElement.Q<Button>();
+            button.name = $"btn-{i}";
+            button.clickable.clickedWithEventInfo += Clickable_clickedWithEventInfo;
+
+            newElement.Q<VisualElement>("image").style.display = new StyleEnum<DisplayStyle>(DisplayStyle.None);
+            button.text = $"{buildings[i].Name}";
+
+            container.Add(newElement);
+        }
+    }
+
+    void PlaceBuilding(Vector3 position, BufferedBuilding building)
+    {
+        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+
+        Entity newEntity = entityManager.Instantiate(building.Prefab);
         entityManager.SetComponentData(newEntity, new LocalTransform
         {
             Position = position,
@@ -111,7 +104,18 @@ public class BuildingManager : MonoBehaviour
     {
         if (e.target is not Button button) return;
         int i = int.Parse(button.name.Split('-')[1]);
-        GameObject building = Buildings[i];
+        
+        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
+        if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
+        {
+            Debug.LogWarning($"Failed to get {nameof(buildingDatabase)} entity singleton");
+            return;
+        }
+
+        DynamicBuffer<BufferedBuilding> buildings = entityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
+
+        var building = buildings[i];
         SelectedBuilding = building;
         if (BuildingHologram != null)
         { ApplyHologram(BuildingHologram, SelectedBuilding); }
@@ -125,7 +129,7 @@ public class BuildingManager : MonoBehaviour
 
     void Hide()
     {
-        SelectedBuilding = null;
+        SelectedBuilding = default;
 
         BuildingUI.gameObject.SetActive(false);
 
@@ -137,7 +141,7 @@ public class BuildingManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.B))
         {
-            SelectedBuilding = null;
+            SelectedBuilding = default;
             if (BuildingHologram != null)
             { BuildingHologram.SetActive(false); }
 
@@ -160,7 +164,7 @@ public class BuildingManager : MonoBehaviour
             return;
         }
 
-        if (SelectedBuilding == null)
+        if (SelectedBuilding.Prefab == default)
         {
             if (BuildingHologram != null)
             { BuildingHologram.SetActive(false); }
@@ -201,12 +205,12 @@ public class BuildingManager : MonoBehaviour
         {
             Material material = renderers[i].material;
             material.color = IsValidPosition ? ValidHologramColor : InvalidHologramColor;
-            // material.SetEmissionColor(IsValidPosition ? ValidHologramColor : InvalidHologramColor, HologramEmission);
+            material.SetEmissionColor(IsValidPosition ? ValidHologramColor : InvalidHologramColor, HologramEmission);
         }
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            SelectedBuilding = null;
+            SelectedBuilding = default;
             BuildingHologram.SetActive(false);
             IsValidPosition = false;
             return;
@@ -214,7 +218,7 @@ public class BuildingManager : MonoBehaviour
 
         if (Mouse.current.leftButton.isPressed)
         {
-            if (SelectedBuilding == null) return;
+            if (SelectedBuilding.Prefab == default) return;
             if (!IsValidPosition) return;
 
             PlaceBuilding(position, SelectedBuilding);
@@ -223,7 +227,7 @@ public class BuildingManager : MonoBehaviour
         }
     }
 
-    static void ApplyHologram(GameObject hologram, GameObject buildingPrefab)
+    static void ApplyHologram(GameObject hologram, BufferedBuilding buildingPrefab)
     {
         GameObject hologramModels = GetHologramModelGroup(hologram);
         hologramModels.transform.SetPositionAndRotation(default, Quaternion.identity);
