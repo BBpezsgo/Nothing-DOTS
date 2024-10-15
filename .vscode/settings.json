@@ -60,5 +60,24 @@
     "files.autoSave": "off",
     "vstuc.refreshOnSave": true,
     "vstuc.displayBackgroundProcesses": true,
-    "omnisharp.useModernNet": false
+    "omnisharp.useModernNet": false,
+    "material-icon-theme.folders.associations": {
+        "Netcode": "connection",
+        "Materials": "shader",
+        "Systems": "core",
+        "UI Toolkit": "ui",
+        "Input Settings": "console",
+        "BasicStructs": "utils",
+        "Authoring": "interface",
+        "Mono": "class",
+        "CodeFiles": "scripts",
+        "Scenes": "environment",
+        "SubScenes": "environment",
+        "ThirdParty": "packages",
+        "Prefabs": "container",
+    },
+    "material-icon-theme.files.associations": {
+        "*.uxml": "xml",
+        "*.tss": "css"
+    }
 }
