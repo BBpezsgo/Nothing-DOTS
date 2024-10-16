@@ -1,15 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
+using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
 #nullable enable
+
+public struct PlaceBuildingRequestRpcCommand : IRpcCommand
+{
+    public float3 Position;
+    public FixedString32Bytes BuildingName;
+}
 
 public class BuildingManager : MonoBehaviour
 {
@@ -66,7 +74,7 @@ public class BuildingManager : MonoBehaviour
         EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
-            Debug.LogWarning($"Failed to get {nameof(buildingDatabase)} entity singleton");
+            Debug.LogWarning($"Failed to get {nameof(BuildingDatabase)} entity singleton");
             return;
         }
 
@@ -104,18 +112,18 @@ public class BuildingManager : MonoBehaviour
     {
         if (e.target is not Button button) return;
         int i = int.Parse(button.name.Split('-')[1]);
-        
+
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
         EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
-            Debug.LogWarning($"Failed to get {nameof(buildingDatabase)} entity singleton");
+            Debug.LogWarning($"Failed to get {nameof(BuildingDatabase)} entity singleton");
             return;
         }
 
         DynamicBuffer<BufferedBuilding> buildings = entityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
 
-        var building = buildings[i];
+        BufferedBuilding building = buildings[i];
         SelectedBuilding = building;
         if (BuildingHologram != null)
         { ApplyHologram(BuildingHologram, SelectedBuilding); }
@@ -221,10 +229,29 @@ public class BuildingManager : MonoBehaviour
             if (SelectedBuilding.Prefab == default) return;
             if (!IsValidPosition) return;
 
-            PlaceBuilding(position, SelectedBuilding);
+            if (World.DefaultGameObjectInjectionWorld.IsServer())
+            {
+                PlaceBuilding(position, SelectedBuilding);
+            }
+            else
+            {
+                SendPlaceBuildingRequest(new PlaceBuildingRequestRpcCommand()
+                {
+                    BuildingName = SelectedBuilding.Name,
+                    Position = position,
+                }, ConnectionManager.ClientWorld);
+            }
+
             Hide();
             return;
         }
+    }
+
+    void SendPlaceBuildingRequest(PlaceBuildingRequestRpcCommand request, World? world)
+    {
+        if (world == null || !world.IsCreated) return;
+        Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(PlaceBuildingRequestRpcCommand));
+        world.EntityManager.SetComponentData(entity, request);
     }
 
     static void ApplyHologram(GameObject hologram, BufferedBuilding buildingPrefab)

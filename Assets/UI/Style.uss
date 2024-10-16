@@ -12,10 +12,15 @@
     border-bottom-left-radius: 3px;
     border-top-right-radius: 3px;
     border-bottom-right-radius: 3px;
+    min-width: 150px;
 }
 
 Label {
     color: rgb(207, 207, 207);
+}
+
+Label.error {
+    color: rgb(192, 21, 66);
 }
 
 TextField {
