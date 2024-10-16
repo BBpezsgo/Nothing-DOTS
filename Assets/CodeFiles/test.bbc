@@ -16,16 +16,11 @@ struct MappedMemory
     f32 TurretTargetAngle;
     f32 TurretCurrentRotation;
     f32 TurretCurrentAngle;
-    f32 PositionX;
-    f32 PositionY;
-    f32 ForwardX;
-    f32 ForwardY;
+    Vector2 Position;
+    Vector2 Forward;
 }
 
-const MappedMemory* Mapped = 257;
-
-// Mapped.InputForward = 127 as u8;
-// Mapped.InputSteer = 127 as u8;
+const MappedMemory* Mapped = 256;
 
 void PrintLine(Vector2 v)
 {
@@ -44,18 +39,50 @@ f32 Atan2(f32 x, f32 y);
 
 while (1)
 {
-    Vector2 dir;
-    dir.x = 0f - Mapped.PositionX;
-    dir.y = 0f - Mapped.PositionY;
-    Normalise(&dir);
-    f32 t = Atan2(dir.x, dir.y);
-    f32 t2 = Atan2(Mapped.ForwardX, Mapped.ForwardY);
+    Vector2 forward = Mapped.Forward;
+    Vector2 position = Mapped.Position;
 
-    Mapped.TurretTargetRotation = (t - t2);
+    Vector2 dir;
+    dir.x = 0f - position.x;
+    dir.y = 0f - position.y;
+    Normalise(&dir);
+
+    f32 d = Distance(position, new Vector2(0f, 0f));
+
+    f32 t = Atan2(dir.x, dir.y);
+    f32 t2 = Atan2(forward.x, forward.y);
+    f32 t3 = t - t2;
+
+    Mapped.TurretTargetRotation = t3;
     Mapped.TurretTargetAngle = PI / 4f;
 
     if (Abs(Mapped.TurretTargetRotation - Mapped.TurretCurrentRotation) < 0.1f)
     {
-        *(258 as u8*) = (u8)1;
+        Mapped.InputShoot = (u8)1;
+    }
+
+    f32 s = Cross(forward, dir);
+    f32 c = Dot(forward, dir);
+    f32 t4 = Atan2(s, c);
+
+    if (d < 1f)
+    {
+        Mapped.InputSteer = (i8)0;
+        Mapped.InputForward = (i8)0;
+    }
+    elseif (t4 > 0.05f)
+    {
+        Mapped.InputSteer = (i8)-128;
+    }
+    elseif (t4 < -0.05f)
+    {
+        Mapped.InputSteer = (i8)127;
+    }
+    else
+    {
+        Mapped.InputSteer = (i8)0;
+        d += 10f;
+        if (d > 127f) { d = 127f; }
+        Mapped.InputForward = (i8)(i32)d;
     }
 }

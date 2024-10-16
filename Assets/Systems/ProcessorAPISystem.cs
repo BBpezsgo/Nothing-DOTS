@@ -24,7 +24,7 @@ partial struct ProcessorAPISystem : ISystem
         _transformLookup = state.GetComponentLookup<LocalTransform>(false);
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     struct MappedMemory
     {
         public i8 InputForward;
@@ -34,10 +34,8 @@ partial struct ProcessorAPISystem : ISystem
         public f32 TurretTargetAngle;
         public f32 TurretCurrentRotation;
         public f32 TurretCurrentAngle;
-        public f32 PositionX;
-        public f32 PositionY;
-        public f32 ForwardX;
-        public f32 ForwardY;
+        public float2 Position;
+        public float2 Forward;
     }
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
@@ -57,14 +55,12 @@ partial struct ProcessorAPISystem : ISystem
                 MappedMemory* mapped = (MappedMemory*)_mapped;
 
                 unit.ValueRW.Input = new float2(
-                    mapped->InputForward / 128f,
-                    mapped->InputSteer / 128f
+                    mapped->InputSteer / 128f,
+                    mapped->InputForward / 128f
                 );
 
-                mapped->PositionX = transform.ValueRO.Position.x;
-                mapped->PositionY = transform.ValueRO.Position.z;
-                mapped->ForwardX = transform.ValueRO.Forward.x;
-                mapped->ForwardY = transform.ValueRO.Forward.z;
+                mapped->Position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
+                mapped->Forward = new(transform.ValueRO.Forward.x, transform.ValueRO.Forward.z);
 
                 if (state.EntityManager.HasBuffer<Child>(entity))
                 {
@@ -91,22 +87,6 @@ partial struct ProcessorAPISystem : ISystem
                         break;
                     }
                 }
-
-                if (false)
-                    Debug.Log(
-                        $"{{\n" +
-                        $"  InputForward: {mapped->InputForward};\n" +
-                        $"  InputSteer: {mapped->InputSteer};\n" +
-                        $"  InputShoot: {mapped->InputShoot};\n" +
-                        $"  TurretTargetRotation: {mapped->TurretTargetRotation};\n" +
-                        $"  TurretTargetAngle: {mapped->TurretTargetAngle};\n" +
-                        $"  TurretCurrentRotation: {mapped->TurretCurrentRotation};\n" +
-                        $"  TurretCurrentAngle: {mapped->TurretCurrentAngle};\n" +
-                        $"  PositionX: {mapped->PositionX};\n" +
-                        $"  PositionY: {mapped->PositionY};\n" +
-                        $"  ForwardX: {mapped->ForwardX};\n" +
-                        $"  ForwardY: {mapped->ForwardY};\n" +
-                        $"}}");
             }
         }
     }
