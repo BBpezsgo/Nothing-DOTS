@@ -19,15 +19,13 @@ public struct PlaceBuildingRequestRpcCommand : IRpcCommand
     public FixedString32Bytes BuildingName;
 }
 
-public class BuildingManager : MonoBehaviour
+public class BuildingManager : PrivateSingleton<BuildingManager>
 {
-    static BuildingManager instance;
+    BufferedBuilding SelectedBuilding = default;
+    [SerializeField, NotNull] GameObject? BuildingHologramPrefab = default;
+    [SerializeField, ReadOnly, NotNull] GameObject? BuildingHologram = default;
 
-    BufferedBuilding SelectedBuilding;
-    [SerializeField, NotNull] GameObject? BuildingHologramPrefab;
-    [SerializeField, ReadOnly, NotNull] GameObject? BuildingHologram;
-
-    [SerializeField, NotNull] Material? HologramMaterial;
+    [SerializeField, NotNull] Material? HologramMaterial = default;
 
     [SerializeField, ReadOnly] bool IsValidPosition = false;
 
@@ -38,19 +36,8 @@ public class BuildingManager : MonoBehaviour
     public bool IsBuilding => SelectedBuilding.Prefab != default;
 
     [Header("UI")]
-    [SerializeField, NotNull] VisualTreeAsset? BuildingButton;
-    [SerializeField, NotNull] UIDocument? BuildingUI;
-
-    void Awake()
-    {
-        if (instance != null)
-        {
-            Debug.LogWarning($"[{nameof(BuildingManager)}]: Instance already registered, destroying self");
-            GameObject.Destroy(this);
-            return;
-        }
-        instance = this;
-    }
+    [SerializeField, NotNull] VisualTreeAsset? BuildingButton = default;
+    [SerializeField, NotNull] UIDocument? BuildingUI = default;
 
     void OnKeyEsc()
     {
@@ -264,7 +251,7 @@ public class BuildingManager : MonoBehaviour
         renderers.AddRange(hologram.GetComponentsInChildren<MeshRenderer>());
 
         for (int i = 0; i < renderers.Count; i++)
-        { renderers[i].materials = new Material[] { Material.Instantiate(instance.HologramMaterial) }; }
+        { renderers[i].materials = new Material[] { Material.Instantiate(Instance.HologramMaterial) }; }
     }
 
     static GameObject GetHologramModelGroup(GameObject hologram)

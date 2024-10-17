@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using Unity.NetCode;
 using Unity.Networking.Transport;
@@ -21,10 +22,10 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     public static World? ServerWorld => Instance._serverWorld;
     public static World? ClientWorld => Instance._clientWorld;
 
-    [SerializeField] UIDocument UI;
+    [SerializeField, NotNull] UIDocument? UI = default;
 
-    World? _clientWorld;
-    World? _serverWorld;
+    World? _clientWorld = default;
+    World? _serverWorld = default;
 
     void Start()
     {
@@ -32,32 +33,34 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         UI.rootVisualElement.Q<Button>("button-client").SetEnabled(false);
         UI.rootVisualElement.Q<Button>("button-server").SetEnabled(false);
+
+        StartCoroutine(StartHostAsync());
     }
 
     public IEnumerator StartHostAsync()
     {
         string inputHost = UI.rootVisualElement.Q<TextField>("input-host").value;
         Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error");
-        inputErrorLabel.visible = false;
+        inputErrorLabel.style.display = DisplayStyle.None;
 
         if (!inputHost.Contains(':'))
         {
             inputErrorLabel.text = $"Invalid host input";
-            inputErrorLabel.visible = true;
+            inputErrorLabel.style.display = DisplayStyle.Flex;
             yield break;
         }
 
-        if (!ushort.TryParse(inputHost.Split(':')[1], out var port))
+        if (!ushort.TryParse(inputHost.Split(':')[1], out ushort port))
         {
             inputErrorLabel.text = $"Invalid host input";
-            inputErrorLabel.visible = true;
+            inputErrorLabel.style.display = DisplayStyle.Flex;
             yield break;
         }
 
-        if (!NetworkEndpoint.TryParse(inputHost.Split(':')[0], port, out var endpoint))
+        if (!NetworkEndpoint.TryParse(inputHost.Split(':')[0], port, out NetworkEndpoint endpoint))
         {
             inputErrorLabel.text = $"Invalid host input";
-            inputErrorLabel.visible = true;
+            inputErrorLabel.style.display = DisplayStyle.Flex;
             yield break;
         }
 
@@ -71,7 +74,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         _serverWorld = server;
         _clientWorld = client;
 
-        var subScenes = FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        SubScene[] subScenes = FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
         while (!server.IsCreated || !client.IsCreated)
         {
@@ -116,7 +119,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
             driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.Connect(client.EntityManager, endpoint);
         }
 
-        UI.enabled = false;
+        UI.gameObject.SetActive(false);
     }
 
     void DestroyLocalWorld()

@@ -32,13 +32,13 @@ partial struct ProcessorSystem : ISystem
                 Debug.Log("Compiling ...");
 
                 processor.CompileSecuedued = false;
-                processor.CompiledAt = DateTime.UtcNow.Ticks;
-                processor.HotReloadAt = DateTime.UtcNow.TimeOfDay.TotalSeconds + 5d;
+                processor.SourceVersion = File.GetLastWriteTimeUtc(processor.SourceFile.ToString());
+                processor.HotReloadAt = Time.time + 5f;
 
                 Dictionary<int, IExternalFunction> externalFunctions = new();
                 externalFunctions.AddExternalFunction("sleep", (int miliseconds) =>
                 {
-                    processor.SleepUntil = DateTime.UtcNow.TimeOfDay.TotalSeconds + ((double)miliseconds / 1000d);
+                    processor.SleepUntil = Time.time + (miliseconds / 1000f);
                 });
                 externalFunctions.AddExternalFunction("stdout", (char output) =>
                 {
@@ -80,18 +80,21 @@ partial struct ProcessorSystem : ISystem
                 return;
             }
 
-            if (DateTime.UtcNow.TimeOfDay.TotalSeconds > processor.HotReloadAt)
+            if (Time.time > processor.HotReloadAt)
             {
-                processor.HotReloadAt = DateTime.UtcNow.TimeOfDay.TotalSeconds + 5d;
-                if (File.GetLastWriteTimeUtc(processor.SourceFile.ToString()).Ticks > processor.CompiledAt)
+                processor.HotReloadAt = Time.time + 5f;
+                DateTime lastWriteTime = File.GetLastWriteTimeUtc(processor.SourceFile.ToString());
+                if (lastWriteTime != processor.SourceVersion)
                 {
+                    Debug.Log("Source files changed, hot reloading ...");
                     processor.CompileSecuedued = true;
+                    processor.SourceVersion = lastWriteTime;
                     return;
                 }
             }
 
             if (processor.BytecodeProcessor is not null &&
-                processor.SleepUntil < DateTime.UtcNow.TimeOfDay.TotalSeconds)
+                processor.SleepUntil < Time.time)
             {
                 processor.SleepUntil = default;
                 for (int i = 0; i < 128; i++)

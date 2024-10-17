@@ -145,11 +145,21 @@ TextField > Label {
     min-height: auto;
 }
 
+.unity-scroller--vertical,
+.unity-scroller--horizontal {
+    border-left-width: 0px;
+}
+
 .unity-scroller--vertical {
     width: 10px;
 }
 
-.unity-scroller--vertical > #unity-low-button {
+.unity-scroller--horizontal {
+    height: 10px;
+}
+
+.unity-scroller--vertical > #unity-low-button,
+.unity-scroller--horizontal > #unity-low-button {
     width: 8px;
     height: 8px;
     border-left-width: 0;
@@ -163,7 +173,8 @@ TextField > Label {
     background-color: rgb(41, 41, 41);
 }
 
-.unity-scroller--vertical > #unity-high-button {
+.unity-scroller--vertical > #unity-high-button,
+.unity-scroller--horizontal > #unity-high-button {
     width: 8px;
     height: 8px;
     border-left-width: 0;
@@ -175,24 +186,36 @@ TextField > Label {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
     background-color: rgb(41, 41, 41);
+}
+
+.unity-scroller--vertical > #unity-slider,
+.unity-scroller--horizontal > #unity-slider {
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
 }
 
 .unity-scroller--vertical > #unity-slider {
     min-width: auto;
     width: 8px;
-    border-left-width: 0;
-    border-right-width: 0;
-    border-top-width: 0;
-    border-bottom-width: 0;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
     margin-top: 10px;
     margin-bottom: 10px;
 }
 
-.unity-scroller--vertical > #unity-slider > VisualElement {
+.unity-scroller--horizontal > #unity-slider {
+    min-height: auto;
+    height: 8px;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.unity-scroller--vertical > #unity-slider > VisualElement,
+.unity-scroller--horizontal > #unity-slider > VisualElement {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
     border-top-right-radius: 0;
@@ -203,7 +226,8 @@ TextField > Label {
     border-bottom-width: 0;
 }
 
-.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container {
+.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container,
+.unity-scroller--horizontal > #unity-slider > VisualElement > #unity-drag-container {
     border-left-width: 0;
     border-right-width: 0;
     border-top-width: 0;
@@ -214,7 +238,8 @@ TextField > Label {
     border-bottom-right-radius: 0;
 }
 
-.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container > #unity-tracker {
+.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container > #unity-tracker,
+.unity-scroller--horizontal > #unity-slider > VisualElement > #unity-drag-container > #unity-tracker {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
     border-top-right-radius: 0;
@@ -225,7 +250,8 @@ TextField > Label {
     border-bottom-width: 0;
 }
 
-.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container > #unity-dragger-border {
+.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container > #unity-dragger-border,
+.unity-scroller--horizontal > #unity-slider > VisualElement > #unity-drag-container > #unity-dragger-border {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
     border-top-right-radius: 0;
@@ -236,9 +262,8 @@ TextField > Label {
     border-bottom-width: 0;
 }
 
-.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container > #unity-dragger {
-    left: auto;
-    width: 8px;
+.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container > #unity-dragger,
+.unity-scroller--horizontal > #unity-slider > VisualElement > #unity-drag-container > #unity-dragger {
     margin-left: 0;
     margin-right: 0;
     border-left-width: 1px;
@@ -256,6 +281,16 @@ TextField > Label {
     border-bottom-color: rgb(46, 46, 46);
     margin-top: 0;
     margin-bottom: 0;
+}
+
+.unity-scroller--vertical > #unity-slider > VisualElement > #unity-drag-container > #unity-dragger {
+    left: auto;
+    width: 8px;
+}
+
+.unity-scroller--horizontal > #unity-slider > VisualElement > #unity-drag-container > #unity-dragger {
+    top: auto;
+    height: 8px;
 }
 
 Scroller #unity-tracker {

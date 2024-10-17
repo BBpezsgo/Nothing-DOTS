@@ -9,6 +9,7 @@ public class UnitAuthoring : MonoBehaviour
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Unit>(entity);
+            AddComponent<SelectableUnit>(entity);
         }
     }
 }
