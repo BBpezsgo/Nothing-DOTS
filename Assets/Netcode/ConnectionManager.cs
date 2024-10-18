@@ -11,14 +11,6 @@ using UnityEngine.UIElements;
 
 public class ConnectionManager : PrivateSingleton<ConnectionManager>
 {
-    public static ConnectionState Status
-    {
-        get
-        {
-            using EntityQuery driverQ = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<ConnectionState>());
-            return driverQ.GetSingletonRW<ConnectionState>().ValueRO;
-        }
-    }
     public static World? ServerWorld => Instance._serverWorld;
     public static World? ClientWorld => Instance._clientWorld;
 

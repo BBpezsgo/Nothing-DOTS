@@ -78,6 +78,7 @@
     },
     "material-icon-theme.files.associations": {
         "*.uxml": "xml",
-        "*.tss": "css"
+        "*.tss": "css",
+        "*.uss": "css"
     }
 }

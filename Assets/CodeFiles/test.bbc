@@ -4,9 +4,6 @@ using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
 using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
 using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
 
-[External("sleep")]
-void Sleep(i32 miliseconds);
-
 struct MappedMemory
 {
     i8 InputForward;

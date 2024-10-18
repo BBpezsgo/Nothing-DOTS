@@ -11,6 +11,9 @@ using i16 = System.Int16;
 using u32 = System.UInt32;
 using i32 = System.Int32;
 using f32 = System.Single;
+using System;
+using Unity.Collections;
+using System.Runtime.CompilerServices;
 
 [UpdateAfter(typeof(ProcessorSystem))]
 partial struct ProcessorAPISystem : ISystem
@@ -43,16 +46,17 @@ partial struct ProcessorAPISystem : ISystem
         _turretLookup.Update(ref state);
         _transformLookup.Update(ref state);
 
-        foreach ((Processor processor, RefRW<Unit> unit, RefRW<LocalToWorld> transform, Entity entity) in
-                    SystemAPI.Query<Processor, RefRW<Unit>, RefRW<LocalToWorld>>()
+        foreach ((RefRW<Processor> processor, RefRW<Unit> unit, RefRW<LocalToWorld> transform, Entity entity) in
+                    SystemAPI.Query<RefRW<Processor>, RefRW<Unit>, RefRW<LocalToWorld>>()
                     .WithEntityAccess())
         {
-            System.Span<byte> memory = processor.MappedMemory;
-            if (memory.IsEmpty) continue;
+            // Span<byte> totalMemory = new(Unsafe.AsPointer(ref processor.ValueRW.Memory), 510);
+            // Span<byte> memory = totalMemory[(Processor.HeapSize + Processor.StackSize)..];
+            // if (memory.IsEmpty) continue;
 
-            fixed (byte* _mapped = memory)
+            // fixed (byte* _mapped = memory)
             {
-                MappedMemory* mapped = (MappedMemory*)_mapped;
+                MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + (Processor.HeapSize + Processor.StackSize));
 
                 unit.ValueRW.Input = new float2(
                     mapped->InputSteer / 128f,
