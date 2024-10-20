@@ -1,0 +1,73 @@
+{
+	"rpc": {
+		"scope": "csharp",
+		"prefix": "rpc",
+		"body": [
+			"using Unity.NetCode;",
+			"",
+			"#nullable enable",
+			"",
+			"public struct ${1:$TM_FILENAME_BASE} : IRpcCommand",
+			"{",
+			"    $2",
+			"}",
+		]
+	},
+	"component": {
+		"scope": "csharp",
+		"prefix": "component",
+		"body": [
+			"using Unity.Entities;",
+			"",
+			"#nullable enable",
+			"",
+			"public struct ${1:$TM_FILENAME_BASE} : IComponentData",
+			"{",
+			"    $2",
+			"}",
+		]
+	},
+	"authoring": {
+		"scope": "csharp",
+		"prefix": "authoring",
+		"body": [
+			"using Unity.Entities;",
+			"using UnityEngine;",
+			"",
+			"#nullable enable",
+			"",
+			"public class ${1:$TM_FILENAME_BASE} : MonoBehaviour",
+			"{$2",
+			"    class Baker : Baker<${1:$TM_FILENAME_BASE}>",
+			"    {",
+			"        public override void Bake(${1:$TM_FILENAME_BASE} authoring)",
+			"        {",
+			"            Entity entity = GetEntity(TransformUsageFlags.Dynamic);$3",
+			"        }",
+			"    }",
+			"}",
+		]
+	},
+	"system": {
+		"scope": "csharp",
+		"prefix": "system",
+		"body": [
+			"using Unity.Entities;",
+			"",
+			"#nullable enable",
+			"",
+			"public partial struct ${1:$TM_FILENAME_BASE} : ISystem",
+			"{",
+			"    void ISystem.OnCreate(ref SystemState state)",
+			"    {",
+			"        ",
+			"    }",
+			"",
+			"    void ISystem.OnUpdate(ref SystemState state)",
+			"    {",
+			"        $2",
+			"    }",
+			"}",
+		]
+	},
+}

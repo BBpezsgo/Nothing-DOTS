@@ -3,6 +3,9 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+#nullable enable
+
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct FactorySystem : ISystem
 {
     BufferLookup<BufferedUnit> _queueQ;
@@ -16,8 +19,7 @@ public partial struct FactorySystem : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         _queueQ.Update(ref state);
-
-        float now = UnityEngine.Time.time;
+        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
 
         foreach ((RefRW<Factory> factory, RefRO<LocalToWorld> localToWorld, Entity entity) in
                     SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>>()
@@ -26,33 +28,36 @@ public partial struct FactorySystem : ISystem
             if (!_queueQ.TryGetBuffer(entity, out DynamicBuffer<BufferedUnit> unitQueue))
             { continue; }
 
-            if (factory.ValueRO.CurrentFinishAt == default)
+            if (factory.ValueRO.TotalProgress == default)
             {
                 if (unitQueue.Length > 0)
                 {
                     BufferedUnit unit = unitQueue[0];
                     unitQueue.RemoveAt(0);
                     factory.ValueRW.Current = unit;
-                    factory.ValueRW.CurrentStartedAt = now;
-                    factory.ValueRW.CurrentFinishAt = now + 10f / Factory.ProductionSpeed;
+                    factory.ValueRW.CurrentProgress = 0f;
+                    factory.ValueRW.TotalProgress = unit.ProductionTime;
                 }
 
                 continue;
             }
 
-            if (factory.ValueRO.CurrentFinishAt < now)
-            {
-                continue;
-            }
+            factory.ValueRW.CurrentProgress += SystemAPI.Time.DeltaTime * Factory.ProductionSpeed;
+
+            if (factory.ValueRO.CurrentProgress < factory.ValueRO.TotalProgress)
+            { continue; }
 
             BufferedUnit finishedUnit = factory.ValueRO.Current;
 
             factory.ValueRW.Current = default;
-            factory.ValueRW.CurrentStartedAt = default;
-            factory.ValueRW.CurrentFinishAt = default;
+            factory.ValueRW.CurrentProgress = default;
+            factory.ValueRW.TotalProgress = default;
 
-            Entity newUnit = state.EntityManager.Instantiate(finishedUnit.Prefab);
-            state.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(localToWorld.ValueRO.Position + new float3(0f, 0f, 3f)));
+            Entity newUnit = commandBuffer.Instantiate(finishedUnit.Prefab);
+            commandBuffer.SetComponent(newUnit, LocalTransform.FromPosition(localToWorld.ValueRO.Position + new float3(0f, 0f, 1.5f)));
         }
+
+        commandBuffer.Playback(state.EntityManager);
+        commandBuffer.Dispose();
     }
 }

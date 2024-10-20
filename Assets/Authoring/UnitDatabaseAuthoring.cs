@@ -1,9 +1,13 @@
+using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
+#nullable enable
+
+[AddComponentMenu("Authoring/UnitDatabase")]
 public class UnitDatabaseAuthoring : MonoBehaviour
 {
-    public GameObject[] Units;
+    [NotNull] public GameObject[]? Units = default;
 
     class Baker : Baker<UnitDatabaseAuthoring>
     {
@@ -14,7 +18,7 @@ public class UnitDatabaseAuthoring : MonoBehaviour
             DynamicBuffer<BufferedUnit> units = AddBuffer<BufferedUnit>(entity);
             for (int i = 0; i < authoring.Units.Length; i++)
             {
-                units.Add(new(GetEntity(authoring.Units[i], TransformUsageFlags.Dynamic), authoring.Units[i].name));
+                units.Add(new(GetEntity(authoring.Units[i], TransformUsageFlags.Dynamic), authoring.Units[i].name, 1f));
             }
         }
     }

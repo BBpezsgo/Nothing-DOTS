@@ -3,15 +3,22 @@
     <ui:Template name="FactoryQueueItem" src="project://database/Assets/UI/FactoryQueueItem.uxml?fileID=9197481963319205126&amp;guid=c12c22a0d89d53b8e97b0986df61c283&amp;type=3#FactoryQueueItem" />
     <Style src="project://database/Assets/UI/Style.uss?fileID=7433441132597879392&amp;guid=c19d5e621447bb3f490fbf7f9a8dc896&amp;type=3#Style" />
     <ui:VisualElement picking-mode="Ignore" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center;">
-        <ui:GroupBox text="Factory" class="panel">
-            <ui:ProgressBar value="0" title="Progress" name="progress-current" high-value="1" low-value="0" style="margin-bottom: 0;" />
+        <ui:GroupBox text="Factory" class="panel" style="min-height: 200px; min-width: 200px;">
             <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
-                <ui:ScrollView name="list-avaliable" style="flex-grow: 1; flex-basis: 50%;">
-                    <ui:Instance template="FactoryAvaliableItem" name="FactoryAvaliableItem" />
-                </ui:ScrollView>
-                <ui:ScrollView name="list-queue" style="flex-grow: 1; flex-basis: 50%;">
-                    <ui:Instance template="FactoryQueueItem" name="FactoryQueueItem" />
-                </ui:ScrollView>
+                <ui:VisualElement style="flex-grow: 1; flex-basis: 50%;">
+                    <ui:Label text="Avaliable:" style="margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; padding-right: 0; padding-left: 0; margin-right: 0; margin-left: 0; font-size: 8px;" />
+                    <ui:ScrollView name="list-avaliable" style="flex-grow: 1;">
+                        <ui:Instance template="FactoryAvaliableItem" name="FactoryAvaliableItem" />
+                    </ui:ScrollView>
+                </ui:VisualElement>
+                <ui:VisualElement style="flex-grow: 1; flex-basis: 50%;">
+                    <ui:Label text="Current:" style="margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; padding-right: 0; padding-left: 0; margin-right: 0; margin-left: 0; font-size: 8px;" />
+                    <ui:ProgressBar value="0" name="progress-current" high-value="1" low-value="0" style="margin-bottom: 0; margin-top: 0;" />
+                    <ui:Label text="Queue:" style="margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; padding-right: 0; padding-left: 0; margin-right: 0; margin-left: 0; font-size: 8px;" />
+                    <ui:ScrollView name="list-queue" style="flex-grow: 1;">
+                        <ui:Instance template="FactoryQueueItem" name="FactoryQueueItem" />
+                    </ui:ScrollView>
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:GroupBox>
     </ui:VisualElement>

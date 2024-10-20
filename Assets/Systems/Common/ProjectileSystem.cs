@@ -3,6 +3,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+#nullable enable
+
 [BurstCompile]
 partial struct ProjectileSystem : ISystem
 {
@@ -13,7 +15,7 @@ partial struct ProjectileSystem : ISystem
 
         ProjectileJob projectileJob = new()
         {
-            ECB = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged),
+            EntityCommandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged),
             DeltaTime = SystemAPI.Time.DeltaTime
         };
 
@@ -24,9 +26,10 @@ partial struct ProjectileSystem : ISystem
 [BurstCompile]
 public partial struct ProjectileJob : IJobEntity
 {
-    public EntityCommandBuffer ECB;
+    public EntityCommandBuffer EntityCommandBuffer;
     public float DeltaTime;
 
+    [BurstCompile]
     void Execute(Entity entity, ref Projectile projectile, ref LocalTransform transform)
     {
         float3 gravity = new(0.0f, -9.82f, 0.0f);
@@ -45,7 +48,7 @@ public partial struct ProjectileJob : IJobEntity
         float speed = math.lengthsq(projectile.Velocity);
         if (speed < 0.1f)
         {
-            ECB.DestroyEntity(entity);
+            EntityCommandBuffer.DestroyEntity(entity);
         }
     }
 }

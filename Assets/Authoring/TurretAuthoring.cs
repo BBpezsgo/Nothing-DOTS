@@ -1,10 +1,14 @@
+using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
+#nullable enable
+
+[AddComponentMenu("Authoring/Turret")]
 public class TurretAuthoring : MonoBehaviour
 {
-    public GameObject CannonBallPrefab;
-    public Transform CannonBallSpawn;
+    [NotNull] public GameObject? CannonBallPrefab = default;
+    [NotNull] public Transform? CannonBallSpawn = default;
 
     class Baker : Baker<TurretAuthoring>
     {

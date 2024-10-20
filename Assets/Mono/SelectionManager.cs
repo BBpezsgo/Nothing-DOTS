@@ -1,14 +1,15 @@
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.Physics;
 using UnityEngine;
+
+#nullable enable
 
 public class SelectionManager : Singleton<SelectionManager>
 {
     void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && !UI.IsMouseCaptured)
         {
             Entity hit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition));
             if (hit == Entity.Null) return;
@@ -22,6 +23,13 @@ public class SelectionManager : Singleton<SelectionManager>
             if (entityManager.HasComponent<Factory>(hit))
             {
                 FactoryManager.Instance.OpenUI(hit);
+                return;
+            }
+
+            if (entityManager.HasComponent<Unit>(hit))
+            {
+                TerminalManager.Instance.OpenUI(hit);
+                return;
             }
         }
     }
@@ -30,9 +38,11 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         EntityQueryBuilder builder = new EntityQueryBuilder(Allocator.Temp).WithAll<PhysicsWorldSingleton>();
 
-        EntityQuery singletonQuery = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(builder);
-        CollisionWorld collisionWorld = singletonQuery.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
-        singletonQuery.Dispose();
+        CollisionWorld collisionWorld;
+        using (EntityQuery singletonQuery = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(builder))
+        {
+            collisionWorld = singletonQuery.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
+        }
 
         RaycastInput input = new()
         {

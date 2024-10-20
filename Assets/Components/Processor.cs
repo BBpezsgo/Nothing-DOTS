@@ -12,9 +12,10 @@ public struct Processor : IComponentData
 
     public FixedString64Bytes SourceFile;
     public Entity CompilerCache;
-    public DateTime SourceVersion;
+    public long SourceVersion;
+
     public Registers Registers;
-    public float SleepUntil;
-    public FixedString64Bytes StdOutBuffer;
     public FixedBytes510 Memory;
+
+    public FixedString128Bytes StdOutBuffer;
 }

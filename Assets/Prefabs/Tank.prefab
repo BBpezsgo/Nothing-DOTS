@@ -99,6 +99,7 @@ GameObject:
   - component: {fileID: 6263340595079560037}
   - component: {fileID: 3573161271555606508}
   - component: {fileID: 3781343743157589728}
+  - component: {fileID: 8420912117842844535}
   m_Layer: 0
   m_Name: Turret
   m_TagString: Untagged
@@ -189,6 +190,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   CannonBallPrefab: {fileID: 2786101604496490284, guid: 9a9b93087683217029333970b60d618c, type: 3}
   CannonBallSpawn: {fileID: 7105177236876687201}
+--- !u!114 &8420912117842844535
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2158981104949189332}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfdaa6c06fe64fbda2b16e07a4ee0b25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ComponentOverrides:
+  - FullTypeName: Unity.Transforms.LocalTransform
+    EntityIndex: 0
+    PrefabType: 7
+    SendTypeOptimization: -1
+    VariantHash: 7796477309335575595
 --- !u!1 &2198220952844499968
 GameObject:
   m_ObjectHideFlags: 0

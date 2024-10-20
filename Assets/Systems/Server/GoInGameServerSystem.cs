@@ -2,6 +2,8 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
+#nullable enable
+
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct GoInServerClientSystem : ISystem
 {

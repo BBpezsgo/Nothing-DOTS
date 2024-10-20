@@ -1,8 +1,11 @@
 using System;
 
+#nullable enable
+
 static class ArrayExtensions
 {
     public static int IndexOf<T>(this T[] values, T value)
+        where T : notnull
     {
         for (int i = 0; i < values.Length; i++)
         {

@@ -5,7 +5,7 @@ using Unity.Entities;
 public struct CompilerCache : IComponentData
 {
     public FixedString64Bytes SourceFile;
-    public DateTime Version;
+    public long Version;
     public bool CompileSecuedued;
     public float HotReloadAt;
 }

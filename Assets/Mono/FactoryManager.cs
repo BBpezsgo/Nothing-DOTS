@@ -1,9 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Physics;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -15,7 +11,9 @@ public class FactoryManager : Singleton<FactoryManager>
     [SerializeField, NotNull] VisualTreeAsset? UI_AvaliableItem = default;
     [SerializeField, NotNull] VisualTreeAsset? UI_QueueItem = default;
 
-    Entity selectedFactory = Entity.Null;
+    Entity selectedFactoryEntity = Entity.Null;
+    Factory selectedFactory = default;
+    float refreshAt = default;
 
     void Update()
     {
@@ -26,23 +24,30 @@ public class FactoryManager : Singleton<FactoryManager>
             CloseUI();
             return;
         }
+
+        if (Time.time >= refreshAt)
+        {
+            RefreshUI(selectedFactoryEntity);
+            refreshAt = Time.time + 1f;
+            return;
+        }
+
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-        Factory factory = entityManager.GetComponentData<Factory>(selectedFactory);
+        selectedFactory = entityManager.GetComponentData<Factory>(selectedFactoryEntity);
 
-        if (factory.CurrentFinishAt == default) return;
+        if (selectedFactory.TotalProgress == default) return;
 
-        float now = Time.time;
-        float totalDuration = factory.CurrentFinishAt - factory.CurrentStartedAt;
-        float elapsedTime = now - factory.CurrentStartedAt;
-        float progress = elapsedTime / totalDuration;
-        ProgressBar progressCurrent = UI.rootVisualElement.Q<ProgressBar>("progress-current");
-        progressCurrent.value = progress;
+        selectedFactory.CurrentProgress += Time.deltaTime * Factory.ProductionSpeed;
+        UI.rootVisualElement.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
+        UI.rootVisualElement.Q<ProgressBar>("progress-current").title = selectedFactory.Current.Name.ToString();
     }
 
     public void OpenUI(Entity factoryEntity)
     {
+        UIManager.CloseAllPopupUI();
+
         UI.gameObject.SetActive(true);
-        selectedFactory = factoryEntity;
+        selectedFactoryEntity = factoryEntity;
         RefreshUI(factoryEntity);
     }
 
@@ -63,7 +68,7 @@ public class FactoryManager : Singleton<FactoryManager>
             element.Q<Label>("label-unit-name").text = item.Name.ToString();
         });
 
-        EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
+        using EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
         if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity buildingDatabase))
         {
             Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
@@ -78,13 +83,16 @@ public class FactoryManager : Singleton<FactoryManager>
             element.Q<Label>("label-unit-name").text = item.Name.ToString();
             if (!recycled) element.Q<Button>("button-queue").clicked += () => QueueUnit((string)element.userData);
         });
+
+        UI.rootVisualElement.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
+        UI.rootVisualElement.Q<ProgressBar>("progress-current").title = selectedFactory.Current.Name.ToString();
     }
 
     void QueueUnit(string unitName)
     {
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
-        EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
+        using EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
         if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity buildingDatabase))
         {
             Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
@@ -101,13 +109,21 @@ public class FactoryManager : Singleton<FactoryManager>
             return;
         }
 
-        entityManager.GetBuffer<BufferedUnit>(selectedFactory).Add(unit);
-        RefreshUI(selectedFactory);
+        entityManager.GetBuffer<BufferedUnit>(selectedFactoryEntity).Add(unit);
+        if (selectedFactory.TotalProgress == default)
+        {
+            selectedFactory.Current = unit;
+            selectedFactory.CurrentProgress = 0f;
+            selectedFactory.TotalProgress = unit.ProductionTime;
+        }
+        refreshAt = Time.time + .1f;
     }
 
     public void CloseUI()
     {
         UI.gameObject.SetActive(false);
-        selectedFactory = Entity.Null;
+        selectedFactoryEntity = Entity.Null;
+        selectedFactory = default;
+        refreshAt = float.PositiveInfinity;
     }
 }

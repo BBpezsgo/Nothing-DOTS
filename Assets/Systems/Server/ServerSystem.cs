@@ -1,9 +1,10 @@
-using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
 using UnityEngine;
+
+#nullable enable
 
 struct InitializedClient : IComponentData
 {
@@ -27,7 +28,7 @@ public partial struct ServerSystem : ISystem
         EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
 
         foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<PlaceBuildingRequestRpcCommand>>()
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<PlaceBuildingRequestRpc>>()
             .WithEntityAccess())
         {
             Entity buildingDatabaseEntity = SystemAPI.GetSingletonEntity<BuildingDatabase>();
@@ -57,7 +58,7 @@ public partial struct ServerSystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.AddComponent<InitializedClient>(entity);
-            Debug.Log($"Client #${id.ValueRO.Value} connected");
+            // Debug.Log($"Client #{id.ValueRO.Value} connected");
         }
         commandBuffer.Playback(state.EntityManager);
         commandBuffer.Dispose();

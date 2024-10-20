@@ -2,10 +2,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
-public struct GoInGameRpcCommand : IRpcCommand
-{
-
-}
+#nullable enable
 
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
 public partial struct GoInGameClientSystem : ISystem

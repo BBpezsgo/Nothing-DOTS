@@ -1,9 +1,13 @@
+using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
+#nullable enable
+
+[AddComponentMenu("Authoring/BuildingDatabase")]
 public class BuildingDatabaseAuthoring : MonoBehaviour
 {
-    public GameObject[] Buildings;
+    [NotNull] public GameObject[]? Buildings = default;
 
     class Baker : Baker<BuildingDatabaseAuthoring>
     {

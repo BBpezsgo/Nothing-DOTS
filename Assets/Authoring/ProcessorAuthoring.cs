@@ -1,9 +1,12 @@
 using Unity.Entities;
 using UnityEngine;
 
+#nullable enable
+
+[AddComponentMenu("Authoring/Processor")]
 public class ProcessorAuthoring : MonoBehaviour
 {
-    public string SourceFile;
+    public string? SourceFile;
 
     class Baker : Baker<ProcessorAuthoring>
     {

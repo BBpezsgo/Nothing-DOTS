@@ -1,7 +1,8 @@
 using LanguageCore.Runtime;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+
+#nullable enable
 
 public struct NativeExternalFunction : IBufferElementData, IExternalFunction
 {

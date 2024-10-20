@@ -5,6 +5,8 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
+#nullable enable
+
 public partial struct TurretRotationSystem : ISystem
 {
     [BurstCompile]
@@ -14,7 +16,7 @@ public partial struct TurretRotationSystem : ISystem
                     SystemAPI.Query<RefRW<LocalTransform>, RefRO<Turret>>())
         {
             const float speed = 45f;
-            quaternion target = quaternion.Euler(
+            quaternion target = quaternion.EulerXYZ(
                 turret.ValueRO.TargetAngle,
                 turret.ValueRO.TargetRotation,
                 0);

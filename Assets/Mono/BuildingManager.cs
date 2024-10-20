@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
@@ -12,12 +11,6 @@ using UnityEngine.UIElements;
 using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
 #nullable enable
-
-public struct PlaceBuildingRequestRpcCommand : IRpcCommand
-{
-    public float3 Position;
-    public FixedString32Bytes BuildingName;
-}
 
 public class BuildingManager : PrivateSingleton<BuildingManager>
 {
@@ -58,7 +51,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         container.Clear();
 
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-        EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
+        using EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
             Debug.LogWarning($"Failed to get {nameof(BuildingDatabase)} entity singleton");
@@ -84,6 +77,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
     void PlaceBuilding(Vector3 position, BufferedBuilding building)
     {
+        // Debug.Log($"Place building request ...");
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
         Entity newEntity = entityManager.Instantiate(building.Prefab);
@@ -101,7 +95,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         int i = int.Parse(button.name.Split('-')[1]);
 
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-        EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
+        using EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
             Debug.LogWarning($"Failed to get {nameof(BuildingDatabase)} entity singleton");
@@ -153,7 +147,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             }
         }
 
-        if (Mouse.current.rightButton.isPressed && (IsBuilding || BuildingUI.gameObject.activeSelf))
+        if (Mouse.current.rightButton.isPressed && !UI.IsMouseCaptured && (IsBuilding || BuildingUI.gameObject.activeSelf))
         {
             Hide();
             return;
@@ -211,7 +205,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             return;
         }
 
-        if (Mouse.current.leftButton.isPressed)
+        if (Mouse.current.leftButton.isPressed && !UI.IsMouseCaptured)
         {
             if (SelectedBuilding.Prefab == default) return;
             if (!IsValidPosition) return;
@@ -222,11 +216,11 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             }
             else
             {
-                SendPlaceBuildingRequest(new PlaceBuildingRequestRpcCommand()
+                SendPlaceBuildingRequest(new PlaceBuildingRequestRpc()
                 {
                     BuildingName = SelectedBuilding.Name,
                     Position = position,
-                }, ConnectionManager.ClientWorld);
+                }, World.DefaultGameObjectInjectionWorld);
             }
 
             Hide();
@@ -234,10 +228,11 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         }
     }
 
-    void SendPlaceBuildingRequest(PlaceBuildingRequestRpcCommand request, World? world)
+    void SendPlaceBuildingRequest(PlaceBuildingRequestRpc request, World? world)
     {
         if (world == null || !world.IsCreated) return;
-        Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(PlaceBuildingRequestRpcCommand));
+        // Debug.Log($"Sending place building request ...");
+        Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(PlaceBuildingRequestRpc));
         world.EntityManager.SetComponentData(entity, request);
     }
 

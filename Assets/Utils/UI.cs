@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Unity.Entities;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 #nullable enable
@@ -35,6 +36,32 @@ public static class UIExtensions
         for (; i < childrenElement.Length; i++)
         {
             container.Remove(childrenElement[i]);
+        }
+    }
+}
+
+public static class UI
+{
+    public static bool IsMouseCaptured
+    {
+        get
+        {
+            if (GUIUtility.hotControl != 0) return true;
+
+            UIDocument[] uiDocuments = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Exclude, UnityEngine.FindObjectsSortMode.None);
+
+            foreach (UIDocument uiElement in uiDocuments)
+            {
+                if (uiElement == null) continue;
+                if (!uiElement.gameObject.activeSelf) continue;
+                if (!uiElement.isActiveAndEnabled) continue;
+                if (uiElement.rootVisualElement == null) continue;
+                if (uiElement.rootVisualElement.focusController.focusedElement == null) continue;
+
+                return true;
+            }
+
+            return false;
         }
     }
 }

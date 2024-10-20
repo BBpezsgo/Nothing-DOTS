@@ -1,6 +1,9 @@
 using Unity.Entities;
 using UnityEngine;
 
+#nullable enable
+
+[AddComponentMenu("Authoring/Projectile")]
 public class ProjectileAuthoring : MonoBehaviour
 {
     class Baker : Baker<ProjectileAuthoring>

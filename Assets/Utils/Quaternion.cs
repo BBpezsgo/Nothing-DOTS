@@ -1,9 +1,14 @@
 using System.Runtime.CompilerServices;
+using Unity.Burst;
 using Unity.Mathematics;
 
+#nullable enable
+
+[BurstCompile]
 public static partial class Utils
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [BurstCompile]
     public static float Angle(in quaternion a, in quaternion b)
     {
         float dot = math.min(math.abs(math.dot(a, b)), 1f);

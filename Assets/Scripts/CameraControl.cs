@@ -1,53 +1,42 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using NaughtyAttributes;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+#nullable enable
+
 public class CameraControl : MonoBehaviour
 {
-    CameraInput cameraActions;
-    InputAction movement;
-    InputAction keyZoom;
-    Transform cameraTransform;
+    [NotNull] CameraInput? cameraActions = default;
+    [NotNull] InputAction? movement = default;
+    [NotNull] InputAction? keyZoom = default;
+    [NotNull] Transform? cameraTransform = default;
 
-    [BoxGroup("Horizontal Translation")]
-    [SerializeField]
-    float maxSpeed = 5f;
-    float speed;
-    [BoxGroup("Horizontal Translation")]
-    [SerializeField]
-    float acceleration = 10f;
-    [BoxGroup("Horizontal Translation")]
-    [SerializeField]
-    float damping = 15f;
+    [Header("Horizontal Translation")]
 
-    [BoxGroup("Vertical Translation")]
-    [SerializeField]
-    float stepSize = 2f;
-    [BoxGroup("Vertical Translation")]
-    [SerializeField]
-    float zoomDampening = 7.5f;
-    [BoxGroup("Vertical Translation")]
-    [SerializeField]
-    float minHeight = 5f;
-    [BoxGroup("Vertical Translation")]
-    [SerializeField]
-    float maxHeight = 50f;
-    [BoxGroup("Vertical Translation")]
-    [SerializeField]
-    float zoomSpeed = 2f;
+    [SerializeField] float maxSpeed = 5f;
+    [SerializeField, ReadOnly] float speed;
+    [SerializeField] float acceleration = 10f;
+    [SerializeField] float damping = 15f;
 
-    [BoxGroup("Rotation")]
-    [SerializeField]
-    float maxRotationSpeed = 1f;
+    [Header("Vertical Translation")]
 
-    [BoxGroup("Edge Movement")]
-    [SerializeField]
+    [SerializeField] float stepSize = 2f;
+    [SerializeField] float zoomDampening = 7.5f;
+    [SerializeField] float minHeight = 5f;
+    [SerializeField] float maxHeight = 50f;
+    [SerializeField] float zoomSpeed = 2f;
+
+    [Header("Rotation")]
+
+    [SerializeField] float maxRotationSpeed = 1f;
+
+    [Header("Edge Movement")]
+
     [Range(0f, 0.1f)]
-    float edgeTolerance = 0.05f;
-    [BoxGroup("Edge Movement")]
-    [SerializeField]
-    bool useScreenEdge = true;
+    [SerializeField] float edgeTolerance = 0.05f;
+    [SerializeField] bool useScreenEdge = true;
 
     Vector3 velocity;
     float zoomHeight;
@@ -162,7 +151,7 @@ public class CameraControl : MonoBehaviour
 
     void RotateCamera(InputAction.CallbackContext inputValue)
     {
-        if (!Mouse.current.middleButton.isPressed) return;
+        if (!Mouse.current.middleButton.isPressed || UI.IsMouseCaptured) return;
 
         float value = inputValue.ReadValue<Vector2>().x;
         transform.rotation = Quaternion.Euler(
@@ -219,7 +208,7 @@ public class CameraControl : MonoBehaviour
 
     void DragCamera()
     {
-        if (!Mouse.current.rightButton.isPressed) return;
+        if (!Mouse.current.rightButton.isPressed || UI.IsMouseCaptured) return;
 
         Plane plane = new(Vector3.up, Vector3.zero);
         Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());

@@ -11,6 +11,7 @@ using UnityEngine;
 
 #nullable enable
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 partial struct CompilerSystem : ISystem
 {
     void ISystem.OnCreate(ref SystemState state)
@@ -26,15 +27,11 @@ partial struct CompilerSystem : ISystem
         {
             if (compilerCache.ValueRO.CompileSecuedued)
             {
-                Debug.Log("Compilation secuedued for source ...");
-
-                compilerCache.ValueRW.CompileSecuedued = false;
-                compilerCache.ValueRW.Version = File.GetLastWriteTimeUtc(compilerCache.ValueRO.SourceFile.ToString());
-                compilerCache.ValueRW.HotReloadAt = Time.time + 5f;
+                // Debug.Log("Compilation secuedued for source ...");
 
                 List<IExternalFunction> externalFunctions = new();
-                externalFunctions.AddExternalFunction("stdout", (char output) => { });
-                externalFunctions.AddExternalFunction<float, float, float>("atan2", math.atan2);
+                externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(), "stdout", (char output) => { }));
+                externalFunctions.AddExternalFunction(ExternalFunctionSync.Create<float, float, float>(externalFunctions.GenerateId(), "atan2", math.atan2));
                 CompilerResult compiled = Compiler.CompileFile(
                     new Uri(compilerCache.ValueRO.SourceFile.ToString(), UriKind.Absolute),
                     ProcessorSystem.ExternalFunctions,
@@ -51,19 +48,23 @@ partial struct CompilerSystem : ISystem
                 buffer.ResizeUninitialized(generated.Code.Length);
                 buffer.CopyFrom(generated.Code.Select(v => new BufferedInstruction(v)).ToArray());
 
-                return;
+                compilerCache.ValueRW.CompileSecuedued = false;
+                compilerCache.ValueRW.Version = File.GetLastWriteTimeUtc(compilerCache.ValueRO.SourceFile.ToString()).Ticks;
+                compilerCache.ValueRW.HotReloadAt = Time.time + 5f;
+
+                continue;
             }
 
             if (Time.time > compilerCache.ValueRO.HotReloadAt)
             {
                 compilerCache.ValueRW.HotReloadAt = Time.time + 5f;
                 DateTime lastWriteTime = File.GetLastWriteTimeUtc(compilerCache.ValueRO.SourceFile.ToString());
-                if (lastWriteTime != compilerCache.ValueRO.Version)
+                if (lastWriteTime.Ticks != compilerCache.ValueRO.Version)
                 {
-                    Debug.Log("Source changed, requesting compilation ...");
+                    // Debug.Log("Source changed, requesting compilation ...");
                     compilerCache.ValueRW.CompileSecuedued = true;
-                    compilerCache.ValueRW.Version = lastWriteTime;
-                    return;
+                    compilerCache.ValueRW.Version = lastWriteTime.Ticks;
+                    continue;
                 }
             }
         }

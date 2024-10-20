@@ -30,50 +30,55 @@ void PrintLine(Vector2 v)
 }
 
 const f32 PI = 3.14159265359f;
+const f32 TAU = PI * 2f;
+const f32 G = 9.82f;
+const f32 PROJECTILE_V = 20f;
 
-[External("atan2")]
-f32 Atan2(f32 x, f32 y);
+[External("atan2")] f32 Atan2(f32 x, f32 y);
+[External("sin")] f32 Sin(f32 v);
+[External("cos")] f32 Cos(f32 v);
+[External("tan")] f32 Tan(f32 v);
+[External("asin")] f32 Asin(f32 v);
+[External("acos")] f32 Acos(f32 v);
+[External("atan")] f32 Atan(f32 v);
+[External("sqrt")] f32 _Sqrt(f32 v);
 
-while (1)
+void Movement(f32 targetX, f32 targetY)
 {
     Vector2 forward = Mapped.Forward;
     Vector2 position = Mapped.Position;
 
-    Vector2 dir;
-    dir.x = 0f - position.x;
-    dir.y = 0f - position.y;
-    Normalise(&dir);
+    Vector2 dirMove;
+    dirMove.x = targetX - position.x;
+    dirMove.y = targetY - position.y;
+    Normalise(&dirMove);
 
-    f32 d = Distance(position, new Vector2(0f, 0f));
+    f32 d = Distance(position, new Vector2(targetX, targetY));
 
-    f32 t = Atan2(dir.x, dir.y);
-    f32 t2 = Atan2(forward.x, forward.y);
-    f32 t3 = t - t2;
-
-    Mapped.TurretTargetRotation = t3;
-    Mapped.TurretTargetAngle = PI / 4f;
-
-    if (Abs(Mapped.TurretTargetRotation - Mapped.TurretCurrentRotation) < 0.1f)
-    {
-        Mapped.InputShoot = (u8)1;
-    }
-
-    f32 s = Cross(forward, dir);
-    f32 c = Dot(forward, dir);
-    f32 t4 = Atan2(s, c);
+    f32 t1 = Cross(forward, dirMove);
+    f32 t2 = Dot(forward, dirMove);
+    f32 t4 = Atan2(t1, t2);
 
     if (d < 1f)
     {
         Mapped.InputSteer = (i8)0;
         Mapped.InputForward = (i8)0;
     }
-    elseif (t4 > 0.05f)
+    elseif (t4 > 0.1f)
     {
         Mapped.InputSteer = (i8)-128;
     }
-    elseif (t4 < -0.05f)
+    elseif (t4 < -0.1f)
     {
         Mapped.InputSteer = (i8)127;
+    }
+    elseif (t4 > 0.05f)
+    {
+        Mapped.InputSteer = (i8)-64;
+    }
+    elseif (t4 < -0.05f)
+    {
+        Mapped.InputSteer = (i8)64;
     }
     else
     {
@@ -82,4 +87,65 @@ while (1)
         if (d > 127f) { d = 127f; }
         Mapped.InputForward = (i8)(i32)d;
     }
+}
+
+void Shooting(f32 targetX, f32 targetY)
+{
+    Vector2 forward = Mapped.Forward;
+    Vector2 position = Mapped.Position;
+
+    Vector2 dir;
+    dir.x = targetX - position.x;
+    dir.y = targetY - position.y;
+    Normalise(&dir);
+
+    f32 d = Distance(position, new Vector2(targetX, targetY));
+
+    f32 t = Atan2(dir.x, dir.y);
+    f32 t2 = Atan2(forward.x, forward.y);
+    f32 t3 = t - t2;
+
+    if (t3 < 0.0) { t3 += TAU; }
+
+    Mapped.TurretTargetRotation = t3;
+    if (d > 20.0)
+    {
+        Mapped.TurretTargetAngle = Atan(
+            (
+                (PROJECTILE_V * PROJECTILE_V) +
+                _Sqrt(
+                    (PROJECTILE_V * PROJECTILE_V * PROJECTILE_V * PROJECTILE_V) -
+                    (G * (G * d * d + 2.0 * 0.5 * PROJECTILE_V * PROJECTILE_V))
+                )
+            ) / (
+                G * d
+            )
+        );
+    }
+    else
+    {
+        Mapped.TurretTargetAngle = Atan(
+            (
+                (PROJECTILE_V * PROJECTILE_V) -
+                _Sqrt(
+                    (PROJECTILE_V * PROJECTILE_V * PROJECTILE_V * PROJECTILE_V) -
+                    (G * (G * d * d + 2.0 * 0.5 * PROJECTILE_V * PROJECTILE_V))
+                )
+            ) / (
+                G * d
+            )
+        );
+    }
+
+
+    if (Abs(Mapped.TurretCurrentRotation - Mapped.TurretTargetRotation) < 0.1f)
+    {
+        Mapped.InputShoot = (u8)1;
+    }
+}
+
+while (1)
+{
+    Movement(10f, 10f);
+    Shooting(0f, 0f);
 }

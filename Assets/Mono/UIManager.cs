@@ -1,6 +1,8 @@
 using NaughtyAttributes;
 using UnityEngine;
 
+#nullable enable
+
 public class UIManager : Singleton<UIManager>
 {
     [SerializeField, ReadOnly] bool _escPressed = false;
@@ -17,5 +19,11 @@ public class UIManager : Singleton<UIManager>
         if (_escGrabbed || !_escPressed) return false;
         _escGrabbed = true;
         return true;
+    }
+
+    public static void CloseAllPopupUI()
+    {
+        TerminalManager.Instance.CloseUI();
+        FactoryManager.Instance.CloseUI();
     }
 }
