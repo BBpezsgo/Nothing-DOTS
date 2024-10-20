@@ -7,6 +7,7 @@ using UnityEngine;
 
 #nullable enable
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct TurretRotationSystem : ISystem
 {
     [BurstCompile]
@@ -20,8 +21,7 @@ public partial struct TurretRotationSystem : ISystem
                 turret.ValueRO.TargetAngle,
                 turret.ValueRO.TargetRotation,
                 0);
-            target = Utils.RotateTowards(transform.ValueRO.Rotation, target, speed * Time.deltaTime);
-            transform.ValueRW.Rotation = target;
+            Utils.RotateTowards(ref transform.ValueRW.Rotation, target, speed * Time.deltaTime);
         }
     }
 }

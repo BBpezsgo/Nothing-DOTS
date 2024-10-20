@@ -80,7 +80,7 @@ partial struct ProcessorAPISystem : ISystem
                     turret.ValueRW.TargetRotation = mapped->TurretTargetRotation;
                     turret.ValueRW.TargetAngle = mapped->TurretTargetAngle;
 
-                    float3 euler = math.EulerXYZ(turretTransform.ValueRO.Rotation);
+                    Utils.QuaternionToEuler(turretTransform.ValueRO.Rotation, out float3 euler);
                     mapped->TurretCurrentRotation = euler.y;
                     mapped->TurretCurrentAngle = euler.x;
 

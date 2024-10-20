@@ -33,6 +33,7 @@ const f32 PI = 3.14159265359f;
 const f32 TAU = PI * 2f;
 const f32 G = 9.82f;
 const f32 PROJECTILE_V = 20f;
+const f32 H = 0.1f;
 
 [External("atan2")] f32 Atan2(f32 x, f32 y);
 [External("sin")] f32 Sin(f32 v);
@@ -105,17 +106,17 @@ void Shooting(f32 targetX, f32 targetY)
     f32 t2 = Atan2(forward.x, forward.y);
     f32 t3 = t - t2;
 
-    if (t3 < 0.0) { t3 += TAU; }
+    if (t3 < 0f) { t3 += TAU; }
 
     Mapped.TurretTargetRotation = t3;
-    if (d > 20.0)
+    if (d > 20f)
     {
         Mapped.TurretTargetAngle = Atan(
             (
                 (PROJECTILE_V * PROJECTILE_V) +
                 _Sqrt(
                     (PROJECTILE_V * PROJECTILE_V * PROJECTILE_V * PROJECTILE_V) -
-                    (G * (G * d * d + 2.0 * 0.5 * PROJECTILE_V * PROJECTILE_V))
+                    (G * (G * d * d + (H * -1f) * (2f * PROJECTILE_V * PROJECTILE_V)))
                 )
             ) / (
                 G * d
@@ -129,7 +130,7 @@ void Shooting(f32 targetX, f32 targetY)
                 (PROJECTILE_V * PROJECTILE_V) -
                 _Sqrt(
                     (PROJECTILE_V * PROJECTILE_V * PROJECTILE_V * PROJECTILE_V) -
-                    (G * (G * d * d + 2.0 * 0.5 * PROJECTILE_V * PROJECTILE_V))
+                    (G * (G * d * d + (H * -1f) * (2f * PROJECTILE_V * PROJECTILE_V)))
                 )
             ) / (
                 G * d
