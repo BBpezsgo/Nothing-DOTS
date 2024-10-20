@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -10,15 +11,12 @@ using i16 = System.Int16;
 using u32 = System.UInt32;
 using i32 = System.Int32;
 using f32 = System.Single;
-using Unity.Collections;
-using UnityEngine;
-using System.Runtime.CompilerServices;
 
 #nullable enable
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 [UpdateAfter(typeof(ProcessorSystem))]
-partial struct ProcessorAPISystem : ISystem
+partial struct UnitProcessorSystem : ISystem
 {
     ComponentLookup<Turret> _turretLookup;
     ComponentLookup<LocalTransform> _transformLookup;
@@ -52,7 +50,7 @@ partial struct ProcessorAPISystem : ISystem
                     SystemAPI.Query<RefRW<Processor>, RefRW<Unit>, RefRW<LocalToWorld>>()
                     .WithEntityAccess())
         {
-            MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + 256);
+            MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + (Processor.HeapSize + Processor.StackSize));
 
             unit.ValueRW.Input = new float2(
                 mapped->InputSteer / 128f,
