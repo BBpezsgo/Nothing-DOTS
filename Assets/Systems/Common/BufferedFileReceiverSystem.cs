@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
@@ -11,46 +8,44 @@ using UnityEngine;
 
 partial struct BufferedFileReceiverSystem : ISystem
 {
-    public const string BasePath = "/home/BB/Projects/Nothing-DOTS/Assets/CodeFiles";
     const bool DebugLog = false;
-
-    static readonly Dictionary<string, byte[]> FileContents = new();
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = new(Allocator.Temp);
 
         DynamicBuffer<BufferedFileChunk> fileChunks = SystemAPI.GetSingletonBuffer<BufferedFileChunk>();
-        DynamicBuffer<BufferedReceivingFile> fileHeaders = SystemAPI.GetSingletonBuffer<BufferedReceivingFile>();
-        DynamicBuffer<BufferedSendingFile> fileIds = SystemAPI.GetSingletonBuffer<BufferedSendingFile>();
+        DynamicBuffer<BufferedReceivingFile> receivingFiles = SystemAPI.GetSingletonBuffer<BufferedReceivingFile>();
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderRpc>>()
             .WithEntityAccess())
         {
             bool added = false;
-            BufferedReceivingFile fileHeader = new()
-            {
-                FileId = command.ValueRO.FileId,
-                TotalLength = command.ValueRO.TotalLength,
-                FileName = command.ValueRO.FileName,
-            };
+            BufferedReceivingFile fileHeader = new(
+                request.ValueRO.SourceConnection,
+                command.ValueRO.TransactionId,
+                command.ValueRO.FileName,
+                command.ValueRO.TotalLength,
+                SystemAPI.Time.ElapsedTime
+            );
 
-            for (int i = 0; i < fileHeaders.Length; i++)
+            for (int i = 0; i < receivingFiles.Length; i++)
             {
-                if (fileHeaders[i].FileId == command.ValueRO.FileId)
-                {
-                    fileHeaders[i] = fileHeader;
-                    added = true;
-                    if (DebugLog) Debug.Log($"Overrided file header \"{fileHeader.FileName}\" 0/{BufferedFileReceiverSystem.GetChunkLength(fileHeader.TotalLength)}");
-                    break;
-                }
+                if (receivingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
+                if (receivingFiles[i].Source != request.ValueRO.SourceConnection) continue;
+
+                receivingFiles[i] = fileHeader;
+                added = true;
+                if (DebugLog) Debug.Log($"Overrided file header \"{fileHeader.FileName}\" 0/{FileChunkManager.GetChunkLength(fileHeader.TotalLength)}");
+
+                break;
             }
 
             if (!added)
             {
-                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" 0/{BufferedFileReceiverSystem.GetChunkLength(fileHeader.TotalLength)}");
-                fileHeaders.Add(fileHeader);
+                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" 0/{FileChunkManager.GetChunkLength(fileHeader.TotalLength)}");
+                receivingFiles.Add(fileHeader);
             }
 
             commandBuffer.DestroyEntity(entity);
@@ -61,12 +56,12 @@ partial struct BufferedFileReceiverSystem : ISystem
             .WithEntityAccess())
         {
             bool added = false;
-            BufferedFileChunk fileChunk = new()
-            {
-                FileId = command.ValueRO.FileId,
-                ChunkIndex = command.ValueRO.ChunkIndex,
-                Data = command.ValueRO.Data,
-            };
+            BufferedFileChunk fileChunk = new(
+                request.ValueRO.SourceConnection,
+                command.ValueRO.TransactionId,
+                command.ValueRO.ChunkIndex,
+                command.ValueRO.Data
+            );
 
             for (int i = 0; i < fileChunks.Length; i++)
             {
@@ -74,6 +69,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                 {
                     fileChunks[i] = fileChunk;
                     added = true;
+                    if (DebugLog) Debug.Log($"Received chunk (again) {fileChunk.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)} for file {receivingFiles[i].FileName}");
                     break;
                 }
             }
@@ -83,176 +79,37 @@ partial struct BufferedFileReceiverSystem : ISystem
                 fileChunks.Add(fileChunk);
             }
 
-            for (int i = 0; i < fileHeaders.Length; i++)
+            for (int i = 0; i < receivingFiles.Length; i++)
             {
-                if (fileHeaders[i].FileId != fileChunk.FileId) continue;
-                fileHeaders[i] = new BufferedReceivingFile()
-                {
-                    FileId = fileHeaders[i].FileId,
-                    FileName = fileHeaders[i].FileName,
-                    TotalLength = fileHeaders[i].TotalLength,
-                    LastRedeivedAt = SystemAPI.Time.ElapsedTime,
-                };
-                if (DebugLog) Debug.Log($"Received chunk {fileChunk.ChunkIndex}/{BufferedFileReceiverSystem.GetChunkLength(fileHeaders[i].TotalLength)} for file {fileHeaders[i].FileName}");
+                if (receivingFiles[i].TransactionId != fileChunk.TransactionId) continue;
+                if (receivingFiles[i].Source != request.ValueRO.SourceConnection) continue;
+
+                receivingFiles[i] = new BufferedReceivingFile(
+                    receivingFiles[i].Source,
+                    receivingFiles[i].TransactionId,
+                    receivingFiles[i].FileName,
+                    receivingFiles[i].TotalLength,
+                    SystemAPI.Time.ElapsedTime
+                );
+                if (DebugLog) if (!added) Debug.Log($"Received chunk {fileChunk.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)} for file {receivingFiles[i].FileName}");
+
                 break;
             }
 
             commandBuffer.DestroyEntity(entity);
         }
 
-        foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderRequestRpc>>()
-            .WithEntityAccess())
+        for (int i = 0; i < receivingFiles.Length; i++)
         {
-            bool found = false;
-            for (int i = 0; i < fileHeaders.Length; i++)
-            {
-                if (fileHeaders[i].FileName != command.ValueRO.FileName) continue;
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
-                {
-                    FileName = fileHeaders[i].FileName,
-                    FileId = fileHeaders[i].FileId,
-                    TotalLength = fileHeaders[i].TotalLength,
-                });
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
-                found = true;
-                if (DebugLog) Debug.Log($"Sending file header \"{fileHeaders[i].FileName}\": {{ id: {fileHeaders[i].FileId} length: {fileHeaders[i].TotalLength}b }}");
-                break;
-            }
-
-            if (found)
-            {
-                commandBuffer.DestroyEntity(entity);
-                continue;
-            }
-
-            byte[]? localFile = GetLocalFile(Path.Combine(BasePath, command.ValueRO.FileName.ToString()));
-            if (localFile == null)
-            {
-                if (DebugLog) Debug.LogError($"File \"{command.ValueRO.FileName}\" does not exists");
-                commandBuffer.DestroyEntity(entity);
-                continue;
-            }
-
-            for (int i = 0; i < fileIds.Length; i++)
-            {
-                if (fileIds[i].FileName != command.ValueRO.FileName) continue;
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                int totalLength = localFile.Length;
-                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
-                {
-                    FileName = fileIds[i].FileName,
-                    FileId = fileIds[i].FileId,
-                    TotalLength = totalLength,
-                });
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
-                found = true;
-                if (DebugLog) Debug.Log($"Sending file header \"{fileHeaders[i].FileName}\": {{ id: {fileHeaders[i].FileId} length: {fileHeaders[i].TotalLength}b }}");
-                break;
-            }
-
-            if (found)
-            {
-                commandBuffer.DestroyEntity(entity);
-                continue;
-            }
-
-            {
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                int totalLength = localFile.Length;
-                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
-                {
-                    FileName = command.ValueRO.FileName,
-                    FileId = command.ValueRO.FileName.GetHashCode(),
-                    TotalLength = totalLength,
-                });
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
-                found = true;
-                fileIds.Add(new BufferedSendingFile()
-                {
-                    FileId = command.ValueRO.FileName.GetHashCode(),
-                    FileName = command.ValueRO.FileName,
-                });
-                if (DebugLog) Debug.Log($"Sending file header \"{command.ValueRO.FileName}\": {{ id: {command.ValueRO.FileName.GetHashCode()} length: {totalLength}b }}");
-            }
-
-            commandBuffer.DestroyEntity(entity);
-        }
-
-        foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileChunkRequestRpc>>()
-            .WithEntityAccess())
-        {
-            bool found = false;
-            for (int i = 0; i < fileChunks.Length; i++)
-            {
-                if (fileChunks[i].FileId != command.ValueRO.FileId) continue;
-                if (fileChunks[i].ChunkIndex != command.ValueRO.ChunkIndex) continue;
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(responseRpcEntity, new FileChunkRpc()
-                {
-                    FileId = fileChunks[i].FileId,
-                    ChunkIndex = fileChunks[i].ChunkIndex,
-                    Data = fileChunks[i].Data,
-                });
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
-                found = true;
-                if (DebugLog) Debug.Log($"Sending chunk {command.ValueRO.ChunkIndex} for file {command.ValueRO.FileId}");
-                break;
-            }
-
-            if (found)
-            {
-                commandBuffer.DestroyEntity(entity);
-                continue;
-            }
-
-            for (int i = 0; i < fileIds.Length; i++)
-            {
-                if (fileIds[i].FileId != command.ValueRO.FileId) continue;
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                ReadOnlySpan<byte> buffer = GetLocalFile(Path.Combine(BasePath, fileIds[i].FileName.ToString()));
-                int chunkSize = BufferedFileReceiverSystem.GetChunkSize(buffer.Length, command.ValueRO.ChunkIndex);
-                buffer = buffer.Slice(command.ValueRO.ChunkIndex * FileChunkRpc.ChunkSize, chunkSize);
-                fixed (byte* bufferPtr = buffer)
-                {
-                    commandBuffer.AddComponent(responseRpcEntity, new FileChunkRpc()
-                    {
-                        FileId = fileIds[i].FileId,
-                        ChunkIndex = command.ValueRO.ChunkIndex,
-                        Data = *(FixedBytes126*)bufferPtr,
-                    });
-                }
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
-                found = true;
-                if (DebugLog) Debug.Log($"Sending chunk {command.ValueRO.ChunkIndex} for file {fileIds[i].FileName}");
-                break;
-            }
-
-            if (!found)
-            {
-                if (DebugLog) Debug.LogWarning($"Can't send requested chunk for file {command.ValueRO.FileId}: File does not exists");
-            }
-
-            commandBuffer.DestroyEntity(entity);
-        }
-
-        for (int i = 0; i < fileHeaders.Length; i++)
-        {
-            double delta = SystemAPI.Time.ElapsedTime - fileHeaders[i].LastRedeivedAt;
+            double delta = SystemAPI.Time.ElapsedTime - receivingFiles[i].LastRedeivedAt;
             if (delta < 1d) continue;
-            fileHeaders[i] = new BufferedReceivingFile()
-            {
-                FileId = fileHeaders[i].FileId,
-                FileName = fileHeaders[i].FileName,
-                TotalLength = fileHeaders[i].TotalLength,
-                LastRedeivedAt = SystemAPI.Time.ElapsedTime,
-            };
-            bool[] receivedChunks = new bool[BufferedFileReceiverSystem.GetChunkLength(fileHeaders[i].TotalLength)];
+
+            bool[] receivedChunks = new bool[FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)];
             for (int j = 0; j < fileChunks.Length; j++)
             {
-                if (fileChunks[j].FileId != fileHeaders[i].FileId) continue;
+                if (fileChunks[j].TransactionId != receivingFiles[i].TransactionId) continue;
+                if (fileChunks[j].Source != receivingFiles[i].Source) continue;
+
                 receivedChunks[fileChunks[j].ChunkIndex] = true;
             }
 
@@ -263,41 +120,30 @@ partial struct BufferedFileReceiverSystem : ISystem
                 Entity requestRpcEneity = commandBuffer.CreateEntity();
                 commandBuffer.AddComponent(requestRpcEneity, new FileChunkRequestRpc()
                 {
-                    FileId = fileHeaders[i].FileId,
+                    TransactionId = receivingFiles[i].TransactionId,
                     ChunkIndex = j,
                 });
-                commandBuffer.AddComponent(requestRpcEneity, new SendRpcCommandRequest());
-                if (DebugLog) Debug.Log($"Requesting chunk {j} for file \"{fileHeaders[i].FileName}\"");
+                commandBuffer.AddComponent(requestRpcEneity, new SendRpcCommandRequest()
+                {
+                    TargetConnection = receivingFiles[i].Source
+                });
+                if (DebugLog) Debug.Log($"Requesting chunk {j} for file \"{receivingFiles[i].FileName}\"");
                 if (requested++ >= 5) break;
+            }
+
+            if (requested > 0)
+            {
+                receivingFiles[i] = new BufferedReceivingFile(
+                    receivingFiles[i].Source,
+                    receivingFiles[i].TransactionId,
+                    receivingFiles[i].FileName,
+                    receivingFiles[i].TotalLength,
+                    SystemAPI.Time.ElapsedTime
+                );
             }
         }
 
         commandBuffer.Playback(state.EntityManager);
         commandBuffer.Dispose();
-    }
-
-    static byte[]? GetLocalFile(string fileName)
-    {
-        if (FileContents.TryGetValue(fileName, out var file))
-        { return file; }
-        if (!File.Exists(Path.Combine(BasePath, fileName))) return null;
-        return FileContents[fileName] = File.ReadAllBytes(Path.Combine(BasePath, fileName));
-    }
-
-    public static int GetChunkLength(int bytes)
-    {
-        int n = bytes / FileChunkRpc.ChunkSize;
-        int rem = bytes % FileChunkRpc.ChunkSize;
-        if (rem != 0) n++;
-        return n;
-    }
-
-    public static int GetChunkSize(int totalLength, int chunkIndex)
-    {
-        if (chunkIndex == BufferedFileReceiverSystem.GetChunkLength(totalLength) - 1)
-        {
-            return totalLength - (BufferedFileReceiverSystem.GetChunkLength(totalLength) - 1) * FileChunkRpc.ChunkSize;
-        }
-        return FileChunkRpc.ChunkSize;
     }
 }
