@@ -11,6 +11,12 @@ using UnityEngine.UIElements;
 
 public class ConnectionManager : PrivateSingleton<ConnectionManager>
 {
+    public static World? ClientWorld => Instance._clientWorld;
+    public static World? ServerWorld => Instance._serverWorld;
+
+    public static World ClientOrDefaultWorld => Instance._clientWorld ?? World.DefaultGameObjectInjectionWorld;
+    public static World ServerOrDefaultWorld => Instance._serverWorld ?? World.DefaultGameObjectInjectionWorld;
+
     [SerializeField, NotNull] UIDocument? UI = default;
 
     World? _clientWorld = default;

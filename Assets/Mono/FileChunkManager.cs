@@ -13,48 +13,67 @@ using UnityEngine;
 #pragma warning disable CS0162 // Unreachable code detected
 #nullable enable
 
+public enum FileStatus
+{
+    Error,
+    Receiving,
+    Received,
+}
+
+public readonly struct FileId : IEquatable<FileId>
+{
+    public readonly FixedString64Bytes Name;
+    public readonly Entity Source;
+
+    public FileId(FixedString64Bytes name, Entity source)
+    {
+        Name = name;
+        Source = source;
+    }
+
+    public override int GetHashCode() => HashCode.Combine(Name, Source);
+    public override string ToString() => $"{Source} {Name}";
+    public override bool Equals(object obj) => obj is FileId other && Equals(other);
+    public bool Equals(FileId other) => Name.Equals(other.Name) && Source.Equals(other.Source);
+
+    public static bool operator ==(FileId a, FileId b) => a.Equals(b);
+    public static bool operator !=(FileId a, FileId b) => !a.Equals(b);
+}
+
 public class FileChunkManager : Singleton<FileChunkManager>
 {
-    const bool DebugLog = false;
+    const bool DebugLog = true;
     public const string BasePath = "/home/BB/Projects/Nothing-DOTS/Assets/CodeFiles";
 
-    public Dictionary<string, byte[]> FileContents;
-    public Dictionary<string, Action<byte[]>> Requests;
+    Dictionary<string, byte[]> LocalFiles;
+    Dictionary<FileId, Action<byte[]>?> Requests;
     float NextCheckAt;
 
     void Start()
     {
-        FileContents = new Dictionary<string, byte[]>();
-        Requests = new Dictionary<string, Action<byte[]>>();
+        LocalFiles = new Dictionary<string, byte[]>();
+        Requests = new Dictionary<FileId, Action<byte[]>?>();
         NextCheckAt = float.PositiveInfinity;
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            TryGetFile("test.bbc", (buffer) =>
-            {
-                Debug.Log(Encoding.UTF8.GetString(buffer));
-            });
-        }
-
         if (NextCheckAt >= Time.time)
         {
             NextCheckAt = Time.time + 2f;
 
-            foreach (KeyValuePair<string, Action<byte[]>> request in Requests.ToArray())
+            foreach (KeyValuePair<FileId, Action<byte[]>?> request in Requests.ToArray())
             {
-                if (TryGetFile(request.Key, out var data))
+                if (TryGetFile(request.Key, out var data) == FileStatus.Received)
                 {
-                    request.Value.Invoke(data);
+                    request.Value?.Invoke(data!);
                     Requests.Remove(request.Key);
                 }
             }
         }
     }
 
-    public static unsafe bool TryGetFile(BufferedReceivingFile header, [NotNullWhen(true)] out byte[]? data)
+    public static unsafe FileStatus TryGetFile(BufferedReceivingFile header, out byte[]? data)
     {
         data = null;
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -66,7 +85,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
         if (!bufferedFilesQ.TryGetSingletonEntity<BufferedFiles>(out Entity bufferedFiles))
         {
             Debug.LogWarning($"Failed to get {nameof(BufferedFiles)} entity singleton");
-            return false;
+            return FileStatus.Error;
         }
 
         DynamicBuffer<BufferedFileChunk> fileChunks = entityManager.GetBuffer<BufferedFileChunk>(bufferedFiles, true);
@@ -77,7 +96,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
             received[fileChunks[i].ChunkIndex] = true;
         }
 
-        if (received.Any(v => !v)) return false;
+        if (received.Any(v => !v)) return FileStatus.Receiving;
 
         data = new byte[header.TotalLength];
         for (int i = 0; i < chunks.Length; i++)
@@ -86,10 +105,10 @@ public class FileChunkManager : Singleton<FileChunkManager>
             Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[i]), chunkSize);
             chunk.CopyTo(data.AsSpan(i * FileChunkRpc.ChunkSize));
         }
-        return true;
+        return FileStatus.Received;
     }
 
-    public static unsafe bool TryGetFile(string fileName, [NotNullWhen(true)] out byte[]? data)
+    public static unsafe FileStatus TryGetFile(FileId fileName, out byte[]? data)
     {
         data = null;
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -98,7 +117,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
         if (!bufferedFilesQ.TryGetSingletonEntity<BufferedFiles>(out Entity bufferedFiles))
         {
             Debug.LogWarning($"Failed to get {nameof(BufferedFiles)} entity singleton");
-            return false;
+            return FileStatus.Error;
         }
 
         DynamicBuffer<BufferedReceivingFile> fileHeaders = entityManager.GetBuffer<BufferedReceivingFile>(bufferedFiles);
@@ -108,16 +127,29 @@ public class FileChunkManager : Singleton<FileChunkManager>
         for (int i = 0; i < fileHeaders.Length; i++)
         {
             fileHeader = fileHeaders[i];
-            if (fileHeader.FileName != fileName) continue;
+            if (fileHeader.FileName != fileName.Name) continue;
+            if (fileHeader.Source != fileName.Source) continue;
 
             return TryGetFile(fileHeader, out data);
         }
 
-        return false;
+        return FileStatus.Error;
     }
 
-    public static unsafe void TryGetFile(string fileName, Action<byte[]> callback)
+    public static unsafe void TryGetFile(FileId fileName, Action<byte[]>? callback, EntityCommandBuffer entityCommandBuffer)
     {
+        var status = TryGetFile(fileName, out var data);
+        if (status == FileStatus.Received)
+        {
+            callback?.Invoke(data!);
+            return;
+        }
+        else if (status == FileStatus.Receiving)
+        {
+            Instance.Requests[fileName] = callback;
+            return;
+        }
+
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
         using EntityQuery bufferedFilesQ = entityManager.CreateEntityQuery(typeof(BufferedFiles));
@@ -127,47 +159,33 @@ public class FileChunkManager : Singleton<FileChunkManager>
             return;
         }
 
-        DynamicBuffer<BufferedReceivingFile> fileHeaders = entityManager.GetBuffer<BufferedReceivingFile>(bufferedFiles);
-
-        BufferedReceivingFile fileHeader = default;
-
-        for (int i = 0; i < fileHeaders.Length; i++)
-        {
-            fileHeader = fileHeaders[i];
-            if (fileHeader.FileName != fileName) continue;
-
-            if (TryGetFile(fileHeader, out var data))
-            {
-                callback.Invoke(data);
-                return;
-            }
-
-            break;
-        }
-
         if (DebugLog) Debug.Log($"Requesting file \"{fileName}\"");
-
-        using EntityCommandBuffer entityCommandBuffer = new(Allocator.Temp);
 
         Instance.Requests[fileName] = callback;
 
         Entity rpcEntity = entityCommandBuffer.CreateEntity();
         entityCommandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
         {
-            FileName = fileName,
+            FileName = fileName.Name,
         });
-        entityCommandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest());
-
-        entityCommandBuffer.Playback(entityManager);
-        return;
+        entityCommandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
+        {
+            TargetConnection = fileName.Source,
+        });
     }
 
     public static byte[]? GetLocalFile(string fileName)
     {
-        if (Instance.FileContents.TryGetValue(fileName, out var file))
+        if (Instance.LocalFiles.TryGetValue(fileName, out var file))
         { return file; }
-        if (!File.Exists(Path.Combine(BasePath, fileName))) return null;
-        return Instance.FileContents[fileName] = File.ReadAllBytes(Path.Combine(BasePath, fileName));
+        if (File.Exists(Path.Combine(BasePath, "." + fileName)))
+        { return Instance.LocalFiles[fileName] = File.ReadAllBytes(Path.Combine(BasePath, "." + fileName)); }
+        if (File.Exists(Path.Combine(BasePath, fileName)))
+        { return Instance.LocalFiles[fileName] = File.ReadAllBytes(Path.Combine(BasePath, fileName)); }
+        if (File.Exists(fileName))
+        { return Instance.LocalFiles[fileName] = File.ReadAllBytes(fileName); }
+        Debug.LogWarning($"Local file \"{fileName}\" does not exists");
+        return null;
     }
 
     public static int GetChunkLength(int bytes)

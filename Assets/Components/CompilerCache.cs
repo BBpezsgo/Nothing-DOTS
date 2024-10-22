@@ -1,11 +1,9 @@
-using System;
-using Unity.Collections;
 using Unity.Entities;
 
 public struct CompilerCache : IComponentData
 {
-    public FixedString64Bytes SourceFile;
+    public FileId SourceFile;
     public long Version;
-    public bool CompileSecuedued;
+    public double CompileSecuedued;
     public float HotReloadAt;
 }

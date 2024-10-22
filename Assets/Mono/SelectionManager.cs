@@ -13,7 +13,8 @@ public class SelectionManager : Singleton<SelectionManager>
         {
             Entity hit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition));
             if (hit == Entity.Null) return;
-            EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+            EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+
             if (!entityManager.HasComponent<SelectableUnit>(hit))
             {
                 Debug.LogError($"Entity {hit} doesn't have a {nameof(SelectableUnit)} component");
@@ -39,7 +40,7 @@ public class SelectionManager : Singleton<SelectionManager>
         EntityQueryBuilder builder = new EntityQueryBuilder(Allocator.Temp).WithAll<PhysicsWorldSingleton>();
 
         CollisionWorld collisionWorld;
-        using (EntityQuery singletonQuery = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(builder))
+        using (EntityQuery singletonQuery = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(builder))
         {
             collisionWorld = singletonQuery.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
         }

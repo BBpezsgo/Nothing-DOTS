@@ -5,7 +5,9 @@ using Unity.Entities;
 
 public static class DynamicBufferExtensions
 {
-    public static int IndexOf<TSource>(this DynamicBuffer<TSource> source, Func<TSource, bool> predicate)
+    public static int IndexOf<TSource>(
+        this DynamicBuffer<TSource> source,
+        Func<TSource, bool> predicate)
         where TSource : unmanaged
     {
         for (int i = 0; i < source.Length; i++)
@@ -18,7 +20,9 @@ public static class DynamicBufferExtensions
         return -1;
     }
 
-    public static TSource FirstOrDefault<TSource>(this DynamicBuffer<TSource> source, Func<TSource, bool> predicate)
+    public static TSource FirstOrDefault<TSource>(
+        this DynamicBuffer<TSource> source,
+        Func<TSource, bool> predicate)
         where TSource : unmanaged
     {
         for (int i = 0; i < source.Length; i++)

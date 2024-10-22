@@ -86,7 +86,7 @@ partial struct ProcessorSystem : ISystem
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer entityCommandBuffer = default;
-        NativeHashSet<FixedString64Bytes> requestedSourceFiles = default;
+        NativeHashSet<FileId> requestedSourceFiles = default;
 
         foreach ((RefRW<Processor> processor, Entity entity) in
                     SystemAPI.Query<RefRW<Processor>>()
@@ -94,6 +94,7 @@ partial struct ProcessorSystem : ISystem
         {
             if (processor.ValueRO.CompilerCache == Entity.Null)
             {
+                if (processor.ValueRO.SourceFile == default) continue;
                 if (!requestedSourceFiles.IsCreated) requestedSourceFiles = new(8, AllocatorManager.Temp);
                 if (!requestedSourceFiles.Add(processor.ValueRO.SourceFile)) continue;
 
@@ -122,7 +123,7 @@ partial struct ProcessorSystem : ISystem
                 entityCommandBuffer.AddComponent(compilerCache_, new CompilerCache()
                 {
                     SourceFile = processor.ValueRO.SourceFile,
-                    CompileSecuedued = true,
+                    CompileSecuedued = 1d,
                     Version = default,
                 });
                 entityCommandBuffer.AddBuffer<BufferedInstruction>(compilerCache_);

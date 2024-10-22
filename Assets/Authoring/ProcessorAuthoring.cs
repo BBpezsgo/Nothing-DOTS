@@ -6,8 +6,6 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Processor")]
 public class ProcessorAuthoring : MonoBehaviour
 {
-    public string? SourceFile;
-
     class Baker : Baker<ProcessorAuthoring>
     {
         public override void Bake(ProcessorAuthoring authoring)
@@ -15,7 +13,7 @@ public class ProcessorAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new Processor
             {
-                SourceFile = authoring.SourceFile,
+                SourceFile = default,
                 SourceVersion = default,
                 CompilerCache = Entity.Null,
                 Registers = default,

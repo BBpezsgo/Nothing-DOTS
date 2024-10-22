@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
+using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -32,7 +33,7 @@ public class FactoryManager : Singleton<FactoryManager>
             return;
         }
 
-        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         selectedFactory = entityManager.GetComponentData<Factory>(selectedFactoryEntity);
 
         if (selectedFactory.TotalProgress == default) return;
@@ -53,7 +54,7 @@ public class FactoryManager : Singleton<FactoryManager>
 
     public void RefreshUI(Entity factoryEntity)
     {
-        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
         ScrollView avaliableList = UI.rootVisualElement.Q<ScrollView>("list-avaliable");
         ScrollView queueList = UI.rootVisualElement.Q<ScrollView>("list-queue");
@@ -90,7 +91,7 @@ public class FactoryManager : Singleton<FactoryManager>
 
     void QueueUnit(string unitName)
     {
-        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
         using EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
         if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity buildingDatabase))
@@ -109,7 +110,15 @@ public class FactoryManager : Singleton<FactoryManager>
             return;
         }
 
-        entityManager.GetBuffer<BufferedUnit>(selectedFactoryEntity).Add(unit);
+        var ghostInstance = entityManager.GetComponentData<GhostInstance>(selectedFactoryEntity);
+
+        Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(FactoryQueueUnitRequestRpc));
+        entityManager.SetComponentData(entity, new FactoryQueueUnitRequestRpc()
+        {
+            Unit = unit.Name,
+            FactoryEntity = ghostInstance,
+        });
+
         if (selectedFactory.TotalProgress == default)
         {
             selectedFactory.Current = unit;

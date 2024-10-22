@@ -50,7 +50,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         VisualElement container = BuildingUI.rootVisualElement.Q<VisualElement>("unity-content-container");
         container.Clear();
 
-        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         using EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
@@ -77,8 +77,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
     void PlaceBuilding(Vector3 position, BufferedBuilding building)
     {
-        // Debug.Log($"Place building request ...");
-        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        EntityManager entityManager = ConnectionManager.ServerOrDefaultWorld.EntityManager;
 
         Entity newEntity = entityManager.Instantiate(building.Prefab);
         entityManager.SetComponentData(newEntity, new LocalTransform
@@ -94,7 +93,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         if (e.target is not Button button) return;
         int i = int.Parse(button.name.Split('-')[1]);
 
-        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         using EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
@@ -208,19 +207,25 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         if (Mouse.current.leftButton.isPressed && !UI.IsMouseCaptured)
         {
             if (SelectedBuilding.Prefab == default) return;
-            if (!IsValidPosition) return;
-
-            if (World.DefaultGameObjectInjectionWorld.IsServer())
+            if (!IsValidPosition)
             {
+                Debug.Log($"Invalid building position");
+                return;
+            }
+
+            if (ConnectionManager.ClientOrDefaultWorld.IsServer())
+            {
+                Debug.Log($"Placing building from server");
                 PlaceBuilding(position, SelectedBuilding);
             }
             else
             {
+                Debug.Log($"Placing building from client");
                 SendPlaceBuildingRequest(new PlaceBuildingRequestRpc()
                 {
                     BuildingName = SelectedBuilding.Name,
                     Position = position,
-                }, World.DefaultGameObjectInjectionWorld);
+                }, ConnectionManager.ClientOrDefaultWorld);
             }
 
             Hide();
@@ -228,10 +233,9 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         }
     }
 
-    void SendPlaceBuildingRequest(PlaceBuildingRequestRpc request, World? world)
+    void SendPlaceBuildingRequest(PlaceBuildingRequestRpc request, World world)
     {
-        if (world == null || !world.IsCreated) return;
-        // Debug.Log($"Sending place building request ...");
+        Debug.Log($"Sending place building request ...");
         Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(PlaceBuildingRequestRpc));
         world.EntityManager.SetComponentData(entity, request);
     }

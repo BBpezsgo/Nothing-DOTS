@@ -10,7 +10,7 @@ using UnityEngine;
 
 partial struct BufferedFileSenderSystem : ISystem
 {
-    const bool DebugLog = false;
+    const bool DebugLog = true;
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
@@ -22,7 +22,7 @@ partial struct BufferedFileSenderSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderRequestRpc>>()
             .WithEntityAccess())
         {
-            byte[]? localFile = FileChunkManager.GetLocalFile(Path.Combine(FileChunkManager.BasePath, command.ValueRO.FileName.ToString()));
+            byte[]? localFile = FileChunkManager.GetLocalFile(command.ValueRO.FileName.ToString());
             if (localFile == null)
             {
                 if (DebugLog) Debug.LogError($"File \"{command.ValueRO.FileName}\" does not exists");
@@ -34,8 +34,8 @@ partial struct BufferedFileSenderSystem : ISystem
 
             for (int i = 0; i < sendingFiles.Length; i++)
             {
-                if (sendingFiles[i].FileName != command.ValueRO.FileName) continue;
                 if (sendingFiles[i].Destination != request.ValueRO.SourceConnection) continue;
+                if (sendingFiles[i].FileName != command.ValueRO.FileName) continue;
                 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
                 int totalLength = localFile.Length;
@@ -88,11 +88,11 @@ partial struct BufferedFileSenderSystem : ISystem
 
             for (int i = 0; i < sendingFiles.Length; i++)
             {
-                if (sendingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
                 if (sendingFiles[i].Destination != request.ValueRO.SourceConnection) continue;
+                if (sendingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
                 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
-                ReadOnlySpan<byte> buffer = FileChunkManager.GetLocalFile(Path.Combine(FileChunkManager.BasePath, sendingFiles[i].FileName.ToString()));
+                ReadOnlySpan<byte> buffer = FileChunkManager.GetLocalFile(sendingFiles[i].FileName.ToString());
                 int chunkSize = FileChunkManager.GetChunkSize(buffer.Length, command.ValueRO.ChunkIndex);
                 buffer = buffer.Slice(command.ValueRO.ChunkIndex * FileChunkRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)

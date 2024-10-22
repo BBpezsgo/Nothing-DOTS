@@ -8,7 +8,7 @@ using UnityEngine;
 
 partial struct BufferedFileReceiverSystem : ISystem
 {
-    const bool DebugLog = false;
+    const bool DebugLog = true;
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
@@ -32,19 +32,19 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             for (int i = 0; i < receivingFiles.Length; i++)
             {
-                if (receivingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
                 if (receivingFiles[i].Source != request.ValueRO.SourceConnection) continue;
+                if (receivingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
 
                 receivingFiles[i] = fileHeader;
                 added = true;
-                if (DebugLog) Debug.Log($"Overrided file header \"{fileHeader.FileName}\" 0/{FileChunkManager.GetChunkLength(fileHeader.TotalLength)}");
+                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" (again)");
 
                 break;
             }
 
             if (!added)
             {
-                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" 0/{FileChunkManager.GetChunkLength(fileHeader.TotalLength)}");
+                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\"");
                 receivingFiles.Add(fileHeader);
             }
 
@@ -65,24 +65,26 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             for (int i = 0; i < fileChunks.Length; i++)
             {
-                if (fileChunks[i].ChunkIndex == fileChunk.ChunkIndex)
-                {
-                    fileChunks[i] = fileChunk;
-                    added = true;
-                    if (DebugLog) Debug.Log($"Received chunk (again) {fileChunk.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)} for file {receivingFiles[i].FileName}");
-                    break;
-                }
+                if (fileChunks[i].Source != fileChunk.Source) continue;
+                if (fileChunks[i].TransactionId != fileChunk.TransactionId) continue;
+                if (fileChunks[i].ChunkIndex != fileChunk.ChunkIndex) continue;
+                
+                fileChunks[i] = fileChunk;
+                added = true;
+                if (DebugLog) Debug.Log($"Received chunk {fileChunk.ChunkIndex} (again)");
+                break;
             }
 
             if (!added)
             {
                 fileChunks.Add(fileChunk);
+                if (DebugLog) Debug.Log($"Received chunk {fileChunk.ChunkIndex}");
             }
 
             for (int i = 0; i < receivingFiles.Length; i++)
             {
-                if (receivingFiles[i].TransactionId != fileChunk.TransactionId) continue;
                 if (receivingFiles[i].Source != request.ValueRO.SourceConnection) continue;
+                if (receivingFiles[i].TransactionId != fileChunk.TransactionId) continue;
 
                 receivingFiles[i] = new BufferedReceivingFile(
                     receivingFiles[i].Source,
@@ -91,7 +93,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                     receivingFiles[i].TotalLength,
                     SystemAPI.Time.ElapsedTime
                 );
-                if (DebugLog) if (!added) Debug.Log($"Received chunk {fileChunk.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)} for file {receivingFiles[i].FileName}");
+                if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {fileChunk.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)}");
 
                 break;
             }
@@ -107,8 +109,8 @@ partial struct BufferedFileReceiverSystem : ISystem
             bool[] receivedChunks = new bool[FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)];
             for (int j = 0; j < fileChunks.Length; j++)
             {
-                if (fileChunks[j].TransactionId != receivingFiles[i].TransactionId) continue;
                 if (fileChunks[j].Source != receivingFiles[i].Source) continue;
+                if (fileChunks[j].TransactionId != receivingFiles[i].TransactionId) continue;
 
                 receivedChunks[fileChunks[j].ChunkIndex] = true;
             }

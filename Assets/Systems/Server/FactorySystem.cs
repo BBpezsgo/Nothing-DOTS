@@ -1,7 +1,9 @@
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Transforms;
+using UnityEngine;
 
 #nullable enable
 
@@ -15,11 +17,47 @@ public partial struct FactorySystem : ISystem
         _queueQ = state.GetBufferLookup<BufferedUnit>();
     }
 
-    [BurstCompile]
+    // [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         _queueQ.Update(ref state);
+
+        if (!SystemAPI.TryGetSingletonEntity<UnitDatabase>(out Entity buildingDatabase))
+        {
+            Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
+            return;
+        }
+
         EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
+
+        DynamicBuffer<BufferedUnit> units = SystemAPI.GetBuffer<BufferedUnit>(buildingDatabase);
+
+        foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FactoryQueueUnitRequestRpc>>()
+            .WithEntityAccess())
+        {
+            foreach (var (ghostInstance, ghostEntity) in
+                SystemAPI.Query<RefRO<GhostInstance>>()
+                .WithEntityAccess())
+            {
+                if (ghostInstance.ValueRO.ghostId != command.ValueRO.FactoryEntity.ghostId) continue;
+                if (ghostInstance.ValueRO.spawnTick != command.ValueRO.FactoryEntity.spawnTick) continue;
+
+                BufferedUnit unit = units.FirstOrDefault(v => v.Name == command.ValueRO.Unit);
+
+                if (unit.Prefab == Entity.Null)
+                {
+                    Debug.LogWarning($"Unit \"{command.ValueRO.Unit}\" not found in the database");
+                    return;
+                }
+
+                SystemAPI.GetBuffer<BufferedUnit>(ghostEntity).Add(unit);
+
+                break;
+            }
+
+            commandBuffer.DestroyEntity(entity);
+        }
 
         foreach ((RefRW<Factory> factory, RefRO<LocalToWorld> localToWorld, Entity entity) in
                     SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>>()

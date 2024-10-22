@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Unity.Entities;
+using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
@@ -55,13 +57,38 @@ public class TerminalManager : Singleton<TerminalManager>
         ui_ButtonCompile = UI.rootVisualElement.Q<Button>("button-compile");
         ui_labelTerminal = UI.rootVisualElement.Q<Label>("label-terminal");
 
+        {
+            EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+            Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
+            ui_inputSourcePath!.value = processor.SourceFile.Name.ToString();
+        }
+
         BlurTerminal();
 
         ui_ButtonSelect.clickable = new Clickable(() =>
         {
-            selectingFile = Directory.GetFiles(FileChunkManager.BasePath);
+            selectingFile = Directory.GetFiles(FileChunkManager.BasePath).Select(v => v.Substring(FileChunkManager.BasePath.Length)).ToArray();
             selectingFileI = 0;
             SelectTerminal();
+        });
+
+        ui_ButtonCompile.clickable = new Clickable(() =>
+        {
+            World world = ConnectionManager.ClientOrDefaultWorld;
+
+            if (world.IsServer())
+            {
+                Debug.LogError($"Not implemented");
+                return;
+            }
+
+            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(SetProcessorSourceRequestRpc));
+            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+            world.EntityManager.SetComponentData(entity, new SetProcessorSourceRequestRpc()
+            {
+                Source = ui_inputSourcePath.value,
+                Entity = ghostInstance,
+            });
         });
 
         RefreshUI(unitEntity);
@@ -126,6 +153,15 @@ public class TerminalManager : Singleton<TerminalManager>
                     if (selectingFileI < 0) selectingFileI += selectingFile.Length;
                 }
 
+                if (Input.GetKeyDown(KeyCode.Return))
+                {
+                    ui_inputSourcePath!.value = selectingFile[selectingFileI];
+                    selectingFileI = 0;
+                    selectingFile = null;
+                    BlurTerminal();
+                    return;
+                }
+
                 StringBuilder builder = new();
                 for (int i = 0; i < selectingFile.Length; i++)
                 {
@@ -139,20 +175,25 @@ public class TerminalManager : Singleton<TerminalManager>
         }
         else
         {
-            EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+            EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
             Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
-            CompilerCache compilerCache = entityManager.GetComponentData<CompilerCache>(processor.CompilerCache);
-
-            if (compilerCache.CompileSecuedued)
+            if (processor.CompilerCache == Entity.Null)
             {
-                ui_labelTerminal!.text = "Compile secuedued ...";
+                ui_labelTerminal!.text = "No source";
             }
             else
             {
-                ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
-            }
+                CompilerCache compilerCache = entityManager.GetComponentData<CompilerCache>(processor.CompilerCache);
 
-            ui_inputSourcePath!.value = processor.SourceFile.ToString();
+                if (compilerCache.CompileSecuedued != default)
+                {
+                    ui_labelTerminal!.text = "Compile secuedued ...";
+                }
+                else
+                {
+                    ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
+                }
+            }
         }
     }
 
