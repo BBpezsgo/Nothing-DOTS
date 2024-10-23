@@ -20,49 +20,49 @@ partial struct ProcessorSystemServer : ISystem
     {
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
         {
-            (float a, float b) = ExternalFunctionGenerator.DeconstructValues<float, float>(arguments);
+            (float a, float b) = ExternalFunctionGenerator.TakeParameters<float, float>(arguments);
             float r = math.atan2(a, b);
             r.AsBytes().CopyTo(returnValue);
         }, 10, "atan2", ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
         {
-            float a = ExternalFunctionGenerator.DeconstructValues<float>(arguments);
+            float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
             float r = math.sin(a);
             r.AsBytes().CopyTo(returnValue);
         }, 11, "sin", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
         {
-            float a = ExternalFunctionGenerator.DeconstructValues<float>(arguments);
+            float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
             float r = math.cos(a);
             r.AsBytes().CopyTo(returnValue);
         }, 12, "cos", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
         {
-            float a = ExternalFunctionGenerator.DeconstructValues<float>(arguments);
+            float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
             float r = math.tan(a);
             r.AsBytes().CopyTo(returnValue);
         }, 13, "tan", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
         {
-            float a = ExternalFunctionGenerator.DeconstructValues<float>(arguments);
+            float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
             float r = math.asin(a);
             r.AsBytes().CopyTo(returnValue);
         }, 14, "asin", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
         {
-            float a = ExternalFunctionGenerator.DeconstructValues<float>(arguments);
+            float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
             float r = math.acos(a);
             r.AsBytes().CopyTo(returnValue);
         }, 15, "acos", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
         {
-            float a = ExternalFunctionGenerator.DeconstructValues<float>(arguments);
+            float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
             float r = math.atan(a);
             r.AsBytes().CopyTo(returnValue);
         }, 16, "atan", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
         {
-            float a = ExternalFunctionGenerator.DeconstructValues<float>(arguments);
+            float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
             float r = math.sqrt(a);
             r.AsBytes().CopyTo(returnValue);
         }, 17, "sqrt", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
@@ -222,7 +222,7 @@ partial struct ProcessorSystemServer : ISystem
             TransmissionScope* transmissionScopePtr = &transmissionScope;
             static void _send(nint scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
             {
-                (int bufferPtr, int length) = ExternalFunctionGenerator.DeconstructValues<int, int>(arguments);
+                (int bufferPtr, int length) = ExternalFunctionGenerator.TakeParameters<int, int>(arguments);
                 if (bufferPtr <= 0 || length <= 0) return;
                 if (length >= 30) throw new Exception($"Can't");
                 ReadOnlySpan<byte> buffer = new(((TransmissionScope*)scope)->Memory, Processor.UserMemorySize);
@@ -244,7 +244,7 @@ partial struct ProcessorSystemServer : ISystem
             static void _receive(nint scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
             {
                 returnValue.Clear();
-                (int bufferPtr, int length) = ExternalFunctionGenerator.DeconstructValues<int, int>(arguments);
+                (int bufferPtr, int length) = ExternalFunctionGenerator.TakeParameters<int, int>(arguments);
                 if (bufferPtr <= 0 || length <= 0) return;
                 Span<byte> buffer = new(((TransmissionScope*)scope)->Memory, Processor.UserMemorySize);
                 buffer = buffer.Slice(bufferPtr, length);
@@ -273,9 +273,9 @@ partial struct ProcessorSystemServer : ISystem
 
             Span<ExternalFunctionScopedSync> scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[]
             {
-                new ExternalFunctionScopedSync(&_stdout, 2, ExternalFunctionGenerator.SizeOf<char>(), 0, stdoutBufferPtr),
-                new ExternalFunctionScopedSync(&_send, 18, ExternalFunctionGenerator.SizeOf<int, int>(), 0, transmissionScopePtr),
-                new ExternalFunctionScopedSync(&_receive, 19, ExternalFunctionGenerator.SizeOf<int, int>(), ExternalFunctionGenerator.SizeOf<int>(), transmissionScopePtr),
+                new ExternalFunctionScopedSync(&_stdout, 2, ExternalFunctionGenerator.SizeOf<char>(), 0, (nint)stdoutBufferPtr),
+                new ExternalFunctionScopedSync(&_send, 18, ExternalFunctionGenerator.SizeOf<int, int>(), 0, (nint)transmissionScopePtr),
+                new ExternalFunctionScopedSync(&_receive, 19, ExternalFunctionGenerator.SizeOf<int, int>(), ExternalFunctionGenerator.SizeOf<int>(), (nint)transmissionScopePtr),
             };
 
             DynamicBuffer<BufferedInstruction> generated = SystemAPI.GetBuffer<BufferedInstruction>(processor.ValueRO.CompilerCache);
