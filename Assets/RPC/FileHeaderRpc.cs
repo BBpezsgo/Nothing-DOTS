@@ -10,4 +10,5 @@ public struct FileHeaderRpc : IRpcCommand
     public int TransactionId;
     public FixedString64Bytes FileName;
     public int TotalLength;
+    public long Version;
 }

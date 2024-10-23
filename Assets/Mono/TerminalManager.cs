@@ -67,7 +67,7 @@ public class TerminalManager : Singleton<TerminalManager>
 
         ui_ButtonSelect.clickable = new Clickable(() =>
         {
-            selectingFile = Directory.GetFiles(FileChunkManager.BasePath).Select(v => v.Substring(FileChunkManager.BasePath.Length)).ToArray();
+            selectingFile = Directory.GetFiles(FileChunkManager.BasePath).Select(v => Path.GetRelativePath(FileChunkManager.BasePath, v)).ToArray();
             selectingFileI = 0;
             SelectTerminal();
         });

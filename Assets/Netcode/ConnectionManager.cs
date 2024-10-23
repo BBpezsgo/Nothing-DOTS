@@ -85,7 +85,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         yield return StartCoroutine(CreateServer(endpoint));
 
-        World.DefaultGameObjectInjectionWorld ??= _serverWorld;
+        World.DefaultGameObjectInjectionWorld ??= _serverWorld!;
 
         yield return StartCoroutine(CreateClient(endpoint));
 
@@ -110,7 +110,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         yield return StartCoroutine(CreateClient(endpoint));
 
-        World.DefaultGameObjectInjectionWorld ??= _clientWorld;
+        World.DefaultGameObjectInjectionWorld ??= _clientWorld!;
 
         UI.gameObject.SetActive(false);
     }
@@ -133,7 +133,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         yield return StartCoroutine(CreateServer(endpoint));
 
-        World.DefaultGameObjectInjectionWorld ??= _serverWorld;
+        World.DefaultGameObjectInjectionWorld ??= _serverWorld!;
 
         UI.gameObject.SetActive(false);
     }

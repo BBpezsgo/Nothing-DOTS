@@ -41,7 +41,8 @@ partial struct CompilerSystem : ISystem
 
                 Uri baseUri = new($"netcode://{compilerCache.ValueRO.SourceFile.Source.Index}_{compilerCache.ValueRO.SourceFile.Source.Version}", UriKind.Absolute);
                 Uri sourceUri = new(baseUri, compilerCache.ValueRO.SourceFile.Name.ToString());
-                Debug.Log(sourceUri);
+                // Uri sourceUri = new(Path.Combine(FileChunkManager.BasePath, compilerCache.ValueRO.SourceFile.Name.ToString()), UriKind.Absolute),
+                // Debug.Log(sourceUri);
 
                 double now = SystemAPI.Time.ElapsedTime;
                 bool sourcesFromOtherConnectionsNeeded = false;
@@ -77,12 +78,16 @@ partial struct CompilerSystem : ISystem
                             Entity entity = new() { Index = entityIndex, Version = entityVersion };
 
                             string path = uri.AbsolutePath;
+                            if (path.StartsWith("/~"))
+                            {
+                                path = path[1..];
+                            }
 
-                            FileStatus status = FileChunkManager.TryGetFile(new FileId(new FixedString64Bytes(path), entity), out byte[]? data);
+                            FileStatus status = FileChunkManager.TryGetFile(new FileId(new FixedString64Bytes(path), entity), out var data);
 
                             if (status == FileStatus.Received)
                             {
-                                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(data), LanguageCore.PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
+                                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(data.Data), LanguageCore.PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
                                 return true;
                             }
 
@@ -93,12 +98,12 @@ partial struct CompilerSystem : ISystem
                                 return false;
                             }
 
-                            FileChunkManager.TryGetFile(new FileId(uri.AbsolutePath, entity), (data) =>
+                            FileChunkManager.TryGetFile(new FileId(path, entity), (data) =>
                             {
-                                Debug.Log($"Source \"{uri.AbsolutePath}\" downloaded ...");
+                                // Debug.Log($"Source \"{path}\" downloaded ...\n{Encoding.UTF8.GetString(data)}");
                             }, entityCommandBuffer);
                             compilerCache.ValueRW.CompileSecuedued = now + 5d;
-                            Debug.Log($"Source needs file \"{uri.AbsolutePath}\" from {entity} ...");
+                            // Debug.Log($"Source needs file \"{path}\" ...");
 
                             return false;
                         })
@@ -111,15 +116,16 @@ partial struct CompilerSystem : ISystem
                     buffer.CopyFrom(generated.Code.Select(v => new BufferedInstruction(v)).ToArray());
 
                     compilerCache.ValueRW.CompileSecuedued = default;
+                    compilerCache.ValueRW.Version = DateTime.UtcNow.Ticks; // compilerCache.ValueRO.SourceFile.Version;
                     // compilerCache.ValueRW.Version = File.GetLastWriteTimeUtc(compilerCache.ValueRO.SourceFile.ToString()).Ticks;
                     // compilerCache.ValueRW.HotReloadAt = Time.time + 5f;
                 }
                 catch (Exception exception)
                 {
-                    // if (!sourcesFromOtherConnectionsNeeded)
-                    // {
-                    Debug.LogWarning(exception);
-                    // }
+                    if (!sourcesFromOtherConnectionsNeeded)
+                    {
+                        Debug.LogWarning(exception);
+                    }
                 }
             }
 

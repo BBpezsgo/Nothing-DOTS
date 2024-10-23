@@ -8,7 +8,7 @@ using UnityEngine;
 
 partial struct BufferedFileReceiverSystem : ISystem
 {
-    const bool DebugLog = true;
+    const bool DebugLog = false;
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
@@ -27,7 +27,8 @@ partial struct BufferedFileReceiverSystem : ISystem
                 command.ValueRO.TransactionId,
                 command.ValueRO.FileName,
                 command.ValueRO.TotalLength,
-                SystemAPI.Time.ElapsedTime
+                SystemAPI.Time.ElapsedTime,
+                command.ValueRO.Version
             );
 
             for (int i = 0; i < receivingFiles.Length; i++)
@@ -68,7 +69,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                 if (fileChunks[i].Source != fileChunk.Source) continue;
                 if (fileChunks[i].TransactionId != fileChunk.TransactionId) continue;
                 if (fileChunks[i].ChunkIndex != fileChunk.ChunkIndex) continue;
-                
+
                 fileChunks[i] = fileChunk;
                 added = true;
                 if (DebugLog) Debug.Log($"Received chunk {fileChunk.ChunkIndex} (again)");
@@ -91,7 +92,8 @@ partial struct BufferedFileReceiverSystem : ISystem
                     receivingFiles[i].TransactionId,
                     receivingFiles[i].FileName,
                     receivingFiles[i].TotalLength,
-                    SystemAPI.Time.ElapsedTime
+                    SystemAPI.Time.ElapsedTime,
+                    receivingFiles[i].Version
                 );
                 if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {fileChunk.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)}");
 
@@ -101,10 +103,11 @@ partial struct BufferedFileReceiverSystem : ISystem
             commandBuffer.DestroyEntity(entity);
         }
 
+        int requested = 0;
         for (int i = 0; i < receivingFiles.Length; i++)
         {
             double delta = SystemAPI.Time.ElapsedTime - receivingFiles[i].LastRedeivedAt;
-            if (delta < 1d) continue;
+            if (delta < 0.5d) continue;
 
             bool[] receivedChunks = new bool[FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)];
             for (int j = 0; j < fileChunks.Length; j++)
@@ -115,17 +118,16 @@ partial struct BufferedFileReceiverSystem : ISystem
                 receivedChunks[fileChunks[j].ChunkIndex] = true;
             }
 
-            int requested = 0;
             for (int j = 0; j < receivedChunks.Length; j++)
             {
                 if (receivedChunks[j]) continue;
                 Entity requestRpcEneity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(requestRpcEneity, new FileChunkRequestRpc()
+                commandBuffer.AddComponent(requestRpcEneity, new FileChunkRequestRpc
                 {
                     TransactionId = receivingFiles[i].TransactionId,
                     ChunkIndex = j,
                 });
-                commandBuffer.AddComponent(requestRpcEneity, new SendRpcCommandRequest()
+                commandBuffer.AddComponent(requestRpcEneity, new SendRpcCommandRequest
                 {
                     TargetConnection = receivingFiles[i].Source
                 });
@@ -133,16 +135,16 @@ partial struct BufferedFileReceiverSystem : ISystem
                 if (requested++ >= 5) break;
             }
 
-            if (requested > 0)
-            {
-                receivingFiles[i] = new BufferedReceivingFile(
-                    receivingFiles[i].Source,
-                    receivingFiles[i].TransactionId,
-                    receivingFiles[i].FileName,
-                    receivingFiles[i].TotalLength,
-                    SystemAPI.Time.ElapsedTime
-                );
-            }
+            if (requested == 0) continue;
+
+            receivingFiles[i] = new BufferedReceivingFile(
+                receivingFiles[i].Source,
+                receivingFiles[i].TransactionId,
+                receivingFiles[i].FileName,
+                receivingFiles[i].TotalLength,
+                SystemAPI.Time.ElapsedTime,
+                receivingFiles[i].Version
+            );
         }
 
         commandBuffer.Playback(state.EntityManager);

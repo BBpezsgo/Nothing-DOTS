@@ -20,6 +20,21 @@ public enum FileStatus
     Received,
 }
 
+public readonly struct FileData
+{
+    public readonly byte[] Data;
+    public readonly long Version;
+
+    public FileData(byte[] data, long version)
+    {
+        Data = data;
+        Version = version;
+    }
+
+    public static FileData FromLocal(string localFile)
+        => new(File.ReadAllBytes(localFile), File.GetLastWriteTimeUtc(localFile).Ticks);
+}
+
 public readonly struct FileId : IEquatable<FileId>
 {
     public readonly FixedString64Bytes Name;
@@ -42,17 +57,17 @@ public readonly struct FileId : IEquatable<FileId>
 
 public class FileChunkManager : Singleton<FileChunkManager>
 {
-    const bool DebugLog = true;
+    const bool DebugLog = false;
     public const string BasePath = "/home/BB/Projects/Nothing-DOTS/Assets/CodeFiles";
 
-    Dictionary<string, byte[]> LocalFiles;
-    Dictionary<FileId, Action<byte[]>?> Requests;
+    [NotNull] Dictionary<string, FileData>? LocalFiles = default;
+    [NotNull] Dictionary<FileId, Action<FileData>?>? Requests = default;
     float NextCheckAt;
 
     void Start()
     {
-        LocalFiles = new Dictionary<string, byte[]>();
-        Requests = new Dictionary<FileId, Action<byte[]>?>();
+        LocalFiles = new Dictionary<string, FileData>();
+        Requests = new Dictionary<FileId, Action<FileData>?>();
         NextCheckAt = float.PositiveInfinity;
     }
 
@@ -62,9 +77,9 @@ public class FileChunkManager : Singleton<FileChunkManager>
         {
             NextCheckAt = Time.time + 2f;
 
-            foreach (KeyValuePair<FileId, Action<byte[]>?> request in Requests.ToArray())
+            foreach (KeyValuePair<FileId, Action<FileData>?> request in Requests.ToArray())
             {
-                if (TryGetFile(request.Key, out var data) == FileStatus.Received)
+                if (TryGetFile(request.Key, out FileData data) == FileStatus.Received)
                 {
                     request.Value?.Invoke(data!);
                     Requests.Remove(request.Key);
@@ -73,9 +88,9 @@ public class FileChunkManager : Singleton<FileChunkManager>
         }
     }
 
-    public static unsafe FileStatus TryGetFile(BufferedReceivingFile header, out byte[]? data)
+    public static unsafe FileStatus TryGetFile(BufferedReceivingFile header, out FileData file)
     {
-        data = null;
+        file = default;
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
         FixedBytes126[] chunks = new FixedBytes126[FileChunkManager.GetChunkLength(header.TotalLength)];
@@ -98,19 +113,20 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
         if (received.Any(v => !v)) return FileStatus.Receiving;
 
-        data = new byte[header.TotalLength];
+        byte[] data = new byte[header.TotalLength];
         for (int i = 0; i < chunks.Length; i++)
         {
             int chunkSize = FileChunkManager.GetChunkSize(header.TotalLength, i);
             Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[i]), chunkSize);
             chunk.CopyTo(data.AsSpan(i * FileChunkRpc.ChunkSize));
         }
+        file = new FileData(data, header.Version);
         return FileStatus.Received;
     }
 
-    public static unsafe FileStatus TryGetFile(FileId fileName, out byte[]? data)
+    public static unsafe FileStatus TryGetFile(FileId fileName, out FileData data)
     {
-        data = null;
+        data = default;
         EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
         using EntityQuery bufferedFilesQ = entityManager.CreateEntityQuery(typeof(BufferedFiles));
@@ -136,12 +152,12 @@ public class FileChunkManager : Singleton<FileChunkManager>
         return FileStatus.Error;
     }
 
-    public static unsafe void TryGetFile(FileId fileName, Action<byte[]>? callback, EntityCommandBuffer entityCommandBuffer)
+    public static unsafe void TryGetFile(FileId fileName, Action<FileData>? callback, EntityCommandBuffer entityCommandBuffer)
     {
-        var status = TryGetFile(fileName, out var data);
+        FileStatus status = TryGetFile(fileName, out FileData data);
         if (status == FileStatus.Received)
         {
-            callback?.Invoke(data!);
+            callback?.Invoke(data);
             return;
         }
         else if (status == FileStatus.Receiving)
@@ -174,16 +190,23 @@ public class FileChunkManager : Singleton<FileChunkManager>
         });
     }
 
-    public static byte[]? GetLocalFile(string fileName)
+    public static FileData? GetLocalFile(string fileName)
     {
-        if (Instance.LocalFiles.TryGetValue(fileName, out var file))
+        if (Instance.LocalFiles.TryGetValue(fileName, out FileData file))
         { return file; }
+
+        if (fileName[0] == '~')
+        { fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + fileName[1..]); }
+
         if (File.Exists(Path.Combine(BasePath, "." + fileName)))
-        { return Instance.LocalFiles[fileName] = File.ReadAllBytes(Path.Combine(BasePath, "." + fileName)); }
+        { return Instance.LocalFiles[fileName] = FileData.FromLocal(Path.Combine(BasePath, "." + fileName)); }
+
         if (File.Exists(Path.Combine(BasePath, fileName)))
-        { return Instance.LocalFiles[fileName] = File.ReadAllBytes(Path.Combine(BasePath, fileName)); }
+        { return Instance.LocalFiles[fileName] = FileData.FromLocal(Path.Combine(BasePath, fileName)); }
+
         if (File.Exists(fileName))
-        { return Instance.LocalFiles[fileName] = File.ReadAllBytes(fileName); }
+        { return Instance.LocalFiles[fileName] = FileData.FromLocal(fileName); }
+
         Debug.LogWarning($"Local file \"{fileName}\" does not exists");
         return null;
     }

@@ -1,8 +1,8 @@
-using "/home/BB/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
-using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.bbc";
-using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
-using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
-using "/home/BB/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
 
 struct MappedMemory
 {
