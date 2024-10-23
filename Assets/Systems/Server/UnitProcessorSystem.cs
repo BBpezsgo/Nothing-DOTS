@@ -48,7 +48,7 @@ partial struct UnitProcessorSystem : ISystem
                     SystemAPI.Query<RefRW<Processor>, RefRW<Unit>, RefRW<LocalToWorld>>()
                     .WithEntityAccess())
         {
-            MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + (Processor.HeapSize + Processor.StackSize));
+            MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + (Processor.MappedMemoryStart));
 
             unit.ValueRW.Input = new float2(
                 mapped->InputSteer / 128f,

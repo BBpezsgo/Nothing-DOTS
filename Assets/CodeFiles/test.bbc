@@ -3,46 +3,13 @@ using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
-
-struct MappedMemory
-{
-    i8 InputForward;
-    i8 InputSteer;
-    u8 InputShoot;
-    f32 TurretTargetRotation;
-    f32 TurretTargetAngle;
-    f32 TurretCurrentRotation;
-    f32 TurretCurrentAngle;
-    Vector2 Position;
-    Vector2 Forward;
-}
-
-const MappedMemory* Mapped = 256;
-
-void PrintLine(Vector2 v)
-{
-    Print('(');
-    Print(v.x);
-    Print(',');
-    Print(v.y);
-    Print(')');
-    PrintLine();
-}
+using "api.bbc";
 
 const f32 PI = 3.14159265359f;
 const f32 TAU = PI * 2f;
 const f32 G = 9.82f;
 const f32 PROJECTILE_V = 20f;
 const f32 H = 0.1f;
-
-[External("atan2")] f32 Atan2(f32 x, f32 y);
-[External("sin")] f32 Sin(f32 v);
-[External("cos")] f32 Cos(f32 v);
-[External("tan")] f32 Tan(f32 v);
-[External("asin")] f32 Asin(f32 v);
-[External("acos")] f32 Acos(f32 v);
-[External("atan")] f32 Atan(f32 v);
-[External("sqrt")] f32 _Sqrt(f32 v);
 
 void Movement(f32 targetX, f32 targetY)
 {

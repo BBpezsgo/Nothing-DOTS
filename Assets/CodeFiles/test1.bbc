@@ -1,0 +1,28 @@
+using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "api.bbc";
+
+while (1)
+{
+    u8[4] v;
+    v[0] = (u8)1;
+    v[1] = (u8)2;
+    v[2] = (u8)3;
+    v[3] = (u8)4;
+    send(&v, 4);
+    i32 l = receive(&v, 4);
+    if (l)
+    {
+        Print(v[0]);
+        Print(' ');
+        Print(v[1]);
+        Print(' ');
+        Print(v[2]);
+        Print(' ');
+        Print(v[3]);
+        PrintLine();
+    }
+}

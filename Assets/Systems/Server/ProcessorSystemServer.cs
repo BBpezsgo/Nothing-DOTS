@@ -5,8 +5,6 @@ using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.NetCode;
-using UnityEngine;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 [UpdateAfter(typeof(CompilerSystemServer))]
@@ -72,11 +70,30 @@ partial struct ProcessorSystemServer : ISystem
         {
             return;
         }, 2, ExternalFunctionNames.StdOut, ExternalFunctionGenerator.SizeOf<char>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        {
+            return;
+        }, 18, "send", ExternalFunctionGenerator.SizeOf<int, int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        {
+            return;
+        }, 19, "receive", ExternalFunctionGenerator.SizeOf<int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
     };
+    private ComponentLookup<Processor> processorLookup;
+
+    unsafe ref struct TransmissionScope
+    {
+        public RefRW<Processor> Processor;
+        public void* Memory;
+        public SystemState State;
+        public Entity SourceEntity;
+        public float3 SourcePosition;
+    }
 
     void ISystem.OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<Processor>();
+        processorLookup = state.GetComponentLookup<Processor>();
     }
 
     // [BurstCompile]
@@ -84,6 +101,8 @@ partial struct ProcessorSystemServer : ISystem
     {
         EntityCommandBuffer entityCommandBuffer = default;
         NativeHashSet<FileId> requestedSourceFiles = default;
+
+        processorLookup.Update(ref state);
 
         foreach ((RefRW<Processor> processor, Entity entity) in
                     SystemAPI.Query<RefRW<Processor>>()
@@ -184,17 +203,79 @@ partial struct ProcessorSystemServer : ISystem
                 return;
             }
 
-            static void _StdOut(nint scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+            void* stdoutBufferPtr = Unsafe.AsPointer(ref processor.ValueRW.StdOutBuffer);
+            static void _stdout(nint scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
             {
                 char output = arguments.To<char>();
                 if (output == '\r') return;
                 ((FixedString128Bytes*)scope)->AppendShift(output);
             }
 
-            void* stdoutBufferPtr = Unsafe.AsPointer(ref processor.ValueRW.StdOutBuffer);
+            TransmissionScope transmissionScope = new()
+            {
+                Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
+                State = state,
+                Processor = processor,
+                SourceEntity = entity,
+                SourcePosition = SystemAPI.GetComponent<Unity.Transforms.LocalToWorld>(entity).Position,
+            };
+            TransmissionScope* transmissionScopePtr = &transmissionScope;
+            static void _send(nint scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+            {
+                (int bufferPtr, int length) = ExternalFunctionGenerator.DeconstructValues<int, int>(arguments);
+                if (bufferPtr <= 0 || length <= 0) return;
+                if (length >= 30) throw new Exception($"Can't");
+                ReadOnlySpan<byte> buffer = new(((TransmissionScope*)scope)->Memory, Processor.UserMemorySize);
+                buffer = buffer.Slice(bufferPtr, length);
+                using EntityQuery q = ((TransmissionScope*)scope)->State.EntityManager.CreateEntityQuery(typeof(Processor));
+                using NativeArray<Entity> entities = q.ToEntityArray(Allocator.Temp);
+                fixed (byte* bufferPtr2 = buffer)
+                {
+                    for (int i = 0; i < entities.Length; i++)
+                    {
+                        if (entities[i] == ((TransmissionScope*)scope)->SourceEntity) continue;
+                        FixedList32Bytes<byte> data = new();
+                        data.AddRange(bufferPtr2, length);
+                        DynamicBuffer<BufferedTransmittedUnitData> transmissions = ((TransmissionScope*)scope)->State.EntityManager.GetBuffer<BufferedTransmittedUnitData>(entities[i]);
+                        transmissions.Add(new BufferedTransmittedUnitData(((TransmissionScope*)scope)->SourcePosition, data));
+                    }
+                }
+            }
+            static void _receive(nint scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+            {
+                returnValue.Clear();
+                (int bufferPtr, int length) = ExternalFunctionGenerator.DeconstructValues<int, int>(arguments);
+                if (bufferPtr <= 0 || length <= 0) return;
+                Span<byte> buffer = new(((TransmissionScope*)scope)->Memory, Processor.UserMemorySize);
+                buffer = buffer.Slice(bufferPtr, length);
+                DynamicBuffer<BufferedTransmittedUnitData> received = ((TransmissionScope*)scope)->State.EntityManager.GetBuffer<BufferedTransmittedUnitData>(((TransmissionScope*)scope)->SourceEntity);
+                int k = 0;
+                int receivedChunks = 0;
+                for (int i = 0; i < received.Length; i++)
+                {
+                    if (k >= length) break;
+                    int receivedChunkBytes = 0;
+                    for (int j = 0; j < received[i].Data.Length; j++)
+                    {
+                        if (k >= length) break;
+                        receivedChunkBytes++;
+                        buffer[k] = received[i].Data[j];
+                        k++;
+                    }
+                    if (receivedChunkBytes >= received[i].Data.Length)
+                    {
+                        receivedChunks++;
+                    }
+                }
+                if (receivedChunks > 0) received.RemoveRange(0, receivedChunks);
+                returnValue.Set(k);
+            }
+
             Span<ExternalFunctionScopedSync> scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[]
             {
-                new ExternalFunctionScopedSync(&_StdOut, 2, sizeof(char), 0, (nint)stdoutBufferPtr)
+                new ExternalFunctionScopedSync(&_stdout, 2, ExternalFunctionGenerator.SizeOf<char>(), 0, stdoutBufferPtr),
+                new ExternalFunctionScopedSync(&_send, 18, ExternalFunctionGenerator.SizeOf<int, int>(), 0, transmissionScopePtr),
+                new ExternalFunctionScopedSync(&_receive, 19, ExternalFunctionGenerator.SizeOf<int, int>(), ExternalFunctionGenerator.SizeOf<int>(), transmissionScopePtr),
             };
 
             DynamicBuffer<BufferedInstruction> generated = SystemAPI.GetBuffer<BufferedInstruction>(processor.ValueRO.CompilerCache);
@@ -202,7 +283,7 @@ partial struct ProcessorSystemServer : ISystem
             ProcessorState processorState = new(
                 BytecodeInterpreterSettings,
                 processor.ValueRW.Registers,
-                new Span<byte>(Unsafe.AsPointer(ref processor.ValueRW.Memory), 510),
+                new Span<byte>(Unsafe.AsPointer(ref processor.ValueRW.Memory), Processor.TotalMemorySize),
                 new ReadOnlySpan<Instruction>(generated.GetUnsafeReadOnlyPtr(), generated.Length),
                 new ReadOnlySpan<IExternalFunction>(ExternalFunctions, 0, ExternalFunctions.Length - scopedExternalFunctions.Length),
                 scopedExternalFunctions

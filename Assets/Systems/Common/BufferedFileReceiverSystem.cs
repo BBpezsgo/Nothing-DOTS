@@ -135,7 +135,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                     TargetConnection = receivingFiles[i].Source.GetEntity(ref state),
                 });
                 if (DebugLog) Debug.Log($"Requesting chunk {j} for file \"{receivingFiles[i].FileName}\"");
-                if (requested++ >= 5) break;
+                if (requested++ >= 15) break;
             }
 
             if (requested == 0) continue;

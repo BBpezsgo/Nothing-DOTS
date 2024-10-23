@@ -5,8 +5,13 @@ using Unity.NetCode;
 
 public struct Processor : IComponentData
 {
+    public const int TotalMemorySize = 510;
     public const int StackSize = 128;
     public const int HeapSize = 128;
+
+    public const int UserMemorySize = StackSize + HeapSize;
+    public const int MappedMemoryStart = TotalMemorySize;
+    public const int MappedMemorySize = TotalMemorySize - UserMemorySize;
 
     [GhostField] public FileId SourceFile;
     public Entity CompilerCache;

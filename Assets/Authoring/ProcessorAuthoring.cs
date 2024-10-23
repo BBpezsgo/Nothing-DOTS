@@ -17,6 +17,7 @@ public class ProcessorAuthoring : MonoBehaviour
                 Registers = default,
             });
             AddBuffer<NativeExternalFunction>(entity);
+            AddBuffer<BufferedTransmittedUnitData>(entity);
         }
     }
 }

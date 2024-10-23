@@ -1,0 +1,27 @@
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+
+export struct MappedMemory
+{
+    i8 InputForward;
+    i8 InputSteer;
+    u8 InputShoot;
+    f32 TurretTargetRotation;
+    f32 TurretTargetAngle;
+    f32 TurretCurrentRotation;
+    f32 TurretCurrentAngle;
+    Vector2 Position;
+    Vector2 Forward;
+}
+
+export const MappedMemory* Mapped = 256;
+
+[External("atan2")] export f32 Atan2(f32 x, f32 y);
+[External("sin")] export f32 Sin(f32 v);
+[External("cos")] export f32 Cos(f32 v);
+[External("tan")] export f32 Tan(f32 v);
+[External("asin")] export f32 Asin(f32 v);
+[External("acos")] export f32 Acos(f32 v);
+[External("atan")] export f32 Atan(f32 v);
+[External("sqrt")] export f32 _Sqrt(f32 v);
+[External("send")] export void send(any* buffer, int length);
+[External("receive")] export i32 receive(any* buffer, i32 length);
