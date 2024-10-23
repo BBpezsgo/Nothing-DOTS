@@ -1,17 +1,18 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 
 [BurstCompile]
 public struct BufferedFileChunk : IBufferElementData
 {
-    public Entity Source;
+    public NetcodeEndPoint Source;
     public int TransactionId;
     public int ChunkIndex;
     public FixedBytes126 Data;
 
     public BufferedFileChunk(
-        Entity source,
+        NetcodeEndPoint source,
         int transactionId,
         int chunkIndex,
         FixedBytes126 data)

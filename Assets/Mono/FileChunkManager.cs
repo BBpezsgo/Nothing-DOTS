@@ -18,6 +18,56 @@ public enum FileStatus
     Received,
 }
 
+public struct NetcodeEndPoint : IEquatable<NetcodeEndPoint>
+{
+    public NetworkId ConnectionId;
+    public Entity ConnectionEntity;
+
+    public NetcodeEndPoint(NetworkId connectionId, Entity connectionEntity)
+    {
+        ConnectionId = connectionId;
+        ConnectionEntity = connectionEntity;
+    }
+
+    public readonly Entity GetEntity()
+        => GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager);
+    public readonly Entity GetEntity(EntityManager entityManager)
+    {
+        if (ConnectionEntity != Entity.Null) return ConnectionEntity;
+        using EntityQuery entityQ = entityManager.CreateEntityQuery(typeof(NetworkId));
+        using NativeArray<Entity> entities = entityQ.ToEntityArray(Allocator.Temp);
+        for (int i = 0; i < entities.Length; i++)
+        {
+            NetworkId networkId = entityManager.GetComponentData<NetworkId>(entities[i]);
+            if (networkId.Value != ConnectionId.Value) continue;
+            return entities[i];
+        }
+        return Entity.Null;
+    }
+    public readonly Entity GetEntity(ref SystemState state)
+    {
+        if (ConnectionEntity != Entity.Null) return ConnectionEntity;
+        EntityQuery entityQ = state.GetEntityQuery(typeof(NetworkId));
+        ComponentLookup<NetworkId> componentQ = state.GetComponentLookup<NetworkId>(true);
+        using NativeArray<Entity> entities = entityQ.ToEntityArray(Allocator.Temp);
+        for (int i = 0; i < entities.Length; i++)
+        {
+            RefRO<NetworkId> networkId = componentQ.GetRefRO(entities[i]);
+            if (networkId.ValueRO.Value != ConnectionId.Value) continue;
+            return entities[i];
+        }
+        return Entity.Null;
+    }
+
+    public override readonly bool Equals(object obj) => obj is NetcodeEndPoint other && Equals(other);
+    public readonly bool Equals(NetcodeEndPoint other) => ConnectionId.Value == other.ConnectionId.Value;
+    public override readonly int GetHashCode() => ConnectionId.Value;
+    public override readonly string ToString() => ConnectionId.ToString();
+
+    public static bool operator ==(NetcodeEndPoint a, NetcodeEndPoint b) => a.ConnectionId.Value == b.ConnectionId.Value;
+    public static bool operator !=(NetcodeEndPoint a, NetcodeEndPoint b) => a.ConnectionId.Value != b.ConnectionId.Value;
+}
+
 public readonly struct FileData
 {
     public readonly byte[] Data;
@@ -33,21 +83,21 @@ public readonly struct FileData
         => new(File.ReadAllBytes(localFile), File.GetLastWriteTimeUtc(localFile).Ticks);
 }
 
-public readonly struct FileId : IEquatable<FileId>
+public struct FileId : IEquatable<FileId>
 {
-    public readonly FixedString64Bytes Name;
-    public readonly Entity Source;
+    public FixedString64Bytes Name;
+    public NetcodeEndPoint Source;
 
-    public FileId(FixedString64Bytes name, Entity source)
+    public FileId(FixedString64Bytes name, NetcodeEndPoint source)
     {
         Name = name;
         Source = source;
     }
 
-    public override int GetHashCode() => HashCode.Combine(Name, Source);
-    public override string ToString() => $"{Source} {Name}";
-    public override bool Equals(object obj) => obj is FileId other && Equals(other);
-    public bool Equals(FileId other) => Name.Equals(other.Name) && Source.Equals(other.Source);
+    public override readonly int GetHashCode() => HashCode.Combine(Name, Source);
+    public override readonly string ToString() => $"{Source} {Name}";
+    public override readonly bool Equals(object obj) => obj is FileId other && Equals(other);
+    public readonly bool Equals(FileId other) => Name.Equals(other.Name) && Source.Equals(other.Source);
 
     public static bool operator ==(FileId a, FileId b) => a.Equals(b);
     public static bool operator !=(FileId a, FileId b) => !a.Equals(b);
@@ -184,7 +234,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
         });
         entityCommandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
         {
-            TargetConnection = fileName.Source,
+            TargetConnection = fileName.Source.GetEntity(entityManager),
         });
     }
 

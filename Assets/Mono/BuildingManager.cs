@@ -105,6 +105,8 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         SelectedBuilding = building;
         if (BuildingHologram != null)
         { ApplyHologram(BuildingHologram, SelectedBuilding); }
+
+        button.Blur();
     }
 
     void Show()

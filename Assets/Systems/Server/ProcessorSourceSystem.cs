@@ -16,12 +16,14 @@ partial struct ProcessorSourceSystem : ISystem
                 SystemAPI.Query<RefRO<GhostInstance>>()
                 .WithEntityAccess())
             {
+                NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
 
                 RefRW<Processor> processor = SystemAPI.GetComponentRW<Processor>(ghostEntity);
                 processor.ValueRW.CompilerCache = Entity.Null;
-                processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, request.ValueRO.SourceConnection);
+                processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, ep);
                 processor.ValueRW.SourceVersion = default;
 
                 break;

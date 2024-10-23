@@ -6,4 +6,7 @@ public struct CompilerCache : IComponentData
     public long Version;
     public double CompileSecuedued;
     public float HotReloadAt;
+    public int DownloadingFiles;
+    public int DownloadedFiles;
+    public bool IsSuccess;
 }

@@ -5,10 +5,7 @@ using System.Text;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
-
-#nullable enable
 
 public class TerminalManager : Singleton<TerminalManager>
 {
@@ -184,14 +181,52 @@ public class TerminalManager : Singleton<TerminalManager>
             else
             {
                 CompilerCache compilerCache = entityManager.GetComponentData<CompilerCache>(processor.CompilerCache);
-
-                if (compilerCache.CompileSecuedued != default)
+                float progress = (compilerCache.DownloadingFiles == 0) ? 0f : (float)compilerCache.DownloadedFiles / (float)compilerCache.DownloadingFiles;
+                if (compilerCache.DownloadingFiles != 0 && progress != 1f)
                 {
-                    ui_labelTerminal!.text = "Compile secuedued ...";
+                    const int progressBarWidth = 10;
+                    string progressBar = new('#', (int)(progress * progressBarWidth));
+                    ui_labelTerminal!.text = $"Uploading {progressBar}{new string('_', progressBarWidth - progressBar.Length)}";
+                }
+                else if (compilerCache.IsSuccess)
+                {
+                    ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
                 }
                 else
                 {
-                    ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
+                    DynamicBuffer<BufferedCompilationAnalystics> analytics = entityManager.GetBuffer<BufferedCompilationAnalystics>(processor.CompilerCache);
+                    ui_labelTerminal!.text = string.Empty;
+                    foreach (BufferedCompilationAnalystics item in analytics)
+                    {
+                        switch (item.Type)
+                        {
+                            case CompilationAnalysticsItemType.Error:
+                                {
+                                    ui_labelTerminal!.text += $"<color=”#FF0000”>{item.Message}</color>\n";
+                                    break;
+                                }
+                            case CompilationAnalysticsItemType.Warning:
+                                {
+                                    ui_labelTerminal!.text += $"<color=#FFFF00>{item.Message}</color>\n";
+                                    break;
+                                }
+                            case CompilationAnalysticsItemType.Info:
+                                {
+                                    ui_labelTerminal!.text += $"<color=#0088FF>{item.Message}</color>\n";
+                                    break;
+                                }
+                            case CompilationAnalysticsItemType.Hint:
+                                {
+                                    ui_labelTerminal!.text += $"<color=#888888>{item.Message}</color>\n";
+                                    break;
+                                }
+                            default:
+                                {
+                                    ui_labelTerminal!.text += $"{item.Message}\n";
+                                    break;
+                                }
+                        }
+                    }
                 }
             }
         }

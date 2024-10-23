@@ -2,17 +2,15 @@ using System;
 using System.Runtime.CompilerServices;
 using LanguageCore;
 using LanguageCore.Runtime;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using UnityEngine;
 
-#nullable enable
-
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-[UpdateAfter(typeof(CompilerSystem))]
-partial struct ProcessorSystem : ISystem
+[UpdateAfter(typeof(CompilerSystemServer))]
+partial struct ProcessorSystemServer : ISystem
 {
     public static readonly BytecodeInterpreterSettings BytecodeInterpreterSettings = new()
     {
@@ -50,7 +48,6 @@ partial struct ProcessorSystem : ISystem
         {
             float a = ExternalFunctionGenerator.DeconstructValues<float>(arguments);
             float r = math.asin(a);
-            Debug.Log(a);
             r.AsBytes().CopyTo(returnValue);
         }, 14, "asin", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
@@ -127,6 +124,7 @@ partial struct ProcessorSystem : ISystem
                     Version = default,
                 });
                 entityCommandBuffer.AddBuffer<BufferedInstruction>(compilerCache_);
+                entityCommandBuffer.AddBuffer<BufferedCompilationAnalystics>(compilerCache_);
                 continue;
             }
 
@@ -135,6 +133,8 @@ partial struct ProcessorSystem : ISystem
             if (processor.ValueRO.SourceVersion != compilerCache.ValueRO.Version)
             {
                 // Debug.Log("Processor's source changed, reloading ...");
+
+                processor.ValueRW.StdOutBuffer.AppendShift("Reloading ...\n");
 
                 ProcessorState processorState_ = new(
                     BytecodeInterpreterSettings,

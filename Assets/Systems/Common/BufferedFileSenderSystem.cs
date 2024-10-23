@@ -20,6 +20,8 @@ partial struct BufferedFileSenderSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderRequestRpc>>()
             .WithEntityAccess())
         {
+            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+
             FileData? localFile = FileChunkManager.GetLocalFile(command.ValueRO.FileName.ToString());
             if (!localFile.HasValue)
             {
@@ -32,7 +34,7 @@ partial struct BufferedFileSenderSystem : ISystem
 
             for (int i = 0; i < sendingFiles.Length; i++)
             {
-                if (sendingFiles[i].Destination != request.ValueRO.SourceConnection) continue;
+                if (sendingFiles[i].Destination != ep) continue;
                 if (sendingFiles[i].FileName != command.ValueRO.FileName) continue;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
@@ -70,7 +72,7 @@ partial struct BufferedFileSenderSystem : ISystem
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
                 found = true;
                 sendingFiles.Add(new BufferedSendingFile(
-                    request.ValueRO.SourceConnection,
+                    ep,
                     command.ValueRO.FileName.GetHashCode(),
                     command.ValueRO.FileName
                 ));
@@ -84,11 +86,13 @@ partial struct BufferedFileSenderSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileChunkRequestRpc>>()
             .WithEntityAccess())
         {
+            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+
             bool found = false;
 
             for (int i = 0; i < sendingFiles.Length; i++)
             {
-                if (sendingFiles[i].Destination != request.ValueRO.SourceConnection) continue;
+                if (sendingFiles[i].Destination != ep) continue;
                 if (sendingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();

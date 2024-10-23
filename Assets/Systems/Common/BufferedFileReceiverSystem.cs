@@ -20,9 +20,11 @@ partial struct BufferedFileReceiverSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderRpc>>()
             .WithEntityAccess())
         {
+            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+
             bool added = false;
             BufferedReceivingFile fileHeader = new(
-                request.ValueRO.SourceConnection,
+                ep,
                 command.ValueRO.TransactionId,
                 command.ValueRO.FileName,
                 command.ValueRO.TotalLength,
@@ -32,7 +34,7 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             for (int i = 0; i < receivingFiles.Length; i++)
             {
-                if (receivingFiles[i].Source != request.ValueRO.SourceConnection) continue;
+                if (receivingFiles[i].Source != ep) continue;
                 if (receivingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
 
                 receivingFiles[i] = fileHeader;
@@ -55,9 +57,11 @@ partial struct BufferedFileReceiverSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileChunkRpc>>()
             .WithEntityAccess())
         {
+            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+
             bool added = false;
             BufferedFileChunk fileChunk = new(
-                request.ValueRO.SourceConnection,
+                ep,
                 command.ValueRO.TransactionId,
                 command.ValueRO.ChunkIndex,
                 command.ValueRO.Data
@@ -83,7 +87,7 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             for (int i = 0; i < receivingFiles.Length; i++)
             {
-                if (receivingFiles[i].Source != request.ValueRO.SourceConnection) continue;
+                if (receivingFiles[i].Source != ep) continue;
                 if (receivingFiles[i].TransactionId != fileChunk.TransactionId) continue;
 
                 receivingFiles[i] = new BufferedReceivingFile(
@@ -128,7 +132,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                 });
                 commandBuffer.AddComponent(requestRpcEneity, new SendRpcCommandRequest
                 {
-                    TargetConnection = receivingFiles[i].Source
+                    TargetConnection = receivingFiles[i].Source.GetEntity(ref state),
                 });
                 if (DebugLog) Debug.Log($"Requesting chunk {j} for file \"{receivingFiles[i].FileName}\"");
                 if (requested++ >= 5) break;

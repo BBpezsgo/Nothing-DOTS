@@ -5,10 +5,14 @@ using UnityEngine;
 
 public class SelectionManager : Singleton<SelectionManager>
 {
+    Entity _firstHit = Entity.Null;
+
     void Update()
     {
         if (Input.GetMouseButtonDown(0) && !UI.IsMouseCaptured)
         {
+            _firstHit = Entity.Null;
+
             Entity hit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition));
             if (hit == Entity.Null) return;
             EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -19,17 +23,43 @@ public class SelectionManager : Singleton<SelectionManager>
                 return;
             }
 
-            if (entityManager.HasComponent<Factory>(hit))
-            {
-                FactoryManager.Instance.OpenUI(hit);
-                return;
-            }
+            _firstHit = hit;
+        }
 
-            if (entityManager.HasComponent<Unit>(hit))
+        if (Input.GetMouseButtonUp(0) && !UI.IsMouseCaptured && _firstHit != Entity.Null)
+        {
+            Entity hit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition));
+            if (hit == Entity.Null)
             {
-                TerminalManager.Instance.OpenUI(hit);
+                _firstHit = Entity.Null;
                 return;
             }
+            EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+
+            if (hit == _firstHit)
+            {
+                _firstHit = Entity.Null;
+
+                if (!entityManager.HasComponent<SelectableUnit>(hit))
+                {
+                    Debug.LogError($"Entity {hit} doesn't have a {nameof(SelectableUnit)} component");
+                    return;
+                }
+
+                if (entityManager.HasComponent<Factory>(hit))
+                {
+                    FactoryManager.Instance.OpenUI(hit);
+                    return;
+                }
+
+                if (entityManager.HasComponent<Unit>(hit))
+                {
+                    TerminalManager.Instance.OpenUI(hit);
+                    return;
+                }
+            }
+            _firstHit = Entity.Null;
+
         }
     }
 

@@ -8,7 +8,7 @@ public struct Processor : IComponentData
     public const int StackSize = 128;
     public const int HeapSize = 128;
 
-    public FileId SourceFile;
+    [GhostField] public FileId SourceFile;
     public Entity CompilerCache;
     public long SourceVersion;
 
