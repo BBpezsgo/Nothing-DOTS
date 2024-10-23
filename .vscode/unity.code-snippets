@@ -5,8 +5,6 @@
 		"body": [
 			"using Unity.NetCode;",
 			"",
-			"#nullable enable",
-			"",
 			"public struct ${1:$TM_FILENAME_BASE} : IRpcCommand",
 			"{",
 			"    $2",
@@ -18,8 +16,6 @@
 		"prefix": "component",
 		"body": [
 			"using Unity.Entities;",
-			"",
-			"#nullable enable",
 			"",
 			"public struct ${1:$TM_FILENAME_BASE} : IComponentData",
 			"{",
@@ -33,8 +29,6 @@
 		"body": [
 			"using Unity.Entities;",
 			"using UnityEngine;",
-			"",
-			"#nullable enable",
 			"",
 			"public class ${1:$TM_FILENAME_BASE} : MonoBehaviour",
 			"{$2",
@@ -53,8 +47,6 @@
 		"prefix": "system",
 		"body": [
 			"using Unity.Entities;",
-			"",
-			"#nullable enable",
 			"",
 			"public partial struct ${1:$TM_FILENAME_BASE} : ISystem",
 			"{",
