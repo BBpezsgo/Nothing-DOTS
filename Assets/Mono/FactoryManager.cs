@@ -4,8 +4,6 @@ using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-#nullable enable
-
 public class FactoryManager : Singleton<FactoryManager>
 {
     [SerializeField, NotNull] UIDocument? UI = default;

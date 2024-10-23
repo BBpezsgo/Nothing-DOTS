@@ -3,8 +3,6 @@ using Unity.Entities;
 using Unity.Physics;
 using UnityEngine;
 
-#nullable enable
-
 public class SelectionManager : Singleton<SelectionManager>
 {
     void Update()

@@ -1,10 +1,7 @@
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
-
-#nullable enable
 
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]

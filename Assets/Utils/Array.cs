@@ -1,7 +1,5 @@
 using System;
 
-#nullable enable
-
 static class ArrayExtensions
 {
     public static int IndexOf<T>(this T[] values, T value)

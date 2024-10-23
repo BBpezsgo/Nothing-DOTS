@@ -2,8 +2,6 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
-#nullable enable
-
 [BurstCompile]
 public struct BufferedReceivingFile : IBufferElementData
 {

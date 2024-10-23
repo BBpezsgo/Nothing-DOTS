@@ -1,8 +1,6 @@
 using NaughtyAttributes;
 using UnityEngine;
 
-#nullable enable
-
 public class UIManager : Singleton<UIManager>
 {
     [SerializeField, ReadOnly] bool _escPressed = false;

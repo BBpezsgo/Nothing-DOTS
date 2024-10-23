@@ -1,7 +1,5 @@
 using Unity.NetCode;
 
-#nullable enable
-
 [UnityEngine.Scripting.Preserve]
 class NetcodeBootstrap : ClientServerBootstrap
 {

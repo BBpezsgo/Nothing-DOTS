@@ -7,8 +7,6 @@ using Unity.Scenes;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-#nullable enable
-
 public class ConnectionManager : PrivateSingleton<ConnectionManager>
 {
     public static World? ClientWorld => Instance._clientWorld;

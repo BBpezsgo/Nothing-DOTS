@@ -1,8 +1,6 @@
 using System;
 using UnityEngine;
 
-#nullable enable
-
 public class PrivateSingleton<T> : MonoBehaviour where T : UnityEngine.Object
 {
     static T? _instance;

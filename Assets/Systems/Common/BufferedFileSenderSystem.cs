@@ -5,7 +5,6 @@ using Unity.NetCode;
 using UnityEngine;
 
 #pragma warning disable CS0162 // Unreachable code detected
-#nullable enable
 
 partial struct BufferedFileSenderSystem : ISystem
 {

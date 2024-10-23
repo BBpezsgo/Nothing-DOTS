@@ -1,8 +1,6 @@
 using System;
 using UnityEngine;
 
-#nullable enable
-
 public class Singleton<T> : MonoBehaviour where T : UnityEngine.Object
 {
     static T? _instance;

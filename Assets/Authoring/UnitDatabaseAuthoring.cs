@@ -2,8 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
-#nullable enable
-
 [AddComponentMenu("Authoring/UnitDatabase")]
 public class UnitDatabaseAuthoring : MonoBehaviour
 {

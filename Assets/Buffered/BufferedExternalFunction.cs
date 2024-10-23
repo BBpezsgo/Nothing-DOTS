@@ -2,8 +2,6 @@ using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
 
-#nullable enable
-
 public struct NativeExternalFunction : IBufferElementData, IExternalFunction
 {
     public FixedString32Bytes Name;

@@ -1,9 +1,7 @@
-using System;
 using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
-
-#nullable enable
+using Unity.NetCode;
 
 public struct Processor : IComponentData
 {
@@ -17,5 +15,5 @@ public struct Processor : IComponentData
     public Registers Registers;
     public FixedBytes510 Memory;
 
-    public FixedString128Bytes StdOutBuffer;
+    [GhostField] public FixedString128Bytes StdOutBuffer;
 }

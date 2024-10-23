@@ -4,14 +4,12 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
 
 #pragma warning disable CS0162 // Unreachable code detected
-#nullable enable
 
 public enum FileStatus
 {

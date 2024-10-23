@@ -2,8 +2,6 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
-#nullable enable
-
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
 public partial struct GoInGameClientSystem : ISystem
 {

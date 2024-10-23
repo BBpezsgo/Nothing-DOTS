@@ -2,8 +2,6 @@ using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Mathematics;
 
-#nullable enable
-
 [BurstCompile]
 public static partial class Utils
 {

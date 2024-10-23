@@ -2,8 +2,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-#nullable enable
-
 public static class CameraExtensions
 {
     const float ScreenRayMaxDistance = 500f;

@@ -1,8 +1,6 @@
 using Unity.Entities;
 using Unity.NetCode;
 
-#nullable enable
-
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial struct ClientSystem : ISystem
 {

@@ -12,10 +12,8 @@ using u32 = System.UInt32;
 using i32 = System.Int32;
 using f32 = System.Single;
 
-#nullable enable
-
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-[UpdateAfter(typeof(ProcessorSystem))]
+[UpdateAfter(typeof(ProcessorSystemServer))]
 partial struct UnitProcessorSystem : ISystem
 {
     ComponentLookup<Turret> _turretLookup;

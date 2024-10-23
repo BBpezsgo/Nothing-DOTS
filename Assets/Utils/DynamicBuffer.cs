@@ -1,8 +1,6 @@
 using System;
 using Unity.Entities;
 
-#nullable enable
-
 public static class DynamicBufferExtensions
 {
     public static int IndexOf<TSource>(

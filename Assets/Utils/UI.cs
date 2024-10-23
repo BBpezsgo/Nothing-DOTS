@@ -4,8 +4,6 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-#nullable enable
-
 public static class UIExtensions
 {
     public static void SyncList<T>(

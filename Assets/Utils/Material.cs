@@ -1,7 +1,5 @@
 using UnityEngine;
 
-#nullable enable
-
 public static class MaterialExtensions
 {
     public static void SetEmissionColor(this Material material, Color color, float emission)

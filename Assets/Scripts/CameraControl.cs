@@ -4,8 +4,6 @@ using NaughtyAttributes;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-#nullable enable
-
 public class CameraControl : MonoBehaviour
 {
     [NotNull] CameraInput? cameraActions = default;

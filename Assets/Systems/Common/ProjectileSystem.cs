@@ -3,8 +3,6 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-#nullable enable
-
 [BurstCompile]
 partial struct ProjectileSystem : ISystem
 {

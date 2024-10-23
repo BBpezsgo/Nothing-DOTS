@@ -10,8 +10,6 @@ using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
-#nullable enable
-
 public class BuildingManager : PrivateSingleton<BuildingManager>
 {
     BufferedBuilding SelectedBuilding = default;

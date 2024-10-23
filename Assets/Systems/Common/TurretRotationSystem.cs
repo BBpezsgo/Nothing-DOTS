@@ -1,11 +1,8 @@
-using System;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
-
-#nullable enable
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct TurretRotationSystem : ISystem

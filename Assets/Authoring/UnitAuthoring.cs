@@ -1,8 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
 
-#nullable enable
-
 [AddComponentMenu("Authoring/Unit")]
 public class UnitAuthoring : MonoBehaviour
 {
