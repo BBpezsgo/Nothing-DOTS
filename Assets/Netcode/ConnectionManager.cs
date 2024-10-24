@@ -88,6 +88,8 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         yield return StartCoroutine(CreateClient(endpoint));
 
         UI.gameObject.SetActive(false);
+    
+        SetupManager.Instance.Setup();
     }
 
     public IEnumerator StartClientAsync()

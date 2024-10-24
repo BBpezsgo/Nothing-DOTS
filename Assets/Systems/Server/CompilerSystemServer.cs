@@ -58,7 +58,7 @@ partial struct CompilerSystemServer : ISystem
                         {
                             BasePath = null,
                         },
-                        LanguageCore.PreprocessorVariables.Normal,
+                        PreprocessorVariables.Normal,
                         null,
                         analysisCollection,
                         null,
@@ -68,13 +68,22 @@ partial struct CompilerSystemServer : ISystem
 
                             if (!uri.TryGetNetcode(out FileId file)) return false;
 
+                            if (file.Source == default)
+                            {
+                                var localFile = FileChunkManager.GetLocalFile(file.Name.ToString());
+                                if (!localFile.HasValue) return false;
+
+                                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(localFile.Value.Data), PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
+                                return true;
+                            }
+
                             FileStatus status = FileChunkManager.TryGetFile(file, out var data);
 
                             compilerCache.ValueRW.DownloadingFiles++;
 
                             if (status == FileStatus.Received)
                             {
-                                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(data.Data), LanguageCore.PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
+                                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(data.Data), PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
                                 compilerCache.ValueRW.DownloadedFiles++;
                                 return true;
                             }
@@ -96,7 +105,10 @@ partial struct CompilerSystemServer : ISystem
                             return false;
                         })
                     );
-                    BBLangGeneratorResult generated = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, analysisCollection);
+                    BBLangGeneratorResult generated = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
+                    {
+                        StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
+                    }, null, analysisCollection);
 
                     DynamicBuffer<BufferedInstruction> buffer = SystemAPI.GetBuffer<BufferedInstruction>(entity);
 
@@ -163,7 +175,7 @@ partial struct CompilerSystemServer : ISystem
                     {
                         TargetConnection = compilerCache.ValueRO.SourceFile.Source.GetEntity(ref state),
                     });
-                    // Debug.LogWarning(item);
+                    Debug.LogWarning(item);
                 }
 
                 foreach (Warning item in analysisCollection.Warnings)
@@ -219,7 +231,7 @@ partial struct CompilerSystemServer : ISystem
                     {
                         TargetConnection = compilerCache.ValueRO.SourceFile.Source.GetEntity(ref state),
                     });
-                    Debug.LogWarning(item);
+                    // Debug.LogWarning(item);
                 }
 
                 foreach (Hint item in analysisCollection.Hints)
@@ -247,7 +259,7 @@ partial struct CompilerSystemServer : ISystem
                     {
                         TargetConnection = compilerCache.ValueRO.SourceFile.Source.GetEntity(ref state),
                     });
-                    Debug.LogWarning(item);
+                    // Debug.LogWarning(item);
                 }
             }
 

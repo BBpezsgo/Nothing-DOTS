@@ -1,4 +1,19 @@
 using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+
+export void Print(Vector2 v)
+{
+    Print(v.x);
+    Print(' ');
+    Print(v.y);
+}
+
+export inline void PrintLine(Vector2 v)
+{
+    Print(v);
+    PrintLine();
+}
 
 export struct MappedMemory
 {
@@ -11,9 +26,10 @@ export struct MappedMemory
     f32 TurretCurrentAngle;
     Vector2 Position;
     Vector2 Forward;
+    f32 RadarDirection;
 }
 
-export const MappedMemory* Mapped = 256;
+export const MappedMemory* Mapped = 384;
 
 [External("atan2")] export f32 Atan2(f32 x, f32 y);
 [External("sin")] export f32 Sin(f32 v);
@@ -24,4 +40,16 @@ export const MappedMemory* Mapped = 256;
 [External("atan")] export f32 Atan(f32 v);
 [External("sqrt")] export f32 _Sqrt(f32 v);
 [External("send")] export void send(any* buffer, int length);
-[External("receive")] export i32 receive(any* buffer, i32 length);
+[External("receive")] export i32 receive(any* buffer, i32 length, Vector2* direction);
+[External("radar")] export f32 radar(i32* metadata);
+
+// export f32 Atan2(f32 x, f32 y) { }
+// export f32 Sin(f32 v) { }
+// export f32 Cos(f32 v) { }
+// export f32 Tan(f32 v) { }
+// export f32 Asin(f32 v) { }
+// export f32 Acos(f32 v) { }
+// export f32 Atan(f32 v) { }
+// export f32 _Sqrt(f32 v) { }
+// export void send(any* buffer, int length) { }
+// export i32 receive(any* buffer, i32 length, Vector2* direction) { }

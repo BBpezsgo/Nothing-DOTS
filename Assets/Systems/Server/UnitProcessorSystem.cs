@@ -21,8 +21,8 @@ partial struct UnitProcessorSystem : ISystem
 
     void ISystem.OnCreate(ref SystemState state)
     {
-        _turretLookup = state.GetComponentLookup<Turret>(false);
-        _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+        _turretLookup = state.GetComponentLookup<Turret>();
+        _transformLookup = state.GetComponentLookup<LocalTransform>();
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -37,6 +37,7 @@ partial struct UnitProcessorSystem : ISystem
         public f32 TurretCurrentAngle;
         public float2 Position;
         public float2 Forward;
+        public f32 RadarDirection;
     }
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
@@ -57,6 +58,18 @@ partial struct UnitProcessorSystem : ISystem
 
             mapped->Position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
             mapped->Forward = new(transform.ValueRO.Forward.x, transform.ValueRO.Forward.z);
+
+            if (unit.ValueRO.Radar != Entity.Null)
+            {
+                RefRW<LocalTransform> radar = _transformLookup.GetRefRW(unit.ValueRO.Radar);
+                const float speed = 360f;
+                quaternion target = quaternion.EulerXYZ(
+                    0f,
+                    mapped->RadarDirection,
+                    0f);
+                Utils.RotateTowards(ref radar.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
+                // radar.ValueRW.Rotation = quaternion.EulerXYZ(new float3(0f, mapped->RadarDirection, 0f));
+            }
 
             if (state.EntityManager.HasBuffer<Child>(entity))
             {
