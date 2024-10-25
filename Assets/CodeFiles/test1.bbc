@@ -6,8 +6,6 @@ using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Lists.bbc";
 using "api.bbc";
 
-List<Vector2> allies = new List<Vector2>(4);
-
 *Mapped = new MappedMemory;
 
 const f32 PI = 3.14159265359f;
@@ -15,11 +13,10 @@ const f32 TAU = PI * 2f;
 const f32 G = 9.82f;
 const f32 PROJECTILE_V = 20f;
 const f32 H = 0.1f;
+const u8 true = (u8)1;
+const u8 false = (u8)0;
 
-f32 prevRadarDistance = 0f;
-Vector2 currentTarget = new Vector2;
-
-while (1)
+void SendPing()
 {
     u8[4] v;
     v[0] = (u8)1;
@@ -28,52 +25,69 @@ while (1)
     v[3] = (u8)4;
     send(&v, 4);
 
+    // PrintLine("Ping!");
+}
+
+void ReceivePing(List<Vector2>* allies)
+{
+    Vector2 receivedDirection;
+    u8[4] v;
+    v[0] = (u8)5;
+    v[1] = (u8)6;
+    v[2] = (u8)7;
+    v[3] = (u8)8;
+
+    i32 receivedLength = receive(&v, 4, &receivedDirection);
+    if (receivedLength != 4) { return; }
+
+    if ((v[0] == (u8)1) &&
+        (v[1] == (u8)2) &&
+        (v[2] == (u8)3) &&
+        (v[3] == (u8)4))
     {
-        Vector2 receivedDirection;
-        i32 receivedLength = receive(&v, 4, &receivedDirection);
-        if (receivedLength == 4)
+        u8 isNew = true;
+        for (i32 i = 0; i < allies.Length() && isNew; i++)
         {
-            if ((v[0] == (u8)1) &&
-                (v[1] == (u8)2) &&
-                (v[2] == (u8)3) &&
-                (v[3] == (u8)4))
+            f32 allyDisplacement = Distance(allies[i], receivedDirection);
+            if (allyDisplacement < 1f)
             {
-                u8 isNew = (u8)1;
-                for (i32 i = 0; i < (&allies).Length(); i++)
-                {
-                    f32 allyDisplacement = Distance((&allies)[i], receivedDirection);
-                    if (allyDisplacement < 1f)
-                    {
-                        isNew = (u8)0;
-                        (&allies)[i] = receivedDirection;
-                        break;
-                    }
-                }
-                if (isNew)
-                {
-                    if ((&allies).Length() > 3)
-                    { (&allies).Remove((&allies).Length() - 1); }
-
-                    (&allies).Add(receivedDirection);
-
-                    Print("New ally at ");
-                    Print(receivedDirection.x);
-                    Print(' ');
-                    Print(receivedDirection.y);
-                    PrintLine();
-                }
+                isNew = false;
+                allies[i] = receivedDirection;
+                // TODO: this aint working
+                // break;
             }
+        }
+        if (isNew)
+        {
+            allies.Add(receivedDirection);
 
-            // Print(v[0]);
-            // Print(' ');
-            // Print(v[1]);
-            // Print(' ');
-            // Print(v[2]);
-            // Print(' ');
-            // Print(v[3]);
-            // PrintLine();
+            Print("New ally at ");
+            Print(receivedDirection.x);
+            Print(' ');
+            Print(receivedDirection.y);
+            PrintLine();
         }
     }
+
+    // Print(v[0]);
+    // Print(' ');
+    // Print(v[1]);
+    // Print(' ');
+    // Print(v[2]);
+    // Print(' ');
+    // Print(v[3]);
+    // PrintLine();
+}
+
+f32 prevRadarDistance = 0f;
+Vector2 currentTarget = new Vector2;
+List<Vector2> allies = new List<Vector2>(2);
+
+while (1)
+{
+    SendPing();
+
+    ReceivePing(&allies);
 
     {
         f32 radarDistance = radar(0);
@@ -95,7 +109,6 @@ while (1)
                     isEnemy--;
                 }
             }
-            currentTarget = new Vector2;
             if (isEnemy)
             {
                 radarDir.x *= radarDistance;
@@ -122,7 +135,7 @@ while (1)
         {
             f32 targetAngle;
             {
-                Vector2 targetDirection = Normalised(currentTarget);
+                Vector2 targetDirection = Normalised(new Vector2(currentTarget.x, currentTarget.y - 0.2));
                 targetAngle = Atan2(targetDirection.x, targetDirection.y);
                 if (targetAngle < 0f) { targetAngle += TAU; }
             }
@@ -132,7 +145,7 @@ while (1)
         
         {
             f32 targetDistance = Magnitude(currentTarget);
-            if (targetDistance > 20f)
+            if (1)
             {
                 Mapped.TurretTargetAngle = Atan(
                     (

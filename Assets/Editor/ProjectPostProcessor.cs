@@ -1,11 +1,9 @@
-#nullable enable
-
 using System;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using UnityEditor;
-using UnityEngine.Device;
+using UnityEngine;
 
 /// <summary>
 /// <seealso href="https://github.com/Full-Metal-Bagel/unity-lang-version/blob/main/Packages/com.fullmetalbagel.unity-lang-version/LangVersionPostprocessor.cs"/>

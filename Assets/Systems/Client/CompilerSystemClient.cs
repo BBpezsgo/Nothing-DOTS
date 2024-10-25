@@ -1,3 +1,4 @@
+using System.Net.WebSockets;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
@@ -14,21 +15,21 @@ partial struct CompilerSystemClient : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilerStatusRpc>>()
             .WithEntityAccess())
         {
-            foreach (var (compilerCache, compilerCacheEntity) in
-                SystemAPI.Query<RefRW<CompilerCache>>()
-                .WithEntityAccess())
+            // Debug.Log($"Received compilation status for {command.ValueRO.FileName}");
+
+            if (!CompilerManager.Instance.CompiledSources.TryGetValue(command.ValueRO.FileName, out CompiledSource source))
             {
-                if (compilerCache.ValueRO.SourceFile != command.ValueRO.FileName) continue;
-
-                compilerCache.ValueRW.DownloadingFiles = command.ValueRO.DownloadingFiles;
-                compilerCache.ValueRW.DownloadedFiles = command.ValueRO.DownloadedFiles;
-                compilerCache.ValueRW.Version = command.ValueRO.Version;
-                compilerCache.ValueRW.IsSuccess = command.ValueRO.IsSuccess;
-                DynamicBuffer<BufferedCompilationAnalystics> compilationAnalytics = SystemAPI.GetBuffer<BufferedCompilationAnalystics>(compilerCacheEntity);
-                compilationAnalytics.Clear();
-
-                break;
+                source = CompiledSource.FromRpc(command.ValueRO);
+                CompilerManager.Instance.CompiledSources.Add(command.ValueRO.FileName, source);
             }
+
+            source.Version = command.ValueRO.Version;
+            source.DownloadingFiles = command.ValueRO.DownloadingFiles;
+            source.DownloadedFiles = command.ValueRO.DownloadedFiles;
+            source.IsSuccess = command.ValueRO.IsSuccess;
+            source.AnalysisCollection.Clear();
+
+            CompilerManager.Instance.CompiledSources[source.SourceFile] = source;
 
             if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
             entityCommandBuffer.DestroyEntity(entity);
@@ -38,24 +39,45 @@ partial struct CompilerSystemClient : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilationAnalysticsRpc>>()
             .WithEntityAccess())
         {
-            foreach (var (compilerCache, compilerCacheEntity) in
-                SystemAPI.Query<RefRO<CompilerCache>>()
-                .WithEntityAccess())
+            if (!CompilerManager.Instance.CompiledSources.TryGetValue(command.ValueRO.FileName, out CompiledSource source))
             {
-                // Debug.Log($"{compilerCache.ValueRO.SourceFile} ?= {command.ValueRO.FileName}");
-                if (compilerCache.ValueRO.SourceFile != command.ValueRO.FileName) continue;
+                // Debug.LogWarning($"Received analytics for unknown compiled source \"{command.ValueRO.FileName}\"");
+                if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
+                entityCommandBuffer.DestroyEntity(entity);
+                continue;
+            }
 
-                DynamicBuffer<BufferedCompilationAnalystics> compilationAnalytics = SystemAPI.GetBuffer<BufferedCompilationAnalystics>(compilerCacheEntity);
-                compilationAnalytics.Add(new BufferedCompilationAnalystics()
-                {
-                    FileName = command.ValueRO.FileName.Name,
-                    Position = command.ValueRO.Position,
-
-                    Type = command.ValueRO.Type,
-                    Message = command.ValueRO.Message,
-                });
-
-                break;
+            switch (command.ValueRO.Type)
+            {
+                case CompilationAnalysticsItemType.Error:
+                    source.AnalysisCollection.Errors.Add(new LanguageCore.LanguageError(
+                        command.ValueRO.Message.ToString(),
+                        new LanguageCore.Position(command.ValueRO.Position, default),
+                        command.ValueRO.FileName.ToUri(),
+                        false
+                    ));
+                    break;
+                case CompilationAnalysticsItemType.Warning:
+                    source.AnalysisCollection.Warnings.Add(new LanguageCore.Warning(
+                        command.ValueRO.Message.ToString(),
+                        new LanguageCore.Position(command.ValueRO.Position, default),
+                        command.ValueRO.FileName.ToUri()
+                    ));
+                    break;
+                case CompilationAnalysticsItemType.Info:
+                    source.AnalysisCollection.Informations.Add(new LanguageCore.Information(
+                        command.ValueRO.Message.ToString(),
+                        new LanguageCore.Position(command.ValueRO.Position, default),
+                        command.ValueRO.FileName.ToUri()
+                    ));
+                    break;
+                case CompilationAnalysticsItemType.Hint:
+                    source.AnalysisCollection.Hints.Add(new LanguageCore.Hint(
+                        command.ValueRO.Message.ToString(),
+                        new LanguageCore.Position(command.ValueRO.Position, default),
+                        command.ValueRO.FileName.ToUri()
+                    ));
+                    break;
             }
 
             if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);

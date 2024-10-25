@@ -9,13 +9,7 @@ public class ProcessorAuthoring : MonoBehaviour
         public override void Bake(ProcessorAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new Processor
-            {
-                SourceFile = default,
-                SourceVersion = default,
-                CompilerCache = Entity.Null,
-                Registers = default,
-            });
+            AddComponent<Processor>(entity);
             AddBuffer<NativeExternalFunction>(entity);
             AddBuffer<BufferedTransmittedUnitData>(entity);
         }

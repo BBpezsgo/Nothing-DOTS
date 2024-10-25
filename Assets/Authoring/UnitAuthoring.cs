@@ -4,7 +4,7 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Unit")]
 public class UnitAuthoring : MonoBehaviour
 {
-    [SerializeField] GameObject? Radar;
+    [SerializeField] GameObject? Radar = default;
 
     class Baker : Baker<UnitAuthoring>
     {

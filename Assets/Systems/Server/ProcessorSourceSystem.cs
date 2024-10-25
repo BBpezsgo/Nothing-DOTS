@@ -22,7 +22,6 @@ partial struct ProcessorSourceSystem : ISystem
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
 
                 RefRW<Processor> processor = SystemAPI.GetComponentRW<Processor>(ghostEntity);
-                processor.ValueRW.CompilerCache = Entity.Null;
                 processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, ep);
                 processor.ValueRW.SourceVersion = default;
 

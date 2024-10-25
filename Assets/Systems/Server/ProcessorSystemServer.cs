@@ -7,6 +7,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
+using UnityEngine;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 [UpdateAfter(typeof(CompilerSystemServer))]
@@ -106,7 +107,6 @@ partial struct ProcessorSystemServer : ISystem
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer entityCommandBuffer = default;
-        NativeHashSet<FileId> requestedSourceFiles = default;
 
         processorLookup.Update(ref state);
 
@@ -159,9 +159,8 @@ partial struct ProcessorSystemServer : ISystem
             if (received.Length == 0) return;
 
             int i;
-            for (i = 0; i < received[0].Data.Length; i++)
+            for (i = 0; i < received[0].Data.Length && i < buffer.Length; i++)
             {
-                if (++i >= buffer.Length) break;
                 buffer[i] = received[0].Data[i];
             }
 
@@ -204,7 +203,7 @@ partial struct ProcessorSystemServer : ISystem
                 },
             };
 
-            if (!collisionWorld.CastRay(input, out RaycastHit hit))
+            if (!collisionWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
             { return; }
 
             returnValue.Set(math.distance(hit.Position, input.Start));
@@ -222,44 +221,18 @@ partial struct ProcessorSystemServer : ISystem
                     SystemAPI.Query<RefRW<Processor>>()
                     .WithEntityAccess())
         {
-            if (processor.ValueRO.CompilerCache == Entity.Null)
+            if (processor.ValueRO.SourceFile == default) continue;
+
+            if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out var source))
             {
-                if (processor.ValueRO.SourceFile == default) continue;
-                if (!requestedSourceFiles.IsCreated) requestedSourceFiles = new(8, AllocatorManager.Temp);
-                if (!requestedSourceFiles.Add(processor.ValueRO.SourceFile)) continue;
-
-                Entity foundCompilerCache = Entity.Null;
-
-                foreach (var (compilerCache_, compilerCacheEntity_) in
-                    SystemAPI.Query<RefRO<CompilerCache>>()
-                    .WithEntityAccess())
-                {
-                    if (compilerCache_.ValueRO.SourceFile != processor.ValueRO.SourceFile) continue;
-
-                    processor.ValueRW.CompilerCache = compilerCacheEntity_;
-                    foundCompilerCache = compilerCacheEntity_;
-
-                    break;
-                }
-
-                if (foundCompilerCache != Entity.Null) continue;
-
-                if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-                foundCompilerCache = entityCommandBuffer.CreateEntity();
-                entityCommandBuffer.AddComponent(foundCompilerCache, new CompilerCache()
-                {
-                    SourceFile = processor.ValueRO.SourceFile,
-                    CompileSecuedued = 1d,
-                    Version = default,
-                });
-                entityCommandBuffer.AddBuffer<BufferedInstruction>(foundCompilerCache);
-                entityCommandBuffer.AddBuffer<BufferedCompilationAnalystics>(foundCompilerCache);
+                // Debug.Log($"Request source \"{processor.ValueRO.SourceFile}\" ...");
+                CompilerManager.Instance.CompiledSources.Add(processor.ValueRO.SourceFile, CompiledSource.Empty(processor.ValueRO.SourceFile));
                 continue;
             }
 
-            RefRO<CompilerCache> compilerCache = SystemAPI.GetComponentRO<CompilerCache>(processor.ValueRO.CompilerCache);
+            if (!source.Code.HasValue) continue;
 
-            if (processor.ValueRO.SourceVersion != compilerCache.ValueRO.Version)
+            if (processor.ValueRO.SourceVersion != source.Version)
             {
                 processor.ValueRW.StdOutBuffer.AppendShift("Reloading ...\n");
 
@@ -273,12 +246,12 @@ partial struct ProcessorSystemServer : ISystem
                 );
                 processorState_.Setup();
                 processor.ValueRW.Registers = processorState_.Registers;
-                processor.ValueRW.SourceVersion = compilerCache.ValueRO.Version;
+                processor.ValueRW.SourceVersion = source.Version;
 
                 return;
             }
 
-            if (!compilerCache.ValueRO.IsSuccess) continue;
+            if (!source.IsSuccess) continue;
 
             TransmissionScope transmissionScope = new()
             {
@@ -286,27 +259,33 @@ partial struct ProcessorSystemServer : ISystem
                 State = state,
                 Processor = processor,
                 SourceEntity = entity,
-                SourcePosition = SystemAPI.GetComponent<Unity.Transforms.LocalToWorld>(entity).Position,
+                SourcePosition = SystemAPI.GetComponent<LocalToWorld>(entity).Position,
             };
             scopedExternalFunctions[0].Scope = (nint)Unsafe.AsPointer(ref processor.ValueRW.StdOutBuffer);
             scopedExternalFunctions[1].Scope = (nint)(&transmissionScope);
             scopedExternalFunctions[2].Scope = (nint)(&transmissionScope);
             scopedExternalFunctions[3].Scope = (nint)(&transmissionScope);
 
-            DynamicBuffer<BufferedInstruction> generated = SystemAPI.GetBuffer<BufferedInstruction>(processor.ValueRO.CompilerCache);
-
             ProcessorState processorState = new(
                 BytecodeInterpreterSettings,
                 processor.ValueRW.Registers,
                 new Span<byte>(Unsafe.AsPointer(ref processor.ValueRW.Memory), Processor.TotalMemorySize),
-                new ReadOnlySpan<Instruction>(generated.GetUnsafeReadOnlyPtr(), generated.Length),
+                source.Code.Value.AsSpan(),
                 new ReadOnlySpan<IExternalFunction>(ExternalFunctions, 0, ExternalFunctions.Length - scopedExternalFunctions.Length),
                 scopedExternalFunctions
             );
 
-            for (int i = 0; i < 128; i++)
+            try
             {
-                processorState.Tick();
+                for (int i = 0; i < 256; i++)
+                {
+                    processorState.Tick();
+                }
+            }
+            catch (RuntimeException exception)
+            {
+                exception.DebugInformation = source.DebugInformation;
+                Debug.LogError(exception.ToString(false));
             }
 
             processor.ValueRW.Registers = processorState.Registers;
@@ -316,10 +295,6 @@ partial struct ProcessorSystemServer : ISystem
         {
             entityCommandBuffer.Playback(state.EntityManager);
             entityCommandBuffer.Dispose();
-        }
-        if (requestedSourceFiles.IsCreated)
-        {
-            requestedSourceFiles.Dispose();
         }
     }
 }

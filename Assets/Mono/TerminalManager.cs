@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
+using LanguageCore.Compiler;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
@@ -177,58 +178,33 @@ public class TerminalManager : Singleton<TerminalManager>
         {
             EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
             Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
-            if (processor.CompilerCache == Entity.Null)
+            if (processor.SourceFile == default)
             {
                 ui_labelTerminal!.text = "No source";
             }
             else
             {
-                CompilerCache compilerCache = entityManager.GetComponentData<CompilerCache>(processor.CompilerCache);
-                float progress = (compilerCache.DownloadingFiles == 0) ? 0f : (float)compilerCache.DownloadedFiles / (float)compilerCache.DownloadingFiles;
-                if (compilerCache.DownloadingFiles != 0 && progress != 1f)
+                CompiledSource source = CompilerManager.Instance.CompiledSources[processor.SourceFile];
+                if (source.CompileSecuedued != default)
                 {
-                    const int progressBarWidth = 10;
-                    string progressBar = new('#', (int)(progress * progressBarWidth));
-                    ui_labelTerminal!.text = $"Uploading {progressBar}{new string('_', progressBarWidth - progressBar.Length)}";
-                }
-                else if (compilerCache.IsSuccess)
-                {
-                    ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
+                    ui_labelTerminal!.text = $"Compilation in {source.CompileSecuedued - Time.time:#.00} sec";
                 }
                 else
                 {
-                    DynamicBuffer<BufferedCompilationAnalystics> analytics = entityManager.GetBuffer<BufferedCompilationAnalystics>(processor.CompilerCache);
-                    ui_labelTerminal!.text = string.Empty;
-                    foreach (BufferedCompilationAnalystics item in analytics)
+                    float progress = (source.DownloadingFiles == 0) ? 0f : (float)source.DownloadedFiles / (float)source.DownloadingFiles;
+                    if (source.DownloadingFiles != 0 && progress != 1f)
                     {
-                        switch (item.Type)
-                        {
-                            case CompilationAnalysticsItemType.Error:
-                                {
-                                    ui_labelTerminal!.text += $"<color=”#FF0000”>{item.Message}</color>\n";
-                                    break;
-                                }
-                            case CompilationAnalysticsItemType.Warning:
-                                {
-                                    ui_labelTerminal!.text += $"<color=#FFFF00>{item.Message}</color>\n";
-                                    break;
-                                }
-                            case CompilationAnalysticsItemType.Info:
-                                {
-                                    ui_labelTerminal!.text += $"<color=#0088FF>{item.Message}</color>\n";
-                                    break;
-                                }
-                            case CompilationAnalysticsItemType.Hint:
-                                {
-                                    ui_labelTerminal!.text += $"<color=#888888>{item.Message}</color>\n";
-                                    break;
-                                }
-                            default:
-                                {
-                                    ui_labelTerminal!.text += $"{item.Message}\n";
-                                    break;
-                                }
-                        }
+                        const int progressBarWidth = 10;
+                        string progressBar = new('#', (int)(progress * progressBarWidth));
+                        ui_labelTerminal!.text = $"Uploading {progressBar}{new string('_', progressBarWidth - progressBar.Length)}";
+                    }
+                    else if (source.IsSuccess)
+                    {
+                        ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
+                    }
+                    else
+                    {
+                        ui_labelTerminal!.text = "Compile failed";
                     }
                 }
             }
