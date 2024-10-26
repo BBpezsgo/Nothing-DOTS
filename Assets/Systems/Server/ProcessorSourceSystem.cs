@@ -1,8 +1,10 @@
+using System.Linq;
+using LanguageCore.Runtime;
 using Unity.Entities;
 using Unity.NetCode;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-partial struct ProcessorSourceSystem : ISystem
+unsafe partial struct ProcessorSourceSystem : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)
     {
@@ -29,6 +31,63 @@ partial struct ProcessorSourceSystem : ISystem
             }
 
             commandBuffer.DestroyEntity(entity);
+        }
+
+        foreach ((RefRW<Processor> processor, Entity entity) in
+                    SystemAPI.Query<RefRW<Processor>>()
+                    .WithEntityAccess())
+        {
+            DynamicBuffer<BufferedInstruction> buffer = SystemAPI.GetBuffer<BufferedInstruction>(entity);
+
+            if (processor.ValueRO.SourceFile == default)
+            {
+                buffer.Clear();
+                continue;
+            }
+
+            if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out var source))
+            {
+                // Debug.Log($"Request source \"{processor.ValueRO.SourceFile}\" ...");
+                CompilerManager.Instance.CompiledSources.Add(processor.ValueRO.SourceFile, CompiledSource.Empty(processor.ValueRO.SourceFile));
+                CompilerManager.Instance.CompileSecuedued = true;
+                buffer.Clear();
+                continue;
+            }
+
+            if (!source.Code.HasValue)
+            {
+                buffer.Clear();
+                continue;
+            }
+
+            if (processor.ValueRO.SourceVersion != source.Version)
+            {
+                processor.ValueRW.StdOutBuffer.AppendShift("Reloading ...\n");
+
+                ProcessorState processorState_ = new(
+                    ProcessorSystemServer.BytecodeInterpreterSettings,
+                    default,
+                    default,
+                    default,
+                    default,
+                    default,
+                    default
+                );
+                processorState_.Setup();
+                processor.ValueRW.Registers = processorState_.Registers;
+                processor.ValueRW.SourceVersion = source.Version;
+
+                buffer.Clear();
+                BufferedInstruction[] code = source.Code.Value.Select(v => new BufferedInstruction(v)).ToArray();
+                buffer.CopyFrom(code);
+
+                continue;
+            }
+
+            if (!source.IsSuccess)
+            {
+                buffer.Clear();
+            }
         }
 
         commandBuffer.Playback(state.EntityManager);

@@ -13,18 +13,8 @@ using i32 = System.Int32;
 using f32 = System.Single;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-[UpdateAfter(typeof(CompilerSystemServer))]
 partial struct UnitProcessorSystem : ISystem
 {
-    ComponentLookup<Turret> _turretLookup;
-    ComponentLookup<LocalTransform> _transformLookup;
-
-    void ISystem.OnCreate(ref SystemState state)
-    {
-        _turretLookup = state.GetComponentLookup<Turret>();
-        _transformLookup = state.GetComponentLookup<LocalTransform>();
-    }
-
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     struct MappedMemory
     {
@@ -42,9 +32,6 @@ partial struct UnitProcessorSystem : ISystem
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
-        _turretLookup.Update(ref state);
-        _transformLookup.Update(ref state);
-
         foreach ((RefRW<Processor> processor, RefRW<Unit> unit, RefRW<LocalToWorld> transform, Entity entity) in
                     SystemAPI.Query<RefRW<Processor>, RefRW<Unit>, RefRW<LocalToWorld>>()
                     .WithEntityAccess())
@@ -62,7 +49,7 @@ partial struct UnitProcessorSystem : ISystem
             if (unit.ValueRO.Radar != Entity.Null &&
                 float.IsFinite(mapped->RadarDirection))
             {
-                RefRW<LocalTransform> radar = _transformLookup.GetRefRW(unit.ValueRO.Radar);
+                RefRW<LocalTransform> radar = SystemAPI.GetComponentRW<LocalTransform>(unit.ValueRO.Radar);
                 const float speed = 360f;
                 quaternion target = quaternion.EulerXYZ(
                     0f,
@@ -72,36 +59,30 @@ partial struct UnitProcessorSystem : ISystem
                 // radar.ValueRW.Rotation = quaternion.EulerXYZ(new float3(0f, mapped->RadarDirection, 0f));
             }
 
-            if (state.EntityManager.HasBuffer<Child>(entity))
+            if (unit.ValueRO.Turret != Entity.Null)
             {
-                foreach (Child child in state.EntityManager.GetBuffer<Child>(entity))
+                RefRW<Turret> turret = SystemAPI.GetComponentRW<Turret>(unit.ValueRO.Turret);
+                RefRO<LocalTransform> turretTransform = SystemAPI.GetComponentRO<LocalTransform>(unit.ValueRO.Turret);
+
+                if (mapped->InputShoot != 0)
                 {
-                    RefRW<Turret> turret = _turretLookup.GetRefRWOptional(child.Value);
-                    if (!turret.IsValid) continue;
-                    RefRO<LocalTransform> turretTransform = _transformLookup.GetRefROOptional(child.Value);
-                    if (!turretTransform.IsValid) continue;
-
-                    if (mapped->InputShoot != 0)
-                    {
-                        turret.ValueRW.ShootRequested = true;
-                        mapped->InputShoot = 0;
-                    }
-
-                    if (float.IsFinite(mapped->TurretTargetRotation))
-                    {
-                        turret.ValueRW.TargetRotation = mapped->TurretTargetRotation;
-                    }
-                    if (float.IsFinite(mapped->TurretTargetAngle))
-                    {
-                        turret.ValueRW.TargetAngle = mapped->TurretTargetAngle + math.PIHALF;
-                    }
-
-                    Utils.QuaternionToEuler(turretTransform.ValueRO.Rotation, out float3 euler);
-                    mapped->TurretCurrentRotation = euler.y;
-                    mapped->TurretCurrentAngle = euler.x - math.PIHALF;
-
-                    break;
+                    turret.ValueRW.ShootRequested = true;
+                    mapped->InputShoot = 0;
                 }
+
+                if (float.IsFinite(mapped->TurretTargetRotation))
+                {
+                    turret.ValueRW.TargetRotation = mapped->TurretTargetRotation;
+                }
+
+                if (float.IsFinite(mapped->TurretTargetAngle))
+                {
+                    turret.ValueRW.TargetAngle = mapped->TurretTargetAngle + math.PIHALF;
+                }
+
+                Utils.QuaternionToEuler(turretTransform.ValueRO.Rotation, out float3 euler);
+                mapped->TurretCurrentRotation = euler.y;
+                mapped->TurretCurrentAngle = euler.x - math.PIHALF;
             }
         }
     }

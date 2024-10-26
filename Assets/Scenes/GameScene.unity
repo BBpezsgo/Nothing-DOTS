@@ -961,7 +961,7 @@ MonoBehaviour:
       y: 3
     Script: test2.bbc
   - Spawn:
-      x: 50
+      x: 30
       y: 0
     Script: 
 --- !u!1 &1759163858

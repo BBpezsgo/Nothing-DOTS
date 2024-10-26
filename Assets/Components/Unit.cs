@@ -9,4 +9,5 @@ public struct Unit : IComponentData
     public float Speed;
     public float2 Input;
     public Entity Radar;
+    public Entity Turret;
 }

@@ -21,6 +21,7 @@ partial struct CompilerSystemClient : ISystem
             {
                 source = CompiledSource.FromRpc(command.ValueRO);
                 CompilerManager.Instance.CompiledSources.Add(command.ValueRO.FileName, source);
+                CompilerManager.Instance.CompileSecuedued = true;
             }
 
             source.Version = command.ValueRO.Version;
@@ -30,6 +31,7 @@ partial struct CompilerSystemClient : ISystem
             source.AnalysisCollection.Clear();
 
             CompilerManager.Instance.CompiledSources[source.SourceFile] = source;
+            CompilerManager.Instance.CompileSecuedued = true;
 
             if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
             entityCommandBuffer.DestroyEntity(entity);

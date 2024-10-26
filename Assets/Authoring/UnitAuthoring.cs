@@ -5,6 +5,7 @@ using UnityEngine;
 public class UnitAuthoring : MonoBehaviour
 {
     [SerializeField] GameObject? Radar = default;
+    [SerializeField] GameObject? Turret = default;
 
     class Baker : Baker<UnitAuthoring>
     {
@@ -14,6 +15,7 @@ public class UnitAuthoring : MonoBehaviour
             AddComponent(entity, new Unit()
             {
                 Radar = authoring.Radar == null ? Entity.Null : GetEntity(authoring.Radar, TransformUsageFlags.Dynamic),
+                Turret = authoring.Turret == null ? Entity.Null : GetEntity(authoring.Turret, TransformUsageFlags.Dynamic),
             });
             AddComponent<SelectableUnit>(entity);
         }

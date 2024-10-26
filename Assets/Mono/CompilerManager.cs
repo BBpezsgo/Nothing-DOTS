@@ -11,10 +11,12 @@ using LanguageCore.Parser;
 using LanguageCore.Runtime;
 using LanguageCore.Tokenizing;
 using Maths;
-using NaughtyAttributes;
+using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 using UnityEngine;
+using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
 public struct CompiledSource
 {
@@ -25,7 +27,7 @@ public struct CompiledSource
     public int DownloadingFiles;
     public int DownloadedFiles;
     public bool IsSuccess;
-    public ImmutableArray<Instruction>? Code;
+    public NativeArray<Instruction>? Code;
     public CompiledDebugInformation DebugInformation;
     public AnalysisCollection AnalysisCollection;
 
@@ -37,7 +39,7 @@ public struct CompiledSource
         int downloadingFiles,
         int downloadedFiles,
         bool isSuccess,
-        ImmutableArray<Instruction>? code,
+        NativeArray<Instruction>? code,
         CompiledDebugInformation debugInformation,
         AnalysisCollection analysisCollection)
     {
@@ -83,13 +85,83 @@ public struct CompiledSource
 public class CompilerManager : Singleton<CompilerManager>
 {
     [ReadOnly, NotNull, NonReorderable] public Dictionary<FileId, CompiledSource>? CompiledSources = default;
+    [ReadOnly] public bool CompileSecuedued;
 
     void Start()
     {
         CompiledSources = new Dictionary<FileId, CompiledSource>();
     }
 
-    public void CompileSource(ref CompiledSource source, EntityCommandBuffer entityCommandBuffer, ref SystemState systemState)
+    public static readonly IExternalFunction[] ExternalFunctions = new IExternalFunction[]
+    {
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 10, "atan2", ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 11, "sin", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 12, "cos", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 13, "tan", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 14, "asin", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 15, "acos", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 16, "atan", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 17, "sqrt", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 2, ExternalFunctionNames.StdOut, ExternalFunctionGenerator.SizeOf<char>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 18, "send", ExternalFunctionGenerator.SizeOf<int, int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 19, "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 20, "radar", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 21, "debug", ExternalFunctionGenerator.SizeOf<float2, int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 22, "ldebug", ExternalFunctionGenerator.SizeOf<float2, int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 23, "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 24, "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 25, "time", 0, ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 26, "print_float", ExternalFunctionGenerator.SizeOf<float>(), 0),
+    };
+
+    void FixedUpdate()
+    {
+        EntityCommandBuffer entityCommandBuffer = default;
+
+        KeyValuePair<FileId, CompiledSource> compiled = default;
+        foreach ((FileId file, CompiledSource source) in CompiledSources)
+        {
+            if (source.CompileSecuedued == default ||
+                source.CompileSecuedued > Time.time) continue;
+
+            CompiledSource _source = source;
+            if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
+            CompileSource(ref _source, entityCommandBuffer);
+            compiled = new KeyValuePair<FileId, CompiledSource>(file, _source);
+            break;
+        }
+
+        if (compiled.Key != default)
+        { CompiledSources[compiled.Key] = compiled.Value; }
+        else
+        { CompileSecuedued = false; }
+
+        if (entityCommandBuffer.IsCreated)
+        {
+            entityCommandBuffer.Playback(ConnectionManager.ServerOrDefaultWorld.EntityManager);
+            entityCommandBuffer.Dispose();
+        }
+    }
+
+    public void CompileSource(ref CompiledSource source, EntityCommandBuffer entityCommandBuffer)
     {
         Uri sourceUri = source.SourceFile.ToUri();
 
@@ -106,7 +178,7 @@ public class CompilerManager : Singleton<CompilerManager>
         {
             CompilerResult compiled = Compiler.CompileFile(
                 sourceUri,
-                ProcessorSystemServer.ExternalFunctions,
+                ExternalFunctions,
                 new CompilerSettings()
                 {
                     BasePath = null,
@@ -168,7 +240,8 @@ public class CompilerManager : Singleton<CompilerManager>
             source.Version = DateTime.UtcNow.Ticks; // source.SourceFile.Version;
             source.IsSuccess = true;
             source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
-            source.Code = generated.Code;
+            source.Code?.Dispose();
+            source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
             // Debug.Log($"Source {source.SourceFile} compiled");
             // source.Version = File.GetLastWriteTimeUtc(source.SourceFile.ToString()).Ticks;
             // source.HotReloadAt = Time.time + 5f;
@@ -195,7 +268,7 @@ public class CompilerManager : Singleton<CompilerManager>
             });
             entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
-                TargetConnection = source.SourceFile.Source.GetEntity(ref systemState),
+                TargetConnection = source.SourceFile.Source.GetEntity(),
             });
             // Debug.Log($"Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
@@ -215,7 +288,7 @@ public class CompilerManager : Singleton<CompilerManager>
             });
             entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
-                TargetConnection = source.SourceFile.Source.GetEntity(ref systemState),
+                TargetConnection = source.SourceFile.Source.GetEntity(),
             });
             Debug.LogWarning(item);
         }
@@ -235,7 +308,7 @@ public class CompilerManager : Singleton<CompilerManager>
             });
             entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
-                TargetConnection = source.SourceFile.Source.GetEntity(ref systemState),
+                TargetConnection = source.SourceFile.Source.GetEntity(),
             });
             Debug.Log(item);
         }
@@ -255,7 +328,7 @@ public class CompilerManager : Singleton<CompilerManager>
             });
             entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
-                TargetConnection = source.SourceFile.Source.GetEntity(ref systemState),
+                TargetConnection = source.SourceFile.Source.GetEntity(),
             });
         }
 
@@ -274,7 +347,7 @@ public class CompilerManager : Singleton<CompilerManager>
             });
             entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
-                TargetConnection = source.SourceFile.Source.GetEntity(ref systemState),
+                TargetConnection = source.SourceFile.Source.GetEntity(),
             });
         }
     }
