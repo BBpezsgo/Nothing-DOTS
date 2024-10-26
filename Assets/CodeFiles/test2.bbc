@@ -52,11 +52,11 @@ void RecordUnit(List<Unit>* units, Unit unit)
     u8 isNew = true;
     for (int i = 0; isNew && i < units.Length(); i++)
     {
-        f32 distanceSqr = DistanceSqr(units[i].Position, unit.Position);
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit.Position);
         if (distanceSqr < 1000f)
         {
             // PrintLine("Update unit ...");
-            *units[i] = unit;
+            units.Raw()[i] = unit;
             isNew = false;
         }
     }
@@ -65,7 +65,7 @@ void RecordUnit(List<Unit>* units, Unit unit)
         if (units.Length() >= 4)
         {
             // PrintLine("Replace new unit ...");
-            *units[0] = unit;
+            units.Raw()[0] = unit;
         }
         else
         {
@@ -109,7 +109,7 @@ while (1)
             while (i)
             {
                 i--;
-                byte2 allyPosition_ = (&allies)[i].Position;
+                byte2 allyPosition_ = (&allies).Raw()[i].Position;
                 Vector2 allyPosition;
                 ToFloat2(&allyPosition_, &allyPosition);
                 f32 d = DistanceSqr(radarDir, allyPosition);
@@ -141,14 +141,14 @@ while (1)
 
     for (int i = (&allies).Length() - 1; i >= 0; i--)
     {
-        if (time() >= (&allies)[i].Expires)
+        if (time() >= (&allies).Raw()[i].Expires)
         {
             (&allies).Remove(i);
         }
         else
         {
             Vector2 p1;
-            byte2 p2 = (&allies)[i].Position;
+            byte2 p2 = (&allies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
             ldebug(p1, 0x00FF00);
         }
@@ -158,14 +158,14 @@ while (1)
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
     {
-        if (time() >= (&enemies)[i].Expires)
+        if (time() >= (&enemies).Raw()[i].Expires)
         {
             (&enemies).Remove(i);
         }
         else
         {
             Vector2 p1;
-            byte2 p2 = (&enemies)[i].Position;
+            byte2 p2 = (&enemies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
             ldebug(p1, 0xFF0000);
             currentTarget = p1;
