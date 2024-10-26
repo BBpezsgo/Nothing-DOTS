@@ -2,7 +2,6 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct TurretRotationSystem : ISystem
@@ -13,12 +12,12 @@ public partial struct TurretRotationSystem : ISystem
         foreach ((RefRW<LocalTransform> transform, RefRO<Turret> turret) in
                     SystemAPI.Query<RefRW<LocalTransform>, RefRO<Turret>>())
         {
-            const float speed = 45f;
+            const float speed = 90f;
             quaternion target = quaternion.EulerXYZ(
                 turret.ValueRO.TargetAngle,
                 turret.ValueRO.TargetRotation,
                 0);
-            Utils.RotateTowards(ref transform.ValueRW.Rotation, target, speed * Time.deltaTime);
+            Utils.RotateTowards(ref transform.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
         }
     }
 }

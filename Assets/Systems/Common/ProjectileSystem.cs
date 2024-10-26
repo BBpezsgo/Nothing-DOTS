@@ -43,8 +43,7 @@ public partial struct ProjectileJob : IJobEntity
 
         projectile.Velocity += gravity * DeltaTime;
 
-        float speed = math.lengthsq(projectile.Velocity);
-        if (speed < 0.1f)
+        if (math.lengthsq(projectile.Velocity) < 0.1f)
         {
             EntityCommandBuffer.DestroyEntity(entity);
         }

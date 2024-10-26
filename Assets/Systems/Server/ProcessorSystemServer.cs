@@ -10,7 +10,7 @@ using Unity.Transforms;
 using UnityEngine;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-[UpdateAfter(typeof(CompilerSystemServer))]
+[UpdateAfter(typeof(UnitProcessorSystem))]
 partial struct ProcessorSystemServer : ISystem
 {
     public static readonly BytecodeInterpreterSettings BytecodeInterpreterSettings = new()
@@ -69,32 +69,36 @@ partial struct ProcessorSystemServer : ISystem
             r.AsBytes().CopyTo(returnValue);
         }, 17, "sqrt", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        {
-            return;
-        }, 2, ExternalFunctionNames.StdOut, ExternalFunctionGenerator.SizeOf<char>(), 0),
+        { }, 2, ExternalFunctionNames.StdOut, ExternalFunctionGenerator.SizeOf<char>(), 0),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        {
-            return;
-        }, 18, "send", ExternalFunctionGenerator.SizeOf<int, int>(), 0),
+        { }, 18, "send", ExternalFunctionGenerator.SizeOf<int, int>(), 0),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        {
-            return;
-        }, 19, "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+        { }, 19, "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
         new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        {
-            return;
-        }, 20, "radar", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>()),
+        { }, 20, "radar", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 21, "debug", ExternalFunctionGenerator.SizeOf<float2, int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 22, "ldebug", ExternalFunctionGenerator.SizeOf<float2, int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 23, "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 24, "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 25, "time", 0, ExternalFunctionGenerator.SizeOf<float>()),
+        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
+        { }, 26, "print_float", ExternalFunctionGenerator.SizeOf<float>(), 0),
     };
 
     ComponentLookup<Processor> processorLookup;
 
-    unsafe ref struct TransmissionScope
+    unsafe ref struct FunctionScope
     {
-        public RefRW<Processor> Processor;
-        public void* Memory;
-        public SystemState State;
-        public Entity SourceEntity;
-        public float3 SourcePosition;
+        public required RefRW<Processor> Processor;
+        public required void* Memory;
+        public required SystemState State;
+        public required Entity SourceEntity;
+        public required float3 SourcePosition;
     }
 
     void ISystem.OnCreate(ref SystemState state)
@@ -114,7 +118,7 @@ partial struct ProcessorSystemServer : ISystem
         {
             char output = arguments.To<char>();
             if (output == '\r') return;
-            ((FixedString128Bytes*)_scope)->AppendShift(output);
+            ((FunctionScope*)_scope)->Processor.ValueRW.StdOutBuffer.AppendShift(output);
         }
 
         static void _send(nint _scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
@@ -123,7 +127,7 @@ partial struct ProcessorSystemServer : ISystem
             if (bufferPtr <= 0 || length <= 0) return;
             if (length >= 30) throw new Exception($"Can't");
 
-            TransmissionScope* scope = (TransmissionScope*)_scope;
+            FunctionScope* scope = (FunctionScope*)_scope;
 
             Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
             ReadOnlySpan<byte> buffer = memory.Slice(bufferPtr, length);
@@ -150,7 +154,7 @@ partial struct ProcessorSystemServer : ISystem
             (int bufferPtr, int length, int directionPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
             if (bufferPtr <= 0 || length <= 0) return;
 
-            TransmissionScope* scope = (TransmissionScope*)_scope;
+            FunctionScope* scope = (FunctionScope*)_scope;
 
             Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
             Span<byte> buffer = memory.Slice(bufferPtr, length);
@@ -166,9 +170,12 @@ partial struct ProcessorSystemServer : ISystem
 
             if (directionPtr > 0)
             {
-                float2 selfXZ = new(scope->SourcePosition.x, scope->SourcePosition.z);
-                float2 sourceXZ = new(received[0].Source.x, received[0].Source.z);
-                memory.Set(directionPtr, sourceXZ - selfXZ);
+                LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
+                float3 transformed = transform.InverseTransformPoint(received[0].Source);
+                // float2 selfXZ = new(scope->SourcePosition.x, scope->SourcePosition.z);
+                // float2 sourceXZ = new(received[0].Source.x, received[0].Source.z);
+                // memory.Set(directionPtr, sourceXZ - selfXZ);
+                memory.Set(directionPtr, new float2(transformed.x, transformed.z));
             }
 
             if (i >= received[0].Data.Length)
@@ -183,7 +190,7 @@ partial struct ProcessorSystemServer : ISystem
         {
             returnValue.Clear();
 
-            TransmissionScope* scope = (TransmissionScope*)_scope;
+            FunctionScope* scope = (FunctionScope*)_scope;
 
             CollisionWorld collisionWorld;
             using (EntityQuery collisionWorldQ = scope->State.EntityManager.CreateEntityQuery(typeof(PhysicsWorldSingleton)))
@@ -193,8 +200,8 @@ partial struct ProcessorSystemServer : ISystem
 
             RaycastInput input = new()
             {
-                Start = scope->SourcePosition + (radar.Forward * 10f),
-                End = scope->SourcePosition + (radar.Forward * 50f),
+                Start = scope->SourcePosition + (math.normalize(radar.Forward) * 1f),
+                End = scope->SourcePosition + (math.normalize(radar.Forward) * 80f),
                 Filter = new CollisionFilter()
                 {
                     BelongsTo = ~0u,
@@ -206,7 +213,89 @@ partial struct ProcessorSystemServer : ISystem
             if (!collisionWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
             { return; }
 
-            returnValue.Set(math.distance(hit.Position, input.Start));
+            returnValue.Set(math.distance(hit.Position, input.Start) + 1f);
+        }
+
+        static void _debug(nint _scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+        {
+            returnValue.Clear();
+
+            (float2 position, int color) = ExternalFunctionGenerator.TakeParameters<float2, int>(arguments);
+
+            FunctionScope* scope = (FunctionScope*)_scope;
+
+            Debug.DrawLine(
+                scope->SourcePosition,
+                new Vector3(position.x, 0.5f, position.y),
+                new Color(
+                    (color & 0xFF0000) >> 16,
+                    (color & 0x00FF00) >> 8,
+                    (color & 0x0000FF) >> 0
+                ),
+                1f);
+        }
+
+        static void _ldebug(nint _scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+        {
+            returnValue.Clear();
+
+            (float2 position, int color) = ExternalFunctionGenerator.TakeParameters<float2, int>(arguments);
+
+            FunctionScope* scope = (FunctionScope*)_scope;
+
+            LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
+            float3 transformed = transform.TransformPoint(new Vector3(position.x, 0f, position.y));
+
+            Debug.DrawLine(
+                scope->SourcePosition,
+                new Vector3(transformed.x, 0.5f, transformed.z),
+                new Color(
+                    (color & 0xFF0000) >> 16,
+                    (color & 0x00FF00) >> 8,
+                    (color & 0x0000FF) >> 0
+                ),
+                1f);
+        }
+
+        static void _toglobal(nint _scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+        {
+            returnValue.Clear();
+
+            int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+            if (ptr <= 0 || ptr <= 0) return;
+
+            FunctionScope* scope = (FunctionScope*)_scope;
+            Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
+            float2 point = memory.Get<float2>(ptr);
+            LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
+            float3 transformed = transform.TransformPoint(new float3(point.x, 0f, point.y));
+            memory.Set(ptr, new float2(transformed.x, transformed.z));
+        }
+
+        static void _tolocal(nint _scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+        {
+            returnValue.Clear();
+
+            int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+            if (ptr <= 0 || ptr <= 0) return;
+
+            FunctionScope* scope = (FunctionScope*)_scope;
+            Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
+            float2 point = memory.Get<float2>(ptr);
+            LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
+            float3 transformed = transform.InverseTransformPoint(new float3(point.x, 0f, point.y));
+            memory.Set(ptr, new float2(transformed.x, transformed.z));
+        }
+
+        static void _time(nint _scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+        {
+            FunctionScope* scope = (FunctionScope*)_scope;
+            returnValue.Set((float)scope->State.WorldUnmanaged.Time.ElapsedTime);
+        }
+
+        static void _print_float(nint _scope, ReadOnlySpan<byte> arguments, Span<byte> returnValue)
+        {
+            Debug.Log(arguments.To<float>());
         }
 
         Span<ExternalFunctionScopedSync> scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[]
@@ -215,6 +304,12 @@ partial struct ProcessorSystemServer : ISystem
             new ExternalFunctionScopedSync(&_send, 18, ExternalFunctionGenerator.SizeOf<int, int>(), 0, default),
             new ExternalFunctionScopedSync(&_receive, 19, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default),
             new ExternalFunctionScopedSync(&_radar, 20, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>(), default),
+            new ExternalFunctionScopedSync(&_debug, 21, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default),
+            new ExternalFunctionScopedSync(&_ldebug, 22, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default),
+            new ExternalFunctionScopedSync(&_toglobal, 23, ExternalFunctionGenerator.SizeOf<int>(), 0, default),
+            new ExternalFunctionScopedSync(&_tolocal, 24, ExternalFunctionGenerator.SizeOf<int>(), 0, default),
+            new ExternalFunctionScopedSync(&_time, 25, 0, ExternalFunctionGenerator.SizeOf<float>(), default),
+            new ExternalFunctionScopedSync(&_print_float, 26, ExternalFunctionGenerator.SizeOf<float>(), 0, default),
         };
 
         foreach ((RefRW<Processor> processor, Entity entity) in
@@ -253,7 +348,7 @@ partial struct ProcessorSystemServer : ISystem
 
             if (!source.IsSuccess) continue;
 
-            TransmissionScope transmissionScope = new()
+            FunctionScope transmissionScope = new()
             {
                 Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
                 State = state,
@@ -261,10 +356,15 @@ partial struct ProcessorSystemServer : ISystem
                 SourceEntity = entity,
                 SourcePosition = SystemAPI.GetComponent<LocalToWorld>(entity).Position,
             };
-            scopedExternalFunctions[0].Scope = (nint)Unsafe.AsPointer(ref processor.ValueRW.StdOutBuffer);
+            scopedExternalFunctions[0].Scope = (nint)(&transmissionScope);
             scopedExternalFunctions[1].Scope = (nint)(&transmissionScope);
             scopedExternalFunctions[2].Scope = (nint)(&transmissionScope);
             scopedExternalFunctions[3].Scope = (nint)(&transmissionScope);
+            scopedExternalFunctions[4].Scope = (nint)(&transmissionScope);
+            scopedExternalFunctions[5].Scope = (nint)(&transmissionScope);
+            scopedExternalFunctions[6].Scope = (nint)(&transmissionScope);
+            scopedExternalFunctions[7].Scope = (nint)(&transmissionScope);
+            scopedExternalFunctions[8].Scope = (nint)(&transmissionScope);
 
             ProcessorState processorState = new(
                 BytecodeInterpreterSettings,

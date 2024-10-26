@@ -59,7 +59,6 @@ public class SelectionManager : Singleton<SelectionManager>
                 }
             }
             _firstHit = Entity.Null;
-
         }
     }
 

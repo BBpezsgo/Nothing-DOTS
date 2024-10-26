@@ -11,7 +11,7 @@ using "api.bbc";
 const f32 PI = 3.14159265359f;
 const f32 TAU = PI * 2f;
 const f32 G = 9.82f;
-const f32 PROJECTILE_V = 20f;
+const f32 PROJECTILE_V = 5f;
 const f32 H = 0.1f;
 const u8 true = (u8)1;
 const u8 false = (u8)0;
@@ -40,6 +40,8 @@ void ReceivePing(List<Vector2>* allies)
     i32 receivedLength = receive(&v, 4, &receivedDirection);
     if (receivedLength != 4) { return; }
 
+    ToGlobal(&receivedDirection);
+
     if ((v[0] == (u8)1) &&
         (v[1] == (u8)2) &&
         (v[2] == (u8)3) &&
@@ -49,9 +51,10 @@ void ReceivePing(List<Vector2>* allies)
         for (i32 i = 0; i < allies.Length() && isNew; i++)
         {
             f32 allyDisplacement = Distance(allies[i], receivedDirection);
-            if (allyDisplacement < 1f)
+            if (allyDisplacement < 5f)
             {
                 isNew = false;
+                debug(receivedDirection, 0x00FF00);
                 allies[i] = receivedDirection;
                 // TODO: this aint working
                 // break;
@@ -59,6 +62,8 @@ void ReceivePing(List<Vector2>* allies)
         }
         if (isNew)
         {
+            if (allies.Length() > 4)
+            { allies.Remove(0); }
             allies.Add(receivedDirection);
 
             Print("New ally at ");
@@ -79,9 +84,58 @@ void ReceivePing(List<Vector2>* allies)
     // PrintLine();
 }
 
+void Movement(f32 targetX, f32 targetY)
+{
+    Vector2 forward = Mapped.Forward;
+    Vector2 position = Mapped.Position;
+
+    Vector2 dirMove;
+    dirMove.x = targetX - position.x;
+    dirMove.y = targetY - position.y;
+    Normalise(&dirMove);
+
+    f32 d = Distance(position, new Vector2(targetX, targetY));
+
+    f32 t1 = Cross(forward, dirMove);
+    f32 t2 = Dot(forward, dirMove);
+    f32 t4 = Atan2(t1, t2);
+
+    if (d < 1f)
+    {
+        Mapped.InputSteer = (i8)0;
+        Mapped.InputForward = (i8)0;
+    }
+    elseif (t4 > 0.1f)
+    {
+        Mapped.InputSteer = (i8)-128;
+    }
+    elseif (t4 < -0.1f)
+    {
+        Mapped.InputSteer = (i8)127;
+    }
+    elseif (t4 > 0.05f)
+    {
+        Mapped.InputSteer = (i8)-64;
+    }
+    elseif (t4 < -0.05f)
+    {
+        Mapped.InputSteer = (i8)64;
+    }
+    else
+    {
+        Mapped.InputSteer = (i8)0;
+        d += 10f;
+        if (d > 127f) { d = 127f; }
+        Mapped.InputForward = (i8)(i32)d;
+    }
+}
+
 f32 prevRadarDistance = 0f;
+Vector2 localTargetedPosition = new Vector2;
 Vector2 currentTarget = new Vector2;
 List<Vector2> allies = new List<Vector2>(2);
+
+Mapped.TurretTargetAngle = 0f;
 
 while (1)
 {
@@ -94,9 +148,11 @@ while (1)
         if (radarDistance > 0f && Abs(prevRadarDistance - radarDistance) > 1f)
         {
             prevRadarDistance = radarDistance;
+            f32 radarAngle = Mapped.RadarDirection;
             Vector2 radarDir;
-            radarDir.x = Sin(Mapped.RadarDirection);
-            radarDir.y = Cos(Mapped.RadarDirection);
+            radarDir.x = Sin(radarAngle);
+            radarDir.y = Cos(radarAngle);
+
             i32 isEnemy = (&allies).Length();
             i32 i = (&allies).Length();
             while (i)
@@ -109,10 +165,15 @@ while (1)
                     isEnemy--;
                 }
             }
+            
+            radarDir.x *= radarDistance;
+            radarDir.y *= radarDistance;
+            ldebug(radarDir, 0xFFFFFF);
+
             if (isEnemy)
             {
-                radarDir.x *= radarDistance;
-                radarDir.y *= radarDistance;
+                ToGlobal(&radarDir);
+
                 Print("Enemy at ");
                 Print(radarDir.x);
                 Print(' ');
@@ -126,25 +187,29 @@ while (1)
         {
             prevRadarDistance = 0f;
         }
-        Mapped.RadarDirection = (Mapped.RadarDirection + 0.05f) % TAU;
+        Mapped.RadarDirection = (Mapped.RadarDirection + 0.2f) % TAU;
     }
 
-    if (currentTarget.x != 0f &&
+    if (currentTarget.x != 0f ||
         currentTarget.y != 0f)
     {
+        debug(currentTarget, 0xFF0000);
+        Vector2 localTargetPosition = currentTarget;
+        ToLocal(&localTargetPosition);
+        if (localTargetedPosition.x != localTargetPosition.x ||
+            localTargetedPosition.y != localTargetPosition.y)
         {
-            f32 targetAngle;
-            {
-                Vector2 targetDirection = Normalised(new Vector2(currentTarget.x, currentTarget.y - 0.2));
-                targetAngle = Atan2(targetDirection.x, targetDirection.y);
-                if (targetAngle < 0f) { targetAngle += TAU; }
-            }
+            localTargetedPosition = localTargetPosition;
 
-            Mapped.TurretTargetRotation = targetAngle;
-        }
+            {
+                Vector2 targetDirection = Normalised(new Vector2(localTargetPosition.x, localTargetPosition.y - 0.2));
+                f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
+                if (targetAngle < 0f) { targetAngle += TAU; }
+                if (targetAngle >= TAU) { targetAngle -= TAU; }
+                Mapped.TurretTargetRotation = targetAngle;
+            }
         
-        {
-            f32 targetDistance = Magnitude(currentTarget);
+            f32 targetDistance = Magnitude(localTargetPosition);
             if (1)
             {
                 Mapped.TurretTargetAngle = Atan(
@@ -152,12 +217,12 @@ while (1)
                         (PROJECTILE_V * PROJECTILE_V) +
                         _Sqrt(
                             (PROJECTILE_V * PROJECTILE_V * PROJECTILE_V * PROJECTILE_V) -
-                            (G * (G * targetDistance * targetDistance + (H * -1f) * (2f * PROJECTILE_V * PROJECTILE_V)))
+                            (G * ((G * targetDistance * targetDistance) + (H * -2f * (PROJECTILE_V * PROJECTILE_V))))
                         )
                     ) / (
                         G * targetDistance
                     )
-                );
+                ) - (PI / 2f);
             }
             else
             {
@@ -166,12 +231,12 @@ while (1)
                         (PROJECTILE_V * PROJECTILE_V) -
                         _Sqrt(
                             (PROJECTILE_V * PROJECTILE_V * PROJECTILE_V * PROJECTILE_V) -
-                            (G * (G * targetDistance * targetDistance + (H * -1f) * (2f * PROJECTILE_V * PROJECTILE_V)))
+                            (G * ((G * targetDistance * targetDistance) + (H * -2f * (PROJECTILE_V * PROJECTILE_V))))
                         )
                     ) / (
                         G * targetDistance
                     )
-                );
+                ) - (PI / 2f);
             }
         }
 
@@ -180,4 +245,6 @@ while (1)
             Mapped.InputShoot = (u8)1;
         }
     }
+
+    // Movement(10f, 10f);
 }

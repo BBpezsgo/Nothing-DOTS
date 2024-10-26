@@ -101,9 +101,9 @@ public class CompilerManager : Singleton<CompilerManager>
         source.DownloadedFiles = 0;
         source.IsSuccess = false;
 
+        CompiledSource _source = source;
         try
         {
-            CompiledSource _source = source;
             CompilerResult compiled = Compiler.CompileFile(
                 sourceUri,
                 ProcessorSystemServer.ExternalFunctions,
@@ -175,6 +175,7 @@ public class CompilerManager : Singleton<CompilerManager>
         }
         catch (LanguageException exception)
         {
+            source = _source;
             if (!sourcesFromOtherConnectionsNeeded)
             {
                 Debug.LogWarning(exception);
@@ -236,7 +237,7 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(ref systemState),
             });
-            Debug.LogWarning(item);
+            Debug.Log(item);
         }
 
         foreach (Information item in analysisCollection.Informations)
@@ -256,7 +257,6 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(ref systemState),
             });
-            // Debug.LogWarning(item);
         }
 
         foreach (Hint item in analysisCollection.Hints)
@@ -276,7 +276,6 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(ref systemState),
             });
-            // Debug.LogWarning(item);
         }
     }
 }

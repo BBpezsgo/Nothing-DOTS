@@ -17,6 +17,9 @@ partial struct CompilerSystemServer : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)
     {
+        if (CompilerManager.Instance == null) return;
+        if (CompilerManager.Instance.CompiledSources == null) return;
+
         using EntityCommandBuffer entityCommandBuffer = new(Allocator.Temp);
 
         foreach ((FileId file, CompiledSource source) in CompilerManager.Instance.CompiledSources.ToArray())

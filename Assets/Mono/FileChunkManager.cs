@@ -49,6 +49,11 @@ public struct NetcodeEndPoint : IEquatable<NetcodeEndPoint>
         if (ConnectionEntity != Entity.Null) return ConnectionEntity;
         EntityQuery entityQ = state.GetEntityQuery(typeof(NetworkId));
         ComponentLookup<NetworkId> componentQ = state.GetComponentLookup<NetworkId>(true);
+        return GetEntity(entityQ, componentQ);
+    }
+    public readonly Entity GetEntity(in EntityQuery entityQ, in ComponentLookup<NetworkId> componentQ)
+    {
+        if (ConnectionEntity != Entity.Null) return ConnectionEntity;
         using NativeArray<Entity> entities = entityQ.ToEntityArray(Allocator.Temp);
         for (int i = 0; i < entities.Length; i++)
         {

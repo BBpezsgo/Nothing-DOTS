@@ -13,7 +13,7 @@ using i32 = System.Int32;
 using f32 = System.Single;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-[UpdateAfter(typeof(ProcessorSystemServer))]
+[UpdateAfter(typeof(CompilerSystemServer))]
 partial struct UnitProcessorSystem : ISystem
 {
     ComponentLookup<Turret> _turretLookup;
@@ -59,7 +59,8 @@ partial struct UnitProcessorSystem : ISystem
             mapped->Position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
             mapped->Forward = new(transform.ValueRO.Forward.x, transform.ValueRO.Forward.z);
 
-            if (unit.ValueRO.Radar != Entity.Null)
+            if (unit.ValueRO.Radar != Entity.Null &&
+                float.IsFinite(mapped->RadarDirection))
             {
                 RefRW<LocalTransform> radar = _transformLookup.GetRefRW(unit.ValueRO.Radar);
                 const float speed = 360f;
@@ -86,12 +87,18 @@ partial struct UnitProcessorSystem : ISystem
                         mapped->InputShoot = 0;
                     }
 
-                    turret.ValueRW.TargetRotation = mapped->TurretTargetRotation;
-                    turret.ValueRW.TargetAngle = mapped->TurretTargetAngle;
+                    if (float.IsFinite(mapped->TurretTargetRotation))
+                    {
+                        turret.ValueRW.TargetRotation = mapped->TurretTargetRotation;
+                    }
+                    if (float.IsFinite(mapped->TurretTargetAngle))
+                    {
+                        turret.ValueRW.TargetAngle = mapped->TurretTargetAngle + math.PIHALF;
+                    }
 
                     Utils.QuaternionToEuler(turretTransform.ValueRO.Rotation, out float3 euler);
                     mapped->TurretCurrentRotation = euler.y;
-                    mapped->TurretCurrentAngle = euler.x;
+                    mapped->TurretCurrentAngle = euler.x - math.PIHALF;
 
                     break;
                 }
