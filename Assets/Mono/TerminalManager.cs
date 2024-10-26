@@ -185,27 +185,24 @@ public class TerminalManager : Singleton<TerminalManager>
             else
             {
                 CompiledSource source = CompilerManager.Instance.CompiledSources[processor.SourceFile];
-                if (source.CompileSecuedued != default)
+                float progress = (source.DownloadingFiles == 0) ? 0f : (float)source.DownloadedFiles / (float)source.DownloadingFiles;
+                if (source.DownloadingFiles != 0 && progress != 1f)
+                {
+                    const int progressBarWidth = 10;
+                    string progressBar = new('#', (int)(progress * progressBarWidth));
+                    ui_labelTerminal!.text = $"Uploading {progressBar}{new string('_', progressBarWidth - progressBar.Length)}";
+                }
+                else if (source.CompileSecuedued != default)
                 {
                     ui_labelTerminal!.text = $"Compilation in {source.CompileSecuedued - Time.time:#.00} sec";
                 }
+                else if (source.IsSuccess)
+                {
+                    ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
+                }
                 else
                 {
-                    float progress = (source.DownloadingFiles == 0) ? 0f : (float)source.DownloadedFiles / (float)source.DownloadingFiles;
-                    if (source.DownloadingFiles != 0 && progress != 1f)
-                    {
-                        const int progressBarWidth = 10;
-                        string progressBar = new('#', (int)(progress * progressBarWidth));
-                        ui_labelTerminal!.text = $"Uploading {progressBar}{new string('_', progressBarWidth - progressBar.Length)}";
-                    }
-                    else if (source.IsSuccess)
-                    {
-                        ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
-                    }
-                    else
-                    {
-                        ui_labelTerminal!.text = "Compile failed";
-                    }
+                    ui_labelTerminal!.text = "Compile failed";
                 }
             }
         }

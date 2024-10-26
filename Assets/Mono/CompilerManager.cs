@@ -222,10 +222,10 @@ public class CompilerManager : Singleton<CompilerManager>
 
                     FileChunkManager.TryGetFile(file, (data) =>
                     {
-                        // Debug.Log($"Source \"{path}\" downloaded ...\n{Encoding.UTF8.GetString(data)}");
+                        Debug.Log($"Source \"{file}\" downloaded ...");
                     }, entityCommandBuffer);
                     _source.CompileSecuedued = Time.time + 5f;
-                    // Debug.Log($"Source needs file \"{path}\" ...");
+                    Debug.Log($"Source needs file \"{file}\" ...");
 
                     return false;
                 })
@@ -237,23 +237,18 @@ public class CompilerManager : Singleton<CompilerManager>
             source = _source;
 
             source.CompileSecuedued = default;
-            source.Version = DateTime.UtcNow.Ticks; // source.SourceFile.Version;
+            source.Version = DateTime.UtcNow.Ticks;
             source.IsSuccess = true;
             source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
             source.Code?.Dispose();
             source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
-            // Debug.Log($"Source {source.SourceFile} compiled");
-            // source.Version = File.GetLastWriteTimeUtc(source.SourceFile.ToString()).Ticks;
-            // source.HotReloadAt = Time.time + 5f;
+            Debug.Log($"Source {source.SourceFile} compiled");
         }
         catch (LanguageException exception)
         {
             source = _source;
             if (!sourcesFromOtherConnectionsNeeded)
-            {
-                Debug.LogWarning(exception);
-            }
-            analysisCollection.Errors.Add(new LanguageError(exception.Message, exception.Position, exception.File, false));
+            { analysisCollection.Errors.Add(new LanguageError(exception.Message, exception.Position, exception.File, false)); }
         }
 
         {
@@ -270,7 +265,7 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
-            // Debug.Log($"Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
+            Debug.Log($"Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
         foreach (LanguageError item in analysisCollection.Errors)
@@ -290,7 +285,7 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
-            Debug.LogWarning(item);
+            Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
         }
 
         foreach (Warning item in analysisCollection.Warnings)
@@ -310,7 +305,7 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
-            Debug.Log(item);
+            Debug.Log($"{item}\r\n{item.GetArrows()}");
         }
 
         foreach (Information item in analysisCollection.Informations)

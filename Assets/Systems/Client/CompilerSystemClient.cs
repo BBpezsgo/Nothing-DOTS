@@ -20,8 +20,6 @@ partial struct CompilerSystemClient : ISystem
             if (!CompilerManager.Instance.CompiledSources.TryGetValue(command.ValueRO.FileName, out CompiledSource source))
             {
                 source = CompiledSource.FromRpc(command.ValueRO);
-                CompilerManager.Instance.CompiledSources.Add(command.ValueRO.FileName, source);
-                CompilerManager.Instance.CompileSecuedued = true;
             }
 
             source.Version = command.ValueRO.Version;
