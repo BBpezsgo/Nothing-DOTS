@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Frozen;
+using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using LanguageCore;
 using LanguageCore.Runtime;
@@ -30,6 +33,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required Entity SourceEntity;
         public required float3 SourcePosition;
     }
+
+    static readonly Unity.Mathematics.Random _sharedRandom = Unity.Mathematics.Random.CreateFromIndex(420);
 
     #region Processor Math Accelerators
 
@@ -112,7 +117,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _send(nint _scope, nint arguments, nint returnValue)
     {
-        (int bufferPtr, int length) = ExternalFunctionGenerator.TakeParameters<int, int>(arguments);
+        (int bufferPtr, int length, float direction) = ExternalFunctionGenerator.TakeParameters<int, int, float>(arguments);
         if (bufferPtr <= 0 || length <= 0) return;
         if (length >= 30) throw new Exception($"Can't");
 
@@ -143,7 +148,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     {
         returnValue.Clear(sizeof(int));
 
-        (int bufferPtr, int length, int directionPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
+        (int bufferPtr, int length, int directionPtr, int strengthPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int, int>(arguments);
         if (bufferPtr <= 0 || length <= 0) return;
 
         FunctionScope* scope = (FunctionScope*)_scope;
@@ -164,10 +169,12 @@ unsafe partial struct ProcessorSystemServer : ISystem
         {
             LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
             float3 transformed = transform.InverseTransformPoint(received[0].Source);
-            // float2 selfXZ = new(scope->SourcePosition.x, scope->SourcePosition.z);
-            // float2 sourceXZ = new(received[0].Source.x, received[0].Source.z);
-            // memory.Set(directionPtr, sourceXZ - selfXZ);
-            memory.Set(directionPtr, new float2(transformed.x, transformed.z));
+            memory.Set(directionPtr, math.atan2(transformed.x, transformed.z));
+        }
+
+        if (strengthPtr > 0)
+        {
+            memory.Set(strengthPtr, (byte)255);
         }
 
         if (i >= received[0].Data.Length)
@@ -285,33 +292,52 @@ unsafe partial struct ProcessorSystemServer : ISystem
         returnValue.Set((float)scope->State.WorldUnmanaged.Time.ElapsedTime);
     }
 
+    [BurstCompile]
+    static void _random(nint _scope, nint arguments, nint returnValue)
+    {
+        returnValue.Set(_sharedRandom.NextInt());
+    }
+
     #endregion
 
-    const int ExternalFunctionCount = 17;
+    public const int ExternalFunctionCount = 18;
+
+    [BurstCompile]
+    public static void GenerateExternalFunctions(ExternalFunctionScopedSync* buffer)
+    {
+        int i = 0;
+
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_stdout), 01, ExternalFunctionGenerator.SizeOf<char>(), 0, default);
+
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_sqrt), 11, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_atan2), 12, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_sin), 13, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_cos), 14, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_tan), 15, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_asin), 16, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_acos), 17, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_atan), 18, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_send), 21, ExternalFunctionGenerator.SizeOf<int, int, float>(), 0, default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_receive), 22, ExternalFunctionGenerator.SizeOf<int, int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_radar), 23, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_toglobal), 31, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_tolocal), 32, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_time), 33, 0, ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_random), 34, 0, ExternalFunctionGenerator.SizeOf<int>(), default);
+
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_debug), 41, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_ldebug), 42, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
+
+        Unity.Assertions.Assert.AreEqual(i, ExternalFunctionCount);
+    }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ExternalFunctionCount]
-        {
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_atan2), 10, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_sin), 11,ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_cos), 12,ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_tan), 13,ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_asin), 14,ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_acos), 15,ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_atan), 16,ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_sqrt), 17,ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_stdout), 2, ExternalFunctionGenerator.SizeOf<char>(), 0, default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_send), 18, ExternalFunctionGenerator.SizeOf<int, int>(), 0, default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_receive), 19, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_radar), 20, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>(), default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_debug), 21, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_ldebug), 22, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_toglobal), 23, ExternalFunctionGenerator.SizeOf<int>(), 0, default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_tolocal), 24, ExternalFunctionGenerator.SizeOf<int>(), 0, default),
-            new ExternalFunctionScopedSync(BurstCompiler.CompileFunctionPointer(_time), 25, 0, ExternalFunctionGenerator.SizeOf<float>(), default),
-        };
+        ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ExternalFunctionCount];
+        GenerateExternalFunctions(scopedExternalFunctions);
 
         foreach ((RefRW<Processor> processor, Entity entity) in
             SystemAPI.Query<RefRW<Processor>>()
@@ -350,7 +376,21 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 processorState.Process();
                 if (processorState.Signal != Signal.None)
                 {
-                    Debug.LogError("Crashed");
+                    switch (processorState.Signal)
+                    {
+                        case Signal.UserCrash:
+                            Debug.LogError("Crashed");
+                            break;
+                        case Signal.StackOverflow:
+                            Debug.LogError("Stack Overflow");
+                            break;
+                        case Signal.Halt:
+                            Debug.LogError("Halted");
+                            break;
+                        case Signal.UndefinedExternalFunction:
+                            Debug.LogError("Undefined External Function");
+                            break;
+                    }
                     processorState.Registers.CodePointer = processorState.Code.Length;
                     break;
                 }

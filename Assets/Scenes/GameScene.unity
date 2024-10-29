@@ -709,6 +709,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14088682e88eb2dd6a1c967092601060, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ui: {fileID: 0}
 --- !u!4 &823535327
 Transform:
   m_ObjectHideFlags: 0
@@ -952,17 +953,29 @@ MonoBehaviour:
   Prefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
   Units:
   - Spawn:
-      x: -3
-      y: 0
-    Script: test2.bbc
-  - Spawn:
-      x: -2
-      y: 3
-    Script: test2.bbc
-  - Spawn:
       x: 30
       y: 0
     Script: 
+  - Spawn:
+      x: -7
+      y: -7
+    Script: unit-1.bbc
+  - Spawn:
+      x: -5
+      y: 0
+    Script: unit-1.bbc
+  - Spawn:
+      x: -10
+      y: 0
+    Script: unit-1.bbc
+  - Spawn:
+      x: 0
+      y: -5
+    Script: unit-1.bbc
+  - Spawn:
+      x: 0
+      y: -10
+    Script: unit-1.bbc
 --- !u!1 &1759163858
 GameObject:
   m_ObjectHideFlags: 0
@@ -1009,6 +1022,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   UI_AvaliableItem: {fileID: 9197481963319205126, guid: 61bffe86daabd84f18c62d5b7e06ae30, type: 3}
   UI_QueueItem: {fileID: 9197481963319205126, guid: c12c22a0d89d53b8e97b0986df61c283, type: 3}
+  ui: {fileID: 0}
 --- !u!1 &1848802880
 GameObject:
   m_ObjectHideFlags: 0

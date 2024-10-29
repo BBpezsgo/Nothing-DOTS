@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -204,8 +205,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 break;
                             }
                             const int progressBarWidth = 10;
-                            string progressBar = new('#', (int)(source.Progress * progressBarWidth));
-                            ui_labelTerminal!.text = $"Uploading {progressBar}{new string('_', progressBarWidth - progressBar.Length)}";
+                            string progressBarFilled = new('#', Math.Clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth));
+                            string progressBarEmpty = new(' ', progressBarWidth - progressBarFilled.Length);
+                            ui_labelTerminal!.text = $"Uploading [{progressBarFilled}{progressBarEmpty}]";
                             break;
                         }
                     case CompilationStatus.Compiled:

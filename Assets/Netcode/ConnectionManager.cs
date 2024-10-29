@@ -22,6 +22,8 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
     void Start()
     {
+        Application.targetFrameRate = 30;
+
         UI.rootVisualElement.Q<Button>("button-host").clicked += () => StartCoroutine(StartHostAsync());
         UI.rootVisualElement.Q<Button>("button-client").clicked += () => StartCoroutine(StartClientAsync());
         UI.rootVisualElement.Q<Button>("button-server").clicked += () => StartCoroutine(StartServerAsync());

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -126,43 +127,52 @@ public class CompilerManager : Singleton<CompilerManager>
         _compiledSources[rpc.FileName] = CompiledSource.FromRpc(rpc);
     }
 
-    public static readonly IExternalFunction[] ExternalFunctions = new IExternalFunction[]
+    static readonly FrozenDictionary<int, string> ExternalFunctionNames = new Dictionary<int, string>()
     {
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 10, "atan2", ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 11, "sin", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 12, "cos", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 13, "tan", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 14, "asin", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 15, "acos", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 16, "atan", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 17, "sqrt", ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 2, ExternalFunctionNames.StdOut, ExternalFunctionGenerator.SizeOf<char>(), 0),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 18, "send", ExternalFunctionGenerator.SizeOf<int, int>(), 0),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 19, "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 20, "radar", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>()),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 21, "debug", ExternalFunctionGenerator.SizeOf<float2, int>(), 0),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 22, "ldebug", ExternalFunctionGenerator.SizeOf<float2, int>(), 0),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 23, "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 24, "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-        new ExternalFunctionSync(static (ReadOnlySpan<byte> arguments, Span<byte> returnValue) =>
-        { }, 25, "time", 0, ExternalFunctionGenerator.SizeOf<float>()),
-    };
+        { 01, "stdout" },
+
+        { 11, "sqrt" },
+        { 12, "atan2" },
+        { 13, "sin" },
+        { 14, "cos" },
+        { 15, "tan" },
+        { 16, "asin" },
+        { 17, "acos" },
+        { 18, "atan" },
+
+        { 21, "send" },
+        { 22, "receive" },
+        { 23, "radar" },
+
+        { 31, "toglobal" },
+        { 32, "tolocal" },
+        { 33, "time" },
+        { 34, "random" },
+
+        { 41, "debug" },
+        { 42, "ldebug" },
+    }.ToFrozenDictionary();
+
+    static IExternalFunction[]? _externalFunctions;
+    public static unsafe IExternalFunction[] ExternalFunctions
+    {
+        get
+        {
+            if (_externalFunctions is not null) return _externalFunctions;
+
+            ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ProcessorSystemServer.ExternalFunctionCount];
+            ProcessorSystemServer.GenerateExternalFunctions(scopedExternalFunctions);
+            _externalFunctions = new IExternalFunction[ProcessorSystemServer.ExternalFunctionCount];
+
+            for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
+            {
+                ref readonly ExternalFunctionScopedSync externalFunction = ref scopedExternalFunctions[i];
+                _externalFunctions[i] = new ExternalFunctionSync(null!, externalFunction.Id, ExternalFunctionNames[externalFunction.Id], externalFunction.ParametersSize, externalFunction.ReturnValueSize);
+            }
+
+            return _externalFunctions;
+        }
+    }
 
     void FixedUpdate()
     {
@@ -229,10 +239,10 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
-            Debug.Log($"Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
+            // Debug.Log($"Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
-        foreach (LanguageError item in source.AnalysisCollection.Errors)
+        foreach (LanguageError item in source.AnalysisCollection.Errors.ToArray())
         {
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
@@ -252,7 +262,7 @@ public class CompilerManager : Singleton<CompilerManager>
             Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
         }
 
-        foreach (Warning item in source.AnalysisCollection.Warnings)
+        foreach (Warning item in source.AnalysisCollection.Warnings.ToArray())
         {
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
@@ -269,10 +279,10 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
-            Debug.Log($"{item}\r\n{item.GetArrows()}");
+            // Debug.Log($"{item}\r\n{item.GetArrows()}");
         }
 
-        foreach (Information item in source.AnalysisCollection.Informations)
+        foreach (Information item in source.AnalysisCollection.Informations.ToArray())
         {
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
@@ -291,7 +301,7 @@ public class CompilerManager : Singleton<CompilerManager>
             });
         }
 
-        foreach (Hint item in source.AnalysisCollection.Hints)
+        foreach (Hint item in source.AnalysisCollection.Hints.ToArray())
         {
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
@@ -314,7 +324,7 @@ public class CompilerManager : Singleton<CompilerManager>
     public static void CompileSourceTask(FileId file)
     {
         Uri sourceUri = file.ToUri();
-        Debug.Log($"Compilation started for \"{sourceUri}\" ...");
+        // Debug.Log($"Compilation started for \"{sourceUri}\" ...");
 
         bool sourcesFromOtherConnectionsNeeded = false;
 
@@ -361,7 +371,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (status == FileStatus.Receiving)
             {
-                Debug.Log($"Source \"{file}\" is downloading ...");
+                // Debug.Log($"Source \"{file}\" is downloading ...");
                 return false;
             }
 
@@ -372,18 +382,19 @@ public class CompilerManager : Singleton<CompilerManager>
                 source.StatusChanged = true;
             });
             progresses.Add(progress);
-            Debug.Log($"Source needs file \"{file}\" ...");
-            FileChunkManager.RequestFile(file, progress).GetAwaiter().OnCompleted(() =>
-            {
-                Debug.Log($"Source \"{file}\" downloaded ...");
-            });
+            // Debug.Log($"Source needs file \"{file}\" ...");
+            FileChunkManager.RequestFile(file, progress);
+                // .GetAwaiter().OnCompleted(() =>
+                // {
+                //     Debug.Log($"Source \"{file}\" downloaded ...");
+                // });
 
             return false;
         }
 
         try
         {
-            Debug.Log($"Compiling {file} ...");
+            // Debug.Log($"Compiling {file} ...");
             CompilerResult compiled = Compiler.CompileFile(
                 sourceUri,
                 ExternalFunctions,
@@ -397,13 +408,13 @@ public class CompilerManager : Singleton<CompilerManager>
                 null,
                 FileParser
             );
-            Debug.Log($"Generating {file} ...");
+            // Debug.Log($"Generating {file} ...");
             BBLangGeneratorResult generated = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
             {
                 StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
             }, null, source.AnalysisCollection);
 
-            Debug.Log($"Done {file} ...");
+            // Debug.Log($"Done {file} ...");
 
             source.CompileSecuedued = default;
             source.Version = DateTime.UtcNow.Ticks;
@@ -414,7 +425,7 @@ public class CompilerManager : Singleton<CompilerManager>
             source.Status = CompilationStatus.Compiled;
             source.StatusChanged = true;
 
-            Debug.Log($"Source {file} compiled");
+            // Debug.Log($"Source {file} compiled");
         }
         catch (LanguageException exception)
         {
@@ -424,12 +435,12 @@ public class CompilerManager : Singleton<CompilerManager>
 
         if (sourcesFromOtherConnectionsNeeded)
         {
-            Debug.Log($"Compilation will continue for \"{sourceUri}\" ...");
+            // Debug.Log($"Compilation will continue for \"{sourceUri}\" ...");
         }
         else
         {
             source.Status = CompilationStatus.Compiled;
-            Debug.Log($"Compilation finished for \"{sourceUri}\"");
+           //  Debug.Log($"Compilation finished for \"{sourceUri}\"");
         }
     }
 }
