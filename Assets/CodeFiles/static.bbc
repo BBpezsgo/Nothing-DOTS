@@ -1,0 +1,26 @@
+using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
+using "api.bbc";
+
+while (1)
+{
+    u8[2] v;
+
+    f32 receivedDirection;
+    u8 receivedStrength;
+    i32 receivedLength = receive(&v, 2, &receivedDirection, &receivedStrength);
+    if (receivedLength == 2) {
+        if (v[0] == (u8)1 &&
+            v[1] == (u8)2)
+        {
+            PrintLine("Sending response ...");
+            v[0] = (u8)3;
+            v[1] = (u8)4;
+            send(&v, 2, receivedDirection);
+        }
+    }
+}

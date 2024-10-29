@@ -15,147 +15,147 @@ const f32 PROJECTILE_V = 20f;
 const f32 PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
 const u8 true = (u8)1;
 const u8 false = (u8)0;
+const f32 DISTANCE_THRESHOLD = 50f;
 
-void SendPing()
+const u8 REQUEST_HEADER = 0b_11110000;
+const u8 RESPONSE_HEADER = 0b_01111000;
+
+void Receive()
 {
-    u8[4] v;
-    v[0] = (u8)1;
-    v[1] = (u8)2;
-    v[2] = (u8)3;
-    v[3] = (u8)4;
-    send(&v, 4);
+    u8[3] v;
+
+    i32 receivedLength = receive(&v, 3, 0, 0);
+    if (!receivedLength) { return; }
+
+    if (v[0] == (u8)REQUEST_HEADER && receivedLength == 1)
+    {
+        v[0] = (u8)RESPONSE_HEADER;
+        byte2 p;
+        Vector2 pos = Mapped.Position;
+        ToByte2(&pos, &p);
+        v[1] = p.x as u8;
+        v[2] = p.y as u8;
+        send(&v, 3, 0f);
+        // PrintLine("Send response ...");
+    }
+    else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
+    {
+        Vector2 pos;
+        byte2 p;
+        p.x = v[1] as i8;
+        p.y = v[2] as i8;
+        ToFloat2(&p, &pos);
+        ToLocal(&pos);
+        Unit unit;
+        ToByte2(&pos, &unit.Position);
+        unit.Recorded = time();
+        unit.Expires = time() + 10f;
+        RemoveUnit(&enemies, unit.Position);
+
+        ldebug(pos, 0x00FF00);
+
+        // PrintLine("Object identified ...");
+    }
 }
 
-void ReceivePing()
-{
-    u8[4] v;
-    v[0] = (u8)5;
-    v[1] = (u8)6;
-    v[2] = (u8)7;
-    v[3] = (u8)8;
-
-    Vector2 receivedDirection;
-    i32 receivedLength = receive(&v, 4, &receivedDirection);
-    if (receivedLength != 4) { return; }
-
-    // ldebug(receivedDirection, 0x0022FF);
-
-    Unit unit;
-    unit.Expires = time() + 5f;
-    ToByte2(&receivedDirection, &unit.Position);
-    RecordUnit(&allies, unit);
-}
-
-void RecordUnit(List<Unit>* units, Unit unit)
+u8 IsNotRecorded(List<Unit>* units, byte2 unit)
 {
     u8 isNew = true;
     for (int i = 0; isNew && i < units.Length(); i++)
     {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit.Position);
-        if (distanceSqr < 1000f)
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        if (distanceSqr < DISTANCE_THRESHOLD)
         {
-            // PrintLine("Update unit ...");
-            units.Raw()[i] = unit;
             isNew = false;
         }
     }
+    return isNew;
+}
+
+void RecordUnit(List<Unit>* units, Unit unit)
+{
+    u8 isNew = IsNotRecorded(units, unit.Position);
     if (isNew)
     {
         if (units.Length() >= 4)
         {
-            // PrintLine("Replace new unit ...");
             units.Raw()[0] = unit;
         }
         else
         {
-            // PrintLine("Record new unit ...");
             units.Add(unit);
         }
     }
 }
 
+void RemoveUnit(List<Unit>* units, byte2 unit)
+{
+    u8 isNotDone = true;
+    for (int i = 0; isNotDone && i < units.Length(); i++)
+    {
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        if (distanceSqr < DISTANCE_THRESHOLD)
+        {
+            isNotDone = false;
+            units.Remove(i);
+        }
+    }
+}
+
+void Radar()
+{
+    f32 radarDistance = radar(0);
+    if (radarDistance > 0f &&
+        Abs(prevRadarDistance - radarDistance) > .5f)
+    {
+        prevRadarDistance = radarDistance;
+
+        Vector2 point;
+        point.x = Sin(Mapped.RadarDirection);
+        point.y = Cos(Mapped.RadarDirection);
+        point.x *= radarDistance;
+        point.y *= radarDistance;
+
+        // PrintLine("Identifying object ...");
+
+        u8[1] v;
+        v[0] = (u8)REQUEST_HEADER;
+        send(&v, 1, 0f);
+
+        ldebug(point, 0x0000FF);
+
+        Unit enemy;
+        enemy.Recorded = time();
+        enemy.Expires = time() + 5f;
+        ToByte2(&point, &enemy.Position);
+        RecordUnit(&enemies, enemy);
+    }
+    if (radarDistance == 0f)
+    {
+        prevRadarDistance = 0f;
+    }
+    Mapped.RadarDirection = (Mapped.RadarDirection + 0.01f) % TAU;
+}
+
 struct Unit
 {
     byte2 Position;
+    f32 Recorded;
     f32 Expires;
 }
 
 f32 prevRadarDistance = 0f;
 Vector2 targetedPosition = new Vector2;
 Vector2 currentTarget = new Vector2;
-List<Unit> allies = new List<Unit>(4);
-List<Unit> enemies = new List<Unit>(2);
+List<Unit> enemies = new List<Unit>(4);
 
 while (1)
 {
-    PrintLine(time());
+    Receive();
 
-    SendPing();
-    ReceivePing();
+    Radar();
 
-    {
-        f32 radarDistance = radar(0);
-        if (radarDistance > 0f && Abs(prevRadarDistance - radarDistance) > .1f)
-        {
-            prevRadarDistance = radarDistance;
-            f32 radarAngle = Mapped.RadarDirection;
-            Vector2 radarDir;
-            radarDir.x = Sin(radarAngle);
-            radarDir.y = Cos(radarAngle);
-            radarDir.x *= radarDistance;
-            radarDir.y *= radarDistance;
-
-            i32 isEnemy = (&allies).Length();
-            int i = (&allies).Length();
-            while (i)
-            {
-                i--;
-                byte2 allyPosition_ = (&allies).Raw()[i].Position;
-                Vector2 allyPosition;
-                ToFloat2(&allyPosition_, &allyPosition);
-                f32 d = DistanceSqr(radarDir, allyPosition);
-                if (d < 10f)
-                {
-                    isEnemy--;
-                }
-            }
-
-            if (isEnemy)
-            {
-                ldebug(radarDir, 0xFF0000);
-                Unit enemy;
-                enemy.Expires = time() + 5f;
-                ToByte2(&radarDir, &enemy.Position);
-                RecordUnit(&enemies, enemy);
-            }
-            else
-            {
-                ldebug(radarDir, 0xFFFFFF);
-            }
-        }
-        if (radarDistance == 0f)
-        {
-            prevRadarDistance = 0f;
-        }
-        Mapped.RadarDirection = (Mapped.RadarDirection + 0.05f) % TAU;
-    }
-
-    for (int i = (&allies).Length() - 1; i >= 0; i--)
-    {
-        if (time() >= (&allies).Raw()[i].Expires)
-        {
-            (&allies).Remove(i);
-        }
-        else
-        {
-            Vector2 p1;
-            byte2 p2 = (&allies).Raw()[i].Position;
-            ToFloat2(&p2, &p1);
-            ldebug(p1, 0x00FF00);
-        }
-    }
-
-    currentTarget = new Vector2;
+    // currentTarget = new Vector2;
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
     {
@@ -163,17 +163,24 @@ while (1)
         {
             (&enemies).Remove(i);
         }
-        else
+        else if (time() >= (&enemies).Raw()[i].Recorded + 1f)
         {
             Vector2 p1;
             byte2 p2 = (&enemies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
             p1.y -= 0.2f;
             ldebug(p1, 0xFF0000);
-            currentTarget = p1;
+            // currentTarget = p1;
+        }
+        else
+        {
+            Vector2 p1;
+            byte2 p2 = (&enemies).Raw()[i].Position;
+            ToFloat2(&p2, &p1);
         }
     }
 
+    /*
     if (currentTarget.x != 0f ||
         currentTarget.y != 0f)
     {
@@ -224,4 +231,5 @@ while (1)
             Mapped.InputShoot = (u8)1;
         }
     }
+    */
 }

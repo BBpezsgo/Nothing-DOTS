@@ -39,12 +39,18 @@ export const MappedMemory* Mapped = 640;
 [External("acos")] export f32 Acos(f32 v);
 [External("atan")] export f32 Atan(f32 v);
 [External("sqrt")] export f32 _Sqrt(f32 v);
-[External("send")] export void send(any* buffer, int length);
-[External("receive")] export i32 receive(any* buffer, i32 length, Vector2* direction);
+[External("random")] export i32 _Random();
+
+[External("send")] export void send(any* buffer, i32 length, f32 direction);
+[External("receive")] export i32 receive(any* buffer, i32 length, f32* direction, u8* strength);
 [External("radar")] export f32 radar(i32* metadata);
+
+[External("toglobal")] export void ToGlobal(Vector2* point);
+[External("tolocal")] export void ToLocal(Vector2* point);
+[External("time")] export f32 time();
+
 [External("debug")] export void debug(Vector2 position, i32 color);
 [External("ldebug")] export void ldebug(Vector2 localPosition, i32 color);
-[External("time")] export f32 time();
 
 // export f32 Atan2(f32 x, f32 y) { }
 // export f32 Sin(f32 v) { }
@@ -56,9 +62,6 @@ export const MappedMemory* Mapped = 640;
 // export f32 _Sqrt(f32 v) { }
 // export void send(any* buffer, int length) { }
 // export i32 receive(any* buffer, i32 length, Vector2* direction) { }
-
-[External("toglobal")] export void ToGlobal(Vector2* point);
-[External("tolocal")] export void ToLocal(Vector2* point);
 
 export void sleep(f32 sec)
 {
