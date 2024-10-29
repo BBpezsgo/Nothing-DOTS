@@ -19,7 +19,7 @@ public partial struct FactorySystem : ISystem
     {
         _queueQ.Update(ref state);
 
-        if (!SystemAPI.TryGetSingletonEntity<UnitDatabase>(out Entity buildingDatabase))
+        if (!SystemAPI.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
         {
             Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
             return;
@@ -27,7 +27,7 @@ public partial struct FactorySystem : ISystem
 
         EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
 
-        DynamicBuffer<BufferedUnit> units = SystemAPI.GetBuffer<BufferedUnit>(buildingDatabase);
+        DynamicBuffer<BufferedUnit> units = SystemAPI.GetBuffer<BufferedUnit>(unitDatabase);
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FactoryQueueUnitRequestRpc>>()

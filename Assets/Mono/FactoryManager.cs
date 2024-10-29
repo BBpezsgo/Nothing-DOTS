@@ -99,13 +99,13 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
         using EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
-        if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity buildingDatabase))
+        if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
         {
             Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
             return;
         }
 
-        DynamicBuffer<BufferedUnit> units = entityManager.GetBuffer<BufferedUnit>(buildingDatabase, true);
+        DynamicBuffer<BufferedUnit> units = entityManager.GetBuffer<BufferedUnit>(unitDatabase, true);
 
         BufferedUnit unit = units.FirstOrDefault(v => v.Name == unitName);
 
@@ -115,7 +115,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
             return;
         }
 
-        var ghostInstance = entityManager.GetComponentData<GhostInstance>(selectedFactoryEntity);
+        GhostInstance ghostInstance = entityManager.GetComponentData<GhostInstance>(selectedFactoryEntity);
 
         Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(FactoryQueueUnitRequestRpc));
         entityManager.SetComponentData(entity, new FactoryQueueUnitRequestRpc()
@@ -129,6 +129,11 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
             selectedFactory.Current = unit;
             selectedFactory.CurrentProgress = 0f;
             selectedFactory.TotalProgress = unit.ProductionTime;
+        }
+        else
+        {
+            DynamicBuffer<BufferedUnit> queue = entityManager.GetBuffer<BufferedUnit>(selectedFactoryEntity);
+            queue.Add(unit);
         }
         refreshAt = Time.time + .1f;
     }

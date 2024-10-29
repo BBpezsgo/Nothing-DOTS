@@ -1,13 +1,15 @@
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 
 [BurstCompile]
-public readonly struct BufferedUnit : IBufferElementData
+public struct BufferedUnit : IBufferElementData
 {
-    public readonly Entity Prefab;
-    public readonly FixedString32Bytes Name;
-    public readonly float ProductionTime;
+    [GhostField(SendData = false)] public Entity Prefab;
+    [GhostField] public FixedString32Bytes Name;
+    [GhostField] public float ProductionTime;
 
     public BufferedUnit(
         Entity prefab,
