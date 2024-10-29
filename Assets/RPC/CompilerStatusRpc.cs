@@ -5,8 +5,8 @@ using Unity.NetCode;
 public struct CompilerStatusRpc : IRpcCommand
 {
     public FileId FileName;
-    public int DownloadingFiles;
-    public int DownloadedFiles;
+    public CompilationStatus Status;
+    public float Progress;
     public bool IsSuccess;
     public long Version;
 }

@@ -1,34 +1,34 @@
-using System.Diagnostics.CodeAnalysis;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
-using LanguageCore.Compiler;
+using NaughtyAttributes;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class TerminalManager : Singleton<TerminalManager>
+public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUICleanup
 {
-    [SerializeField, NotNull] UIDocument? UI = default;
-
     Entity selectedUnitEntity = Entity.Null;
     float refreshAt = default;
-    string[]? selectingFile = null;
+    ImmutableArray<string> selectingFile = ImmutableArray<string>.Empty;
     int selectingFileI = 0;
 
-    Button? ui_ButtonSelect;
-    Button? ui_ButtonCompile;
-    Label? ui_labelTerminal;
-    TextField? ui_inputSourcePath;
+    [Header("UI")]
+    [SerializeField, ReadOnly] Button? ui_ButtonSelect;
+    [SerializeField, ReadOnly] Button? ui_ButtonCompile;
+    [SerializeField, ReadOnly] Label? ui_labelTerminal;
+    [SerializeField, ReadOnly] TextField? ui_inputSourcePath;
+    [SerializeField, ReadOnly] UIDocument? ui = default;
 
     void Update()
     {
-        if (!UI.gameObject.activeSelf) return;
+        if (ui == null || !ui.gameObject.activeSelf) return;
 
         if (UIManager.Instance.GrapESC())
         {
-            CloseUI();
+            Cleanup(ui);
             return;
         }
 
@@ -40,20 +40,20 @@ public class TerminalManager : Singleton<TerminalManager>
         }
     }
 
-    public void OpenUI(Entity unitEntity)
+    public void Setup(UIDocument ui, Entity unitEntity)
     {
-        UIManager.CloseAllPopupUI();
+        gameObject.SetActive(true);
+        this.ui = ui;
 
-        UI.gameObject.SetActive(true);
         selectedUnitEntity = unitEntity;
         refreshAt = Time.time + .2f;
-        selectingFile = null;
+        selectingFile = ImmutableArray<string>.Empty;
         selectingFileI = 0;
 
-        ui_inputSourcePath = UI.rootVisualElement.Q<TextField>("input-source-path");
-        ui_ButtonSelect = UI.rootVisualElement.Q<Button>("button-select");
-        ui_ButtonCompile = UI.rootVisualElement.Q<Button>("button-compile");
-        ui_labelTerminal = UI.rootVisualElement.Q<Label>("label-terminal");
+        ui_inputSourcePath = ui.rootVisualElement.Q<TextField>("input-source-path");
+        ui_ButtonSelect = ui.rootVisualElement.Q<Button>("button-select");
+        ui_ButtonCompile = ui.rootVisualElement.Q<Button>("button-compile");
+        ui_labelTerminal = ui.rootVisualElement.Q<Label>("label-terminal");
 
         {
             EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -68,7 +68,7 @@ public class TerminalManager : Singleton<TerminalManager>
             selectingFile = Directory.GetFiles(FileChunkManager.BasePath)
                 .Select(v => Path.GetRelativePath(FileChunkManager.BasePath, v))
                 .Where(v => !v.EndsWith(".meta"))
-                .ToArray();
+                .ToImmutableArray();
             selectingFileI = 0;
             SelectTerminal();
         });
@@ -131,11 +131,11 @@ public class TerminalManager : Singleton<TerminalManager>
 
     public void RefreshUI(Entity unitEntity)
     {
-        if (selectingFile != null)
+        if (!selectingFile.IsEmpty)
         {
             if (Input.GetKeyDown(KeyCode.Q))
             {
-                selectingFile = null;
+                selectingFile = ImmutableArray<string>.Empty;
                 BlurTerminal();
             }
             else
@@ -158,7 +158,7 @@ public class TerminalManager : Singleton<TerminalManager>
                 {
                     ui_inputSourcePath!.value = selectingFile[selectingFileI];
                     selectingFileI = 0;
-                    selectingFile = null;
+                    selectingFile = ImmutableArray<string>.Empty;
                     BlurTerminal();
                     return;
                 }
@@ -185,43 +185,72 @@ public class TerminalManager : Singleton<TerminalManager>
             else
             {
                 CompiledSource source = CompilerManager.Instance.CompiledSources[processor.SourceFile];
-                float progress = (source.DownloadingFiles == 0) ? 0f : (float)source.DownloadedFiles / (float)source.DownloadingFiles;
-                if (source.DownloadingFiles != 0 && progress != 1f)
+                switch (source.Status)
                 {
-                    const int progressBarWidth = 10;
-                    string progressBar = new('#', (int)(progress * progressBarWidth));
-                    ui_labelTerminal!.text = $"Uploading {progressBar}{new string('_', progressBarWidth - progressBar.Length)}";
-                }
-                else if (source.CompileSecuedued != default)
-                {
-                    ui_labelTerminal!.text = $"Compilation in {source.CompileSecuedued - Time.time:#.00} sec";
-                }
-                else if (source.IsSuccess)
-                {
-                    ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
-                }
-                else
-                {
-                    ui_labelTerminal!.text = "Compile failed";
+                    case CompilationStatus.Secuedued:
+                    case CompilationStatus.Compiling:
+                        {
+                            if (source.Progress == 0f &&
+                                source.Status == CompilationStatus.Secuedued)
+                            {
+                                if (source.CompileSecuedued != default)
+                                {
+                                    ui_labelTerminal!.text = $"Compilation secuedued ...";
+                                }
+                                else
+                                {
+                                    ui_labelTerminal!.text = $"Compilation in {source.CompileSecuedued - Time.time:#.00} sec";
+                                }
+                                break;
+                            }
+                            const int progressBarWidth = 10;
+                            string progressBar = new('#', (int)(source.Progress * progressBarWidth));
+                            ui_labelTerminal!.text = $"Uploading {progressBar}{new string('_', progressBarWidth - progressBar.Length)}";
+                            break;
+                        }
+                    case CompilationStatus.Compiled:
+                        {
+                            ui_labelTerminal!.text = "Compiled ...";
+                            break;
+                        }
+                    case CompilationStatus.Done:
+                        {
+                            if (source.IsSuccess)
+                            {
+                                ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
+                            }
+                            else
+                            {
+                                ui_labelTerminal!.text = "Compile failed";
+                            }
+                            break;
+                        }
+                    case CompilationStatus.None:
+                    default:
+                        {
+                            ui_labelTerminal!.text = $"???";
+                            break;
+                        }
                 }
             }
         }
     }
 
-    public void CloseUI()
+    public void Cleanup(UIDocument ui)
     {
-        UI.gameObject.SetActive(false);
         selectedUnitEntity = Entity.Null;
         refreshAt = float.PositiveInfinity;
-        selectingFile = null;
+        selectingFile = ImmutableArray<string>.Empty;
         selectingFileI = 0;
 
-        if (UI.rootVisualElement != null)
+        if (ui != null &&
+            ui.rootVisualElement != null)
         {
             ui_ButtonSelect!.clickable = null;
             ui_ButtonCompile!.clickable = null;
             ui_labelTerminal!.text = string.Empty;
             BlurTerminal();
         }
+        gameObject.SetActive(false);
     }
 }

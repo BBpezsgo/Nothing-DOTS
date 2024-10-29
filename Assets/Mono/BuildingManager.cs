@@ -146,7 +146,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             }
         }
 
-        if (Mouse.current.rightButton.isPressed && !UI.IsMouseCaptured && (IsBuilding || BuildingUI.gameObject.activeSelf))
+        if (Mouse.current.rightButton.isPressed && !UI.IsMouseHandled && (IsBuilding || BuildingUI.gameObject.activeSelf))
         {
             Hide();
             return;
@@ -171,7 +171,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         }
 
         Vector3 position = Camera.main.ScreenToWorldPosition(Mouse.current.position.value);
-        position.y = 0f;
+        position.y = 0.5f;
 
         if (Input.GetKey(KeyCode.LeftControl))
         { position = new Vector3(MathF.Round(position.x), position.y, MathF.Round(position.z)); }
@@ -204,7 +204,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             return;
         }
 
-        if (Mouse.current.leftButton.isPressed && !UI.IsMouseCaptured)
+        if (Mouse.current.leftButton.isPressed && !UI.IsMouseHandled)
         {
             if (SelectedBuilding.Prefab == default) return;
             if (!IsValidPosition)

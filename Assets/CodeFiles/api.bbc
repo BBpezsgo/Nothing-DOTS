@@ -29,7 +29,7 @@ export struct MappedMemory
     f32 RadarDirection;
 }
 
-export const MappedMemory* Mapped = 384;
+export const MappedMemory* Mapped = 640;
 
 [External("atan2")] export f32 Atan2(f32 x, f32 y);
 [External("sin")] export f32 Sin(f32 v);
@@ -45,7 +45,6 @@ export const MappedMemory* Mapped = 384;
 [External("debug")] export void debug(Vector2 position, i32 color);
 [External("ldebug")] export void ldebug(Vector2 localPosition, i32 color);
 [External("time")] export f32 time();
-[External("print_float")] export void print_float(f32 v);
 
 // export f32 Atan2(f32 x, f32 y) { }
 // export f32 Sin(f32 v) { }
@@ -60,3 +59,9 @@ export const MappedMemory* Mapped = 384;
 
 [External("toglobal")] export void ToGlobal(Vector2* point);
 [External("tolocal")] export void ToLocal(Vector2* point);
+
+export void sleep(f32 sec)
+{
+    f32 at = time() + sec;
+    while (time() < at) { }
+}

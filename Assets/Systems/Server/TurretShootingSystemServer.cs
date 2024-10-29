@@ -27,14 +27,14 @@ public partial struct TurretShootingSystemServer : ISystem
             });
             commandBuffer.SetComponent(instance, new Projectile
             {
-                Velocity = localToWorld.ValueRO.Up * Projectile.Speed
+                Velocity = math.normalize(localToWorld.ValueRO.Up) * Projectile.Speed
             });
 
             Entity request = commandBuffer.CreateEntity();
             commandBuffer.AddComponent(request, new ShootRpc()
             {
                 Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
-                Direction = localToWorld.ValueRO.Up,
+                Direction = math.normalize(localToWorld.ValueRO.Up),
                 ProjectileIndex = projectiles.IndexOf(v => v.Prefab == turret.ValueRO.ProjectilePrefab),
             });
             commandBuffer.AddComponent<SendRpcCommandRequest>(request);

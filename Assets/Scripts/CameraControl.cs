@@ -149,7 +149,7 @@ public class CameraControl : MonoBehaviour
 
     void RotateCamera(InputAction.CallbackContext inputValue)
     {
-        if (!Mouse.current.middleButton.isPressed || UI.IsMouseCaptured) return;
+        if (!Mouse.current.middleButton.isPressed || UI.IsMouseHandled) return;
 
         float value = inputValue.ReadValue<Vector2>().x;
         transform.rotation = Quaternion.Euler(
@@ -206,7 +206,7 @@ public class CameraControl : MonoBehaviour
 
     void DragCamera()
     {
-        if (!Mouse.current.rightButton.isPressed || UI.IsMouseCaptured) return;
+        if (!Mouse.current.rightButton.isPressed || UI.IsMouseHandled) return;
 
         Plane plane = new(Vector3.up, Vector3.zero);
         Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());

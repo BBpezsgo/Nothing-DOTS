@@ -331,15 +331,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 SourceEntity = entity,
                 SourcePosition = SystemAPI.GetComponent<LocalToWorld>(entity).Position,
             };
-            scopedExternalFunctions[8 + 0].Scope = (nint)(&transmissionScope);
-            scopedExternalFunctions[8 + 1].Scope = (nint)(&transmissionScope);
-            scopedExternalFunctions[8 + 2].Scope = (nint)(&transmissionScope);
-            scopedExternalFunctions[8 + 3].Scope = (nint)(&transmissionScope);
-            scopedExternalFunctions[8 + 4].Scope = (nint)(&transmissionScope);
-            scopedExternalFunctions[8 + 5].Scope = (nint)(&transmissionScope);
-            scopedExternalFunctions[8 + 6].Scope = (nint)(&transmissionScope);
-            scopedExternalFunctions[8 + 7].Scope = (nint)(&transmissionScope);
-            scopedExternalFunctions[8 + 8].Scope = (nint)(&transmissionScope);
+            for (int i = 0; i < ExternalFunctionCount; i++)
+            { scopedExternalFunctions[i].Scope = (nint)(&transmissionScope); }
 
             ProcessorState processorState = new(
                 BytecodeInterpreterSettings,

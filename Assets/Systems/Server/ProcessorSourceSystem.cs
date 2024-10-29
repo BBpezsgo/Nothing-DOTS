@@ -48,8 +48,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out var source))
             {
                 // Debug.Log($"Request source \"{processor.ValueRO.SourceFile}\" ...");
-                CompilerManager.Instance.CompiledSources.Add(processor.ValueRO.SourceFile, CompiledSource.Empty(processor.ValueRO.SourceFile));
-                CompilerManager.Instance.CompileSecuedued = true;
+                CompilerManager.Instance.CreateEmpty(processor.ValueRO.SourceFile);
                 buffer.Clear();
                 continue;
             }
@@ -62,7 +61,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
             if (processor.ValueRO.SourceVersion != source.Version)
             {
-                processor.ValueRW.StdOutBuffer.AppendShift("Reloading ...\n");
+                processor.ValueRW.StdOutBuffer.Clear();
 
                 ProcessorState processorState_ = new(
                     ProcessorSystemServer.BytecodeInterpreterSettings,

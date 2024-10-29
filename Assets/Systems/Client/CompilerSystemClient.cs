@@ -1,8 +1,6 @@
-using System.Net.WebSockets;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
-using UnityEngine;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
 partial struct CompilerSystemClient : ISystem
@@ -17,19 +15,7 @@ partial struct CompilerSystemClient : ISystem
         {
             // Debug.Log($"Received compilation status for {command.ValueRO.FileName}");
 
-            if (!CompilerManager.Instance.CompiledSources.TryGetValue(command.ValueRO.FileName, out CompiledSource source))
-            {
-                source = CompiledSource.FromRpc(command.ValueRO);
-            }
-
-            source.Version = command.ValueRO.Version;
-            source.DownloadingFiles = command.ValueRO.DownloadingFiles;
-            source.DownloadedFiles = command.ValueRO.DownloadedFiles;
-            source.IsSuccess = command.ValueRO.IsSuccess;
-            source.AnalysisCollection.Clear();
-
-            CompilerManager.Instance.CompiledSources[source.SourceFile] = source;
-            CompilerManager.Instance.CompileSecuedued = true;
+            CompilerManager.Instance.HandleRpc(command.ValueRO);
 
             if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
             entityCommandBuffer.DestroyEntity(entity);

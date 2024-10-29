@@ -709,7 +709,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14088682e88eb2dd6a1c967092601060, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  UI: {fileID: 1848802881}
 --- !u!4 &823535327
 Transform:
   m_ObjectHideFlags: 0
@@ -1008,7 +1007,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 895ce29fedce62221a1111c984c798c7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  UI: {fileID: 814073991}
   UI_AvaliableItem: {fileID: 9197481963319205126, guid: 61bffe86daabd84f18c62d5b7e06ae30, type: 3}
   UI_QueueItem: {fileID: 9197481963319205126, guid: c12c22a0d89d53b8e97b0986df61c283, type: 3}
 --- !u!1 &1848802880
@@ -1022,7 +1020,7 @@ GameObject:
   - component: {fileID: 1848802882}
   - component: {fileID: 1848802881}
   m_Layer: 0
-  m_Name: Terminal
+  m_Name: Unit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1146,6 +1144,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0d469be100467fb293082540e1d2bc6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _compiledSources:
+    _Buckets: ffffffffffffffffffffffff
+    _HashCodes: 000000000000000000000000
+    _Next: 000000000000000000000000
+    _Count: 0
+    _Version: 0
+    _FreeList: -1
+    _FreeCount: 0
 --- !u!1 &1996438293
 GameObject:
   m_ObjectHideFlags: 0
@@ -1175,6 +1181,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca0560b31928f65999df0eb2bdddcb7b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Unit: {fileID: 1848802881}
+  Factory: {fileID: 814073991}
   _escPressed: 0
   _escGrabbed: 0
 --- !u!4 &1996438295

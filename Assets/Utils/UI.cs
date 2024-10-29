@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Unity.Entities;
 using UnityEngine;
@@ -40,26 +41,50 @@ public static class UIExtensions
 
 public static class UI
 {
-    public static bool IsMouseCaptured
+    public static bool IsMouseHandled => IsUIFocused || IsPointerOverUI();
+
+    public static bool IsUIFocused
     {
         get
         {
             if (GUIUtility.hotControl != 0) return true;
 
-            UIDocument[] uiDocuments = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Exclude, UnityEngine.FindObjectsSortMode.None);
-
-            foreach (UIDocument uiElement in uiDocuments)
+            foreach (UIDocument uiDocument in UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
-                if (uiElement == null) continue;
-                if (!uiElement.gameObject.activeSelf) continue;
-                if (!uiElement.isActiveAndEnabled) continue;
-                if (uiElement.rootVisualElement == null) continue;
-                if (uiElement.rootVisualElement.focusController.focusedElement == null) continue;
+                if (uiDocument == null) continue;
+                if (!uiDocument.gameObject.activeSelf) continue;
+                if (!uiDocument.isActiveAndEnabled) continue;
+                if (uiDocument.rootVisualElement == null) continue;
+                if (uiDocument.rootVisualElement.focusController.focusedElement == null) continue;
 
                 return true;
             }
 
             return false;
         }
+    }
+
+    public static bool IsPointerOverUI() => IsPointerOverUI(Input.mousePosition);
+    public static bool IsPointerOverUI(Vector2 screenPos)
+    {
+        Vector2 pointerUiPos = new(screenPos.x, Screen.height - screenPos.y);
+        List<VisualElement> picked = new();
+        foreach (UIDocument uiDocument in UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (uiDocument == null) continue;
+            if (!uiDocument.gameObject.activeSelf) continue;
+            if (!uiDocument.isActiveAndEnabled) continue;
+            if (uiDocument.rootVisualElement == null) continue;
+            uiDocument.rootVisualElement.panel.PickAll(pointerUiPos, picked);
+            foreach (VisualElement element in picked)
+            {
+                if (element == null) continue;
+                if (element.resolvedStyle.backgroundColor.a == 0f) continue;
+                if (!element.enabledInHierarchy) continue;
+                return true;
+            }
+            picked.Clear();
+        }
+        return false;
     }
 }

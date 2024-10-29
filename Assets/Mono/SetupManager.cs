@@ -44,7 +44,7 @@ public class SetupManager : Singleton<SetupManager>
             world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(new float3(unitSetup.Spawn.x, 0.5f, unitSetup.Spawn.y)));
             world.EntityManager.SetComponentData(newUnit, new Processor()
             {
-                SourceFile = new FileId(unitSetup.Script, default),
+                SourceFile = new FileId(unitSetup.Script, NetcodeEndPoint.Server),
             });
         }
     }

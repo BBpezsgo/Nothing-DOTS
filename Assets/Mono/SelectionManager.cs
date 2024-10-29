@@ -9,7 +9,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0) && !UI.IsMouseCaptured)
+        if (Input.GetMouseButtonDown(0) && !UI.IsMouseHandled)
         {
             _firstHit = Entity.Null;
 
@@ -26,7 +26,7 @@ public class SelectionManager : Singleton<SelectionManager>
             _firstHit = hit;
         }
 
-        if (Input.GetMouseButtonUp(0) && !UI.IsMouseCaptured && _firstHit != Entity.Null)
+        if (Input.GetMouseButtonUp(0) && !UI.IsMouseHandled && _firstHit != Entity.Null)
         {
             Entity hit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition));
             if (hit == Entity.Null)
@@ -48,13 +48,16 @@ public class SelectionManager : Singleton<SelectionManager>
 
                 if (entityManager.HasComponent<Factory>(hit))
                 {
-                    FactoryManager.Instance.OpenUI(hit);
+                    UIManager.Instance.OpenUI(UIManager.Instance.Factory);
+                    FactoryManager.Instance.Setup(UIManager.Instance.Factory, hit);
+                    TerminalManager.Instance.Setup(UIManager.Instance.Factory, hit);
                     return;
                 }
 
                 if (entityManager.HasComponent<Unit>(hit))
                 {
-                    TerminalManager.Instance.OpenUI(hit);
+                    UIManager.Instance.OpenUI(UIManager.Instance.Unit);
+                    TerminalManager.Instance.Setup(UIManager.Instance.Unit, hit);
                     return;
                 }
             }
