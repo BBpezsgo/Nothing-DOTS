@@ -25,11 +25,23 @@ partial struct BufferedFileSenderSystem : ISystem
             FileData? localFile = FileChunkManager.GetLocalFile(command.ValueRO.FileName.ToString());
             if (!localFile.HasValue)
             {
+                Entity responseRpcEntity = commandBuffer.CreateEntity();
+                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
+                {
+                    Kind = FileHeaderKind.NotFound,
+                    FileName = command.ValueRO.FileName,
+                    TransactionId = default,
+                    TotalLength = default,
+                    Version = DateTime.UtcNow.Ticks,
+                });
+                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
+
                 if (DebugLog) Debug.LogError($"File \"{command.ValueRO.FileName}\" does not exists");
                 commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
+            /*
             bool found = false;
 
             for (int i = 0; i < sendingFiles.Length; i++)
@@ -38,12 +50,12 @@ partial struct BufferedFileSenderSystem : ISystem
                 if (sendingFiles[i].FileName != command.ValueRO.FileName) continue;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
-                int totalLength = localFile.Value.Data.Length;
                 commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
                 {
+                    Kind = FileHeaderKind.Ok,
                     FileName = sendingFiles[i].FileName,
                     TransactionId = sendingFiles[i].TransactionId,
-                    TotalLength = totalLength,
+                    TotalLength = localFile.Value.Data.Length,
                     Version = localFile.Value.Version,
                 });
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
@@ -58,24 +70,41 @@ partial struct BufferedFileSenderSystem : ISystem
                 commandBuffer.DestroyEntity(entity);
                 continue;
             }
+            */
 
             {
+                int transactionId = Maths.Random.Integer();
+                FileHeaderKind kind;
+                switch (command.ValueRO.Method)
+                {
+                    case FileRequestMethod.OnlyHeader:
+                        kind = FileHeaderKind.OnlyHeader;
+                        break;
+                    case FileRequestMethod.Header:
+                    default:
+                        kind = FileHeaderKind.Ok;
+                        break;
+                }
+
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
                 int totalLength = localFile.Value.Data.Length;
                 commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
                 {
+                    Kind = kind,
                     FileName = command.ValueRO.FileName,
-                    TransactionId = command.ValueRO.FileName.GetHashCode(),
+                    TransactionId = transactionId,
                     TotalLength = totalLength,
                     Version = localFile.Value.Version,
                 });
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
-                found = true;
-                sendingFiles.Add(new BufferedSendingFile(
-                    ep,
-                    command.ValueRO.FileName.GetHashCode(),
-                    command.ValueRO.FileName
-                ));
+                if (command.ValueRO.Method != FileRequestMethod.OnlyHeader)
+                {
+                    sendingFiles.Add(new BufferedSendingFile(
+                        ep,
+                        transactionId,
+                        command.ValueRO.FileName
+                    ));
+                }
                 if (DebugLog) Debug.Log($"Sending file header \"{command.ValueRO.FileName}\": {{ id: {command.ValueRO.FileName.GetHashCode()} length: {totalLength}b }}");
             }
 
@@ -118,6 +147,26 @@ partial struct BufferedFileSenderSystem : ISystem
             if (!found)
             {
                 if (DebugLog) Debug.LogWarning($"Can't send requested chunk for file {command.ValueRO.TransactionId}: File does not exists");
+            }
+
+            commandBuffer.DestroyEntity(entity);
+        }
+
+        foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CloseFileRpc>>()
+            .WithEntityAccess())
+        {
+            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+
+            for (int i = sendingFiles.Length - 1; i >= 0; i--)
+            {
+                if (sendingFiles[i].Destination != ep) continue;
+                if (sendingFiles[i].FileName != command.ValueRO.FileName) continue;
+
+                sendingFiles.RemoveAt(i);
+
+                commandBuffer.DestroyEntity(entity);
+                break;
             }
 
             commandBuffer.DestroyEntity(entity);

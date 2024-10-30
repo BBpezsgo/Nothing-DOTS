@@ -1,11 +1,11 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.NetCode;
 
 [BurstCompile]
 public struct BufferedReceivingFile : IBufferElementData
 {
+    public FileHeaderKind Kind;
     public NetcodeEndPoint Source;
     public int TransactionId;
     public FixedString64Bytes FileName;
@@ -14,6 +14,7 @@ public struct BufferedReceivingFile : IBufferElementData
     public long Version;
 
     public BufferedReceivingFile(
+        FileHeaderKind kind,
         NetcodeEndPoint source,
         int transactionId,
         FixedString64Bytes fileName,
@@ -21,6 +22,7 @@ public struct BufferedReceivingFile : IBufferElementData
         double lastRedeivedAt,
         long version)
     {
+        Kind = kind;
         Source = source;
         TransactionId = transactionId;
         FileName = fileName;

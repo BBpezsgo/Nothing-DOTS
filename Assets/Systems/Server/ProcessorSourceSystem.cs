@@ -25,7 +25,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 RefRW<Processor> processor = SystemAPI.GetComponentRW<Processor>(ghostEntity);
                 processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, ep);
-                processor.ValueRW.SourceVersion = default;
+                processor.ValueRW.SourceVersion = command.ValueRO.Version;
 
                 break;
             }
@@ -47,7 +47,6 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
             if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out var source))
             {
-                // Debug.Log($"Request source \"{processor.ValueRO.SourceFile}\" ...");
                 CompilerManager.Instance.CreateEmpty(processor.ValueRO.SourceFile);
                 buffer.Clear();
                 continue;
@@ -59,7 +58,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 continue;
             }
 
-            if (processor.ValueRO.SourceVersion != source.Version)
+            if (processor.ValueRO.SourceVersion < source.Version)
             {
                 processor.ValueRW.StdOutBuffer.Clear();
 
@@ -80,6 +79,12 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 BufferedInstruction[] code = source.Code.Value.Select(v => new BufferedInstruction(v)).ToArray();
                 buffer.CopyFrom(code);
 
+                continue;
+            }
+            else if (processor.ValueRO.SourceVersion > source.Version)
+            {
+                CompilerManager.Instance.Recompile(processor.ValueRO.SourceFile);
+                buffer.Clear();
                 continue;
             }
 

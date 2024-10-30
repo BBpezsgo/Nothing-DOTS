@@ -90,7 +90,10 @@ public abstract class DictionaryDrawer<TK, TV> : PropertyDrawer
             keyRect.width /= 2;
             keyRect.width -= 4;
             EditorGUI.BeginChangeCheck();
+            bool t = GUI.enabled;
+            GUI.enabled = false;
             TK? newKey = DoField(keyRect, typeof(TK), key);
+            GUI.enabled = t;
             if (EditorGUI.EndChangeCheck())
             {
                 try

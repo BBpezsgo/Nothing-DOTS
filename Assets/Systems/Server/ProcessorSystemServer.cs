@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Frozen;
-using System.Collections.Generic;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using LanguageCore;
 using LanguageCore.Runtime;
@@ -126,6 +123,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
         ReadOnlySpan<byte> buffer = memory.Slice(bufferPtr, length);
 
+        scope->Processor.ValueRW.NetworkSendLED.Blink();
+
         EntityQueryBuilder qb = new EntityQueryBuilder(Allocator.Temp).WithAll<Processor>();
         using EntityQuery q = scope->State.EntityManager.CreateEntityQuery(qb);
         qb.Dispose();
@@ -164,6 +163,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         {
             buffer[i] = received[0].Data[i];
         }
+
+        scope->Processor.ValueRW.NetworkReceiveLED.Blink();
 
         if (directionPtr > 0)
         {
@@ -214,6 +215,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         if (!collisionWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
         { return; }
+
+        scope->Processor.ValueRW.RadarLED.Blink();
 
         returnValue.Set(math.distance(hit.Position, input.Start) + 1f);
     }
@@ -343,11 +346,19 @@ unsafe partial struct ProcessorSystemServer : ISystem
             SystemAPI.Query<RefRW<Processor>>()
             .WithEntityAccess())
         {
-            if (processor.ValueRO.SourceFile == default) continue;
+            if (processor.ValueRO.SourceFile == default)
+            {
+                processor.ValueRW.StatusLED.Status = 0;
+                continue;
+            }
 
             DynamicBuffer<BufferedInstruction> code = SystemAPI.GetBuffer<BufferedInstruction>(entity);
 
-            if (code.IsEmpty) continue;
+            if (code.IsEmpty)
+            {
+                processor.ValueRW.StatusLED.Status = 0;
+                continue;
+            }
 
             FunctionScope transmissionScope = new()
             {
@@ -369,6 +380,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 scopedExternalFunctions,
                 ExternalFunctionCount
             );
+
+            processor.ValueRW.StatusLED.Status = 1;
 
             for (int i = 0; i < 256; i++)
             {

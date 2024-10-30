@@ -24,6 +24,7 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             bool added = false;
             BufferedReceivingFile fileHeader = new(
+                command.ValueRO.Kind,
                 ep,
                 command.ValueRO.TransactionId,
                 command.ValueRO.FileName,
@@ -91,6 +92,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                 if (receivingFiles[i].TransactionId != fileChunk.TransactionId) continue;
 
                 receivingFiles[i] = new BufferedReceivingFile(
+                    receivingFiles[i].Kind,
                     receivingFiles[i].Source,
                     receivingFiles[i].TransactionId,
                     receivingFiles[i].FileName,
@@ -111,6 +113,7 @@ partial struct BufferedFileReceiverSystem : ISystem
         {
             double delta = SystemAPI.Time.ElapsedTime - receivingFiles[i].LastRedeivedAt;
             if (delta < 0.5d) continue;
+            if (receivingFiles[i].Kind != FileHeaderKind.Ok) continue;
 
             bool[] receivedChunks = new bool[FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)];
             for (int j = 0; j < fileChunks.Length; j++)
@@ -141,6 +144,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             if (requested == 0) continue;
 
             receivingFiles[i] = new BufferedReceivingFile(
+                receivingFiles[i].Kind,
                 receivingFiles[i].Source,
                 receivingFiles[i].TransactionId,
                 receivingFiles[i].FileName,

@@ -84,11 +84,14 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 return;
             }
 
+            string file = Path.Combine(FileChunkManager.BasePath, ui_inputSourcePath.value);
+
             Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(SetProcessorSourceRequestRpc));
             GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
             world.EntityManager.SetComponentData(entity, new SetProcessorSourceRequestRpc()
             {
                 Source = ui_inputSourcePath.value,
+                Version = File.GetLastWriteTimeUtc(file).Ticks,
                 Entity = ghostInstance,
             });
         });

@@ -50,7 +50,7 @@ partial struct UnitProcessorSystem : ISystem
                 float.IsFinite(mapped->RadarDirection))
             {
                 RefRW<LocalTransform> radar = SystemAPI.GetComponentRW<LocalTransform>(unit.ValueRO.Radar);
-                const float speed = 360f;
+                const float speed = 720f;
                 quaternion target = quaternion.EulerXYZ(
                     0f,
                     mapped->RadarDirection,

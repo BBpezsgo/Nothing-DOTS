@@ -7,7 +7,6 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct TurretShootingSystemServer : ISystem
 {
-    // [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
@@ -35,7 +34,7 @@ public partial struct TurretShootingSystemServer : ISystem
             {
                 Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
                 Direction = math.normalize(localToWorld.ValueRO.Up),
-                ProjectileIndex = projectiles.IndexOf(v => v.Prefab == turret.ValueRO.ProjectilePrefab),
+                ProjectileIndex = projectiles.IndexOf(static (v, c) => v.Prefab == c, turret.ValueRO.ProjectilePrefab),
             });
             commandBuffer.AddComponent<SendRpcCommandRequest>(request);
         }

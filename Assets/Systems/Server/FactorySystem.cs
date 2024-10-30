@@ -7,18 +7,8 @@ using UnityEngine;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct FactorySystem : ISystem
 {
-    BufferLookup<BufferedUnit> _queueQ;
-
-    void ISystem.OnCreate(ref SystemState state)
-    {
-        _queueQ = state.GetBufferLookup<BufferedUnit>();
-    }
-
-    // [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        _queueQ.Update(ref state);
-
         if (!SystemAPI.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
         {
             Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
@@ -40,7 +30,7 @@ public partial struct FactorySystem : ISystem
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.FactoryEntity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.FactoryEntity.spawnTick) continue;
 
-                BufferedUnit unit = units.FirstOrDefault(v => v.Name == command.ValueRO.Unit);
+                BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, command.ValueRO.Unit);
 
                 if (unit.Prefab == Entity.Null)
                 {
@@ -60,8 +50,7 @@ public partial struct FactorySystem : ISystem
                     SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>>()
                     .WithEntityAccess())
         {
-            if (!_queueQ.TryGetBuffer(entity, out DynamicBuffer<BufferedUnit> unitQueue))
-            { continue; }
+            DynamicBuffer<BufferedUnit> unitQueue = SystemAPI.GetBuffer<BufferedUnit>(entity);
 
             if (factory.ValueRO.TotalProgress == default)
             {

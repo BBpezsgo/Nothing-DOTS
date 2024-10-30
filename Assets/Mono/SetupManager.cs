@@ -30,7 +30,7 @@ public class SetupManager : Singleton<SetupManager>
 
         DynamicBuffer<BufferedUnit> units = world.EntityManager.GetBuffer<BufferedUnit>(buildingDatabase, true);
 
-        BufferedUnit unit = units.FirstOrDefault(v => v.Name == Prefab.name);
+        BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, Prefab.name);
 
         if (unit.Prefab == Entity.Null)
         {

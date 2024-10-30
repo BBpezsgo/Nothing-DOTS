@@ -1,13 +1,15 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
 
+[BurstCompile]
 [UpdateInGroup(typeof(LateSimulationSystemGroup))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial struct TurretShootingSystemClient : ISystem
 {
-    // [BurstCompile]
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);

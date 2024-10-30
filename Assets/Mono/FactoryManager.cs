@@ -107,7 +107,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
         DynamicBuffer<BufferedUnit> units = entityManager.GetBuffer<BufferedUnit>(unitDatabase, true);
 
-        BufferedUnit unit = units.FirstOrDefault(v => v.Name == unitName);
+        BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, unitName);
 
         if (unit.Prefab == Entity.Null)
         {

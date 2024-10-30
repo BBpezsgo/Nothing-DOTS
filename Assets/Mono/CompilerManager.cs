@@ -14,7 +14,6 @@ using LanguageCore.Tokenizing;
 using Maths;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.NetCode;
 using UnityEngine;
 
@@ -71,7 +70,7 @@ public class CompiledSource : IInspect<CompiledSource>
         sourceFile,
         default,
         CompilationStatus.Secuedued,
-        (float)DateTime.UtcNow.TimeOfDay.TotalSeconds + 1f,
+        (float)MonoTime.Now + 1f,
         0,
         false,
         default,
@@ -94,7 +93,10 @@ public class CompiledSource : IInspect<CompiledSource>
     public CompiledSource OnGUI(Rect rect, CompiledSource value)
     {
 #if UNITY_EDITOR
+        bool t = GUI.enabled;
+        GUI.enabled = false;
         GUI.Label(rect, value.Status.ToString());
+        GUI.enabled = t;
 #endif
         return value;
     }
@@ -119,6 +121,11 @@ public class CompilerManager : Singleton<CompilerManager>
     public void CreateEmpty(FileId file)
     {
         _compiledSources.Add(file, CompiledSource.Empty(file));
+    }
+
+    public void Recompile(FileId file)
+    {
+        _compiledSources[file] = CompiledSource.Empty(file);
     }
 
     public void HandleRpc(CompilerStatusRpc rpc)
@@ -186,12 +193,11 @@ public class CompilerManager : Singleton<CompilerManager>
                 case CompilationStatus.None:
                     break;
                 case CompilationStatus.Secuedued:
-                    if (source.CompileSecuedued > (float)DateTime.UtcNow.TimeOfDay.TotalSeconds) continue;
+                    if (source.CompileSecuedued > MonoTime.Now) continue;
                     source.Status = CompilationStatus.Compiling;
                     source.CompileSecuedued = default;
                     Task.Factory.StartNew(static (object state)
                         => CompileSourceTask((FileId)state), (object)file);
-
                     if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
                     SendCompilationStatus(source, entityCommandBuffer);
                     break;
@@ -206,7 +212,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 case CompilationStatus.Done:
                     break;
             }
-            if (source.StatusChanged && source.LastStatusSync + 1f < Time.time)
+            if (source.StatusChanged && source.LastStatusSync + 0.5f < Time.time)
             {
                 if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
                 SendCompilationStatus(source, entityCommandBuffer);
@@ -355,17 +361,22 @@ public class CompilerManager : Singleton<CompilerManager>
                 return true;
             }
 
-            (FileStatus status, _, _) = FileChunkManager.GetFileStatus(file, out FileData data);
+            (FileStatus status, _, _) = FileChunkManager.GetFileStatus(file, out RemoteFile data, true);
 
-            if (status == FileStatus.Received)
+            if (status.IsOk())
             {
-                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(data.Data), PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
+                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(data.File.Data), PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
                 return true;
+            }
+
+            if (status is FileStatus.NotFound or FileStatus.CachedNotFound)
+            {
+                return false;
             }
 
             sourcesFromOtherConnectionsNeeded = true;
 
-            source.CompileSecuedued = (float)DateTime.UtcNow.TimeOfDay.TotalSeconds + 5f;
+            source.CompileSecuedued = MonoTime.Now + 5f;
             source.Status = CompilationStatus.Secuedued;
             source.StatusChanged = true;
 
@@ -384,7 +395,8 @@ public class CompilerManager : Singleton<CompilerManager>
             progresses.Add(progress);
             // Debug.Log($"Source needs file \"{file}\" ...");
             FileChunkManager.RequestFile(file, progress);
-                // .GetAwaiter().OnCompleted(() =>
+                // .GetAwaiter()
+                // .OnCompleted(() =>
                 // {
                 //     Debug.Log($"Source \"{file}\" downloaded ...");
                 // });
@@ -435,12 +447,13 @@ public class CompilerManager : Singleton<CompilerManager>
 
         if (sourcesFromOtherConnectionsNeeded)
         {
+            Instance._compiledSources[file].AnalysisCollection.Clear();
             // Debug.Log($"Compilation will continue for \"{sourceUri}\" ...");
         }
         else
         {
             source.Status = CompilationStatus.Compiled;
-           //  Debug.Log($"Compilation finished for \"{sourceUri}\"");
+            //  Debug.Log($"Compilation finished for \"{sourceUri}\"");
         }
     }
 }
