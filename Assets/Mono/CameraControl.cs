@@ -51,7 +51,8 @@ public class CameraControl : MonoBehaviour
     void OnEnable()
     {
         zoomHeight = cameraTransform.localPosition.y;
-        cameraTransform.localRotation = Quaternion.Euler(45f, 0f, 0f);
+        cameraTransform.LookAt(transform);
+        // cameraTransform.localRotation = Quaternion.Euler(45f, 0f, 0f);
 
         lastPosition = transform.position;
         movement = cameraActions.Camera.Movement;
@@ -79,7 +80,7 @@ public class CameraControl : MonoBehaviour
         DragCamera();
 
         UpdateVelocity();
-        UpdateCameraPosition();
+        UpdateCameraZoom();
         UpdateBasePosition();
     }
 
@@ -110,9 +111,8 @@ public class CameraControl : MonoBehaviour
         float value = -keyZoom.ReadValue<Vector2>().y;
         if (Mathf.Abs(value) <= 0f) return;
 
-        zoomHeight += value * stepSize;
-        if (zoomHeight < minHeight) zoomHeight = minHeight;
-        if (zoomHeight > maxHeight) zoomHeight = maxHeight;
+        zoomHeight += value * stepSize * zoomHeight * 0.03f;
+        zoomHeight = Math.Clamp(zoomHeight, minHeight, maxHeight);
     }
 
     Vector3 GetCameraRight()
@@ -133,7 +133,7 @@ public class CameraControl : MonoBehaviour
     {
         velocity *= zoomHeight * 0.1f;
 
-        if (velocity.sqrMagnitude > 0.1f)
+        if (velocity.sqrMagnitude > 0.001f)
         {
             speed = Mathf.Lerp(speed, maxSpeed, Time.deltaTime * acceleration);
             transform.position += velocity * (speed * Time.deltaTime);
@@ -151,10 +151,11 @@ public class CameraControl : MonoBehaviour
     {
         if (!Mouse.current.middleButton.isPressed || UI.IsMouseHandled) return;
 
-        float value = inputValue.ReadValue<Vector2>().x;
+        float x = inputValue.ReadValue<Vector2>().x;
+        float y = inputValue.ReadValue<Vector2>().y;
         transform.rotation = Quaternion.Euler(
-            0f,
-            value * maxRotationSpeed + transform.rotation.eulerAngles.y,
+            Math.Clamp(y * maxRotationSpeed + transform.rotation.eulerAngles.x, 5f, 85f),
+            x * maxRotationSpeed + transform.rotation.eulerAngles.y,
             0f
         );
     }
@@ -165,23 +166,19 @@ public class CameraControl : MonoBehaviour
         if (Mathf.Abs(value) <= 0f) return;
 
         zoomHeight += value * stepSize;
-        if (zoomHeight < minHeight) zoomHeight = minHeight;
-        if (zoomHeight > maxHeight) zoomHeight = maxHeight;
+        zoomHeight = Math.Clamp(zoomHeight, minHeight, maxHeight);
     }
 
-    void UpdateCameraPosition()
+    void UpdateCameraZoom()
     {
         Vector3 zoomTarget = new(
-            cameraTransform.localPosition.x,
+            0f,
             zoomHeight,
-            cameraTransform.localPosition.z
+            0f
         );
-        zoomTarget -= zoomSpeed * (zoomHeight - cameraTransform.localPosition.y) * Vector3.forward;
 
-        cameraTransform.SetLocalPositionAndRotation(
-            Vector3.Lerp(cameraTransform.localPosition, zoomTarget, Time.deltaTime * zoomDampening),
-            Quaternion.Euler(45f, 0f, 0f)
-        );
+        cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, zoomTarget, Time.deltaTime * zoomDampening);
+        cameraTransform.LookAt(transform);
     }
 
     void CheckMouseAtScreenEdge()
