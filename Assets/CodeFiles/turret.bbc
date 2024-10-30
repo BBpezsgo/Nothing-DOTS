@@ -1,0 +1,70 @@
+using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
+using "api.bbc";
+
+const f32 PI = 3.14159265359f;
+const f32 TAU = PI * 2f;
+const f32 G = 9.82f;
+const f32 PROJECTILE_V = 20f ;
+const f32 PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
+
+export void ShootAt(Vector2 target, Vector2* targetedPosition)
+{
+    if (target.x != 0f ||
+        target.y != 0f)
+    {
+        if (targetedPosition.x != target.x ||
+            targetedPosition.y != target.y)
+        {
+            *targetedPosition = target;
+            target.y -= 0.2f;
+
+            ldebug(*targetedPosition, 0xFF00FF);
+
+            {
+                Vector2 targetDirection = Normalised(new Vector2(target.x, target.y));
+                f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
+                if (targetAngle < 0f) { targetAngle += TAU; }
+                if (targetAngle >= TAU) { targetAngle -= TAU; }
+                Mapped.TurretTargetRotation = targetAngle;
+            }
+
+            f32 targetDistance = Magnitude(target);
+            targetDistance -= Cos(Mapped.TurretCurrentAngle) * 2.5f;
+            f32 height = Sin(Mapped.TurretCurrentAngle) * 2.5f;
+            f32 discriminant = (
+                (PROJECTILE_V2 * PROJECTILE_V2) -
+                (G * (G * targetDistance * targetDistance + ((4f + height) * -2f * PROJECTILE_V2)))
+            );
+            if (discriminant < 0f)
+            {
+
+            }
+            else if (1)
+            {
+                Mapped.TurretTargetAngle = Atan(
+                    (PROJECTILE_V2 + _Sqrt(discriminant)) /
+                    (G * targetDistance)
+                ) - (PI * 0.5f);
+            }
+            else
+            {
+                Mapped.TurretTargetAngle = Atan(
+                    (PROJECTILE_V2 - _Sqrt(discriminant)) /
+                    (G * targetDistance)
+                ) - (PI * 0.5f);
+            }
+        }
+
+        f32 diff = Abs(Mapped.TurretCurrentRotation - Mapped.TurretTargetRotation);
+        if (diff < 0.1f ||
+            TAU - diff < 0.1f)
+        {
+            Mapped.InputShoot = (u8)1;
+        }
+    }
+}

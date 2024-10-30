@@ -4,15 +4,13 @@ using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
+using "turret.bbc";
 using "api.bbc";
 
 *Mapped = new MappedMemory;
 
 const f32 PI = 3.14159265359f;
 const f32 TAU = PI * 2f;
-const f32 G = 9.82f;
-const f32 PROJECTILE_V = 20f;
-const f32 PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
 const u8 true = (u8)1;
 const u8 false = (u8)0;
 
@@ -87,7 +85,6 @@ void Receive()
                 point.y = Cos(receivedDirection) * requestSentToDistance;
                 ToByte2(&point, &unit.Position);
                 ldebug(point, 0x00FF00);
-                // RecordUnit(&allies, unit);
 
                 requestSentAt = 0f;
                 requestSentToDistance = 0f;
@@ -95,15 +92,7 @@ void Receive()
 
                 PrintLine("Object identified");
             }
-            else
-            {
-                PrintLine(diff);
-            }
         }
-        // else
-        // {
-        //     PrintLine("Unexpected response");
-        // }
     }
 }
 
@@ -115,7 +104,6 @@ void RecordUnit(List<Unit>* units, Unit unit)
         f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit.Position);
         if (distanceSqr < 1000f)
         {
-            // PrintLine("Update unit ...");
             units.Raw()[i] = unit;
             isNew = false;
         }
@@ -124,12 +112,10 @@ void RecordUnit(List<Unit>* units, Unit unit)
     {
         if (units.Length() >= 4)
         {
-            // PrintLine("Replace new unit ...");
             units.Raw()[0] = unit;
         }
         else
         {
-            // PrintLine("Record new unit ...");
             units.Add(unit);
         }
     }
@@ -158,7 +144,7 @@ void Radar()
 {
     f32 radarDistance = radar(0);
     if (radarDistance > 0f &&
-        Abs(prevRadarDistance - radarDistance) > .5f)
+        Abs(prevRadarDistance - radarDistance) > 1f)
     {
         if (requestSentAt as i32) return;
 
@@ -182,7 +168,7 @@ void Radar()
     {
         prevRadarDistance = 0f;
     }
-    Mapped.RadarDirection = (Mapped.RadarDirection + 0.01f) % TAU;
+    Mapped.RadarDirection = (Mapped.RadarDirection + 0.05f) % TAU;
 }
 
 struct Unit
@@ -194,7 +180,6 @@ struct Unit
 f32 prevRadarDistance = 0f;
 Vector2 targetedPosition = new Vector2;
 Vector2 currentTarget = new Vector2;
-// List<Unit> allies = new List<Unit>(4);
 List<Unit> enemies = new List<Unit>(2);
 
 while (1)
@@ -219,38 +204,14 @@ while (1)
 
             ldebug(point, 0xFF0000);
 
-            // i32 isEnemy = IsEnemy(point);
-            // if (isEnemy)
-            // {
-            //     ldebug(point, 0xFF0000);
             Unit enemy;
             enemy.Expires = time() + 5f;
             ToByte2(&point, &enemy.Position);
             RecordUnit(&enemies, enemy);
-            // }
-            // else
-            // {
-            //     ldebug(point, 0x00FF00);
-            // }
         }
     }
 
     Radar();
-
-    // for (int i = (&allies).Length() - 1; i >= 0; i--)
-    // {
-    //     if (time() >= (&allies).Raw()[i].Expires)
-    //     {
-    //         (&allies).Remove(i);
-    //     }
-    //     else
-    //     {
-    //         Vector2 p1;
-    //         byte2 p2 = (&allies).Raw()[i].Position;
-    //         ToFloat2(&p2, &p1);
-    //         ldebug(p1, 0x00FF00);
-    //     }
-    // }
 
     currentTarget = new Vector2;
 
@@ -265,60 +226,10 @@ while (1)
             Vector2 p1;
             byte2 p2 = (&enemies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
-            p1.y -= 0.2f;
             ldebug(p1, 0xFF0000);
             currentTarget = p1;
         }
     }
 
-    if (currentTarget.x != 0f ||
-        currentTarget.y != 0f)
-    {
-        if (targetedPosition.x != currentTarget.x ||
-            targetedPosition.y != currentTarget.y)
-        {
-            targetedPosition = currentTarget;
-
-            ldebug(targetedPosition, 0xFF00FF);
-
-            {
-                Vector2 targetDirection = Normalised(new Vector2(currentTarget.x, currentTarget.y - 0.2));
-                f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
-                if (targetAngle < 0f) { targetAngle += TAU; }
-                if (targetAngle >= TAU) { targetAngle -= TAU; }
-                Mapped.TurretTargetRotation = targetAngle;
-            }
-
-            f32 targetDistance = Magnitude(currentTarget);
-            targetDistance -= Cos(Mapped.TurretCurrentAngle) * 2.5f;
-            f32 height = Sin(Mapped.TurretCurrentAngle) * 2.5f;
-            f32 discriminant = (
-                (PROJECTILE_V2 * PROJECTILE_V2) -
-                (G * (G * targetDistance * targetDistance + ((4f + height) * -2f * PROJECTILE_V2)))
-            )
-            if (discriminant < 0f)
-            {
-
-            }
-            else if (1)
-            {
-                Mapped.TurretTargetAngle = Atan(
-                    (PROJECTILE_V2 + _Sqrt(discriminant)) /
-                    (G * targetDistance)
-                ) - (PI * 0.5f);
-            }
-            else
-            {
-                Mapped.TurretTargetAngle = Atan(
-                    (PROJECTILE_V2 - _Sqrt(discriminant)) /
-                    (G * targetDistance)
-                ) - (PI * 0.5f);
-            }
-        }
-
-        if (Abs(Mapped.TurretCurrentRotation - Mapped.TurretTargetRotation) < 0.1f)
-        {
-            Mapped.InputShoot = (u8)1;
-        }
-    }
+    ShootAt(currentTarget, &targetedPosition);
 }
