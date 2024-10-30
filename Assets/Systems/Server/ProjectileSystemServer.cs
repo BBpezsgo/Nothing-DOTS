@@ -9,6 +9,7 @@ using Unity.Transforms;
 partial struct ProjectileSystemServer : ISystem
 {
     BufferLookup<BufferedDamage> damageQ;
+    public const float Gravity = -9.82f;
 
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
@@ -30,7 +31,7 @@ partial struct ProjectileSystemServer : ISystem
         {
             float3 lastPosition = worldTransform.ValueRO.Position;
             transform.ValueRW.Position += projectile.ValueRO.Velocity * SystemAPI.Time.DeltaTime;
-            projectile.ValueRW.Velocity += new float3(0f, -9.82f, 0f) * SystemAPI.Time.DeltaTime;
+            projectile.ValueRW.Velocity += new float3(0f, Gravity, 0f) * SystemAPI.Time.DeltaTime;
 
             if (transform.ValueRO.Position.y < 0f)
             {

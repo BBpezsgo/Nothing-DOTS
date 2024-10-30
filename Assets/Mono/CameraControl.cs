@@ -24,7 +24,6 @@ public class CameraControl : MonoBehaviour
     [SerializeField] float zoomDampening = 7.5f;
     [SerializeField] float minHeight = 5f;
     [SerializeField] float maxHeight = 50f;
-    [SerializeField] float zoomSpeed = 2f;
 
     [Header("Rotation")]
 

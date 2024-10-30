@@ -6,6 +6,6 @@ using Unity.NetCode;
 public struct ShootRpc : IRpcCommand
 {
     public required float3 Position;
-    public required float3 Direction;
+    public required float3 Velocity;
     public required int ProjectileIndex;
 }

@@ -30,7 +30,7 @@ public partial struct TurretShootingSystemClient : ISystem
             });
             commandBuffer.SetComponent(instance, new Projectile
             {
-                Velocity = math.normalize(command.ValueRO.Direction) * Projectile.Speed
+                Velocity = command.ValueRO.Velocity
             });
             commandBuffer.DestroyEntity(entity);
         }

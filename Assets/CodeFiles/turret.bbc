@@ -38,7 +38,7 @@ export void ShootAt(Vector2 target, Vector2* targetedPosition)
             f32 height = Sin(Mapped.TurretCurrentAngle) * 2.5f;
             f32 discriminant = (
                 (PROJECTILE_V2 * PROJECTILE_V2) -
-                (G * (G * targetDistance * targetDistance + ((4f + height) * -2f * PROJECTILE_V2)))
+                (G * (G * targetDistance * targetDistance + ((10f + height) * -2f * PROJECTILE_V2)))
             );
             if (discriminant < 0f)
             {

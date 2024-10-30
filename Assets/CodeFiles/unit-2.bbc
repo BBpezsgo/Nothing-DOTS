@@ -22,37 +22,49 @@ void Receive()
 {
     u8[3] v;
 
-    i32 receivedLength = receive(&v, 3, 0, 0);
-    if (!receivedLength) { return; }
-
-    if (v[0] == (u8)REQUEST_HEADER && receivedLength == 1)
+    while (1)
     {
-        v[0] = (u8)RESPONSE_HEADER;
-        byte2 p;
-        Vector2 pos = Mapped.Position;
-        ToByte2(&pos, &p);
-        v[1] = p.x as u8;
-        v[2] = p.y as u8;
-        send(&v, 3, 0f);
-        // PrintLine("Send response ...");
-    }
-    else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
-    {
-        Vector2 pos;
-        byte2 p;
-        p.x = v[1] as i8;
-        p.y = v[2] as i8;
-        ToFloat2(&p, &pos);
-        ToLocal(&pos);
-        Unit unit;
-        ToByte2(&pos, &unit.Position);
-        unit.Recorded = time();
-        unit.Expires = time() + 10f;
-        RemoveUnit(&enemies, unit.Position);
+        i32 receivedLength = receive(&v, 3, 0, 0);
+        if (!receivedLength) { break; }
 
-        ldebug(pos, 0x00FF00);
+        if (v[0] == (u8)REQUEST_HEADER && receivedLength == 3)
+        {
+            byte2 p;
+            Vector2 pos;
+            p.x = v[1] as i8;
+            p.y = v[2] as i8;
+            ToFloat2(&p, &pos);
 
-        // PrintLine("Object identified ...");
+            if (DistanceSqr(pos, Mapped.Position) < 2f * 2f)
+            {
+                pos = Mapped.Position;
+                ToByte2(&pos, &p);
+
+                v[0] = (u8)RESPONSE_HEADER;
+                v[1] = p.x as u8;
+                v[2] = p.y as u8;
+                send(&v, 3, 0f, 0f);
+                // PrintLine("Send response ...");
+            }
+        }
+        else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
+        {
+            Vector2 pos;
+            byte2 p;
+            p.x = v[1] as i8;
+            p.y = v[2] as i8;
+            ToFloat2(&p, &pos);
+            ToLocal(&pos);
+            Unit unit;
+            ToByte2(&pos, &unit.Position);
+            unit.Recorded = time();
+            unit.Expires = time() + 10f;
+            RemoveUnit(&enemies, unit.Position);
+
+            ldebug(pos, 0x00FF00);
+
+            // PrintLine("Object identified ...");
+        }
     }
 }
 
@@ -116,9 +128,16 @@ void Radar()
 
         // PrintLine("Identifying object ...");
 
-        u8[1] v;
+        Vector2 pointGlobal = point;
+        ToGlobal(&pointGlobal);
+        byte2 p;
+        ToByte2(&pointGlobal, &p);
+
+        u8[3] v;
         v[0] = (u8)REQUEST_HEADER;
-        send(&v, 1, 0f);
+        v[1] = p.x as u8;
+        v[2] = p.y as u8;
+        send(&v, 3, 0f, 0f);
 
         ldebug(point, 0x0000FF);
 

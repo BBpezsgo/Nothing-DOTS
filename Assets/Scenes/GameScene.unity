@@ -981,28 +981,40 @@ MonoBehaviour:
   Prefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
   Units:
   - Spawn:
-      x: 30
-      y: 0
-    Script: 
+      x: -3
+      y: -6
+    Script: unit-2.bbc
   - Spawn:
-      x: -7
+      x: -1
       y: -7
-    Script: unit-1.bbc
+    Script: unit-2.bbc
+  - Spawn:
+      x: 2
+      y: -6
+    Script: unit-2.bbc
   - Spawn:
       x: -5
-      y: 0
-    Script: unit-1.bbc
+      y: -9
+    Script: unit-2.bbc
   - Spawn:
-      x: -10
-      y: 0
-    Script: unit-1.bbc
+      x: 1
+      y: -9
+    Script: unit-2.bbc
   - Spawn:
-      x: 0
-      y: -5
-    Script: unit-1.bbc
+      x: -3
+      y: -12
+    Script: unit-2.bbc
   - Spawn:
-      x: 0
+      x: -2
       y: -10
+    Script: unit-2.bbc
+  - Spawn:
+      x: 5
+      y: -10
+    Script: unit-2.bbc
+  - Spawn:
+      x: -1
+      y: -16
     Script: unit-2.bbc
 --- !u!1 &1674000394
 GameObject:

@@ -20,7 +20,7 @@ while (1)
             PrintLine("Sending response ...");
             v[0] = (u8)3;
             v[1] = (u8)4;
-            send(&v, 2, receivedDirection);
+            send(&v, 2, receivedDirection, 1f);
         }
     }
 }

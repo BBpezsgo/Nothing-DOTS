@@ -8,10 +8,12 @@ using UnityEngine.UIElements;
 public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICleanup
 {
     [Header("UI Assets")]
+
     [SerializeField, NotNull] VisualTreeAsset? UI_AvaliableItem = default;
     [SerializeField, NotNull] VisualTreeAsset? UI_QueueItem = default;
 
     [Header("UI")]
+
     [SerializeField, ReadOnly] UIDocument? ui = default;
 
     Entity selectedFactoryEntity = Entity.Null;

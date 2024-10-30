@@ -114,7 +114,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _send(nint _scope, nint arguments, nint returnValue)
     {
-        (int bufferPtr, int length, float direction) = ExternalFunctionGenerator.TakeParameters<int, int, float>(arguments);
+        (int bufferPtr, int length, float directionAngle, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, float, float>(arguments);
         if (bufferPtr <= 0 || length <= 0) return;
         if (length >= 30) throw new Exception($"Can't");
 
@@ -122,6 +122,19 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
         ReadOnlySpan<byte> buffer = memory.Slice(bufferPtr, length);
+
+        float3 direction;
+        if (angle != 0f)
+        {
+            direction.x = math.sin(directionAngle);
+            direction.y = 0f;
+            direction.z = math.cos(directionAngle);
+        }
+        else
+        {
+            direction = default;
+        }
+        float cosAngle = math.abs(math.cos(angle / 2f));
 
         scope->Processor.ValueRW.NetworkSendLED.Blink();
 
@@ -134,9 +147,21 @@ unsafe partial struct ProcessorSystemServer : ISystem
             for (int i = 0; i < entities.Length; i++)
             {
                 if (entities[i] == scope->SourceEntity) continue;
+                
+                if (angle != 0f)
+                {
+                    float3 entityDirection = scope->State.EntityManager.GetComponentData<LocalToWorld>(entities[i]).Position;
+                    entityDirection -= scope->SourcePosition;
+                    entityDirection.y = 0f;
+                    entityDirection = math.normalize(entityDirection);
+                    float dot = math.abs(math.dot(direction, entityDirection));
+                    if (dot < cosAngle) continue;
+                }
+
                 FixedList32Bytes<byte> data = new();
                 data.AddRange(bufferPtr2, length);
                 DynamicBuffer<BufferedTransmittedUnitData> transmissions = scope->State.EntityManager.GetBuffer<BufferedTransmittedUnitData>(entities[i]);
+                if (transmissions.Length > 128) transmissions.RemoveAt(0);
                 transmissions.Add(new BufferedTransmittedUnitData(scope->SourcePosition, data));
             }
         }
@@ -321,7 +346,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_acos), 17, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
         buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_atan), 18, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
 
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_send), 21, ExternalFunctionGenerator.SizeOf<int, int, float>(), 0, default);
+        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_send), 21, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default);
         buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_receive), 22, ExternalFunctionGenerator.SizeOf<int, int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
         buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_radar), 23, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>(), default);
 

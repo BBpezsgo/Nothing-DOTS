@@ -14,8 +14,8 @@ public class UnitSetup
 
 public class SetupManager : Singleton<SetupManager>
 {
-    [SerializeField, NotNull] GameObject? Prefab = default;
-    [SerializeField, NotNull] UnitSetup[]? Units = default;
+    [SerializeField, NotNull] public GameObject? Prefab = default;
+    [SerializeField, NotNull] public UnitSetup[]? Units = default;
 
     public void Setup()
     {
@@ -49,3 +49,23 @@ public class SetupManager : Singleton<SetupManager>
         }
     }
 }
+
+#if UNITY_EDITOR
+[UnityEditor.CustomEditor(typeof(SetupManager))]
+public class SetupManagerEditor : UnityEditor.Editor
+{
+    public void OnSceneGUI()
+    {
+        SetupManager t = (SetupManager)target;
+
+        for (int i = 0; i < t.Units.Length; i++)
+        {
+            Vector3 p = UnityEditor.Handles.PositionHandle(
+                new Vector3(t.Units[i].Spawn.x, 0f, t.Units[i].Spawn.y),
+                Quaternion.identity
+            );
+            t.Units[i].Spawn = new float2(p.x, p.z);
+        }
+    }
+}
+#endif

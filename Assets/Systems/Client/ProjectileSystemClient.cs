@@ -30,7 +30,7 @@ partial struct ProjectileSystemClient : ISystem
         {
             float3 lastPosition = worldTransform.ValueRO.Position;
             transform.ValueRW.Position += projectile.ValueRO.Velocity * SystemAPI.Time.DeltaTime;
-            projectile.ValueRW.Velocity += new float3(0f, -9.82f, 0f) * SystemAPI.Time.DeltaTime;
+            projectile.ValueRW.Velocity += new float3(0f, ProjectileSystemServer.Gravity, 0f) * SystemAPI.Time.DeltaTime;
 
             if (transform.ValueRO.Position.y < 0f)
             {

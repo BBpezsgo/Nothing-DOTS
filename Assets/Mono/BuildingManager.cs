@@ -27,6 +27,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
     public bool IsBuilding => SelectedBuilding.Prefab != default;
 
     [Header("UI")]
+    
     [SerializeField, NotNull] VisualTreeAsset? BuildingButton = default;
     [SerializeField, NotNull] UIDocument? BuildingUI = default;
 

@@ -13,6 +13,7 @@ const f32 PI = 3.14159265359f;
 const f32 TAU = PI * 2f;
 const u8 true = (u8)1;
 const u8 false = (u8)0;
+const f32 DISTANCE_THRESHOLD = 50f;
 
 f32 requestSentAt = 0f;
 f32 requestSentToDistance = 0f;
@@ -23,7 +24,7 @@ void SendResponse(f32 direction)
     u8[2] v;
     v[0] = (u8)3;
     v[1] = (u8)4;
-    send(&v, 2, direction);
+    send(&v, 2, direction, 0.3f);
 
     // Vector2 point;
     // point.x = Sin(direction) * 10f;
@@ -36,7 +37,7 @@ void SendRequest(f32 direction)
     u8[2] v;
     v[0] = (u8)1;
     v[1] = (u8)2;
-    send(&v, 2, direction);
+    send(&v, 2, direction, 0.7f);
 
     Vector2 point;
     point.x = Sin(direction) * 10f;
@@ -47,50 +48,60 @@ void SendRequest(f32 direction)
 void Receive()
 {
     u8[2] v;
-
     f32 receivedDirection;
-    u8 receivedStrength;
-    i32 receivedLength = receive(&v, 2, &receivedDirection, &receivedStrength);
-    if (receivedLength != 2) { return; }
 
-    // {
-    //     Vector2 point;
-    //     point.x = Sin(receivedDirection) * 10f;
-    //     point.y = Cos(receivedDirection) * 10f;
-    //     ldebug(point, 0xFF00FF);
-    // }
+    while (1)
+    {
+        i32 receivedLength = receive(&v, 2, &receivedDirection, 0);
+        if (receivedLength != 2) { break; }
 
-    if (v[0] == (u8)1 &&
-        v[1] == (u8)2)
-    {
-        // PrintLine("Sending response ...");
-        SendResponse(receivedDirection);
-    }
-    else if (v[0] == (u8)3 &&
-             v[1] == (u8)4)
-    {
-        if (requestSentAt as i32)
+        // {
+        //     Vector2 point;
+        //     point.x = Sin(receivedDirection) * 10f;
+        //     point.y = Cos(receivedDirection) * 10f;
+        //     ldebug(point, 0xFF00FF);
+        // }
+
+        if (v[0] == (u8)1 &&
+            v[1] == (u8)2)
         {
-            f32 diff = Min(
-                Abs(receivedDirection - requestSentToDirection),
-                TAU - Abs(receivedDirection - requestSentToDirection)
-            );
-
-            if (diff < 0.6f)
+            // PrintLine("Sending response ...");
+            SendResponse(receivedDirection);
+        }
+        else if (v[0] == (u8)3 &&
+                 v[1] == (u8)4)
+        {
+            if (requestSentAt as i32)
             {
-                Unit unit;
-                unit.Expires = time() + 5f;
-                Vector2 point;
-                point.x = Sin(receivedDirection) * requestSentToDistance;
-                point.y = Cos(receivedDirection) * requestSentToDistance;
-                ToByte2(&point, &unit.Position);
-                ldebug(point, 0x00FF00);
+                f32 diff = Min(
+                    Abs(receivedDirection - requestSentToDirection),
+                    TAU - Abs(receivedDirection - requestSentToDirection)
+                );
 
-                requestSentAt = 0f;
-                requestSentToDistance = 0f;
-                requestSentToDirection = 0f;
+                if (diff < 0.6f)
+                {
+                    Unit unit;
+                    unit.Expires = time() + 5f;
+                    Vector2 point;
+                    point.x = Sin(receivedDirection) * requestSentToDistance;
+                    point.y = Cos(receivedDirection) * requestSentToDistance;
+                    ToByte2(&point, &unit.Position);
+                    ldebug(point, 0x00FF00);
 
-                PrintLine("Object identified");
+                    requestSentAt = 0f;
+                    requestSentToDistance = 0f;
+                    requestSentToDirection = 0f;
+
+                    // PrintLine("Object identified");
+                }
+                else
+                {
+                    Vector2 point;
+                    point.x = Sin(receivedDirection) * 10f;
+                    point.y = Cos(receivedDirection) * 10f;
+                    ldebug(point, 0xFFFF00);
+                    // PrintLine(diff);
+                }
             }
         }
     }
@@ -102,7 +113,7 @@ void RecordUnit(List<Unit>* units, Unit unit)
     for (int i = 0; isNew && i < units.Length(); i++)
     {
         f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit.Position);
-        if (distanceSqr < 1000f)
+        if (distanceSqr < DISTANCE_THRESHOLD)
         {
             units.Raw()[i] = unit;
             isNew = false;
@@ -132,7 +143,7 @@ i32 IsEnemy(Vector2 point)
         Vector2 allyPosition;
         ToFloat2(&allyPosition_, &allyPosition);
         f32 d = DistanceSqr(point, allyPosition);
-        if (d < 10f)
+        if (d < DISTANCE_THRESHOLD)
         {
             isEnemy--;
         }
@@ -157,7 +168,7 @@ void Radar()
         // point.y *= radarDistance;
         // ldebug(point, 0xFFFFFF);
 
-        PrintLine("Identifying object ...");
+        // PrintLine("Identifying object ...");
 
         SendRequest(Mapped.RadarDirection);
         requestSentAt = time();
@@ -190,7 +201,7 @@ while (1)
     {
         if ((time() - requestSentAt) > 5f)
         {
-            PrintLine("Object didn't respond");
+            // PrintLine("Object didn't respond");
 
             Vector2 point;
             point.x = Sin(requestSentToDirection);

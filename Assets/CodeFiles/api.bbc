@@ -47,7 +47,7 @@ export void sleep(f32 sec)
 [External("sqrt")] export f32 _Sqrt(f32 v);
 [External("random")] export i32 _Random();
 
-[External("send")] export void send(any* buffer, i32 length, f32 direction);
+[External("send")] export void send(any* buffer, i32 length, f32 direction, f32 angle);
 [External("receive")] export i32 receive(any* buffer, i32 length, f32* direction, u8* strength);
 [External("radar")] export f32 radar(i32* metadata);
 
@@ -68,7 +68,7 @@ export void sleep(f32 sec)
 // export f32 _Sqrt(f32 v) { return 0f; }
 // export i32 _Random() { return 0; }
 // 
-// export void send(any* buffer, i32 length, f32 direction) { }
+// export void send(any* buffer, i32 length, f32 direction, f32 angle) { }
 // export i32 receive(any* buffer, i32 length, f32* direction, u8* strength) { return 0; }
 // export f32 radar(i32* metadata) { return 0f; }
 // 
