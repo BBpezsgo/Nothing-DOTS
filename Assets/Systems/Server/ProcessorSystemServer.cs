@@ -232,8 +232,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
             End = scope->SourcePosition + (math.normalize(radar.Forward) * 80f),
             Filter = new CollisionFilter()
             {
-                BelongsTo = ~0u,
-                CollidesWith = ~0u,
+                BelongsTo = Layers.All,
+                CollidesWith = Layers.All,
                 GroupIndex = 0,
             },
         };

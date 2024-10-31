@@ -44,8 +44,8 @@ partial struct ProjectileSystemClient : ISystem
                 End = worldTransform.ValueRO.Position,
                 Filter = new CollisionFilter()
                 {
-                    BelongsTo = ~0u,
-                    CollidesWith = ~0u,
+                    BelongsTo = Layers.All,
+                    CollidesWith = Layers.All,
                     GroupIndex = 0,
                 },
             };
@@ -107,8 +107,8 @@ public partial struct ProjectileJob : IJobEntity
             End = positionWorld,
             Filter = new CollisionFilter()
             {
-                BelongsTo = ~0u,
-                CollidesWith = ~0u,
+                BelongsTo = Layers.All,
+                CollidesWith = Layers.All,
                 GroupIndex = 0,
             },
         };
