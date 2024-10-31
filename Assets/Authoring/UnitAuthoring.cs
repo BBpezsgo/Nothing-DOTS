@@ -18,6 +18,7 @@ public class UnitAuthoring : MonoBehaviour
                 Turret = authoring.Turret == null ? Entity.Null : GetEntity(authoring.Turret, TransformUsageFlags.Dynamic),
             });
             AddComponent<SelectableUnit>(entity);
+            AddComponent<EntityWithInfoUI>(entity);
         }
     }
 }

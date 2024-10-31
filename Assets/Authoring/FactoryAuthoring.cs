@@ -11,6 +11,7 @@ public class FactoryAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Factory>(entity);
             AddComponent<SelectableUnit>(entity);
+            AddComponent<EntityWithInfoUI>(entity);
             AddBuffer<BufferedUnit>(entity);
         }
     }

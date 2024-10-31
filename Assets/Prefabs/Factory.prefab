@@ -14,8 +14,8 @@ GameObject:
   - component: {fileID: -3750356295450330300}
   - component: {fileID: 918962132882252370}
   - component: {fileID: 1604821389369351770}
-  - component: {fileID: -6869523645017100963}
   - component: {fileID: 6947118393889170617}
+  - component: {fileID: -6869523645017100963}
   - component: {fileID: 3589871374488549128}
   - component: {fileID: 1857046611405625548}
   - component: {fileID: -2123111106256067385}
@@ -134,18 +134,6 @@ MonoBehaviour:
   NetworkReceiveLED: {fileID: 0}
   NetworkSendLED: {fileID: 0}
   RadarLED: {fileID: 0}
---- !u!114 &-6869523645017100963
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7887398088158380673}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c16549610bfe4458aa9389201d072bb6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &6947118393889170617
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -159,6 +147,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MaxHealth: 50
+--- !u!114 &-6869523645017100963
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7887398088158380673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c16549610bfe4458aa9389201d072bb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &3589871374488549128
 MonoBehaviour:
   m_ObjectHideFlags: 0
