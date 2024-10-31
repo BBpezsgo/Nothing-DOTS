@@ -22,32 +22,60 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
     void Start()
     {
-        UI.rootVisualElement.Q<Button>("button-host").clicked += () => StartCoroutine(StartHostAsync());
-        UI.rootVisualElement.Q<Button>("button-client").clicked += () => StartCoroutine(StartClientAsync());
-        UI.rootVisualElement.Q<Button>("button-server").clicked += () => StartCoroutine(StartServerAsync());
+        UI.rootVisualElement.Q<Button>("button-host").clicked += () =>
+        {
+            if (!HandleInput(out NetworkEndpoint endpoint)) return;
+            StartCoroutine(StartHostAsync(endpoint));
+        };
+        UI.rootVisualElement.Q<Button>("button-client").clicked += () =>
+        {
+            if (!HandleInput(out NetworkEndpoint endpoint)) return;
+            StartCoroutine(StartClientAsync(endpoint));
+        };
+        UI.rootVisualElement.Q<Button>("button-server").clicked += () =>
+        {
+            if (!HandleInput(out NetworkEndpoint endpoint)) return;
+            StartCoroutine(StartServerAsync(endpoint));
+        };
 
-        StartCoroutine(StartHostAsync());
+        StartCoroutine(StartHostAsync(NetworkEndpoint.AnyIpv4));
     }
 
-    bool ParseInput([NotNullWhen(true)] out NetworkEndpoint endpoint, [NotNullWhen(false)] out string? error)
+    bool HandleInput([NotNullWhen(true)] out NetworkEndpoint endpoint)
     {
         string inputHost = UI.rootVisualElement.Q<TextField>("input-host").value;
+        Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error");
+        inputErrorLabel.style.display = DisplayStyle.None;
+        if (!ParseInput(inputHost, out endpoint, out string? inputError))
+        {
+            inputErrorLabel.text = inputError;
+            inputErrorLabel.style.display = DisplayStyle.Flex;
+            SetInputEnabled(true);
+            return false;
+        }
+        return true;
+    }
 
-        if (!inputHost.Contains(':'))
+    bool ParseInput(
+        string input,
+        [NotNullWhen(true)] out NetworkEndpoint endpoint,
+        [NotNullWhen(false)] out string? error)
+    {
+        if (!input.Contains(':'))
         {
             error = $"Invalid host input";
             endpoint = default;
             return false;
         }
 
-        if (!ushort.TryParse(inputHost.Split(':')[1], out ushort port))
+        if (!ushort.TryParse(input.Split(':')[1], out ushort port))
         {
             error = $"Invalid host input";
             endpoint = default;
             return false;
         }
 
-        if (!NetworkEndpoint.TryParse(inputHost.Split(':')[0], port, out endpoint))
+        if (!NetworkEndpoint.TryParse(input.Split(':')[0], port, out endpoint))
         {
             error = $"Invalid host input";
             return false;
@@ -65,19 +93,9 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         UI.rootVisualElement.Q<TextField>("input-host").SetEnabled(enabled);
     }
 
-    public IEnumerator StartHostAsync()
+    public IEnumerator StartHostAsync(NetworkEndpoint endpoint)
     {
         SetInputEnabled(false);
-
-        Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error");
-        inputErrorLabel.style.display = DisplayStyle.None;
-        if (!ParseInput(out NetworkEndpoint endpoint, out string? inputError))
-        {
-            inputErrorLabel.text = inputError;
-            inputErrorLabel.style.display = DisplayStyle.Flex;
-            SetInputEnabled(true);
-            yield break;
-        }
 
         DestroyLocalWorld();
 
@@ -85,26 +103,21 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         World.DefaultGameObjectInjectionWorld ??= _serverWorld!;
 
+        using (EntityQuery driverQ = _serverWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
+        {
+            endpoint = driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.GetLocalEndPoint();
+        }
+
         yield return StartCoroutine(CreateClient(endpoint));
 
         UI.gameObject.SetActive(false);
-    
+
         SetupManager.Instance.Setup();
     }
 
-    public IEnumerator StartClientAsync()
+    public IEnumerator StartClientAsync(NetworkEndpoint endpoint)
     {
         SetInputEnabled(false);
-
-        Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error");
-        inputErrorLabel.style.display = DisplayStyle.None;
-        if (!ParseInput(out NetworkEndpoint endpoint, out string? inputError))
-        {
-            inputErrorLabel.text = inputError;
-            inputErrorLabel.style.display = DisplayStyle.Flex;
-            SetInputEnabled(true);
-            yield break;
-        }
 
         DestroyLocalWorld();
 
@@ -115,19 +128,9 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         UI.gameObject.SetActive(false);
     }
 
-    public IEnumerator StartServerAsync()
+    public IEnumerator StartServerAsync(NetworkEndpoint endpoint)
     {
         SetInputEnabled(false);
-
-        Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error");
-        inputErrorLabel.style.display = DisplayStyle.None;
-        if (!ParseInput(out NetworkEndpoint endpoint, out string? inputError))
-        {
-            inputErrorLabel.text = inputError;
-            inputErrorLabel.style.display = DisplayStyle.Flex;
-            SetInputEnabled(true);
-            yield break;
-        }
 
         DestroyLocalWorld();
 
