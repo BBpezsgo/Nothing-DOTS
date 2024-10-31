@@ -1,11 +1,20 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
+[Serializable]
+public struct BufferedBuildingAuthoring
+{
+    [SerializeField] public GameObject Prefab;
+    [SerializeField] public GameObject PlaceholderPrefab;
+    [SerializeField] public float TotalProgress;
+}
+
 [AddComponentMenu("Authoring/BuildingDatabase")]
 public class BuildingDatabaseAuthoring : MonoBehaviour
 {
-    [NotNull] public GameObject[]? Buildings = default;
+    [NotNull] public BufferedBuildingAuthoring[]? Buildings = default;
 
     class Baker : Baker<BuildingDatabaseAuthoring>
     {
@@ -16,7 +25,13 @@ public class BuildingDatabaseAuthoring : MonoBehaviour
             DynamicBuffer<BufferedBuilding> buildings = AddBuffer<BufferedBuilding>(entity);
             for (int i = 0; i < authoring.Buildings.Length; i++)
             {
-                buildings.Add(new(GetEntity(authoring.Buildings[i], TransformUsageFlags.Dynamic), authoring.Buildings[i].name));
+                BufferedBuildingAuthoring buildingAuthoring = authoring.Buildings[i];
+                buildings.Add(new(
+                    GetEntity(buildingAuthoring.Prefab, TransformUsageFlags.Dynamic),
+                    GetEntity(buildingAuthoring.PlaceholderPrefab, TransformUsageFlags.Dynamic),
+                    buildingAuthoring.Prefab.name,
+                    buildingAuthoring.TotalProgress
+                ));
             }
         }
     }

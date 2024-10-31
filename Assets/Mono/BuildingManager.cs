@@ -27,7 +27,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
     public bool IsBuilding => SelectedBuilding.Prefab != default;
 
     [Header("UI")]
-    
+
     [SerializeField, NotNull] VisualTreeAsset? BuildingButton = default;
     [SerializeField, NotNull] UIDocument? BuildingUI = default;
 
@@ -76,15 +76,12 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
     void PlaceBuilding(Vector3 position, BufferedBuilding building)
     {
-        EntityManager entityManager = ConnectionManager.ServerOrDefaultWorld.EntityManager;
+        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
 
-        Entity newEntity = entityManager.Instantiate(building.Prefab);
-        entityManager.SetComponentData(newEntity, new LocalTransform
-        {
-            Position = position,
-            Rotation = quaternion.identity,
-            Scale = 1f,
-        });
+        BuildingSystem.PlaceBuilding(commandBuffer, building, position);
+
+        commandBuffer.Playback(ConnectionManager.ServerOrDefaultWorld.EntityManager);
+        commandBuffer.Dispose();
     }
 
     void Clickable_clickedWithEventInfo(EventBase e)

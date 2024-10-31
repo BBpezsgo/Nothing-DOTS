@@ -806,7 +806,6 @@ MonoBehaviour:
   zoomDampening: 7.5
   minHeight: 1
   maxHeight: 200
-  zoomSpeed: 2
   maxRotationSpeed: 0.2
   edgeTolerance: 0.05
   useScreenEdge: 0
@@ -1197,6 +1196,7 @@ Transform:
   - {fileID: 1637475755}
   - {fileID: 1903872885}
   - {fileID: 1674000395}
+  - {fileID: 978013858}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1903872884

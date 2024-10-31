@@ -6,13 +6,19 @@ using Unity.Entities;
 public readonly struct BufferedBuilding : IBufferElementData
 {
     public readonly Entity Prefab;
+    public readonly Entity PlaceholderPrefab;
     public readonly FixedString32Bytes Name;
+    public readonly float TotalProgress;
 
     public BufferedBuilding(
         Entity prefab,
-        FixedString32Bytes name)
+        Entity placeholderPrefab,
+        FixedString32Bytes name,
+        float totalProgress)
     {
         Prefab = prefab;
+        PlaceholderPrefab = placeholderPrefab;
         Name = name;
+        TotalProgress = totalProgress;
     }
 }
