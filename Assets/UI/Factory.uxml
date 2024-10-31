@@ -30,5 +30,4 @@
             </ui:TabView>
         </ui:GroupBox>
     </ui:VisualElement>
-    <ui:Instance template="FactoryAvaliableItem" />
 </ui:UXML>

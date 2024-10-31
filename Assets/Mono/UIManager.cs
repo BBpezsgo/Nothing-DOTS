@@ -1,12 +1,35 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using NaughtyAttributes;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 public class UIManager : Singleton<UIManager>
 {
+    public readonly struct UISetup
+    {
+        readonly UIDocument _ui;
+        readonly UIManager _manager;
+
+        public UISetup(UIDocument ui, UIManager manager)
+        {
+            _ui = ui;
+            _manager = manager;
+        }
+
+        public UISetup Setup<TUI, TContext>(TUI ui, TContext context)
+            where TUI : IUISetup<TContext>, IUICleanup
+        {
+            ui.Setup(_ui, context);
+            _manager.OpenedUIs.TryAdd(_ui, new List<IUICleanup>());
+            _manager.OpenedUIs[_ui].Add(ui);
+            return this;
+        }
+    }
+
     [Header("Documents")]
+
     [SerializeField, NotNull] public UIDocument? Unit = default;
     [SerializeField, NotNull] public UIDocument? Factory = default;
 
@@ -19,7 +42,7 @@ public class UIManager : Singleton<UIManager>
         }
     }
 
-    [NotNull] Dictionary<UIDocument, IUICleanup>? OpenedUIs = default;
+    [NotNull] Dictionary<UIDocument, List<IUICleanup>>? OpenedUIs = default;
 
     [Header("Debug")]
     [SerializeField, ReadOnly] bool _escPressed = false;
@@ -58,15 +81,28 @@ public class UIManager : Singleton<UIManager>
 
     public void CloseUI(UIDocument ui)
     {
-        if (OpenedUIs.TryGetValue(ui, out IUICleanup? cleanup))
-        { cleanup.Cleanup(ui); }
+        if (OpenedUIs.TryGetValue(ui, out List<IUICleanup>? cleanup))
+        {
+            foreach (IUICleanup item in cleanup) item.Cleanup(ui);
+            OpenedUIs.Remove(ui);
+        }
         ui.rootVisualElement?.focusController.focusedElement?.Blur();
         ui.gameObject.SetActive(false);
     }
 
-    public void OpenUI(UIDocument ui)
+    public void CloseUI(IUICleanup ui)
+    {
+        foreach (KeyValuePair<UIDocument, List<IUICleanup>> item in OpenedUIs.ToArray())
+        {
+            if (!item.Value.Contains(ui)) continue;
+            CloseUI(item.Key);
+        }
+    }
+
+    public UISetup OpenUI(UIDocument ui)
     {
         CloseAllUI();
         ui.gameObject.SetActive(true);
+        return new UISetup(ui, this);
     }
 }

@@ -29,12 +29,18 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
         if (UIManager.Instance.GrapESC())
         {
-            Cleanup(ui);
+            UIManager.Instance.CloseUI(this);
             return;
         }
 
         if (Time.time >= refreshAt || selectingFile != null)
         {
+            if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(selectedUnitEntity))
+            {
+                UIManager.Instance.CloseUI(this);
+                return;
+            }
+
             RefreshUI(selectedUnitEntity);
             refreshAt = Time.time + .2f;
             return;

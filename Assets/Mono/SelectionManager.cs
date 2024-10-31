@@ -48,16 +48,16 @@ public class SelectionManager : Singleton<SelectionManager>
 
                 if (entityManager.HasComponent<Factory>(hit))
                 {
-                    UIManager.Instance.OpenUI(UIManager.Instance.Factory);
-                    FactoryManager.Instance.Setup(UIManager.Instance.Factory, hit);
-                    TerminalManager.Instance.Setup(UIManager.Instance.Factory, hit);
+                    UIManager.Instance.OpenUI(UIManager.Instance.Factory)
+                        .Setup(FactoryManager.Instance, hit)
+                        .Setup(TerminalManager.Instance, hit);
                     return;
                 }
 
                 if (entityManager.HasComponent<Unit>(hit))
                 {
-                    UIManager.Instance.OpenUI(UIManager.Instance.Unit);
-                    TerminalManager.Instance.Setup(UIManager.Instance.Unit, hit);
+                    UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                        .Setup(TerminalManager.Instance, hit);
                     return;
                 }
             }

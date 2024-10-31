@@ -1,11 +1,11 @@
 using UnityEngine.UIElements;
 
-interface IUISetup<TContext>
+public interface IUISetup<TContext>
 {
     void Setup(UIDocument ui, TContext context);
 }
 
-interface IUICleanup
+public interface IUICleanup
 {
     void Cleanup(UIDocument ui);
 }

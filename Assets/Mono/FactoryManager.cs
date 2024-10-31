@@ -26,12 +26,18 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
         if (UIManager.Instance.GrapESC())
         {
-            Cleanup(ui);
+            UIManager.Instance.CloseUI(this);
             return;
         }
 
         if (Time.time >= refreshAt)
         {
+            if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(selectedFactoryEntity))
+            {
+                UIManager.Instance.CloseUI(this);
+                return;
+            }
+
             RefreshUI(selectedFactoryEntity);
             refreshAt = Time.time + 1f;
             return;
