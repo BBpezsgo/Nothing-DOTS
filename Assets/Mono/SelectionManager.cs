@@ -12,10 +12,16 @@ public class SelectionManager : Singleton<SelectionManager>
     [SerializeField] float BoxSelectDistanceThreshold = default;
     [SerializeField, NotNull] RectTransform? SelectBox = default;
 
+    bool _isSelectBoxVisible;
     Vector3 _selectionStart = default;
     HashSet<Entity> _selected = new();
     HashSet<Entity> _candidates = new();
     Entity _firstHit = Entity.Null;
+
+    void SetSelectBoxVisible(bool visible)
+    {
+        if (_isSelectBoxVisible != visible) SelectBox.gameObject.SetActive(_isSelectBoxVisible = visible);
+    }
 
     void Start()
     {
@@ -27,7 +33,7 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         if (UI.IsMouseHandled)
         {
-            _selectionStart = default;
+            SetSelectBoxVisible(false);
             _firstHit = Entity.Null;
             SelectBox.gameObject.SetActive(false);
             return;
@@ -54,6 +60,22 @@ public class SelectionManager : Singleton<SelectionManager>
         }
 
         UpdateBoxSelect();
+
+        // {
+        //     UnityEngine.Plane plane = new(Vector3.up, Vector3.zero);
+        //     UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
+        //     if (plane.Raycast(ray, out float distance))
+        //     {
+        //         var start = ray.GetPoint(distance);
+        //         var dir = (-start).normalized;
+        //         // QuadrantSystem.DrawQuadrant(ray.GetPoint(distance));
+        //         NativeHashMap<uint, NativeList<QuadrantEntity>> map = QuadrantSystem.GetMap(World.DefaultGameObjectInjectionWorld.Unmanaged);
+        //         if (QuadrantSystem.RayCast(map, start, default, out float t))
+        //         {
+        //             DebugEx.DrawPoint(start + dir * t, 2f, Color.cyan);
+        //         }
+        //     }
+        // }
     }
 
     void BeginBoxSelect()
@@ -72,7 +94,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (_selectionStart == default)
         {
-            SelectBox.gameObject.SetActive(false);
+            SetSelectBoxVisible(false);
 
             Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
             if (selectableHit == Entity.Null) return;
@@ -87,7 +109,7 @@ public class SelectionManager : Singleton<SelectionManager>
         if (startPoint.z <= 0f)
         {
             Debug.LogWarning($"Invalid selection box");
-            SelectBox.gameObject.SetActive(false);
+            SetSelectBoxVisible(false);
             return;
         }
 
@@ -96,7 +118,7 @@ public class SelectionManager : Singleton<SelectionManager>
             Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
             if (selectableHit == Entity.Null) return;
             SelectUnitCandidate(selectableHit, SelectionStatus.Candidate);
-            SelectBox.gameObject.SetActive(false);
+            SetSelectBoxVisible(false);
             return;
         }
 
@@ -117,13 +139,13 @@ public class SelectionManager : Singleton<SelectionManager>
 
         SelectBox.anchoredPosition = rect.position;
         SelectBox.sizeDelta = rect.size;
-        SelectBox.gameObject.SetActive(true);
+        SetSelectBoxVisible(true);
     }
 
     void FinishBoxSelect()
     {
         if (!Input.GetKey(KeyCode.LeftShift)) ClearSelection();
-        SelectBox.gameObject.SetActive(false);
+        SetSelectBoxVisible(false);
 
         if (_selectionStart == default) return;
 
@@ -267,6 +289,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void ClearSelectionCandidates()
     {
+        if (_candidates.Count == 0) return;
         foreach (Entity unit in _candidates)
         {
             if (GetUnitStatus(unit).Status != SelectionStatus.Candidate) continue;
@@ -310,8 +333,9 @@ public class SelectionManager : Singleton<SelectionManager>
 
     RaycastHit RayCast(UnityEngine.Ray ray, uint layer)
     {
+        // FIXME: this is allocating memory every frame
         EntityQueryBuilder builder = new EntityQueryBuilder(Allocator.Temp).WithAll<PhysicsWorldSingleton>();
-
+        
         CollisionWorld collisionWorld;
         using (EntityQuery singletonQuery = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(builder))
         {
@@ -321,7 +345,7 @@ public class SelectionManager : Singleton<SelectionManager>
         RaycastInput input = new()
         {
             Start = ray.origin,
-            End = ray.GetPoint(100f),
+            End = ray.GetPoint(200f),
             Filter = new CollisionFilter()
             {
                 BelongsTo = Layers.All,

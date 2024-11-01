@@ -185,9 +185,8 @@ public class CompilerManager : Singleton<CompilerManager>
     {
         EntityCommandBuffer entityCommandBuffer = default;
 
-        foreach ((FileId file, CompiledSource _source) in _compiledSources.ToArray())
+        foreach ((FileId file, CompiledSource source) in _compiledSources.ToArray())
         {
-            CompiledSource source = _source;
             switch (source.Status)
             {
                 case CompilationStatus.None:
@@ -217,7 +216,6 @@ public class CompilerManager : Singleton<CompilerManager>
                 if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
                 SendCompilationStatus(source, entityCommandBuffer);
             }
-            _compiledSources[file] = source;
         }
 
         if (entityCommandBuffer.IsCreated)

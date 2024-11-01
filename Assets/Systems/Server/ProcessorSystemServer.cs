@@ -219,40 +219,44 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         (int bufferPtr, int length, int directionPtr, int strengthPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int, int>(arguments);
         if (bufferPtr <= 0 || length <= 0) return;
+        if (bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Bruh");
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
         DynamicBuffer<BufferedUnitTransmission> received = scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
         if (received.Length == 0) return;
 
-        Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-        Span<byte> buffer = memory.Slice(bufferPtr, length);
+        BufferedUnitTransmission* first = (BufferedUnitTransmission*)received.GetUnsafePtr();
 
-        int copyLength = System.Math.Min(received[0].Data.Length, buffer.Length);
+        int copyLength = System.Math.Min(first->Data.Length, length);
 
-        for (int i = 0; i < copyLength; i++)
-        {
-            buffer[i] = received[0].Data[i];
-        }
+        Buffer.MemoryCopy(((byte*)&first->Data) + 2, (byte*)scope->Memory + bufferPtr, copyLength, copyLength);
+
+        // for (int i = 0; i < copyLength; i++)
+        // {
+        //     *((byte*)scope->Memory + bufferPtr + i) = first->Data[i];
+        // }
 
         scope->Processor.ValueRW.NetworkReceiveLED.Blink();
 
         if (directionPtr > 0)
         {
+            Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
             LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
-            float3 transformed = transform.InverseTransformPoint(received[0].Source);
+            float3 transformed = transform.InverseTransformPoint(first->Source);
             memory.Set(directionPtr, math.atan2(transformed.x, transformed.z));
         }
 
         if (strengthPtr > 0)
         {
+            Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
             memory.Set(strengthPtr, (byte)255);
         }
 
-        if (copyLength >= received[0].Data.Length)
+        if (copyLength >= first->Data.Length)
         { received.RemoveAt(0); }
         else
-        { received[0].Data.RemoveRange(0, copyLength); }
+        { first->Data.RemoveRange(0, copyLength); }
 
         returnValue.Set(copyLength);
     }

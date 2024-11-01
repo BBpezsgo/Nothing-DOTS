@@ -102,9 +102,9 @@ public class SetupManager : Singleton<SetupManager>
         {
             float2 generated;
             bool failed = true;
-            for (int j = 0; j < 10; j++)
+            for (int j = 0; j < 50; j++)
             {
-                if (c++ > 10)
+                if (c++ > 50)
                 {
                     yield return null;
                     c = 0;

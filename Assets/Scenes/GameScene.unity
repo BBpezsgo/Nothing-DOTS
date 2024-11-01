@@ -1178,7 +1178,7 @@ MonoBehaviour:
       y: -16
     Script: unit-1.bbc
   GeneratedScript: unit-1.bbc
-  GeneratedCount: 1000
+  GeneratedCount: 5000
   Start: {x: -100, y: -100}
   End: {x: 100, y: 100}
   RandomRotation: 1
@@ -1370,6 +1370,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   StartFadeDistance: 10
   DisappearDistance: 100
+  UIs: []
 --- !u!1 &1898065794
 GameObject:
   m_ObjectHideFlags: 0
