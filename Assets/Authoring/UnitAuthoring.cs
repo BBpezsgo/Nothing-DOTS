@@ -19,6 +19,7 @@ public class UnitAuthoring : MonoBehaviour
             });
             AddComponent<SelectableUnit>(entity);
             AddComponent<EntityWithInfoUI>(entity);
+            AddComponent<EntityInQuadrant>(entity);
         }
     }
 }

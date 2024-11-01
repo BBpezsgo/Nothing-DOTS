@@ -7,6 +7,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using Unity.Profiling;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -15,6 +16,16 @@ using UnityEngine;
 [BurstCompile]
 unsafe partial struct ProcessorSystemServer : ISystem
 {
+    static readonly ProfilerMarker _ProcessMarker = new("ProcessorSystemServer.Process");
+    static readonly ProfilerMarker _ExternalMarker_stdout = new("ProcessorSystemServer.External.stdout");
+    static readonly ProfilerMarker _ExternalMarker_send = new("ProcessorSystemServer.External.send");
+    static readonly ProfilerMarker _ExternalMarker_receive = new("ProcessorSystemServer.External.receive");
+    static readonly ProfilerMarker _ExternalMarker_radar = new("ProcessorSystemServer.External.radar");
+    static readonly ProfilerMarker _ExternalMarker_debug = new("ProcessorSystemServer.External.debug");
+    static readonly ProfilerMarker _ExternalMarker_time = new("ProcessorSystemServer.External.time");
+    static readonly ProfilerMarker _ExternalMarker_math = new("ProcessorSystemServer.External.math");
+    static readonly ProfilerMarker _ExternalMarker_other = new("ProcessorSystemServer.External.other");
+
     public static readonly BytecodeInterpreterSettings BytecodeInterpreterSettings = new()
     {
         HeapSize = Processor.HeapSize,
@@ -29,6 +40,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required SystemState State;
         public required Entity SourceEntity;
         public required float3 SourcePosition;
+        public required EntityQuery ProcessorEntitiesQ;
     }
 
     static readonly Unity.Mathematics.Random _sharedRandom = Unity.Mathematics.Random.CreateFromIndex(420);
@@ -106,6 +118,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _stdout(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_stdout.Auto();
+
         char output = arguments.To<char>();
         if (output == '\r') return;
         ((FunctionScope*)_scope)->Processor.ValueRW.StdOutBuffer.AppendShift(output);
@@ -114,14 +128,14 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _send(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_send.Auto();
+
         (int bufferPtr, int length, float directionAngle, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, float, float>(arguments);
-        if (bufferPtr <= 0 || length <= 0) return;
+        if (bufferPtr <= 0 || length <= 0) throw new Exception($"Bruh");
         if (length >= 30) throw new Exception($"Can't");
+        if (bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Bruh");
 
         FunctionScope* scope = (FunctionScope*)_scope;
-
-        Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-        ReadOnlySpan<byte> buffer = memory.Slice(bufferPtr, length);
 
         float3 direction;
         if (angle != 0f)
@@ -138,38 +152,69 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         scope->Processor.ValueRW.NetworkSendLED.Blink();
 
-        EntityQueryBuilder qb = new EntityQueryBuilder(Allocator.Temp).WithAll<Processor>();
-        using EntityQuery q = scope->State.EntityManager.CreateEntityQuery(qb);
-        qb.Dispose();
-        using NativeArray<Entity> entities = q.ToEntityArray(Allocator.Temp);
-        fixed (byte* bufferPtr2 = buffer)
-        {
-            for (int i = 0; i < entities.Length; i++)
-            {
-                if (entities[i] == scope->SourceEntity) continue;
-                
-                if (angle != 0f)
-                {
-                    float3 entityDirection = scope->State.EntityManager.GetComponentData<LocalToWorld>(entities[i]).Position;
-                    entityDirection -= scope->SourcePosition;
-                    entityDirection.y = 0f;
-                    entityDirection = math.normalize(entityDirection);
-                    float dot = math.abs(math.dot(direction, entityDirection));
-                    if (dot < cosAngle) continue;
-                }
+        FixedList32Bytes<byte> data = new();
+        data.AddRange((byte*)((nint)scope->Memory + bufferPtr), length);
 
-                FixedList32Bytes<byte> data = new();
-                data.AddRange(bufferPtr2, length);
-                DynamicBuffer<BufferedTransmittedUnitData> transmissions = scope->State.EntityManager.GetBuffer<BufferedTransmittedUnitData>(entities[i]);
-                if (transmissions.Length > 128) transmissions.RemoveAt(0);
-                transmissions.Add(new BufferedTransmittedUnitData(scope->SourcePosition, data));
+        NativeHashMap<uint, NativeList<QuadrantEntity>> map = QuadrantSystem.GetMap(scope->State.WorldUnmanaged);
+        int2 grid = QuadrantSystem.ToGrid(scope->SourcePosition);
+
+        for (int x = -2; x <= 2; x++)
+        {
+            for (int z = -2; z <= 2; z++)
+            {
+                if (!map.TryGetValue(QuadrantSystem.GetKey(grid + new int2(x, z)), out NativeList<QuadrantEntity> cell)) continue;
+                for (int i = 0; i < cell.Length; i++)
+                {
+                    if (cell[i].Entity == scope->SourceEntity) continue;
+
+                    if (angle != 0f)
+                    {
+                        float3 entityDirection = cell[i].Position;
+                        entityDirection.x -= scope->SourcePosition.x;
+                        entityDirection.y = 0f;
+                        entityDirection.z -= scope->SourcePosition.z;
+                        entityDirection = math.normalize(entityDirection);
+                        float dot = math.abs(math.dot(direction, entityDirection));
+                        if (dot < cosAngle) continue;
+                    }
+
+                    DynamicBuffer<BufferedUnitTransmission> transmissions = scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(cell[i].Entity);
+                    if (transmissions.Length > 128) transmissions.RemoveAt(0);
+                    transmissions.Add(new BufferedUnitTransmission(scope->SourcePosition, data));
+                }
             }
+        }
+
+        return;
+
+        using NativeArray<Entity> entities = scope->ProcessorEntitiesQ.ToEntityArray(Allocator.Temp);
+
+        for (int i = 0; i < entities.Length; i++)
+        {
+            if (entities[i] == scope->SourceEntity) continue;
+
+            if (angle != 0f)
+            {
+                float3 entityDirection = scope->State.EntityManager.GetComponentData<LocalToWorld>(entities[i]).Position;
+                entityDirection.x -= scope->SourcePosition.x;
+                entityDirection.y = 0f;
+                entityDirection.z -= scope->SourcePosition.z;
+                entityDirection = math.normalize(entityDirection);
+                float dot = math.abs(math.dot(direction, entityDirection));
+                if (dot < cosAngle) continue;
+            }
+
+            DynamicBuffer<BufferedUnitTransmission> transmissions = scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(entities[i]);
+            if (transmissions.Length > 128) transmissions.RemoveAt(0);
+            transmissions.Add(new BufferedUnitTransmission(scope->SourcePosition, data));
         }
     }
 
     [BurstCompile]
     static void _receive(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_receive.Auto();
+
         returnValue.Clear(sizeof(int));
 
         (int bufferPtr, int length, int directionPtr, int strengthPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int, int>(arguments);
@@ -177,14 +222,15 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
+        DynamicBuffer<BufferedUnitTransmission> received = scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
+        if (received.Length == 0) return;
+
         Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
         Span<byte> buffer = memory.Slice(bufferPtr, length);
 
-        DynamicBuffer<BufferedTransmittedUnitData> received = scope->State.EntityManager.GetBuffer<BufferedTransmittedUnitData>(scope->SourceEntity);
-        if (received.Length == 0) return;
+        int copyLength = System.Math.Min(received[0].Data.Length, buffer.Length);
 
-        int i;
-        for (i = 0; i < received[0].Data.Length && i < buffer.Length; i++)
+        for (int i = 0; i < copyLength; i++)
         {
             buffer[i] = received[0].Data[i];
         }
@@ -203,17 +249,19 @@ unsafe partial struct ProcessorSystemServer : ISystem
             memory.Set(strengthPtr, (byte)255);
         }
 
-        if (i >= received[0].Data.Length)
+        if (copyLength >= received[0].Data.Length)
         { received.RemoveAt(0); }
         else
-        { received[0].Data.RemoveRange(0, i); }
+        { received[0].Data.RemoveRange(0, copyLength); }
 
-        returnValue.Set(i);
+        returnValue.Set(copyLength);
     }
 
     [BurstCompile]
     static void _radar(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_radar.Auto();
+
         returnValue.Clear(sizeof(float));
 
         FunctionScope* scope = (FunctionScope*)_scope;
@@ -249,6 +297,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _debug(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
+
         (float2 position, int color) = ExternalFunctionGenerator.TakeParameters<float2, int>(arguments);
 
         FunctionScope* scope = (FunctionScope*)_scope;
@@ -267,6 +317,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _ldebug(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
+
         (float2 position, int color) = ExternalFunctionGenerator.TakeParameters<float2, int>(arguments);
 
         FunctionScope* scope = (FunctionScope*)_scope;
@@ -288,6 +340,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _toglobal(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
+
         int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
         if (ptr <= 0 || ptr <= 0) return;
 
@@ -302,6 +356,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _tolocal(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
+
         int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
         if (ptr <= 0 || ptr <= 0) return;
 
@@ -316,6 +372,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _time(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_time.Auto();
+
         FunctionScope* scope = (FunctionScope*)_scope;
         returnValue.Set((float)scope->State.WorldUnmanaged.Time.ElapsedTime);
     }
@@ -323,6 +381,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _random(nint _scope, nint arguments, nint returnValue)
     {
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
+
         returnValue.Set(_sharedRandom.NextInt());
     }
 
@@ -361,14 +421,21 @@ unsafe partial struct ProcessorSystemServer : ISystem
         Unity.Assertions.Assert.AreEqual(i, ExternalFunctionCount);
     }
 
+    EntityQuery processorEntitiesQ;
+
+    void ISystem.OnCreate(ref SystemState state)
+    {
+        processorEntitiesQ = state.GetEntityQuery(typeof(Processor));
+    }
+
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ExternalFunctionCount];
         GenerateExternalFunctions(scopedExternalFunctions);
 
-        foreach ((RefRW<Processor> processor, Entity entity) in
-            SystemAPI.Query<RefRW<Processor>>()
+        foreach (var (processor, transform, code, entity) in
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, DynamicBuffer<BufferedInstruction>>()
             .WithEntityAccess())
         {
             if (processor.ValueRO.SourceFile == default)
@@ -376,8 +443,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 processor.ValueRW.StatusLED.Status = 0;
                 continue;
             }
-
-            DynamicBuffer<BufferedInstruction> code = SystemAPI.GetBuffer<BufferedInstruction>(entity);
 
             if (code.IsEmpty)
             {
@@ -391,7 +456,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 State = state,
                 Processor = processor,
                 SourceEntity = entity,
-                SourcePosition = SystemAPI.GetComponent<LocalToWorld>(entity).Position,
+                SourcePosition = transform.ValueRO.Position,
+                ProcessorEntitiesQ = processorEntitiesQ,
             };
             for (int i = 0; i < ExternalFunctionCount; i++)
             { scopedExternalFunctions[i].Scope = (nint)(&transmissionScope); }
@@ -406,35 +472,37 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 ExternalFunctionCount
             );
 
-            processor.ValueRW.StatusLED.Status = 1;
-
-            for (int i = 0; i < 256; i++)
+            using (ProfilerMarker.AutoScope marker = _ProcessMarker.Auto())
             {
-                if (processorState.Registers.CodePointer == processorState.Code.Length) break;
-                processorState.Process();
-                if (processorState.Signal != Signal.None)
+                for (int i = 0; i < 256; i++)
                 {
-                    switch (processorState.Signal)
+                    if (processorState.Registers.CodePointer == processorState.Code.Length) break;
+                    processorState.Process();
+                    if (processorState.Signal != Signal.None)
                     {
-                        case Signal.UserCrash:
-                            Debug.LogError("Crashed");
-                            break;
-                        case Signal.StackOverflow:
-                            Debug.LogError("Stack Overflow");
-                            break;
-                        case Signal.Halt:
-                            Debug.LogError("Halted");
-                            break;
-                        case Signal.UndefinedExternalFunction:
-                            Debug.LogError("Undefined External Function");
-                            break;
+                        switch (processorState.Signal)
+                        {
+                            case Signal.UserCrash:
+                                Debug.LogError("Crashed");
+                                break;
+                            case Signal.StackOverflow:
+                                Debug.LogError("Stack Overflow");
+                                break;
+                            case Signal.Halt:
+                                Debug.LogError("Halted");
+                                break;
+                            case Signal.UndefinedExternalFunction:
+                                Debug.LogError("Undefined External Function");
+                                break;
+                        }
+                        processorState.Registers.CodePointer = processorState.Code.Length;
+                        break;
                     }
-                    processorState.Registers.CodePointer = processorState.Code.Length;
-                    break;
                 }
             }
 
             processor.ValueRW.Registers = processorState.Registers;
+            processor.ValueRW.StatusLED.Status = 1;
         }
     }
 }

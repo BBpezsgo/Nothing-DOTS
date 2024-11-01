@@ -5,6 +5,8 @@ public class Singleton<T> : MonoBehaviour where T : UnityEngine.Object
 {
     static T? _instance;
 
+    public static T? InstanceOrNull => _instance;
+
     public static T Instance
     {
         get

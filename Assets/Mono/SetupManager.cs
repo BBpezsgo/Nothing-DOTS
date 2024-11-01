@@ -78,6 +78,7 @@ public class SetupManager : Singleton<SetupManager>
 
         World world = ConnectionManager.ServerOrDefaultWorld;
         List<float2> spawned = new(GeneratedCount);
+        int c = 0;
 
         bool IsOccupied(float2 position)
         {
@@ -103,7 +104,11 @@ public class SetupManager : Singleton<SetupManager>
             bool failed = true;
             for (int j = 0; j < 10; j++)
             {
-                yield return null;
+                if (c++ > 10)
+                {
+                    yield return null;
+                    c = 0;
+                }
                 generated = new(
                     Maths.Random.Float(Start.x, End.x),
                     Maths.Random.Float(Start.y, End.y)

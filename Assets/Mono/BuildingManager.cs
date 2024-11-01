@@ -168,7 +168,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             ApplyHologram(BuildingHologram, SelectedBuilding);
         }
 
-        Vector3 position = Camera.main.ScreenToWorldPosition(Mouse.current.position.value);
+        Vector3 position = MainCamera.Camera.ScreenToWorldPosition(Mouse.current.position.value);
         position.y = 0.5f;
 
         if (Input.GetKey(KeyCode.LeftControl))
@@ -176,14 +176,8 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
         BuildingHologram.transform.position = position;
 
-        // Vector3 checkPosition = position;
-
-        // Debug3D.DrawBox(checkPosition, SelectedBuilding.SpaceNeed, Color.white, Time.deltaTime);
-
-        // if (Physics.OverlapBox(checkPosition, SelectedBuilding.SpaceNeed / 2, Quaternion.identity, LayerMask.GetMask(LayerMaskNames.Default, LayerMaskNames.Water)).Length > 0)
-        // { IsValidPosition = false; }
-        // else
-        { IsValidPosition = true; }
+        // TODO: this
+        IsValidPosition = true;
 
         MeshRenderer[] renderers = BuildingHologram.GetComponentsInChildren<MeshRenderer>();
 

@@ -205,7 +205,7 @@ public class CameraControl : MonoBehaviour
         if (!Mouse.current.rightButton.isPressed || UI.IsMouseHandled) return;
 
         Plane plane = new(Vector3.up, Vector3.zero);
-        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+        Ray ray = MainCamera.Camera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
         if (plane.Raycast(ray, out float distance))
         {

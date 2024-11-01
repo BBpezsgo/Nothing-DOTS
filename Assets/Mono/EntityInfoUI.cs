@@ -14,4 +14,17 @@ public class EntityInfoUI : MonoBehaviour
     [ReadOnly] public float Percent = default;
     [ReadOnly] public float3 WorldPosition = default;
     [ReadOnly] public SelectionStatus SelectionStatus = default;
+
+    [ReadOnly] public bool IsVisible = default;
+
+    void Start()
+    {
+        EntityInfoUIManager.Instance.UIs.Add(this);
+    }
+
+    void OnDestroy()
+    {
+        if (EntityInfoUIManager.InstanceOrNull == null) return;
+        EntityInfoUIManager.InstanceOrNull.UIs.Remove(this);
+    }
 }

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Entities;
@@ -61,7 +60,7 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         _selectionStart = default;
 
-        RaycastHit hit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition), Layers.Ground);
+        var hit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Ground);
         if (hit.Entity == Entity.Null) return;
 
         _selectionStart = hit.Position;
@@ -75,14 +74,14 @@ public class SelectionManager : Singleton<SelectionManager>
         {
             SelectBox.gameObject.SetActive(false);
 
-            Entity selectableHit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
+            Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
             if (selectableHit == Entity.Null) return;
             SelectUnitCandidate(selectableHit, SelectionStatus.Candidate);
 
             return;
         }
 
-        Vector3 startPoint = Camera.main.WorldToScreenPoint(_selectionStart);
+        Vector3 startPoint = MainCamera.Camera.WorldToScreenPoint(_selectionStart);
         Vector3 endPoint = Input.mousePosition;
 
         if (startPoint.z <= 0f)
@@ -94,7 +93,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (Vector2.Distance(startPoint, endPoint) < BoxSelectDistanceThreshold)
         {
-            Entity selectableHit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
+            Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
             if (selectableHit == Entity.Null) return;
             SelectUnitCandidate(selectableHit, SelectionStatus.Candidate);
             SelectBox.gameObject.SetActive(false);
@@ -128,7 +127,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (_selectionStart == default) return;
 
-        Vector3 startPoint = Camera.main.WorldToScreenPoint(_selectionStart);
+        Vector3 startPoint = MainCamera.Camera.WorldToScreenPoint(_selectionStart);
         Vector3 endPoint = Input.mousePosition;
         _selectionStart = default;
 
@@ -140,7 +139,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (Vector2.Distance(startPoint, endPoint) < BoxSelectDistanceThreshold)
         {
-            Entity selectableHit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
+            Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
             if (selectableHit == Entity.Null) return;
             if (GetUnitStatus(selectableHit).Status == SelectionStatus.Selected &&
                 _selected.Count > 0 &&
@@ -171,7 +170,7 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         _firstHit = Entity.Null;
 
-        Entity selectableHit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
+        Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
         if (selectableHit == Entity.Null) return;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -191,7 +190,7 @@ public class SelectionManager : Singleton<SelectionManager>
         Entity firstHit = _firstHit;
         _firstHit = Entity.Null;
 
-        Entity selectableHit = RayCast(Camera.main.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
+        Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
         if (selectableHit == Entity.Null) return;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -229,7 +228,7 @@ public class SelectionManager : Singleton<SelectionManager>
         {
             Entity selectableEntity = selectableEntities[i];
             LocalToWorld transform = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<LocalToWorld>(selectableEntity);
-            Vector3 point = Camera.main.WorldToScreenPoint(transform.Position);
+            Vector3 point = MainCamera.Camera.WorldToScreenPoint(transform.Position);
             if (point.x < rect.xMin ||
                 point.y < rect.yMin ||
                 point.x > rect.xMax ||

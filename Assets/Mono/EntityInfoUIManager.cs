@@ -1,11 +1,14 @@
 using System;
-using Unity.Mathematics;
+using System.Collections.Generic;
+using Unity.Serialization;
 using UnityEngine;
 
-public class EntityInfoUIManager : MonoBehaviour
+public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
 {
     [SerializeField] float StartFadeDistance = default;
     [SerializeField] float DisappearDistance = default;
+    
+    [DontSerialize, HideInInspector] public List<EntityInfoUI> UIs = new();
 
     void OnValidate()
     {
@@ -14,11 +17,16 @@ public class EntityInfoUIManager : MonoBehaviour
 
     void Update()
     {
-        foreach (EntityInfoUI item in FindObjectsByType<EntityInfoUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (EntityInfoUI item in UIs)
         {
-            Vector3 screenPoint = Camera.main.WorldToScreenPoint(item.WorldPosition);
-            item.gameObject.SetActive(screenPoint.z > 0f && screenPoint.z < DisappearDistance);
-            if (!item.gameObject.activeSelf) continue;
+            Vector3 screenPoint = MainCamera.Camera.WorldToScreenPoint(item.WorldPosition);
+            bool isVisible = screenPoint.z > 0f && screenPoint.z < DisappearDistance;
+            if (isVisible != item.IsVisible)
+            {
+                item.IsVisible = isVisible;
+                item.gameObject.SetActive(isVisible);
+            }
+            if (!isVisible) continue;
 
             item.Foreground.fillAmount = item.Percent;
             item.CanvasGroup.alpha = Math.Clamp(1f - ((screenPoint.z - StartFadeDistance) / (DisappearDistance - StartFadeDistance)), 0f, 1f);

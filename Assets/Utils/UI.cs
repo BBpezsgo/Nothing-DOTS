@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Unity.Entities;
 using UnityEngine;
@@ -41,6 +42,9 @@ public static class UIExtensions
 
 public static class UI
 {
+    static ImmutableArray<UIDocument> _uiDocuments;
+    static ImmutableArray<UIDocument> UIDocuments => _uiDocuments.IsDefault ? (_uiDocuments = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToImmutableArray()) : _uiDocuments;
+
     public static bool IsMouseHandled => IsUIFocused || IsPointerOverUI();
 
     public static bool IsUIFocused
@@ -49,11 +53,8 @@ public static class UI
         {
             if (GUIUtility.hotControl != 0) return true;
 
-            foreach (UIDocument uiDocument in UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            foreach (UIDocument uiDocument in UIDocuments)
             {
-                if (uiDocument == null) continue;
-                if (!uiDocument.gameObject.activeSelf) continue;
-                if (!uiDocument.isActiveAndEnabled) continue;
                 if (uiDocument.rootVisualElement == null) continue;
                 if (uiDocument.rootVisualElement.focusController.focusedElement == null) continue;
 
@@ -69,11 +70,8 @@ public static class UI
     {
         Vector2 pointerUiPos = new(screenPos.x, Screen.height - screenPos.y);
         List<VisualElement> picked = new();
-        foreach (UIDocument uiDocument in UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        foreach (UIDocument uiDocument in UIDocuments)
         {
-            if (uiDocument == null) continue;
-            if (!uiDocument.gameObject.activeSelf) continue;
-            if (!uiDocument.isActiveAndEnabled) continue;
             if (uiDocument.rootVisualElement == null) continue;
             uiDocument.rootVisualElement.panel.PickAll(pointerUiPos, picked);
             foreach (VisualElement element in picked)
