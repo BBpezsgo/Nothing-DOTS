@@ -21,7 +21,7 @@ public class ProcessorAuthoring : MonoBehaviour
                 NetworkSendLED = new(authoring.NetworkSendLED == null ? Entity.Null : GetEntity(authoring.NetworkSendLED, TransformUsageFlags.Dynamic)),
                 RadarLED = new(authoring.RadarLED == null ? Entity.Null : GetEntity(authoring.RadarLED, TransformUsageFlags.Dynamic)),
             });
-            AddBuffer<BufferedUnitTransmission>(entity);
+            // AddBuffer<BufferedUnitTransmission>(entity);
             AddBuffer<BufferedInstruction>(entity);
         }
     }

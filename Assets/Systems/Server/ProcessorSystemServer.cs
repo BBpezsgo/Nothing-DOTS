@@ -1,3 +1,5 @@
+#define _UNITY_PROFILER
+
 using System;
 using System.Runtime.CompilerServices;
 using LanguageCore;
@@ -16,6 +18,7 @@ using UnityEngine;
 [BurstCompile]
 unsafe partial struct ProcessorSystemServer : ISystem
 {
+#if UNITY_PROFILER
     static readonly ProfilerMarker _ProcessMarker = new("ProcessorSystemServer.Process");
     static readonly ProfilerMarker _ExternalMarker_stdout = new("ProcessorSystemServer.External.stdout");
     static readonly ProfilerMarker _ExternalMarker_send = new("ProcessorSystemServer.External.send");
@@ -25,6 +28,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     static readonly ProfilerMarker _ExternalMarker_time = new("ProcessorSystemServer.External.time");
     static readonly ProfilerMarker _ExternalMarker_math = new("ProcessorSystemServer.External.math");
     static readonly ProfilerMarker _ExternalMarker_other = new("ProcessorSystemServer.External.other");
+#endif
 
     public static readonly BytecodeInterpreterSettings BytecodeInterpreterSettings = new()
     {
@@ -41,6 +45,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required Entity SourceEntity;
         public required float3 SourcePosition;
         public required EntityQuery ProcessorEntitiesQ;
+        public required ComponentLookup<Processor> ProcessorComponentQ;
+        public required CollisionWorld CollisionWorld;
     }
 
     static readonly Unity.Mathematics.Random _sharedRandom = Unity.Mathematics.Random.CreateFromIndex(420);
@@ -118,7 +124,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _stdout(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_stdout.Auto();
+#endif
 
         char output = arguments.To<char>();
         if (output == '\r') return;
@@ -128,7 +136,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _send(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_send.Auto();
+#endif
 
         (int bufferPtr, int length, float directionAngle, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, float, float>(arguments);
         if (bufferPtr <= 0 || length <= 0) throw new Exception($"Bruh");
@@ -158,28 +168,35 @@ unsafe partial struct ProcessorSystemServer : ISystem
         NativeHashMap<uint, NativeList<QuadrantEntity>> map = QuadrantSystem.GetMap(scope->State.WorldUnmanaged);
         int2 grid = QuadrantSystem.ToGrid(scope->SourcePosition);
 
-        for (int x = -2; x <= 2; x++)
+        for (int x = -1; x <= 1; x++)
         {
-            for (int z = -2; z <= 2; z++)
+            for (int z = -1; z <= 1; z++)
             {
                 if (!map.TryGetValue(QuadrantSystem.GetKey(grid + new int2(x, z)), out NativeList<QuadrantEntity> cell)) continue;
                 for (int i = 0; i < cell.Length; i++)
                 {
                     if (cell[i].Entity == scope->SourceEntity) continue;
 
+                    float3 entityLocalPosition = cell[i].Position;
+                    entityLocalPosition.x = cell[i].Position.x - scope->SourcePosition.x;
+                    entityLocalPosition.y = 0f;
+                    entityLocalPosition.z = cell[i].Position.z - scope->SourcePosition.z;
+
+                    float entityDistanceSq = math.lengthsq(entityLocalPosition);
+                    if (entityDistanceSq > (Unit.TransmissionRadius * Unit.TransmissionRadius)) continue;
+
                     if (angle != 0f)
                     {
-                        float3 entityDirection = cell[i].Position;
-                        entityDirection.x -= scope->SourcePosition.x;
-                        entityDirection.y = 0f;
-                        entityDirection.z -= scope->SourcePosition.z;
-                        entityDirection = math.normalize(entityDirection);
-                        float dot = math.abs(math.dot(direction, entityDirection));
+                        float dot = math.abs(math.dot(direction, entityLocalPosition / math.sqrt(entityDistanceSq)));
                         if (dot < cosAngle) continue;
                     }
 
-                    DynamicBuffer<BufferedUnitTransmission> transmissions = scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(cell[i].Entity);
-                    if (transmissions.Length > 128) transmissions.RemoveAt(0);
+                    var other = scope->ProcessorComponentQ.GetRefRWOptional(cell[i].Entity);
+                    if (!other.IsValid) continue;
+
+                    ref var transmissions = ref other.ValueRW.TransmissionQueue;
+
+                    if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
                     transmissions.Add(new BufferedUnitTransmission(scope->SourcePosition, data));
                 }
             }
@@ -213,9 +230,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _receive(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_receive.Auto();
+#endif
 
-        returnValue.Clear(sizeof(int));
+        returnValue.Set(0);
 
         (int bufferPtr, int length, int directionPtr, int strengthPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int, int>(arguments);
         if (bufferPtr <= 0 || length <= 0) return;
@@ -223,14 +242,14 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        DynamicBuffer<BufferedUnitTransmission> received = scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
+        ref var received = ref scope->Processor.ValueRW.TransmissionQueue; // scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
         if (received.Length == 0) return;
 
-        BufferedUnitTransmission* first = (BufferedUnitTransmission*)received.GetUnsafePtr();
+        BufferedUnitTransmission first = received[0];
 
-        int copyLength = System.Math.Min(first->Data.Length, length);
+        int copyLength = System.Math.Min(first.Data.Length, length);
 
-        Buffer.MemoryCopy(((byte*)&first->Data) + 2, (byte*)scope->Memory + bufferPtr, copyLength, copyLength);
+        Buffer.MemoryCopy(((byte*)&first.Data) + 2, (byte*)scope->Memory + bufferPtr, copyLength, copyLength);
 
         // for (int i = 0; i < copyLength; i++)
         // {
@@ -243,7 +262,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         {
             Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
             LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
-            float3 transformed = transform.InverseTransformPoint(first->Source);
+            float3 transformed = transform.InverseTransformPoint(first.Source);
             memory.Set(directionPtr, math.atan2(transformed.x, transformed.z));
         }
 
@@ -253,10 +272,15 @@ unsafe partial struct ProcessorSystemServer : ISystem
             memory.Set(strengthPtr, (byte)255);
         }
 
-        if (copyLength >= first->Data.Length)
-        { received.RemoveAt(0); }
+        if (copyLength >= first.Data.Length)
+        {
+            received.RemoveAt(0);
+        }
         else
-        { first->Data.RemoveRange(0, copyLength); }
+        {
+            first.Data.RemoveRange(0, copyLength);
+            received[0] = first;
+        }
 
         returnValue.Set(copyLength);
     }
@@ -264,24 +288,20 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _radar(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_radar.Auto();
+#endif
 
-        returnValue.Clear(sizeof(float));
+        returnValue.Set(0f);
 
         FunctionScope* scope = (FunctionScope*)_scope;
-
-        CollisionWorld collisionWorld;
-        EntityQueryBuilder collisionWorldQB = new EntityQueryBuilder(Allocator.Temp).WithAll<PhysicsWorldSingleton>();
-        using (EntityQuery collisionWorldQ = scope->State.EntityManager.CreateEntityQuery(collisionWorldQB))
-        { collisionWorld = collisionWorldQ.GetSingleton<PhysicsWorldSingleton>().CollisionWorld; }
-        collisionWorldQB.Dispose();
 
         LocalToWorld radar = scope->State.EntityManager.GetComponentData<LocalToWorld>(scope->State.EntityManager.GetComponentData<Unit>(scope->SourceEntity).Radar);
 
         RaycastInput input = new()
         {
             Start = scope->SourcePosition + (math.normalize(radar.Forward) * 1f),
-            End = scope->SourcePosition + (math.normalize(radar.Forward) * 80f),
+            End = scope->SourcePosition + (math.normalize(radar.Forward) * (Unit.RadarRadius - 1f)),
             Filter = new CollisionFilter()
             {
                 BelongsTo = Layers.All,
@@ -290,18 +310,24 @@ unsafe partial struct ProcessorSystemServer : ISystem
             },
         };
 
-        if (!collisionWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
+        if (!scope->CollisionWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
         { return; }
 
         scope->Processor.ValueRW.RadarLED.Blink();
 
-        returnValue.Set(math.distance(hit.Position, input.Start) + 1f);
+        float distance = math.distance(hit.Position, input.Start) + 1f;
+
+        if (distance >= Unit.RadarRadius) return;
+
+        returnValue.Set(distance);
     }
 
     [BurstCompile]
     static void _debug(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
+#endif
 
         (float2 position, int color) = ExternalFunctionGenerator.TakeParameters<float2, int>(arguments);
 
@@ -321,7 +347,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _ldebug(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
+#endif
 
         (float2 position, int color) = ExternalFunctionGenerator.TakeParameters<float2, int>(arguments);
 
@@ -344,7 +372,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _toglobal(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
+#endif
 
         int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
         if (ptr <= 0 || ptr <= 0) return;
@@ -360,7 +390,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _tolocal(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
+#endif
 
         int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
         if (ptr <= 0 || ptr <= 0) return;
@@ -376,7 +408,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _time(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_time.Auto();
+#endif
 
         FunctionScope* scope = (FunctionScope*)_scope;
         returnValue.Set((float)scope->State.WorldUnmanaged.Time.ElapsedTime);
@@ -385,7 +419,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     static void _random(nint _scope, nint arguments, nint returnValue)
     {
+#if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
+#endif
 
         returnValue.Set(_sharedRandom.NextInt());
     }
@@ -426,15 +462,20 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     EntityQuery processorEntitiesQ;
+    ComponentLookup<Processor> processorComponentQ;
 
     void ISystem.OnCreate(ref SystemState state)
     {
         processorEntitiesQ = state.GetEntityQuery(typeof(Processor));
+        processorComponentQ = state.GetComponentLookup<Processor>(false);
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
+        processorComponentQ.Update(ref state);
+        CollisionWorld collisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
+
         ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ExternalFunctionCount];
         GenerateExternalFunctions(scopedExternalFunctions);
 
@@ -462,6 +503,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 SourceEntity = entity,
                 SourcePosition = transform.ValueRO.Position,
                 ProcessorEntitiesQ = processorEntitiesQ,
+                ProcessorComponentQ = processorComponentQ,
+                CollisionWorld = collisionWorld,
             };
             for (int i = 0; i < ExternalFunctionCount; i++)
             { scopedExternalFunctions[i].Scope = (nint)(&transmissionScope); }
@@ -476,7 +519,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 ExternalFunctionCount
             );
 
+#if UNITY_PROFILER
             using (ProfilerMarker.AutoScope marker = _ProcessMarker.Auto())
+#endif
             {
                 for (int i = 0; i < 256; i++)
                 {
