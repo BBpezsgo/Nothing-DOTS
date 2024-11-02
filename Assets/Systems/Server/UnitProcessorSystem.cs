@@ -16,7 +16,7 @@ using f32 = System.Single;
 partial struct UnitProcessorSystem : ISystem
 {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    struct MappedMemory
+    public struct MappedMemory
     {
         public i8 InputForward;
         public i8 InputSteer;

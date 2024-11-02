@@ -1,11 +1,14 @@
 #define _UNITY_PROFILER
+#define _DEBUG_LINES
 
 using System;
 using System.Runtime.CompilerServices;
+using AOT;
 using LanguageCore;
 using LanguageCore.Runtime;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -37,15 +40,13 @@ unsafe partial struct ProcessorSystemServer : ISystem
     };
 
     [BurstCompile]
-    ref struct FunctionScope
+    public ref struct FunctionScope
     {
         public required RefRW<Processor> Processor;
         public required void* Memory;
-        public required SystemState State;
         public required Entity SourceEntity;
-        public required float3 SourcePosition;
-        public required EntityQuery ProcessorEntitiesQ;
-        public required ComponentLookup<Processor> ProcessorComponentQ;
+        public required RefRO<LocalToWorld> WorldTransform;
+        public required RefRO<LocalTransform> LocalTransform;
         public required CollisionWorld CollisionWorld;
     }
 
@@ -54,6 +55,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     #region Processor Math Accelerators
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _atan2(nint scope, nint arguments, nint returnValue)
     {
         (float a, float b) = ExternalFunctionGenerator.TakeParameters<float, float>(arguments);
@@ -62,6 +64,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _sin(nint scope, nint arguments, nint returnValue)
     {
         float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
@@ -70,6 +73,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _cos(nint scope, nint arguments, nint returnValue)
     {
         float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
@@ -78,6 +82,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _tan(nint scope, nint arguments, nint returnValue)
     {
         float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
@@ -86,6 +91,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _asin(nint scope, nint arguments, nint returnValue)
     {
         float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
@@ -94,6 +100,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _acos(nint scope, nint arguments, nint returnValue)
     {
         float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
@@ -102,6 +109,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _atan(nint scope, nint arguments, nint returnValue)
     {
         float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
@@ -110,6 +118,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _sqrt(nint scope, nint arguments, nint returnValue)
     {
         float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
@@ -122,6 +131,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     #region Processor Unit Functions
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _stdout(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -134,6 +144,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _send(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -165,7 +176,13 @@ unsafe partial struct ProcessorSystemServer : ISystem
         FixedList32Bytes<byte> data = new();
         data.AddRange((byte*)((nint)scope->Memory + bufferPtr), length);
 
-        NativeHashMap<uint, NativeList<QuadrantEntity>> map = QuadrantSystem.GetMap(scope->State.WorldUnmanaged);
+        if (scope->Processor.ValueRW.OutgoingTransmissions.Length >= scope->Processor.ValueRW.OutgoingTransmissions.Capacity)
+        { scope->Processor.ValueRW.OutgoingTransmissions.RemoveAt(0); }
+        scope->Processor.ValueRW.OutgoingTransmissions.Add(new BufferedUnitTransmissionOutgoing(scope->WorldTransform.ValueRO.Position, direction, data, cosAngle));
+
+        /*
+
+        NativeHashMap<uint, NativeList<QuadrantEntity>> map = QuadrantSystem.GetMap(scope->World);
         int2 grid = QuadrantSystem.ToGrid(scope->SourcePosition);
 
         for (int x = -1; x <= 1; x++)
@@ -194,7 +211,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
                     var other = scope->ProcessorComponentQ.GetRefRWOptional(cell[i].Entity);
                     if (!other.IsValid) continue;
 
-                    ref var transmissions = ref other.ValueRW.TransmissionQueue;
+                    ref var transmissions = ref other.ValueRW.IncomingTransmissions;
 
                     if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
                     transmissions.Add(new BufferedUnitTransmission(scope->SourcePosition, data));
@@ -202,7 +219,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
             }
         }
 
-        return;
+        */
+
+        /*
 
         using NativeArray<Entity> entities = scope->ProcessorEntitiesQ.ToEntityArray(Allocator.Temp);
 
@@ -212,7 +231,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
             if (angle != 0f)
             {
-                float3 entityDirection = scope->State.EntityManager.GetComponentData<LocalToWorld>(entities[i]).Position;
+                float3 entityDirection = scope->EntityManager.GetComponentData<LocalToWorld>(entities[i]).Position;
                 entityDirection.x -= scope->SourcePosition.x;
                 entityDirection.y = 0f;
                 entityDirection.z -= scope->SourcePosition.z;
@@ -221,13 +240,16 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 if (dot < cosAngle) continue;
             }
 
-            DynamicBuffer<BufferedUnitTransmission> transmissions = scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(entities[i]);
+            DynamicBuffer<BufferedUnitTransmission> transmissions = scope->EntityManager.GetBuffer<BufferedUnitTransmission>(entities[i]);
             if (transmissions.Length > 128) transmissions.RemoveAt(0);
             transmissions.Add(new BufferedUnitTransmission(scope->SourcePosition, data));
         }
+
+        */
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _receive(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -242,7 +264,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        ref var received = ref scope->Processor.ValueRW.TransmissionQueue; // scope->State.EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
+        ref FixedList128Bytes<BufferedUnitTransmission> received = ref scope->Processor.ValueRW.IncomingTransmissions; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
         if (received.Length == 0) return;
 
         BufferedUnitTransmission first = received[0];
@@ -261,8 +283,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         if (directionPtr > 0)
         {
             Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-            LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
-            float3 transformed = transform.InverseTransformPoint(first.Source);
+            RefRO<LocalTransform> transform = scope->LocalTransform;
+            float3 transformed = transform.ValueRO.InverseTransformPoint(first.Source);
             memory.Set(directionPtr, math.atan2(transformed.x, transformed.z));
         }
 
@@ -286,6 +308,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _radar(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -296,12 +319,19 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        LocalToWorld radar = scope->State.EntityManager.GetComponentData<LocalToWorld>(scope->State.EntityManager.GetComponentData<Unit>(scope->SourceEntity).Radar);
+        UnitProcessorSystem.MappedMemory* mapped = (UnitProcessorSystem.MappedMemory*)((nint)scope->Memory + Processor.MappedMemoryStart);
+
+        float3 direction;
+        direction.x = math.sin(mapped->RadarDirection);
+        direction.y = 0f;
+        direction.z = math.cos(mapped->RadarDirection);
+
+        // LocalToWorld radar = scope->EntityManager.GetComponentData<LocalToWorld>(scope->EntityManager.GetComponentData<Unit>(scope->SourceEntity).Radar);
 
         RaycastInput input = new()
         {
-            Start = scope->SourcePosition + (math.normalize(radar.Forward) * 1f),
-            End = scope->SourcePosition + (math.normalize(radar.Forward) * (Unit.RadarRadius - 1f)),
+            Start = scope->WorldTransform.ValueRO.Position + (direction * 1f),
+            End = scope->WorldTransform.ValueRO.Position + (direction * (Unit.RadarRadius - 1f)),
             Filter = new CollisionFilter()
             {
                 BelongsTo = Layers.All,
@@ -323,8 +353,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _debug(nint _scope, nint arguments, nint returnValue)
     {
+#if DEBUG_LINES
 #if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
 #endif
@@ -342,11 +374,14 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 (color & 0x0000FF) >> 0
             ),
             1f);
+#endif
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _ldebug(nint _scope, nint arguments, nint returnValue)
     {
+#if DEBUG_LINES
 #if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
 #endif
@@ -355,7 +390,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
+        LocalTransform transform = scope->LocalTransform;
         float3 transformed = transform.TransformPoint(new Vector3(position.x, 0f, position.y));
 
         Debug.DrawLine(
@@ -367,9 +402,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 (color & 0x0000FF) >> 0
             ),
             1f);
+#endif
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _toglobal(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -382,12 +419,13 @@ unsafe partial struct ProcessorSystemServer : ISystem
         FunctionScope* scope = (FunctionScope*)_scope;
         Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
         float2 point = memory.Get<float2>(ptr);
-        LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
-        float3 transformed = transform.TransformPoint(new float3(point.x, 0f, point.y));
+        RefRO<LocalTransform> transform = scope->LocalTransform;
+        float3 transformed = transform.ValueRO.TransformPoint(new float3(point.x, 0f, point.y));
         memory.Set(ptr, new float2(transformed.x, transformed.z));
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _tolocal(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -400,12 +438,13 @@ unsafe partial struct ProcessorSystemServer : ISystem
         FunctionScope* scope = (FunctionScope*)_scope;
         Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
         float2 point = memory.Get<float2>(ptr);
-        LocalTransform transform = scope->State.EntityManager.GetComponentData<LocalTransform>(scope->SourceEntity);
-        float3 transformed = transform.InverseTransformPoint(new float3(point.x, 0f, point.y));
+        RefRO<LocalTransform> transform = scope->LocalTransform;
+        float3 transformed = transform.ValueRO.InverseTransformPoint(new float3(point.x, 0f, point.y));
         memory.Set(ptr, new float2(transformed.x, transformed.z));
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _time(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -413,10 +452,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
 #endif
 
         FunctionScope* scope = (FunctionScope*)_scope;
-        returnValue.Set((float)scope->State.WorldUnmanaged.Time.ElapsedTime);
+        returnValue.Set(MonoTime.Now);
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _random(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -435,50 +475,52 @@ unsafe partial struct ProcessorSystemServer : ISystem
     {
         int i = 0;
 
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_stdout), 01, ExternalFunctionGenerator.SizeOf<char>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_stdout).Value, 01, ExternalFunctionGenerator.SizeOf<char>(), 0, default);
 
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_sqrt), 11, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_atan2), 12, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_sin), 13, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_cos), 14, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_tan), 15, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_asin), 16, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_acos), 17, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_atan), 18, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_sqrt).Value, 11, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_atan2).Value, 12, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_sin).Value, 13, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_cos).Value, 14, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_tan).Value, 15, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_asin).Value, 16, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_acos).Value, 17, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_atan).Value, 18, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
 
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_send), 21, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_receive), 22, ExternalFunctionGenerator.SizeOf<int, int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_radar), 23, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_send).Value, 21, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_receive).Value, 22, ExternalFunctionGenerator.SizeOf<int, int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_radar).Value, 23, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<float>(), default);
 
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_toglobal), 31, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_tolocal), 32, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_time), 33, 0, ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_random), 34, 0, ExternalFunctionGenerator.SizeOf<int>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_toglobal).Value, 31, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_tolocal).Value, 32, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_time).Value, 33, 0, ExternalFunctionGenerator.SizeOf<float>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_random).Value, 34, 0, ExternalFunctionGenerator.SizeOf<int>(), default);
 
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_debug), 41, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
-        buffer[i++] = new(BurstCompiler.CompileFunctionPointer(_ldebug), 42, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug).Value, 41, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug).Value, 42, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
 
         Unity.Assertions.Assert.AreEqual(i, ExternalFunctionCount);
     }
 
-    EntityQuery processorEntitiesQ;
-    ComponentLookup<Processor> processorComponentQ;
+    NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
 
     void ISystem.OnCreate(ref SystemState state)
     {
-        processorEntitiesQ = state.GetEntityQuery(typeof(Processor));
-        processorComponentQ = state.GetComponentLookup<Processor>(false);
+        scopedExternalFunctions = new NativeArray<ExternalFunctionScopedSync>(ExternalFunctionCount, Allocator.Persistent);
+        GenerateExternalFunctions((ExternalFunctionScopedSync*)scopedExternalFunctions.GetUnsafePtr());
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        processorComponentQ.Update(ref state);
         CollisionWorld collisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
 
-        ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ExternalFunctionCount];
-        GenerateExternalFunctions(scopedExternalFunctions);
+        new ProcessorJob()
+        {
+            collisionWorld = collisionWorld,
+            scopedExternalFunctions = scopedExternalFunctions,
+        }.ScheduleParallel();
 
+        /*
         foreach (var (processor, transform, code, entity) in
             SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, DynamicBuffer<BufferedInstruction>>()
             .WithEntityAccess())
@@ -498,7 +540,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
             FunctionScope transmissionScope = new()
             {
                 Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
-                State = state,
+                EntityManager = state.EntityManager,
+                World = state.WorldUnmanaged,
                 Processor = processor,
                 SourceEntity = entity,
                 SourcePosition = transform.ValueRO.Position,
@@ -523,7 +566,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
             using (ProfilerMarker.AutoScope marker = _ProcessMarker.Auto())
 #endif
             {
-                for (int i = 0; i < 256; i++)
+                for (int i = 0; i < 128; i++)
                 {
                     if (processorState.Registers.CodePointer == processorState.Code.Length) break;
                     processorState.Process();
@@ -553,5 +596,95 @@ unsafe partial struct ProcessorSystemServer : ISystem
             processor.ValueRW.Registers = processorState.Registers;
             processor.ValueRW.StatusLED.Status = 1;
         }
+        */
+    }
+}
+
+[BurstCompile(CompileSynchronously = true)]
+[WithAll(typeof(Processor), typeof(LocalToWorld), typeof(LocalTransform))]
+partial struct ProcessorJob : IJobEntity
+{
+    [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
+    [ReadOnly] public CollisionWorld collisionWorld;
+
+    [BurstCompile(CompileSynchronously = true)]
+    unsafe void Execute(
+        RefRW<Processor> processor,
+        RefRO<LocalToWorld> worldTransform,
+        RefRO<LocalTransform> localTransform,
+        DynamicBuffer<BufferedInstruction> code,
+        Entity entity)
+    {
+        if (processor.ValueRO.SourceFile == default)
+        {
+            processor.ValueRW.StatusLED.Status = 0;
+            return;
+        }
+
+        if (code.IsEmpty)
+        {
+            processor.ValueRW.StatusLED.Status = 0;
+            return;
+        }
+
+        ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ProcessorSystemServer.ExternalFunctionCount];
+
+        for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
+        {
+            scopedExternalFunctions[i] = this.scopedExternalFunctions[i];
+        }
+
+        // Buffer.MemoryCopy(this.scopedExternalFunctions.GetUnsafeReadOnlyPtr(), scopedExternalFunctions, ProcessorSystemServer.ExternalFunctionCount * sizeof(ExternalFunctionScopedSync), ProcessorSystemServer.ExternalFunctionCount * sizeof(ExternalFunctionScopedSync));
+
+        ProcessorSystemServer.FunctionScope transmissionScope = new()
+        {
+            Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
+            Processor = processor,
+            SourceEntity = entity,
+            WorldTransform = worldTransform,
+            LocalTransform = localTransform,
+            CollisionWorld = collisionWorld,
+        };
+        for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
+        { scopedExternalFunctions[i].Scope = (void*)(&transmissionScope); }
+
+        ProcessorState processorState = new(
+            ProcessorSystemServer.BytecodeInterpreterSettings,
+            processor.ValueRW.Registers,
+            new Span<byte>(Unsafe.AsPointer(ref processor.ValueRW.Memory), Processor.TotalMemorySize),
+            new ReadOnlySpan<Instruction>(code.GetUnsafeReadOnlyPtr(), code.Length),
+            ReadOnlySpan<IExternalFunction>.Empty,
+            scopedExternalFunctions,
+            ProcessorSystemServer.ExternalFunctionCount
+        );
+
+        for (int i = 0; i < 128; i++)
+        {
+            if (processorState.Registers.CodePointer == processorState.Code.Length) break;
+            processorState.Process();
+            if (processorState.Signal != Signal.None)
+            {
+                switch (processorState.Signal)
+                {
+                    case Signal.UserCrash:
+                        Debug.LogError("Crashed");
+                        break;
+                    case Signal.StackOverflow:
+                        Debug.LogError("Stack Overflow");
+                        break;
+                    case Signal.Halt:
+                        Debug.LogError("Halted");
+                        break;
+                    case Signal.UndefinedExternalFunction:
+                        Debug.LogError("Undefined External Function");
+                        break;
+                }
+                processorState.Registers.CodePointer = processorState.Code.Length;
+                break;
+            }
+        }
+
+        processor.ValueRW.Registers = processorState.Registers;
+        processor.ValueRW.StatusLED.Status = 1;
     }
 }

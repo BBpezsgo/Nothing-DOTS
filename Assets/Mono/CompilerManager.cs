@@ -113,12 +113,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
     public IReadOnlyDictionary<FileId, CompiledSource> CompiledSources => _compiledSources;
 
-    void Start()
-    {
-        _compiledSources = new();
-    }
-
-    public void CreateEmpty(FileId file)
+    public void AddEmpty(FileId file)
     {
         _compiledSources.Add(file, CompiledSource.Empty(file));
     }
@@ -181,11 +176,16 @@ public class CompilerManager : Singleton<CompilerManager>
         }
     }
 
+    void Start()
+    {
+        _compiledSources = new();
+    }
+
     void FixedUpdate()
     {
         EntityCommandBuffer entityCommandBuffer = default;
 
-        foreach ((FileId file, CompiledSource source) in _compiledSources.ToArray())
+        foreach ((FileId file, CompiledSource source) in _compiledSources)
         {
             switch (source.Status)
             {
@@ -393,11 +393,11 @@ public class CompilerManager : Singleton<CompilerManager>
             progresses.Add(progress);
             // Debug.Log($"Source needs file \"{file}\" ...");
             FileChunkManager.RequestFile(file, progress);
-                // .GetAwaiter()
-                // .OnCompleted(() =>
-                // {
-                //     Debug.Log($"Source \"{file}\" downloaded ...");
-                // });
+            // .GetAwaiter()
+            // .OnCompleted(() =>
+            // {
+            //     Debug.Log($"Source \"{file}\" downloaded ...");
+            // });
 
             return false;
         }

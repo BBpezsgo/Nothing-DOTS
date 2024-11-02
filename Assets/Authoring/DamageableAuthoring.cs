@@ -1,6 +1,7 @@
 using Unity.Entities;
 using UnityEngine;
 
+[AddComponentMenu("Authoring/Damageable")]
 public class DamageableAuthoring : MonoBehaviour
 {
     [SerializeField] float MaxHealth = default;

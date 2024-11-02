@@ -22,15 +22,6 @@ public static partial class Utils
         else from = math.slerp(from, to, math.min(1f, maxDegreesDelta / angle));
     }
 
-    [BurstCompile]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void RotateTowards(in quaternion from, in quaternion to, float maxDegreesDelta, out quaternion result)
-    {
-        float angle = Angle(in from, in to);
-        if (angle == 0f) result = to;
-        else result = math.slerp(from, to, math.min(1f, maxDegreesDelta / angle));
-    }
-
     /// <summary>
     /// <seealso href="https://discussions.unity.com/t/is-there-a-conversion-method-from-quaternion-to-euler/731052/39"/>
     /// </summary>

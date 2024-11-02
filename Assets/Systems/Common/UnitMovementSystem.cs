@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[UpdateBefore(typeof(ProcessorSystemServer))]
 public partial struct UnitMovementSystem : ISystem
 {
     [BurstCompile]
@@ -14,6 +15,7 @@ public partial struct UnitMovementSystem : ISystem
                     SystemAPI.Query<RefRW<LocalTransform>, RefRW<Unit>>())
         {
             unit.ValueRW.Speed = math.lerp(unit.ValueRO.Speed, unit.ValueRO.Input.y * Unit.MaxSpeed, deltaTime);
+            if (math.abs(unit.ValueRO.Speed) <= 0.001f && math.abs(unit.ValueRO.Input.x) <= 0.001f) continue;
 
             transform.ValueRW.Position += unit.ValueRO.Speed * deltaTime * transform.ValueRO.Forward();
             transform.ValueRW.Rotation = math.mul(transform.ValueRO.Rotation, quaternion.RotateY(math.radians(unit.ValueRO.Input.x * Unit.SteerSpeed * deltaTime)));

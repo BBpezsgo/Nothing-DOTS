@@ -7,7 +7,7 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
 {
     [SerializeField] float StartFadeDistance = default;
     [SerializeField] float DisappearDistance = default;
-    
+
     [DontSerialize, HideInInspector] public List<EntityInfoUI> UIs = new();
 
     void OnValidate()
@@ -24,6 +24,7 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
             if (isVisible != item.IsVisible)
             {
                 item.IsVisible = isVisible;
+                item.CanvasGroup.alpha = 0f;
                 item.gameObject.SetActive(isVisible);
             }
             if (!isVisible) continue;
