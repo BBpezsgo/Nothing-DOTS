@@ -42,7 +42,7 @@ public class CompiledSource : IInspect<CompiledSource>
 
     public NativeArray<Instruction>? Code;
     public CompiledDebugInformation DebugInformation;
-    public AnalysisCollection AnalysisCollection;
+    public DiagnosticsCollection Diagnostics;
 
     public CompiledSource(
         FileId sourceFile,
@@ -53,7 +53,7 @@ public class CompiledSource : IInspect<CompiledSource>
         bool isSuccess,
         NativeArray<Instruction>? code,
         CompiledDebugInformation debugInformation,
-        AnalysisCollection analysisCollection)
+        DiagnosticsCollection diagnostics)
     {
         SourceFile = sourceFile;
         Version = version;
@@ -62,7 +62,7 @@ public class CompiledSource : IInspect<CompiledSource>
         IsSuccess = isSuccess;
         Code = code;
         DebugInformation = debugInformation;
-        AnalysisCollection = analysisCollection;
+        Diagnostics = diagnostics;
         Status = status;
     }
 
@@ -75,7 +75,7 @@ public class CompiledSource : IInspect<CompiledSource>
         false,
         default,
         default,
-        new AnalysisCollection()
+        new DiagnosticsCollection()
     );
 
     public static CompiledSource FromRpc(CompilerStatusRpc rpc) => new(
@@ -87,7 +87,7 @@ public class CompiledSource : IInspect<CompiledSource>
         rpc.IsSuccess,
         default,
         default,
-        new AnalysisCollection()
+        new DiagnosticsCollection()
     );
 
     public CompiledSource OnGUI(Rect rect, CompiledSource value)
@@ -246,57 +246,20 @@ public class CompilerManager : Singleton<CompilerManager>
             // Debug.Log($"Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
-        foreach (LanguageError item in source.AnalysisCollection.Errors.ToArray())
+        foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
+            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
+
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
+
             Entity request = entityCommandBuffer.CreateEntity();
             entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
             {
                 FileName = file,
                 Position = item.Position.Range.ToMutable(),
 
-                Type = CompilationAnalysticsItemType.Error,
-                Message = item.Message,
-            });
-            entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
-            {
-                TargetConnection = source.SourceFile.Source.GetEntity(),
-            });
-            Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
-        }
-
-        foreach (Warning item in source.AnalysisCollection.Warnings.ToArray())
-        {
-            if (item.File is null) continue;
-            if (!item.File.TryGetNetcode(out FileId file)) continue;
-            Entity request = entityCommandBuffer.CreateEntity();
-            entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
-            {
-                FileName = file,
-                Position = item.Position.Range.ToMutable(),
-
-                Type = CompilationAnalysticsItemType.Warning,
-                Message = item.Message,
-            });
-            entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
-            {
-                TargetConnection = source.SourceFile.Source.GetEntity(),
-            });
-            // Debug.Log($"{item}\r\n{item.GetArrows()}");
-        }
-
-        foreach (Information item in source.AnalysisCollection.Informations.ToArray())
-        {
-            if (item.File is null) continue;
-            if (!item.File.TryGetNetcode(out FileId file)) continue;
-            Entity request = entityCommandBuffer.CreateEntity();
-            entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
-            {
-                FileName = file,
-                Position = item.Position.Range.ToMutable(),
-
-                Type = CompilationAnalysticsItemType.Info,
+                Level = item.Level,
                 Message = item.Message,
             });
             entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
@@ -305,17 +268,14 @@ public class CompilerManager : Singleton<CompilerManager>
             });
         }
 
-        foreach (Hint item in source.AnalysisCollection.Hints.ToArray())
+        foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
-            if (item.File is null) continue;
-            if (!item.File.TryGetNetcode(out FileId file)) continue;
+            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}");
+
             Entity request = entityCommandBuffer.CreateEntity();
             entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
             {
-                FileName = file,
-                Position = item.Position.Range.ToMutable(),
-
-                Type = CompilationAnalysticsItemType.Hint,
+                Level = item.Level,
                 Message = item.Message,
             });
             entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
@@ -336,7 +296,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
         source.Progress = 0;
         source.IsSuccess = false;
-        source.AnalysisCollection = new AnalysisCollection();
+        source.Diagnostics = new DiagnosticsCollection();
         source.Status = CompilationStatus.Compiling;
         source.StatusChanged = true;
 
@@ -414,7 +374,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 },
                 PreprocessorVariables.Normal,
                 null,
-                source.AnalysisCollection,
+                source.Diagnostics,
                 null,
                 FileParser
             );
@@ -422,7 +382,7 @@ public class CompilerManager : Singleton<CompilerManager>
             BBLangGeneratorResult generated = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
             {
                 StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
-            }, null, source.AnalysisCollection);
+            }, null, source.Diagnostics);
 
             // Debug.Log($"Done {file} ...");
 
@@ -440,12 +400,12 @@ public class CompilerManager : Singleton<CompilerManager>
         catch (LanguageException exception)
         {
             if (!sourcesFromOtherConnectionsNeeded)
-            { Instance._compiledSources[file].AnalysisCollection.Errors.Add(new LanguageError(exception.Message, exception.Position, exception.File, false)); }
+            { Instance._compiledSources[file].Diagnostics.Add(Diagnostic.Error(exception.Message, exception.Position, exception.File, false)); }
         }
 
         if (sourcesFromOtherConnectionsNeeded)
         {
-            Instance._compiledSources[file].AnalysisCollection.Clear();
+            Instance._compiledSources[file].Diagnostics.Clear();
             // Debug.Log($"Compilation will continue for \"{sourceUri}\" ...");
         }
         else

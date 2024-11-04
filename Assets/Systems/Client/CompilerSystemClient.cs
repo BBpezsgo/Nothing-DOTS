@@ -33,38 +33,12 @@ partial struct CompilerSystemClient : ISystem
                 continue;
             }
 
-            switch (command.ValueRO.Type)
-            {
-                case CompilationAnalysticsItemType.Error:
-                    source.AnalysisCollection.Errors.Add(new LanguageCore.LanguageError(
-                        command.ValueRO.Message.ToString(),
-                        new LanguageCore.Position(command.ValueRO.Position, default),
-                        command.ValueRO.FileName.ToUri(),
-                        false
-                    ));
-                    break;
-                case CompilationAnalysticsItemType.Warning:
-                    source.AnalysisCollection.Warnings.Add(new LanguageCore.Warning(
-                        command.ValueRO.Message.ToString(),
-                        new LanguageCore.Position(command.ValueRO.Position, default),
-                        command.ValueRO.FileName.ToUri()
-                    ));
-                    break;
-                case CompilationAnalysticsItemType.Info:
-                    source.AnalysisCollection.Informations.Add(new LanguageCore.Information(
-                        command.ValueRO.Message.ToString(),
-                        new LanguageCore.Position(command.ValueRO.Position, default),
-                        command.ValueRO.FileName.ToUri()
-                    ));
-                    break;
-                case CompilationAnalysticsItemType.Hint:
-                    source.AnalysisCollection.Hints.Add(new LanguageCore.Hint(
-                        command.ValueRO.Message.ToString(),
-                        new LanguageCore.Position(command.ValueRO.Position, default),
-                        command.ValueRO.FileName.ToUri()
-                    ));
-                    break;
-            }
+            source.Diagnostics.Add(new LanguageCore.Diagnostic(
+                command.ValueRO.Level,
+                command.ValueRO.Message.ToString(),
+                new LanguageCore.Position(command.ValueRO.Position, default),
+                command.ValueRO.FileName.ToUri()
+            ));
 
             if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
             entityCommandBuffer.DestroyEntity(entity);

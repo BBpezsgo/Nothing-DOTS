@@ -646,7 +646,7 @@ partial struct ProcessorJob : IJobEntity
             CollisionWorld = collisionWorld,
         };
         for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
-        { scopedExternalFunctions[i].Scope = (void*)(&transmissionScope); }
+        { scopedExternalFunctions[i].Scope = (nint)(void*)&transmissionScope; }
 
         ProcessorState processorState = new(
             ProcessorSystemServer.BytecodeInterpreterSettings,

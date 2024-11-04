@@ -47,7 +47,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
             if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out var source))
             {
-                CompilerManager.Instance.CreateEmpty(processor.ValueRO.SourceFile);
+                CompilerManager.Instance.AddEmpty(processor.ValueRO.SourceFile);
                 buffer.Clear();
                 continue;
             }
