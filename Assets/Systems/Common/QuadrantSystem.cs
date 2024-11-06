@@ -3,20 +3,23 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
 public struct QuadrantEntity
 {
     public readonly Entity Entity;
     public float3 Position;
+    public float3 ResolvedOffset;
     public uint Key;
 
     public QuadrantEntity(Entity entity, float3 position, uint key)
     {
         Entity = entity;
         Position = position;
+        ResolvedOffset = default;
         Key = key;
     }
+
+    public override readonly int GetHashCode() => Entity.GetHashCode();
 }
 
 public readonly struct Hit
@@ -33,6 +36,7 @@ public readonly struct Hit
     }
 }
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct QuadrantSystem : ISystem
 {
     const int QuadrantCellSize = 20;
@@ -76,16 +80,29 @@ public partial struct QuadrantSystem : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         foreach (var (inQuadrant, transform, entity) in
-            SystemAPI.Query<RefRW<EntityInQuadrant>, RefRO<LocalToWorld>>()
+            SystemAPI.Query<RefRW<QuadrantEntityIdentifier>, RefRO<LocalToWorld>>()
             .WithEntityAccess())
         {
             uint key = GetKey(ToGrid(transform.ValueRO.Position));
 
+            QuadrantEntity item = new(entity, transform.ValueRO.Position, key);
+
             if (inQuadrant.ValueRO.Added)
             {
-                if (key == inQuadrant.ValueRO.Key) continue;
-
                 NativeList<QuadrantEntity> list = HashMap[inQuadrant.ValueRO.Key];
+                if (key == inQuadrant.ValueRO.Key)
+                {
+                    for (int j = 0; j < list.Length; j++)
+                    {
+                        if (list[j].Entity == entity)
+                        {
+                            list[j] = item;
+                            break;
+                        }
+                    }
+                    continue;
+                }
+
                 for (int j = 0; j < list.Length; j++)
                 {
                     if (list[j].Entity == entity)
@@ -99,7 +116,7 @@ public partial struct QuadrantSystem : ISystem
             inQuadrant.ValueRW.Added = true;
             inQuadrant.ValueRW.Key = key;
             HashMap.TryAdd(key, new(Allocator.Persistent));
-            HashMap[key].Add(new QuadrantEntity(entity, transform.ValueRO.Position, key));
+            HashMap[key].Add(item);
         }
     }
 }

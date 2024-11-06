@@ -1,6 +1,6 @@
 using Unity.Entities;
 
-public struct EntityInQuadrant : IComponentData
+public struct QuadrantEntityIdentifier : IComponentData
 {
     public bool Added;
     public uint Key;
