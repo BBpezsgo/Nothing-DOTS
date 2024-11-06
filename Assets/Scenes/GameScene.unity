@@ -1236,6 +1236,7 @@ MonoBehaviour:
   Start: {x: -100, y: -100}
   End: {x: 100, y: 100}
   RandomRotation: 1
+  RandomPosition: 0
 --- !u!1 &1674000394
 GameObject:
   m_ObjectHideFlags: 0

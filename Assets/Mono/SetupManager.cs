@@ -27,7 +27,9 @@ public class SetupManager : Singleton<SetupManager>
     [SerializeField] public int GeneratedCount = default;
     [SerializeField] public Vector2 Start = default;
     [SerializeField] public Vector2 End = default;
+
     [SerializeField] public bool RandomRotation = default;
+    [SerializeField] public bool RandomPosition = default;
 
     void OnValidate()
     {
@@ -98,51 +100,119 @@ public class SetupManager : Singleton<SetupManager>
             return false;
         }
 
-        for (int i = 0; i < GeneratedCount; i++)
+        if (RandomPosition)
         {
-            float2 generated;
-            bool failed = true;
-            for (int j = 0; j < 50; j++)
+            for (int i = 0; i < GeneratedCount; i++)
             {
-                if (c++ > 50)
+                float2 generated;
+                bool failed = true;
+                for (int j = 0; j < 50; j++)
                 {
-                    yield return null;
-                    c = 0;
+                    if (c++ > 50)
+                    {
+                        yield return null;
+                        c = 0;
+                    }
+                    generated = new(
+                        Maths.Random.Float(Start.x, End.x),
+                        Maths.Random.Float(Start.y, End.y)
+                    );
+                    if (IsOccupied(generated)) continue;
+                    spawned.Add(generated);
+                    Entity newUnit = world.EntityManager.Instantiate(prefab);
+                    if (RandomRotation)
+                    {
+                        world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
+                            new float3(generated.x, 0.5f, generated.y),
+                            quaternion.EulerXYZ(0f, Maths.Random.Float(0f, math.TAU), 0f)
+                        ));
+                    }
+                    else
+                    {
+                        world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
+                            new float3(generated.x, 0.5f, generated.y)
+                        ));
+                    }
+                    world.EntityManager.SetComponentData(newUnit, new Processor()
+                    {
+                        SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
+                    });
+                    failed = false;
+                    break;
                 }
-                generated = new(
-                    Maths.Random.Float(Start.x, End.x),
-                    Maths.Random.Float(Start.y, End.y)
-                );
-                if (IsOccupied(generated)) continue;
-                spawned.Add(generated);
-                Entity newUnit = world.EntityManager.Instantiate(prefab);
-                if (RandomRotation)
+                if (failed)
                 {
-                    world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
-                        new float3(generated.x, 0.5f, generated.y),
-                        quaternion.EulerXYZ(0f, Maths.Random.Float(0f, math.TAU), 0f)
-                    ));
+                    Debug.LogWarning($"Only spawned {i} but had to {GeneratedCount}");
+                    break;
                 }
-                else
-                {
-                    world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
-                        new float3(generated.x, 0.5f, generated.y)
-                    ));
-                }
-                world.EntityManager.SetComponentData(newUnit, new Processor()
-                {
-                    SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
-                });
-                failed = false;
-                break;
-            }
-            if (failed)
-            {
-                Debug.LogWarning($"Only spawned {i} but had to {GeneratedCount}");
-                break;
             }
         }
+        else
+        {
+            float width = End.x - Start.x;
+            float height = End.y - Start.y;
 
+            float columns = MathF.Sqrt(GeneratedCount * width / height);
+            float rows = GeneratedCount / columns;
+
+            float dx = width / MathF.Max(1f, columns - 1);
+            float dy = height / MathF.Max(1f, rows - 1);
+
+            for (float x = Start.x; x <= End.x; x += dx)
+            {
+                for (float y = Start.y; y <= End.y; y += dy)
+                {
+                    float2 generated = new(x, y);
+
+                    if (IsOccupied(generated)) continue;
+
+                    spawned.Add(generated);
+                    Entity newUnit = world.EntityManager.Instantiate(prefab);
+                    if (RandomRotation)
+                    {
+                        world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
+                            new float3(generated.x, 0.5f, generated.y),
+                            quaternion.EulerXYZ(0f, Maths.Random.Float(0f, math.TAU), 0f)
+                        ));
+                    }
+                    else
+                    {
+                        world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
+                            new float3(generated.x, 0.5f, generated.y)
+                        ));
+                    }
+                    world.EntityManager.SetComponentData(newUnit, new Processor()
+                    {
+                        SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
+                    });
+                }
+            }
+        }
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        if (!RandomPosition)
+        {
+            float width = End.x - Start.x;
+            float height = End.y - Start.y;
+
+            float columns = MathF.Sqrt(GeneratedCount * width / height);
+            float rows = GeneratedCount / columns;
+
+            float dx = width / MathF.Max(1f, columns - 1);
+            float dy = height / MathF.Max(1f, rows - 1);
+
+            for (float x = Start.x; x <= End.x; x += dx)
+            {
+                for (float y = Start.y; y <= End.y; y += dy)
+                {
+                    float2 generated = new(x, y);
+
+                    Gizmos.DrawSphere(new Vector3(generated.x, 0.5f, generated.y), 1f);
+                }
+            }
+        }
     }
 }
 
