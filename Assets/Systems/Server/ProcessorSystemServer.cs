@@ -309,6 +309,29 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     [BurstCompile]
     [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+    static void _dequeue_command(nint _scope, nint arguments, nint returnValue)
+    {
+        returnValue.Set(0);
+
+        int dataPtr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+        if (dataPtr <= 0) return;
+        if (dataPtr >= Processor.UserMemorySize) throw new Exception($"Bruh");
+
+        FunctionScope* scope = (FunctionScope*)_scope;
+
+        ref FixedList128Bytes<UnitCommandRequest> queue = ref scope->Processor.ValueRW.CommandQueue; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
+        if (queue.Length == 0) return;
+
+        UnitCommandRequest first = queue[0];
+        queue.RemoveAt(0);
+
+        Buffer.MemoryCopy(&first.Data, (byte*)scope->Memory + dataPtr, first.DataLength, first.DataLength);
+
+        returnValue.Set(first.Id);
+    }
+
+    [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _radar(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -366,7 +389,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         FunctionScope* scope = (FunctionScope*)_scope;
 
         Debug.DrawLine(
-            scope->SourcePosition,
+            scope->WorldTransform.ValueRO.Position,
             new Vector3(position.x, 0.5f, position.y),
             new Color(
                 (color & 0xFF0000) >> 16,
@@ -390,11 +413,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        LocalTransform transform = scope->LocalTransform;
-        float3 transformed = transform.TransformPoint(new Vector3(position.x, 0f, position.y));
+        RefRO<LocalTransform> transform = scope->LocalTransform;
+        float3 transformed = transform.ValueRO.TransformPoint(new Vector3(position.x, 0f, position.y));
 
         Debug.DrawLine(
-            scope->SourcePosition,
+            scope->WorldTransform.ValueRO.Position,
             new Vector3(transformed.x, 0.5f, transformed.z),
             new Color(
                 (color & 0xFF0000) >> 16,
@@ -468,7 +491,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     #endregion
 
-    public const int ExternalFunctionCount = 18;
+    public const int ExternalFunctionCount = 19;
 
     [BurstCompile]
     public static void GenerateExternalFunctions(ExternalFunctionScopedSync* buffer)
@@ -497,6 +520,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug).Value, 41, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
         buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug).Value, 42, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
+
+        buffer[i++] = new((delegate* unmanaged[Cdecl] <nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_dequeue_command).Value, 51, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
 
         Unity.Assertions.Assert.AreEqual(i, ExternalFunctionCount);
     }

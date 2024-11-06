@@ -1,0 +1,52 @@
+using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "api.bbc";
+
+export void MoveTo(f32 targetX, f32 targetY)
+{
+    Vector2 forward = Mapped.Forward;
+    Vector2 position = Mapped.Position;
+
+    Vector2 dirMove;
+    dirMove.x = targetX - position.x;
+    dirMove.y = targetY - position.y;
+    Normalise(&dirMove);
+
+    f32 d = Distance(position, new Vector2(targetX, targetY));
+
+    f32 t1 = Cross(forward, dirMove);
+    f32 t2 = Dot(forward, dirMove);
+    f32 t4 = Atan2(t1, t2);
+
+    if (d < 1f)
+    {
+        Mapped.InputSteer = (i8)0;
+        Mapped.InputForward = (i8)0;
+    }
+    elseif (t4 > 0.1f)
+    {
+        Mapped.InputSteer = (i8)-128;
+    }
+    elseif (t4 < -0.1f)
+    {
+        Mapped.InputSteer = (i8)127;
+    }
+    elseif (t4 > 0.05f)
+    {
+        Mapped.InputSteer = (i8)-64;
+    }
+    elseif (t4 < -0.05f)
+    {
+        Mapped.InputSteer = (i8)64;
+    }
+    else
+    {
+        Mapped.InputSteer = (i8)0;
+        d += 10f;
+        if (d > 127f) { d = 127f; }
+        Mapped.InputForward = (i8)(i32)d;
+    }
+}

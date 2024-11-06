@@ -1,22 +1,29 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
+using UnityEngine.UIElements;
 using RaycastHit = Unity.Physics.RaycastHit;
 
 public class SelectionManager : Singleton<SelectionManager>
 {
     [SerializeField] float BoxSelectDistanceThreshold = default;
     [SerializeField, NotNull] RectTransform? SelectBox = default;
+    [SerializeField, NotNull] UIDocument? UnitCommandsUI = default;
+    [SerializeField, NotNull] VisualTreeAsset? UnitCommandItemUI = default;
 
     bool _isSelectBoxVisible;
     Vector3 _selectionStart = default;
     HashSet<Entity> _selected = new();
     HashSet<Entity> _candidates = new();
     Entity _firstHit = Entity.Null;
+    Vector3 _unitCommandUIWorldPosition = default;
 
     void SetSelectBoxVisible(bool visible)
     {
@@ -61,6 +68,19 @@ public class SelectionManager : Singleton<SelectionManager>
 
         UpdateBoxSelect();
 
+        if (UnitCommandsUI.isActiveAndEnabled)
+        {
+            DebugEx.DrawPoint(_unitCommandUIWorldPosition, 2f, Color.white);
+
+            Vector3 screenPoint = MainCamera.Camera.WorldToScreenPoint(_unitCommandUIWorldPosition);
+            if (screenPoint.z >= 0f)
+            {
+                screenPoint.z = 0f;
+                screenPoint.y = MainCamera.Camera.pixelHeight - screenPoint.y;
+                UnitCommandsUI.rootVisualElement.transform.position = screenPoint;
+            }
+        }
+
         // {
         //     UnityEngine.Plane plane = new(Vector3.up, Vector3.zero);
         //     UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
@@ -80,6 +100,8 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void BeginBoxSelect()
     {
+        HideUnitCommandsUI();
+
         _selectionStart = default;
 
         var hit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Ground);
@@ -208,16 +230,21 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void FinishUnitAction()
     {
-        if (_firstHit == Entity.Null) return;
+        if (_firstHit == Entity.Null)
+        {
+            ShowUnitCommandsUI();
+            return;
+        }
+
         Entity firstHit = _firstHit;
         _firstHit = Entity.Null;
 
         Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
         if (selectableHit == Entity.Null) return;
 
-        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-
         if (selectableHit != firstHit) return;
+
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
         if (!entityManager.HasComponent<SelectableUnit>(selectableHit))
         {
@@ -239,6 +266,94 @@ public class SelectionManager : Singleton<SelectionManager>
                 .Setup(TerminalManager.Instance, selectableHit);
             return;
         }
+    }
+
+    void ShowUnitCommandsUI()
+    {
+        var hit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Ground);
+        if (hit.Entity == Entity.Null) return;
+
+        _unitCommandUIWorldPosition = hit.Position;
+        UnitCommandsUI.gameObject.SetActive(true);
+
+        UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
+        UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").value = 0f;
+
+        VisualElement container = UnitCommandsUI.rootVisualElement.Q("container-unit-commands");
+        container.Clear();
+
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+
+        foreach (Entity selected in _selected)
+        {
+            DynamicBuffer<BufferedUnitCommandDefinition> commands = entityManager.GetBuffer<BufferedUnitCommandDefinition>(selected);
+
+            for (int i = 0; i < commands.Length; i++)
+            {
+                string name = commands[i].Label.ToString();
+                int id = commands[i].Id;
+                bool added = false;
+
+                foreach (var existingItemUi in container.Children())
+                {
+                    if (existingItemUi.userData is string _name &&
+                        _name == name)
+                    {
+                        added = true;
+                        break;
+                    }
+                }
+
+                if (added) continue;
+
+                TemplateContainer itemUi = UnitCommandItemUI.Instantiate();
+                itemUi.Q<Button>("unit-command-name").text = $"#{id} {name}";
+                itemUi.Q<Button>("unit-command-name").clicked += () => HandleUnitCommandClick(id);
+                itemUi.userData = name;
+
+                container.Add(itemUi);
+            }
+        }
+    }
+
+    void HideUnitCommandsUI()
+    {
+        UnitCommandsUI.gameObject.SetActive(false);
+    }
+
+    void HandleUnitCommandClick(int commandId)
+    {
+        DebugEx.DrawPoint(_unitCommandUIWorldPosition, 2f, Color.magenta, 10f);
+
+        StartCoroutine(SendUnitCommandClick(commandId));
+    }
+
+    IEnumerator SendUnitCommandClick(int commandId)
+    {
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+
+        int i = 0;
+        foreach (Entity selected in _selected)
+        {
+            yield return null;
+            Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(UnitCommandRequestRpc));
+            GhostInstance ghostInstance = entityManager.GetComponentData<GhostInstance>(selected);
+            entityManager.SetComponentData(entity, new UnitCommandRequestRpc()
+            {
+                Entity = ghostInstance,
+                CommandId = commandId,
+
+                WorldPosition = _unitCommandUIWorldPosition,
+            });
+            if (UnitCommandsUI.rootVisualElement != null)
+            {
+                float v = (float)(++i) / (float)_selected.Count;
+                ProgressBar progressBar = UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress");
+                progressBar.value = v;
+                progressBar.style.display = DisplayStyle.Flex;
+            }
+        }
+        UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
     }
 
     Entity[] UnitsInRect(Rect rect)
@@ -335,7 +450,7 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         // FIXME: this is allocating memory every frame
         EntityQueryBuilder builder = new EntityQueryBuilder(Allocator.Temp).WithAll<PhysicsWorldSingleton>();
-        
+
         CollisionWorld collisionWorld;
         using (EntityQuery singletonQuery = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(builder))
         {

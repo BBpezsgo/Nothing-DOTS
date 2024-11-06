@@ -1,7 +1,10 @@
 using System.Linq;
+using LanguageCore.Compiler;
 using LanguageCore.Runtime;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
+using UnityEngine;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 unsafe partial struct ProcessorSourceSystem : ISystem
@@ -33,8 +36,8 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             commandBuffer.DestroyEntity(entity);
         }
 
-        foreach ((RefRW<Processor> processor, Entity entity) in
-                    SystemAPI.Query<RefRW<Processor>>()
+        foreach ((RefRW<Processor> processor, DynamicBuffer<BufferedUnitCommandDefinition> commandDefinitions, Entity entity) in
+                    SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>>()
                     .WithEntityAccess())
         {
             DynamicBuffer<BufferedInstruction> buffer = SystemAPI.GetBuffer<BufferedInstruction>(entity);
@@ -74,6 +77,35 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 processorState_.Setup();
                 processor.ValueRW.Registers = processorState_.Registers;
                 processor.ValueRW.SourceVersion = source.Version;
+
+                commandDefinitions.Clear();
+
+                foreach (CompiledStruct @struct in source.Compiled.Structs)
+                {
+                    if (!@struct.Attributes.TryGetAttribute("UnitCommand", out LanguageCore.Parser.AttributeUsage? structAttribute))
+                    { continue; }
+
+                    FixedList32Bytes<UnitCommandParameter> parameterTypes = new();
+                    bool ok = true;
+
+                    foreach (CompiledField field in @struct.Fields)
+                    {
+                        if (!field.Attributes.TryGetAttribute("Context", out LanguageCore.Parser.AttributeUsage? attribute)) continue;
+                        switch (attribute.Parameters[0].Value)
+                        {
+                            case "position":
+                                parameterTypes.Add(UnitCommandParameter.Position);
+                                break;
+                            default:
+                                ok = false;
+                                break;
+                        }
+                    }
+
+                    if (!ok) continue;
+
+                    commandDefinitions.Add(new(structAttribute.Parameters[0].GetInt(), structAttribute.Parameters[1].Value, parameterTypes));
+                }
 
                 buffer.Clear();
                 BufferedInstruction[] code = source.Code.Value.Select(v => new BufferedInstruction(v)).ToArray();

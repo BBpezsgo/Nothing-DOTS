@@ -58,6 +58,8 @@ export void sleep(f32 sec)
 [External("debug")] export void debug(Vector2 position, i32 color);
 [External("ldebug")] export void ldebug(Vector2 localPosition, i32 color);
 
+[External("dequeue_command")] export int dequeue_command(any* data);
+
 // export f32 Atan2(f32 x, f32 y) { return 0f; }
 // export f32 Sin(f32 v) { return 0f; }
 // export f32 Cos(f32 v) { return 0f; }

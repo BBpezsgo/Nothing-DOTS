@@ -47,6 +47,7 @@ public struct Processor : IComponentData
     public FixedBytes1024 Memory;
     public FixedList128Bytes<BufferedUnitTransmission> IncomingTransmissions;
     public FixedList128Bytes<BufferedUnitTransmissionOutgoing> OutgoingTransmissions;
+    public FixedList128Bytes<UnitCommandRequest> CommandQueue;
 
     [GhostField] public FixedString128Bytes StdOutBuffer;
 

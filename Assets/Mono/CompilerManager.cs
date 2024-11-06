@@ -14,6 +14,7 @@ using LanguageCore.Tokenizing;
 using Maths;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 using UnityEngine;
 
@@ -43,6 +44,7 @@ public class CompiledSource : IInspect<CompiledSource>
     public NativeArray<Instruction>? Code;
     public CompiledDebugInformation DebugInformation;
     public DiagnosticsCollection Diagnostics;
+    public CompilerResult Compiled;
 
     public CompiledSource(
         FileId sourceFile,
@@ -64,6 +66,7 @@ public class CompiledSource : IInspect<CompiledSource>
         DebugInformation = debugInformation;
         Diagnostics = diagnostics;
         Status = status;
+        Compiled = CompilerResult.MakeEmpty(sourceFile.ToUri());
     }
 
     public static CompiledSource Empty(FileId sourceFile) => new(
@@ -153,6 +156,8 @@ public class CompilerManager : Singleton<CompilerManager>
 
         { 41, "debug" },
         { 42, "ldebug" },
+
+        { 51, "dequeue_command" },
     }.ToFrozenDictionary();
 
     static IExternalFunction[]? _externalFunctions;
@@ -196,7 +201,14 @@ public class CompilerManager : Singleton<CompilerManager>
                     source.Status = CompilationStatus.Compiling;
                     source.CompileSecuedued = default;
                     Task.Factory.StartNew(static (object state)
-                        => CompileSourceTask((FileId)state), (object)file);
+                        => CompileSourceTask((FileId)state), (object)file)
+                        .ContinueWith(task =>
+                        {
+                            if (task.IsFaulted)
+                            { Debug.LogException(task.Exception); }
+                            else if (task.IsCanceled)
+                            { Debug.LogError($"Compilation task cancelled"); }
+                        });
                     if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
                     SendCompilationStatus(source, entityCommandBuffer);
                     break;
@@ -249,6 +261,7 @@ public class CompilerManager : Singleton<CompilerManager>
         foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
+            if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}\r\n{item.GetArrows()}");
 
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
@@ -271,6 +284,7 @@ public class CompilerManager : Singleton<CompilerManager>
         foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}");
+            if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}");
 
             Entity request = entityCommandBuffer.CreateEntity();
             entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
@@ -285,7 +299,7 @@ public class CompilerManager : Singleton<CompilerManager>
         }
     }
 
-    public static void CompileSourceTask(FileId file)
+    public static unsafe void CompileSourceTask(FileId file)
     {
         Uri sourceUri = file.ToUri();
         // Debug.Log($"Compilation started for \"{sourceUri}\" ...");
@@ -362,46 +376,99 @@ public class CompilerManager : Singleton<CompilerManager>
             return false;
         }
 
-        try
+        UserDefinedAttribute[] attributes = new UserDefinedAttribute[]
         {
-            // Debug.Log($"Compiling {file} ...");
-            CompilerResult compiled = Compiler.CompileFile(
-                sourceUri,
-                ExternalFunctions,
-                new CompilerSettings()
-                {
-                    BasePath = null,
-                },
-                PreprocessorVariables.Normal,
-                null,
-                source.Diagnostics,
-                null,
-                FileParser
-            );
-            // Debug.Log($"Generating {file} ...");
-            BBLangGeneratorResult generated = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
+            new("UnitCommand", new LiteralType[] { LiteralType.Integer, LiteralType.String }, CanUseOn.Struct, static (IHaveAttributes context, AttributeUsage attribute, [NotNullWhen(false)] out PossibleDiagnostic? error) =>
             {
-                StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
-            }, null, source.Diagnostics);
+                if (context is not CompiledStruct @struct)
+                {
+                    error = new PossibleDiagnostic($"This aint a struct");
+                    return false;
+                }
 
-            // Debug.Log($"Done {file} ...");
+                error = null;
+                return true;
+            }),
+            new("Context", new LiteralType[] { LiteralType.String }, CanUseOn.Field, static (IHaveAttributes context, AttributeUsage attribute, [NotNullWhen(false)] out PossibleDiagnostic? error) =>
+            {
+                if (context is not CompiledField field)
+                {
+                    error = new PossibleDiagnostic($"This aint a field");
+                    return false;
+                }
 
-            source.CompileSecuedued = default;
-            source.Version = DateTime.UtcNow.Ticks;
-            source.IsSuccess = true;
-            source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
-            source.Code?.Dispose();
-            source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
-            source.Status = CompilationStatus.Compiled;
-            source.StatusChanged = true;
+                if (!field.Context.Attributes.TryGetAttribute("UnitCommand", out _))
+                {
+                    error = new PossibleDiagnostic($"The struct should be flagged with [UnitCommand] attribute");
+                    return false;
+                }
 
-            // Debug.Log($"Source {file} compiled");
-        }
-        catch (LanguageException exception)
+                switch (attribute.Parameters[0].Value)
+                {
+                    case "position":
+                    {
+                        if (field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, null, null)) != sizeof(float2))
+                        {
+                            error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float2)} (a 2D float vector)");
+                            return false;
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        error = new PossibleDiagnostic($"Unknown unit command context \"{attribute.Parameters[0].Value}\"", attribute.Parameters[0]);
+                        return false;
+                    }
+                }
+
+                error = null;
+                return true;
+            }),
+        };
+
+        // try
+        // {
+        // Debug.Log($"Compiling {file} ...");
+        CompilerResult compiled = Compiler.CompileFile(
+            sourceUri,
+            ExternalFunctions,
+            new CompilerSettings()
+            {
+                BasePath = null,
+            },
+            PreprocessorVariables.Normal,
+            null,
+            source.Diagnostics,
+            null,
+            FileParser,
+            userDefinedAttributes: attributes
+        );
+
+        // Debug.Log($"Generating {file} ...");
+        BBLangGeneratorResult generated = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
         {
-            if (!sourcesFromOtherConnectionsNeeded)
-            { Instance._compiledSources[file].Diagnostics.Add(Diagnostic.Error(exception.Message, exception.Position, exception.File, false)); }
-        }
+            StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
+        }, null, source.Diagnostics);
+
+        // Debug.Log($"Done {file} ...");
+
+        source.Compiled = compiled;
+        source.CompileSecuedued = default;
+        source.Version = DateTime.UtcNow.Ticks;
+        source.IsSuccess = true;
+        source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
+        source.Code?.Dispose();
+        source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
+        source.Status = CompilationStatus.Compiled;
+        source.StatusChanged = true;
+
+        // Debug.Log($"Source {file} compiled");
+        // }
+        // catch (LanguageException exception)
+        // {
+        //     if (!sourcesFromOtherConnectionsNeeded)
+        //     { Instance._compiledSources[file].Diagnostics.Add(Diagnostic.Error(exception.Message, exception.Position, exception.File, false)); }
+        // }
 
         if (sourcesFromOtherConnectionsNeeded)
         {

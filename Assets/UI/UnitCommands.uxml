@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:Template name="UnitCommandItem" src="project://database/Assets/UI/UnitCommandItem.uxml?fileID=9197481963319205126&amp;guid=8090dca27ea7e74c89cc1191125864d9&amp;type=3#UnitCommandItem" />
+    <Style src="project://database/Assets/UI/Style.uss?fileID=7433441132597879392&amp;guid=c19d5e621447bb3f490fbf7f9a8dc896&amp;type=3#Style" />
+    <ui:VisualElement class="panel" style="position: absolute;">
+        <ui:ProgressBar value="0" name="progress" high-value="1" style="display: none;" />
+        <ui:VisualElement name="container-unit-commands">
+            <ui:Instance template="UnitCommandItem" name="UnitCommandItem" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

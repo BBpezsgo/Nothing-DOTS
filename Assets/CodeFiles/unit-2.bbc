@@ -5,7 +5,22 @@ using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
 using "turret.bbc";
+using "move.bbc";
 using "api.bbc";
+
+[UnitCommand(1, "Attack at")]
+struct CommandAttackAt
+{
+    [Context("position")] Vector2 position;
+}
+
+[UnitCommand(2, "Move to")]
+struct CommandMoveTo
+{
+    [Context("position")] Vector2 position;
+}
+
+const int MaxCommandDataSize = 8;
 
 *Mapped = new MappedMemory;
 
@@ -164,10 +179,12 @@ struct Unit
 f32 prevRadarDistance = 0f;
 Vector2 targetedPosition = new Vector2;
 Vector2 currentTarget = new Vector2;
+Vector2 currentDestination = new Vector2;
 List<Unit> enemies = new List<Unit>(4);
 
 while (1)
 {
+    /*
     Receive();
 
     Radar();
@@ -195,6 +212,35 @@ while (1)
             ToFloat2(&p2, &p1);
         }
     }
+    */
 
-    ShootAt(currentTarget, &targetedPosition);
+    byte[MaxCommandDataSize] _command;
+
+    int commandId = dequeue_command(&_command);
+
+    if (commandId == 1)
+    {
+        CommandAttackAt* command = &_command as CommandAttackAt*;
+        currentTarget = command.position;
+        currentDestination = new Vector2;
+        ToLocal(&currentTarget);
+    }
+    else if (commandId == 2)
+    {
+        CommandMoveTo* command = &_command as CommandMoveTo*;
+        currentTarget = new Vector2;
+        currentDestination = command.position;
+    }
+
+    if (currentTarget.x != 0f &&
+        currentTarget.x != 0f)
+    {
+        ShootAt(currentTarget, &targetedPosition);
+    }
+
+    if (currentDestination.x != 0f &&
+        currentDestination.x != 0f)
+    {
+        MoveTo(currentDestination.x, currentDestination.y);
+    }
 }
