@@ -4,5 +4,5 @@ using Unity.NetCode;
 public struct Damageable : IComponentData
 {
     public float MaxHealth;
-    [GhostField] public float Health;
+    [GhostField(Quantization = 10)] public float Health;
 }
