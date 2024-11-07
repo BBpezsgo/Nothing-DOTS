@@ -115,7 +115,8 @@ partial struct BufferedFileReceiverSystem : ISystem
             if (delta < 0.5d) continue;
             if (receivingFiles[i].Kind != FileHeaderKind.Ok) continue;
 
-            bool[] receivedChunks = new bool[FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)];
+            NativeArray<bool> receivedChunks = new(FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength), Allocator.Temp);
+
             for (int j = 0; j < fileChunks.Length; j++)
             {
                 if (fileChunks[j].Source != receivingFiles[i].Source) continue;
@@ -140,6 +141,8 @@ partial struct BufferedFileReceiverSystem : ISystem
                 if (DebugLog) Debug.Log($"Requesting chunk {j} for file \"{receivingFiles[i].FileName}\"");
                 if (requested++ >= 15) break;
             }
+
+            receivedChunks.Dispose();
 
             if (requested == 0) continue;
 

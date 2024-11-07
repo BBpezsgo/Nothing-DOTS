@@ -1,12 +1,15 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
 using UnityEngine;
 
+[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct FactorySystem : ISystem
 {
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         if (!SystemAPI.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
@@ -30,12 +33,20 @@ public partial struct FactorySystem : ISystem
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.FactoryEntity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.FactoryEntity.spawnTick) continue;
 
-                BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, command.ValueRO.Unit);
+                BufferedUnit unit = default;
+                for (int i = 0; i < units.Length; i++)
+                {
+                    if (units[i].Name == command.ValueRO.Unit)
+                    {
+                        unit = units[i];
+                        break;
+                    }
+                }
 
                 if (unit.Prefab == Entity.Null)
                 {
                     Debug.LogWarning($"Unit \"{command.ValueRO.Unit}\" not found in the database");
-                    return;
+                    break;
                 }
 
                 SystemAPI.GetBuffer<BufferedUnit>(ghostEntity).Add(unit);

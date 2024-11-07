@@ -207,12 +207,12 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
             if (ConnectionManager.ClientOrDefaultWorld.IsServer())
             {
-                Debug.Log($"Placing building from server");
+                // Debug.Log($"Placing building from server");
                 PlaceBuilding(position, SelectedBuilding);
             }
             else
             {
-                Debug.Log($"Placing building from client");
+                // Debug.Log($"Placing building from client");
                 SendPlaceBuildingRequest(new PlaceBuildingRequestRpc()
                 {
                     BuildingName = SelectedBuilding.Name,
@@ -227,7 +227,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
     void SendPlaceBuildingRequest(PlaceBuildingRequestRpc request, World world)
     {
-        Debug.Log($"Sending place building request ...");
+        // Debug.Log($"Sending place building request ...");
         Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(PlaceBuildingRequestRpc));
         world.EntityManager.SetComponentData(entity, request);
     }

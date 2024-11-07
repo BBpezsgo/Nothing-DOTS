@@ -1,14 +1,19 @@
+using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[BurstCompile]
+[UpdateBefore(typeof(ProcessorSystemServer))]
+[UpdateBefore(typeof(TransformSystemGroup))]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public unsafe partial struct CollisionSystem : ISystem
 {
+    [BurstCompile]
     static bool CircleIntersect(
-        float3 originA, float radiusA,
-        float3 originB, float radiusB,
+        in float3 originA, float radiusA,
+        in float3 originB, float radiusB,
         out float3 normal, out float depth
     )
     {
@@ -16,15 +21,18 @@ public unsafe partial struct CollisionSystem : ISystem
         normal = originA - originB;
 
         float distance = math.length(normal);
+        if (distance == 0f) return false;
+
         float radii = radiusA + radiusB;
 
         if (distance > radii) return false;
-    
+
         normal /= distance;
         depth = radii - distance;
         return true;
     }
 
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         var map = QuadrantSystem.GetMap(ref state);
@@ -46,6 +54,8 @@ public unsafe partial struct CollisionSystem : ISystem
                         b->Position, 1f,
                         out float3 normal, out float depth
                     )) continue;
+
+                    normal.y = 0f;
 
                     float3 displaceA = normal * (depth * 0.5f);
                     float3 displaceB = normal * (depth * -0.5f);

@@ -5,17 +5,24 @@ using UnityEngine;
 public class MonoTime : MonoBehaviour
 {
     class _nowKey {}
+    class _ticksKey {}
     static readonly SharedStatic<float> _now = SharedStatic<float>.GetOrCreate<MonoTime, _nowKey>();
+    static readonly SharedStatic<long> _ticks = SharedStatic<long>.GetOrCreate<MonoTime, _ticksKey>();
 
     public static float Now => _now.Data;
+    public static long Ticks => _ticks.Data;
 
     void OnEnable()
     {
-        _now.Data = (float)DateTime.UtcNow.TimeOfDay.TotalSeconds;
+        TimeSpan now = DateTime.UtcNow.TimeOfDay;
+        _now.Data = (float)now.TotalSeconds;
+        _ticks.Data = now.Ticks;
     }
 
     void Update()
     {
-        _now.Data = (float)DateTime.UtcNow.TimeOfDay.TotalSeconds;
+        TimeSpan now = DateTime.UtcNow.TimeOfDay;
+        _now.Data = (float)now.TotalSeconds;
+        _ticks.Data = now.Ticks;
     }
 }

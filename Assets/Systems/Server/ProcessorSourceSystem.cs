@@ -4,14 +4,13 @@ using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
-using UnityEngine;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 unsafe partial struct ProcessorSourceSystem : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
+        EntityCommandBuffer commandBuffer = new(Allocator.Temp);
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SetProcessorSourceRequestRpc>>()
@@ -108,7 +107,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 }
 
                 buffer.Clear();
-                BufferedInstruction[] code = source.Code.Value.Select(v => new BufferedInstruction(v)).ToArray();
+                NativeArray<BufferedInstruction> code = source.Code.Value.Reinterpret<BufferedInstruction>();
                 buffer.CopyFrom(code);
 
                 continue;

@@ -3,7 +3,9 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[UpdateBefore(typeof(ProcessorSystemServer))]
+[UpdateInGroup(typeof(TransformSystemGroup))]
+[UpdateBefore(typeof(LocalToWorldSystem))]
+[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct TurretRotationSystem : ISystem
 {

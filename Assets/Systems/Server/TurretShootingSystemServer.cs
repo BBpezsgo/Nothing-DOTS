@@ -1,12 +1,14 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
 
-[UpdateInGroup(typeof(LateSimulationSystemGroup))]
+[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct TurretShootingSystemServer : ISystem
 {
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
@@ -22,19 +24,29 @@ public partial struct TurretShootingSystemServer : ISystem
             {
                 Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
                 Rotation = quaternion.identity,
-                Scale = SystemAPI.GetComponent<LocalTransform>(turret.ValueRO.ProjectilePrefab).Scale
+                Scale = 1f,
             });
             commandBuffer.SetComponent(instance, new Projectile
             {
-                Velocity = math.normalize(localToWorld.ValueRO.Up) * Projectile.Speed
+                Velocity = math.normalize(localToWorld.ValueRO.Up) * Projectile.Speed,
             });
+
+            int projectileIndex = -1;
+            for (int i = 0; i < projectiles.Length; i++)
+            {
+                if (projectiles[i].Prefab == turret.ValueRO.ProjectilePrefab)
+                {
+                    projectileIndex = i;
+                    break;
+                }
+            }
 
             Entity request = commandBuffer.CreateEntity();
             commandBuffer.AddComponent(request, new ShootRpc()
             {
                 Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
                 Velocity = math.normalize(localToWorld.ValueRO.Up) * Projectile.Speed,
-                ProjectileIndex = projectiles.IndexOf(static (v, c) => v.Prefab == c, turret.ValueRO.ProjectilePrefab),
+                ProjectileIndex = projectileIndex,
             });
             commandBuffer.AddComponent<SendRpcCommandRequest>(request);
         }

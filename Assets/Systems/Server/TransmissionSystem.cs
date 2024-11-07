@@ -4,12 +4,13 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 [BurstCompile]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 unsafe partial struct TransmissionSystem : ISystem
 {
     ComponentLookup<Processor> processorComponentQ;
 
+    [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
         processorComponentQ = state.GetComponentLookup<Processor>(false);

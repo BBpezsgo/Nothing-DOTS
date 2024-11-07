@@ -103,7 +103,7 @@ public abstract class DictionaryDrawer<TK, TV> : PropertyDrawer
                 }
                 catch (Exception e)
                 {
-                    Debug.Log(e.Message);
+                    Debug.LogException(e);
                 }
                 break;
             }
@@ -164,7 +164,7 @@ public abstract class DictionaryDrawer<TK, TV> : PropertyDrawer
         if (typeof(IInspect<T>).IsAssignableFrom(type))
         { return (T)(object)((IInspect<T>)(object)value!).OnGUI(rect, value)!; }
 
-        Debug.Log("Type is not supported: " + type);
+        Debug.LogError("Type is not supported: " + type);
         return value;
     }
 

@@ -16,9 +16,8 @@ using Unity.Profiling;
 using Unity.Transforms;
 using UnityEngine;
 
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-[UpdateAfter(typeof(UnitProcessorSystem))]
 [BurstCompile]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 unsafe partial struct ProcessorSystemServer : ISystem
 {
 #if UNITY_PROFILER

@@ -7,19 +7,21 @@ public static partial class Utils
 {
     [BurstCompile]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float Angle(in quaternion a, in quaternion b)
+    public static float Rad(in quaternion a, in quaternion b)
     {
         float dot = math.min(math.abs(math.dot(a, b)), 1f);
-        return math.degrees(dot > 1f - 0.000001f ? 0f : math.acos(dot) * 2f);
+        return dot > 0.999999f ? 0f : math.acos(dot) * 2f;
     }
 
     [BurstCompile]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void RotateTowards(ref quaternion from, in quaternion to, float maxDegreesDelta)
     {
-        float angle = Angle(in from, in to);
-        if (angle == 0f) from = to;
-        else from = math.slerp(from, to, math.min(1f, maxDegreesDelta / angle));
+        float rad = Rad(in from, in to);
+        if (rad > 0.01f)
+        {
+            from = math.slerp(from, to, math.min(1f, math.radians(maxDegreesDelta) / rad));
+        }
     }
 
     /// <summary>
@@ -29,13 +31,12 @@ public static partial class Utils
     public static void QuaternionToEuler(in quaternion q, out float3 euler)
     {
         const float epsilon = 1e-6f;
-        const float CUTOFF = (1f - 2f * epsilon) * (1f - 2f * epsilon);
-        float4 qv = q.value;
-        float4 d1 = qv * qv.wwww * 2f;
-        float4 d2 = qv * qv.yzxw * 2f;
-        float4 d3 = qv * qv;
+        const float cutoff = (1f - 2f * epsilon) * (1f - 2f * epsilon);
+        float4 d1 = q.value * q.value.wwww * 2f;
+        float4 d2 = q.value * q.value.yzxw * 2f;
+        float4 d3 = q.value * q.value;
         float y1 = d2.y - d1.x;
-        if (y1 * y1 < CUTOFF)
+        if (y1 * y1 < cutoff)
         {
             float x1 = d2.x + d1.z;
             float x2 = d3.y + d3.w - d3.x - d3.z;

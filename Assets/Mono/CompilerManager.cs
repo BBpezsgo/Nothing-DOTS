@@ -261,7 +261,7 @@ public class CompilerManager : Singleton<CompilerManager>
         foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
-            if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}\r\n{item.GetArrows()}");
+            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}\r\n{item.GetArrows()}");
 
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
@@ -284,7 +284,7 @@ public class CompilerManager : Singleton<CompilerManager>
         foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}");
-            if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}");
+            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}");
 
             Entity request = entityCommandBuffer.CreateEntity();
             entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()

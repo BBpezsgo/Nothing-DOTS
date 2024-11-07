@@ -1,18 +1,21 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
-using UnityEngine;
 
+[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 partial struct ProcessorSystemClient : ISystem
 {
     ComponentLookup<URPMaterialPropertyEmissionColor> _emissionColorQ;
 
+    [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
         _emissionColorQ = state.GetComponentLookup<URPMaterialPropertyEmissionColor>();
     }
 
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         _emissionColorQ.Update(ref state);

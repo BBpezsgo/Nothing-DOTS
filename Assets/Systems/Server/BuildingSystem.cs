@@ -1,8 +1,11 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
+using UnityEngine;
 
+[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct BuildingSystem : ISystem
 {
@@ -27,6 +30,7 @@ public partial struct BuildingSystem : ISystem
         return newEntity;
     }
 
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
@@ -37,7 +41,22 @@ public partial struct BuildingSystem : ISystem
         {
             Entity buildingDatabaseEntity = SystemAPI.GetSingletonEntity<BuildingDatabase>();
             DynamicBuffer<BufferedBuilding> buildingDatabase = SystemAPI.GetBuffer<BufferedBuilding>(buildingDatabaseEntity);
-            BufferedBuilding building = buildingDatabase.FirstOrDefault(static (v, c) => v.Name == c, command.ValueRO.BuildingName);
+
+            BufferedBuilding building = default;
+            for (int i = 0; i < buildingDatabase.Length; i++)
+            {
+                if (buildingDatabase[i].Name == command.ValueRO.BuildingName)
+                {
+                    building = buildingDatabase[i];
+                    break;
+                }
+            }
+
+            if (building.Prefab == Entity.Null)
+            {
+                Debug.LogWarning($"Building \"{command.ValueRO.BuildingName}\" not found in the database");
+                continue;
+            }
 
             Entity newEntity = BuildingSystem.PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
 

@@ -1,4 +1,5 @@
 using System;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
@@ -32,7 +33,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     FileName = command.ValueRO.FileName,
                     TransactionId = default,
                     TotalLength = default,
-                    Version = DateTime.UtcNow.Ticks,
+                    Version = MonoTime.Ticks,
                 });
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
 

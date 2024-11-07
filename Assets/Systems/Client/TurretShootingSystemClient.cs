@@ -5,7 +5,6 @@ using Unity.NetCode;
 using Unity.Transforms;
 
 [BurstCompile]
-[UpdateInGroup(typeof(LateSimulationSystemGroup))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial struct TurretShootingSystemClient : ISystem
 {

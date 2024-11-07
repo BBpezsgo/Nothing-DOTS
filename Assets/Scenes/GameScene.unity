@@ -1194,45 +1194,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Prefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
   SpawnExactUnits: 0
-  Units:
-  - Spawn:
-      x: -3
-      y: -6
-    Script: unit-1.bbc
-  - Spawn:
-      x: -1
-      y: -7
-    Script: unit-1.bbc
-  - Spawn:
-      x: 2
-      y: -6
-    Script: unit-1.bbc
-  - Spawn:
-      x: -5
-      y: -9
-    Script: unit-1.bbc
-  - Spawn:
-      x: 1
-      y: -9
-    Script: unit-1.bbc
-  - Spawn:
-      x: -3
-      y: -12
-    Script: unit-1.bbc
-  - Spawn:
-      x: -2
-      y: -10
-    Script: unit-1.bbc
-  - Spawn:
-      x: 5
-      y: -10
-    Script: unit-1.bbc
-  - Spawn:
-      x: -1
-      y: -16
-    Script: unit-1.bbc
-  GeneratedScript: unit-1.bbc
-  GeneratedCount: 5000
+  Units: []
+  GeneratedScript: unit-2.bbc
+  GeneratedCount: 1000
   Start: {x: -100, y: -100}
   End: {x: 100, y: 100}
   RandomRotation: 1

@@ -36,6 +36,8 @@ public readonly struct Hit
     }
 }
 
+[UpdateInGroup(typeof(TransformSystemGroup))]
+[UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct QuadrantSystem : ISystem
 {
@@ -115,7 +117,8 @@ public partial struct QuadrantSystem : ISystem
 
             inQuadrant.ValueRW.Added = true;
             inQuadrant.ValueRW.Key = key;
-            HashMap.TryAdd(key, new(Allocator.Persistent));
+            if (!HashMap.ContainsKey(key))
+            { HashMap.Add(key, new(32, Allocator.Persistent)); }
             HashMap[key].Add(item);
         }
     }

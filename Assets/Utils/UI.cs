@@ -65,23 +65,25 @@ public static class UI
         }
     }
 
+    static List<VisualElement> _picked = new();
+
     public static bool IsPointerOverUI() => IsPointerOverUI(Input.mousePosition);
     public static bool IsPointerOverUI(Vector2 screenPos)
     {
         Vector2 pointerUiPos = new(screenPos.x, Screen.height - screenPos.y);
-        List<VisualElement> picked = new();
         foreach (UIDocument uiDocument in UIDocuments)
         {
             if (uiDocument.rootVisualElement == null) continue;
-            uiDocument.rootVisualElement.panel.PickAll(pointerUiPos, picked);
-            foreach (VisualElement element in picked)
+            _picked.Clear();
+            uiDocument.rootVisualElement.panel.PickAll(pointerUiPos, _picked);
+            foreach (VisualElement element in _picked)
             {
                 if (element == null) continue;
                 if (element.resolvedStyle.backgroundColor.a == 0f) continue;
                 if (!element.enabledInHierarchy) continue;
                 return true;
             }
-            picked.Clear();
+            _picked.Clear();
         }
         return false;
     }

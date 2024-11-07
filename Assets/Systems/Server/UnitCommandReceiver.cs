@@ -1,12 +1,15 @@
 using LanguageCore.Runtime;
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 using UnityEngine;
 
+[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct UnitCommandReceiver : ISystem
 {
+    [BurstCompile]
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
@@ -48,7 +51,6 @@ public partial struct UnitCommandReceiver : ISystem
                             Debug.LogWarning("Too much commands");
                         }
                         processor.ValueRW.CommandQueue.Add(new UnitCommandRequest(command.ValueRO.CommandId, (ushort)dataLength, data));
-                        Debug.Log(string.Format("Command \"{0}\" received", commandDefinitions[i].Label));
                         break;
                     }
                 }

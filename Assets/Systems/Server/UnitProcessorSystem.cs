@@ -11,7 +11,9 @@ using i16 = System.Int16;
 using u32 = System.UInt32;
 using i32 = System.Int32;
 using f32 = System.Single;
+using Unity.Burst;
 
+[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 partial struct UnitProcessorSystem : ISystem
 {
@@ -30,6 +32,7 @@ partial struct UnitProcessorSystem : ISystem
         public f32 RadarDirection;
     }
 
+    [BurstCompile]
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
         foreach ((RefRW<Processor> processor, RefRW<Unit> unit, RefRW<LocalToWorld> transform, Entity entity) in

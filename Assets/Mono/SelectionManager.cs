@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
@@ -331,9 +332,10 @@ public class SelectionManager : Singleton<SelectionManager>
     IEnumerator SendUnitCommandClick(int commandId)
     {
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+        Entity[] yeah = _selected.ToArray();
 
         int i = 0;
-        foreach (Entity selected in _selected)
+        foreach (Entity selected in yeah)
         {
             yield return null;
             Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(UnitCommandRequestRpc));
@@ -347,7 +349,7 @@ public class SelectionManager : Singleton<SelectionManager>
             });
             if (UnitCommandsUI.rootVisualElement != null)
             {
-                float v = (float)(++i) / (float)_selected.Count;
+                float v = (float)(++i) / (float)yeah.Length;
                 ProgressBar progressBar = UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress");
                 progressBar.value = v;
                 progressBar.style.display = DisplayStyle.Flex;
