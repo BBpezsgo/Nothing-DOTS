@@ -56,6 +56,7 @@ public unsafe partial struct CollisionSystem : ISystem
                     )) continue;
 
                     normal.y = 0f;
+                    depth = math.clamp(depth, 0f, 0.1f);
 
                     float3 displaceA = normal * (depth * 0.5f);
                     float3 displaceB = normal * (depth * -0.5f);
