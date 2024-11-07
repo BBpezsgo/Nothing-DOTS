@@ -334,7 +334,7 @@ public class SelectionManager : Singleton<SelectionManager>
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         Entity[] yeah = _selected.ToArray();
 
-        int i = 0;
+        // int i = 0;
         foreach (Entity selected in yeah)
         {
             yield return null;
@@ -347,15 +347,18 @@ public class SelectionManager : Singleton<SelectionManager>
 
                 WorldPosition = _unitCommandUIWorldPosition,
             });
-            if (UnitCommandsUI.rootVisualElement != null)
-            {
-                float v = (float)(++i) / (float)yeah.Length;
-                ProgressBar progressBar = UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress");
-                progressBar.value = v;
-                progressBar.style.display = DisplayStyle.Flex;
-            }
+            // if (UnitCommandsUI.rootVisualElement != null)
+            // {
+            //     float v = (float)(++i) / (float)yeah.Length;
+            //     ProgressBar progressBar = UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress");
+            //     progressBar.value = v;
+            //     progressBar.style.display = DisplayStyle.Flex;
+            // }
         }
-        UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
+        // if (UnitCommandsUI.rootVisualElement != null)
+        // {
+        //     UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
+        // }
     }
 
     Entity[] UnitsInRect(Rect rect)
