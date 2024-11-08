@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using UnityRay = UnityEngine.Ray;
 
 public static class CameraExtensions
 {
@@ -14,7 +15,7 @@ public static class CameraExtensions
         => ScreenToWorldPosition(camera, screenPosition, ScreenRayMaxDistance);
     public static bool ScreenToWorldPosition(this Camera camera, Vector2 screenPosition, float maxDistance, out Vector3 worldPosition)
     {
-        Ray ray = camera.ScreenPointToRay(screenPosition);
+        UnityRay ray = camera.ScreenPointToRay(screenPosition);
         if (Physics.Raycast(ray, out RaycastHit hit, maxDistance))
         {
             worldPosition = hit.point;
@@ -25,7 +26,7 @@ public static class CameraExtensions
     }
     public static Vector3 ScreenToWorldPosition(this Camera camera, Vector2 screenPosition, float maxDistance)
     {
-        Ray ray = camera.ScreenPointToRay(screenPosition);
+        UnityRay ray = camera.ScreenPointToRay(screenPosition);
         if (Physics.Raycast(ray, out RaycastHit hit, maxDistance))
         {
             return hit.point;
@@ -41,7 +42,7 @@ public static class CameraExtensions
         => ScreenToWorldPosition(camera, screenPosition, ScreenRayMaxDistance, layerMask);
     public static bool ScreenToWorldPosition(this Camera camera, Vector2 screenPosition, float maxDistance, LayerMask layerMask, out Vector3 worldPosition)
     {
-        Ray ray = camera.ScreenPointToRay(screenPosition);
+        UnityRay ray = camera.ScreenPointToRay(screenPosition);
         if (Physics.Raycast(ray, out RaycastHit hit, maxDistance, layerMask))
         {
             worldPosition = hit.point;
@@ -52,7 +53,7 @@ public static class CameraExtensions
     }
     public static Vector3 ScreenToWorldPosition(this Camera camera, Vector2 screenPosition, float maxDistance, LayerMask layerMask)
     {
-        Ray ray = camera.ScreenPointToRay(screenPosition);
+        UnityRay ray = camera.ScreenPointToRay(screenPosition);
         if (Physics.Raycast(ray, out RaycastHit hit, maxDistance, layerMask))
         { return hit.point; }
         return ray.GetPoint(maxDistance);
@@ -63,7 +64,7 @@ public static class CameraExtensions
         => ScreenToWorldPosition(camera, screenPosition, ScreenRayMaxDistance, out hits);
     public static Vector3 ScreenToWorldPosition(this Camera camera, Vector2 screenPosition, float maxDistance, out RaycastHit[] hits)
     {
-        Ray ray = camera.ScreenPointToRay(screenPosition);
+        UnityRay ray = camera.ScreenPointToRay(screenPosition);
         hits = Physics.RaycastAll(ray, maxDistance).Where(v => !v.collider.isTrigger).ToArray();
         if (hits.Length > 0)
         { return hits[0].point; }
@@ -75,7 +76,7 @@ public static class CameraExtensions
         => ScreenToWorldPosition(camera, screenPosition, ScreenRayMaxDistance, layerMask, out hits);
     public static Vector3 ScreenToWorldPosition(this Camera camera, Vector2 screenPosition, float maxDistance, int layerMask, out RaycastHit[] hits)
     {
-        Ray ray = camera.ScreenPointToRay(screenPosition);
+        UnityRay ray = camera.ScreenPointToRay(screenPosition);
         hits = Physics.RaycastAll(ray, maxDistance, layerMask).Where(v => !v.collider.isTrigger).ToArray();
         if (hits.Length > 0)
         { return hits[0].point; }

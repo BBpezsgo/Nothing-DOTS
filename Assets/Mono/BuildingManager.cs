@@ -172,7 +172,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         position.y = 0.5f;
 
         if (Input.GetKey(KeyCode.LeftControl))
-        { position = new Vector3(MathF.Round(position.x), position.y, MathF.Round(position.z)); }
+        { position = new Vector3(math.round(position.x), position.y, math.round(position.z)); }
 
         BuildingHologram.transform.position = position;
 

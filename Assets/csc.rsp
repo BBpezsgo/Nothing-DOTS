@@ -1,1 +1,1 @@
--langVersion:preview -nullable -noWarn:CS0162
+-langVersion:preview -nullable -noWarn:CS0162;CS8669

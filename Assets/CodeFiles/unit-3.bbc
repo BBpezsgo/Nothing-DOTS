@@ -1,0 +1,42 @@
+using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
+using "turret.bbc";
+using "api.bbc";
+
+*Mapped = new MappedMemory;
+
+const f32 PI = 3.14159265359f;
+const f32 TAU = PI * 2f;
+const u8 true = (u8)1;
+const u8 false = (u8)0;
+
+void Radar()
+{
+    f32 radarDistance = radar();
+    if (radarDistance > 0f)
+    {
+        PrintLine(radarDistance);
+        currentTarget.x = Sin(Mapped.RadarDirection) * radarDistance;
+        currentTarget.y = Cos(Mapped.RadarDirection) * radarDistance;
+    }
+    else
+    {
+        Mapped.RadarDirection = (Mapped.RadarDirection + 0.05f) % TAU;
+    }
+}
+
+Vector2 targetedPosition = new Vector2;
+Vector2 currentTarget = new Vector2;
+
+while (1)
+{
+    Radar();
+
+    ldebug(currentTarget, 0xff0000);
+
+    ShootAt(currentTarget, &targetedPosition);
+}

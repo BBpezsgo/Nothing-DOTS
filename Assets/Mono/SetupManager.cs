@@ -152,11 +152,11 @@ public class SetupManager : Singleton<SetupManager>
             float width = End.x - Start.x;
             float height = End.y - Start.y;
 
-            float columns = MathF.Sqrt(GeneratedCount * width / height);
+            float columns = math.sqrt(GeneratedCount * width / height);
             float rows = GeneratedCount / columns;
 
-            float dx = width / MathF.Max(1f, columns - 1);
-            float dy = height / MathF.Max(1f, rows - 1);
+            float dx = width / math.max(1f, columns - 1);
+            float dy = height / math.max(1f, rows - 1);
 
             for (float x = Start.x; x <= End.x; x += dx)
             {
@@ -197,11 +197,11 @@ public class SetupManager : Singleton<SetupManager>
             float width = End.x - Start.x;
             float height = End.y - Start.y;
 
-            float columns = MathF.Sqrt(GeneratedCount * width / height);
+            float columns = math.sqrt(GeneratedCount * width / height);
             float rows = GeneratedCount / columns;
 
-            float dx = width / MathF.Max(1f, columns - 1);
-            float dy = height / MathF.Max(1f, rows - 1);
+            float dx = width / math.max(1f, columns - 1);
+            float dy = height / math.max(1f, rows - 1);
 
             for (float x = Start.x; x <= End.x; x += dx)
             {

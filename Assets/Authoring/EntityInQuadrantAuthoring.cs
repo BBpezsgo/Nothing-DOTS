@@ -8,7 +8,10 @@ public class EntityInQuadrantAuthoring : MonoBehaviour
         public override void Bake(EntityInQuadrantAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent<QuadrantEntityIdentifier>(entity);
+            AddComponent<QuadrantEntityIdentifier>(entity, new()
+            {
+                Layer = 1u << authoring.gameObject.layer,
+            });
         }
     }
 }

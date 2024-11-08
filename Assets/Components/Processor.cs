@@ -1,6 +1,7 @@
 using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 
 public struct StatusLED
@@ -48,6 +49,9 @@ public struct Processor : IComponentData
     public FixedList128Bytes<BufferedUnitTransmission> IncomingTransmissions;
     public FixedList128Bytes<BufferedUnitTransmissionOutgoing> OutgoingTransmissions;
     public FixedList128Bytes<UnitCommandRequest> CommandQueue;
+
+    public float3 RadarRequest;
+    public float RadarResponse;
 
     [GhostField] public FixedString128Bytes StdOutBuffer;
 

@@ -59,7 +59,7 @@ void Receive()
                 v[1] = p.x as u8;
                 v[2] = p.y as u8;
                 send(&v, 3, 0f, 0f);
-                // PrintLine("Send response ...");
+                PrintLine("Send response ...");
             }
         }
         else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
@@ -78,7 +78,7 @@ void Receive()
 
             ldebug(pos, 0x00FF00);
 
-            // PrintLine("Object identified ...");
+            PrintLine("Object identified ...");
         }
     }
 }
@@ -129,7 +129,8 @@ void RemoveUnit(List<Unit>* units, byte2 unit)
 
 void Radar()
 {
-    f32 radarDistance = radar(0);
+    PrintLine("Radar ...");
+    f32 radarDistance = radar();
     if (radarDistance > 0f &&
         Abs(prevRadarDistance - radarDistance) > .5f)
     {
@@ -141,7 +142,7 @@ void Radar()
         point.x *= radarDistance;
         point.y *= radarDistance;
 
-        // PrintLine("Identifying object ...");
+        PrintLine("Identifying object ...");
 
         Vector2 pointGlobal = point;
         ToGlobal(&pointGlobal);
@@ -184,7 +185,6 @@ List<Unit> enemies = new List<Unit>(4);
 
 while (1)
 {
-    /*
     Receive();
 
     Radar();
@@ -212,7 +212,6 @@ while (1)
             ToFloat2(&p2, &p1);
         }
     }
-    */
 
     byte[MaxCommandDataSize] _command;
 

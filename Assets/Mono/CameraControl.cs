@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using NaughtyAttributes;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -111,7 +112,7 @@ public class CameraControl : MonoBehaviour
         if (Mathf.Abs(value) <= 0f) return;
 
         zoomHeight += value * stepSize * zoomHeight * 0.03f;
-        zoomHeight = Math.Clamp(zoomHeight, minHeight, maxHeight);
+        zoomHeight = math.clamp(zoomHeight, minHeight, maxHeight);
     }
 
     Vector3 GetCameraRight()
@@ -153,7 +154,7 @@ public class CameraControl : MonoBehaviour
         float x = inputValue.ReadValue<Vector2>().x;
         float y = inputValue.ReadValue<Vector2>().y;
         transform.rotation = Quaternion.Euler(
-            Math.Clamp(y * maxRotationSpeed + transform.rotation.eulerAngles.x, 5f, 85f),
+            math.clamp(y * maxRotationSpeed + transform.rotation.eulerAngles.x, 5f, 85f),
             x * maxRotationSpeed + transform.rotation.eulerAngles.y,
             0f
         );
@@ -165,7 +166,7 @@ public class CameraControl : MonoBehaviour
         if (Mathf.Abs(value) <= 0f) return;
 
         zoomHeight += value * stepSize;
-        zoomHeight = Math.Clamp(zoomHeight, minHeight, maxHeight);
+        zoomHeight = math.clamp(zoomHeight, minHeight, maxHeight);
     }
 
     void UpdateCameraZoom()
@@ -205,7 +206,7 @@ public class CameraControl : MonoBehaviour
         if (!Mouse.current.rightButton.isPressed || UI.IsMouseHandled) return;
 
         Plane plane = new(Vector3.up, Vector3.zero);
-        Ray ray = MainCamera.Camera.ScreenPointToRay(Mouse.current.position.ReadValue());
+        UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
         if (plane.Raycast(ray, out float distance))
         {

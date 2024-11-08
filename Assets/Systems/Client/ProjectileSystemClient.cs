@@ -1,10 +1,11 @@
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
 using Unity.Transforms;
 
 [BurstCompile]
+[UpdateInGroup(typeof(TransformSystemGroup))]
+[UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
 partial struct ProjectileSystemClient : ISystem
 {
@@ -19,17 +20,18 @@ partial struct ProjectileSystemClient : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        damageQ.Update(ref state);
-
         using EntityCommandBuffer entityCommandBuffer = new(Unity.Collections.Allocator.Temp);
-        CollisionWorld collisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
 
-        foreach (var (transform, worldTransform, projectile, entity) in
-            SystemAPI.Query<RefRW<LocalTransform>, RefRO<LocalToWorld>, RefRW<Projectile>>()
+        damageQ.Update(ref state);
+        var map = QuadrantSystem.GetMap(ref state);
+
+        foreach (var (transform, projectile, entity) in
+            SystemAPI.Query<RefRW<LocalTransform>, RefRW<Projectile>>()
             .WithEntityAccess())
         {
-            float3 lastPosition = worldTransform.ValueRO.Position;
-            transform.ValueRW.Position += projectile.ValueRO.Velocity * SystemAPI.Time.DeltaTime;
+            float3 lastPosition = transform.ValueRO.Position;
+            float3 newPosition = lastPosition + (projectile.ValueRO.Velocity * SystemAPI.Time.DeltaTime);
+            transform.ValueRW.Position = newPosition;
             projectile.ValueRW.Velocity += new float3(0f, ProjectileSystemServer.Gravity, 0f) * SystemAPI.Time.DeltaTime;
 
             if (transform.ValueRO.Position.y < 0f)
@@ -38,22 +40,12 @@ partial struct ProjectileSystemClient : ISystem
                 continue;
             }
 
-            RaycastInput input = new()
-            {
-                Start = lastPosition,
-                End = worldTransform.ValueRO.Position,
-                Filter = new CollisionFilter()
-                {
-                    BelongsTo = Layers.All,
-                    CollidesWith = Layers.All,
-                    GroupIndex = 0,
-                },
-            };
+            Ray ray = new(lastPosition, newPosition, Layers.All);
 
-            if (!collisionWorld.CastRay(input, out RaycastHit hit))
+            if (!QuadrantRayCast.RayCast(map, ray, out var hit))
             { continue; }
 
-            if (damageQ.TryGetBuffer(hit.Entity, out var damage))
+            if (damageQ.TryGetBuffer(hit.Entity.Entity, out var damage))
             {
                 entityCommandBuffer.DestroyEntity(entity);
                 continue;

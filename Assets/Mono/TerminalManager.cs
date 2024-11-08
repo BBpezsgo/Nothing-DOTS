@@ -1,10 +1,10 @@
-using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
 using NaughtyAttributes;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -214,7 +214,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 break;
                             }
                             const int progressBarWidth = 10;
-                            string progressBarFilled = new('#', Math.Clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth));
+                            string progressBarFilled = new('#', math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth));
                             string progressBarEmpty = new(' ', progressBarWidth - progressBarFilled.Length);
                             ui_labelTerminal!.text = $"Uploading [{progressBarFilled}{progressBarEmpty}]";
                             break;

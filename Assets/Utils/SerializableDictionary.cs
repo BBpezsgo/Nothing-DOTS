@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
+using Unity.Mathematics;
 
 [Serializable, DebuggerDisplay("Count = {Count}")]
 public class SerializableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>
@@ -391,7 +392,7 @@ public class SerializableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, I
         {
             if ((candidate & 1) != 0)
             {
-                int num = (int)Math.Sqrt((double)candidate);
+                int num = (int)math.sqrt((double)candidate);
                 for (int i = 3; i <= num; i += 2)
                 {
                     if (candidate % i == 0)

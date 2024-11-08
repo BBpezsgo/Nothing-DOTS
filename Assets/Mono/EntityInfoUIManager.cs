@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using Unity.Serialization;
 using UnityEngine;
 
@@ -12,7 +12,7 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
 
     void OnValidate()
     {
-        DisappearDistance = Math.Max(StartFadeDistance, DisappearDistance);
+        DisappearDistance = math.max(StartFadeDistance, DisappearDistance);
     }
 
     void Update()
@@ -30,7 +30,7 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
             if (!isVisible) continue;
 
             item.Foreground.fillAmount = item.Percent;
-            item.CanvasGroup.alpha = Math.Clamp(1f - ((screenPoint.z - StartFadeDistance) / (DisappearDistance - StartFadeDistance)), 0f, 1f);
+            item.CanvasGroup.alpha = math.clamp(1f - ((screenPoint.z - StartFadeDistance) / (DisappearDistance - StartFadeDistance)), 0f, 1f);
 
             switch (item.SelectionStatus)
             {

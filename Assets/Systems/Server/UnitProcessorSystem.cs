@@ -30,6 +30,7 @@ partial struct UnitProcessorSystem : ISystem
         public float2 Position;
         public float2 Forward;
         public f32 RadarDirection;
+        public f32 RadarResponse;
     }
 
     [BurstCompile]
@@ -53,13 +54,14 @@ partial struct UnitProcessorSystem : ISystem
                 float.IsFinite(mapped->RadarDirection))
             {
                 RefRW<LocalTransform> radar = SystemAPI.GetComponentRW<LocalTransform>(unit.ValueRO.Radar);
-                const float speed = 720f;
+                // const float speed = 720f;
                 quaternion target = quaternion.EulerXYZ(
                     0f,
                     mapped->RadarDirection,
                     0f);
-                Utils.RotateTowards(ref radar.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
-                // radar.ValueRW.Rotation = quaternion.EulerXYZ(new float3(0f, mapped->RadarDirection, 0f));
+                // Utils.RotateTowards(ref radar.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
+                radar.ValueRW.Rotation = target;
+                mapped->RadarResponse = processor.ValueRW.RadarResponse;
             }
 
             if (unit.ValueRO.Turret != Entity.Null)

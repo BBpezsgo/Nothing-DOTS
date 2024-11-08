@@ -1,16 +1,14 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
-using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.UIElements;
-using RaycastHit = Unity.Physics.RaycastHit;
 
 public class SelectionManager : Singleton<SelectionManager>
 {
@@ -18,6 +16,7 @@ public class SelectionManager : Singleton<SelectionManager>
     [SerializeField, NotNull] RectTransform? SelectBox = default;
     [SerializeField, NotNull] UIDocument? UnitCommandsUI = default;
     [SerializeField, NotNull] VisualTreeAsset? UnitCommandItemUI = default;
+    static readonly Plane Ground = new(Vector3.up, Vector3.zero);
 
     bool _isSelectBoxVisible;
     Vector3 _selectionStart = default;
@@ -83,17 +82,16 @@ public class SelectionManager : Singleton<SelectionManager>
         }
 
         // {
-        //     UnityEngine.Plane plane = new(Vector3.up, Vector3.zero);
-        //     UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
-        //     if (plane.Raycast(ray, out float distance))
+        //     Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
+        //     if (Ground.Raycast(ray, out float distance))
         //     {
-        //         var start = ray.GetPoint(distance);
-        //         var dir = (-start).normalized;
+        //         var start = ray.origin;
+        //         var end = ray.GetPoint(distance);
         //         // QuadrantSystem.DrawQuadrant(ray.GetPoint(distance));
-        //         NativeHashMap<uint, NativeList<QuadrantEntity>> map = QuadrantSystem.GetMap(World.DefaultGameObjectInjectionWorld.Unmanaged);
-        //         if (QuadrantSystem.RayCast(map, start, default, out float t))
+        //         NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
+        //         if (QuadrantRayCast.RayCast(map, start, end, Layers.All, out Hit hit))
         //         {
-        //             DebugEx.DrawPoint(start + dir * t, 2f, Color.cyan);
+        //             DebugEx.DrawPoint(hit.Position, 2f, Color.cyan);
         //         }
         //     }
         // }
@@ -105,10 +103,11 @@ public class SelectionManager : Singleton<SelectionManager>
 
         _selectionStart = default;
 
-        var hit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Ground);
-        if (hit.Entity == Entity.Null) return;
+        UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
+        if (!Ground.Raycast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), out float distance))
+        { return; }
 
-        _selectionStart = hit.Position;
+        _selectionStart = ray.GetPoint(distance);
     }
 
     void UpdateBoxSelect()
@@ -119,8 +118,8 @@ public class SelectionManager : Singleton<SelectionManager>
         {
             SetSelectBoxVisible(false);
 
-            Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
-            if (selectableHit == Entity.Null) return;
+            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+            Entity selectableHit = hit.Entity.Entity;
             SelectUnitCandidate(selectableHit, SelectionStatus.Candidate);
 
             return;
@@ -138,17 +137,17 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (Vector2.Distance(startPoint, endPoint) < BoxSelectDistanceThreshold)
         {
-            Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
-            if (selectableHit == Entity.Null) return;
+            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+            Entity selectableHit = hit.Entity.Entity;
             SelectUnitCandidate(selectableHit, SelectionStatus.Candidate);
             SetSelectBoxVisible(false);
             return;
         }
 
-        float minX = System.Math.Min(startPoint.x, endPoint.x);
-        float minY = System.Math.Min(startPoint.y, endPoint.y);
-        float maxX = System.Math.Max(startPoint.x, endPoint.x);
-        float maxY = System.Math.Max(startPoint.y, endPoint.y);
+        float minX = math.min(startPoint.x, endPoint.x);
+        float minY = math.min(startPoint.y, endPoint.y);
+        float maxX = math.max(startPoint.x, endPoint.x);
+        float maxY = math.max(startPoint.y, endPoint.y);
 
         Rect rect = new(
             minX,
@@ -184,8 +183,8 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (Vector2.Distance(startPoint, endPoint) < BoxSelectDistanceThreshold)
         {
-            Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
-            if (selectableHit == Entity.Null) return;
+            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+            Entity selectableHit = hit.Entity.Entity;
             if (GetUnitStatus(selectableHit).Status == SelectionStatus.Selected &&
                 _selected.Count > 0 &&
                 Input.GetKey(KeyCode.LeftShift))
@@ -195,10 +194,10 @@ public class SelectionManager : Singleton<SelectionManager>
             return;
         }
 
-        float minX = System.Math.Min(startPoint.x, endPoint.x);
-        float minY = System.Math.Min(startPoint.y, endPoint.y);
-        float maxX = System.Math.Max(startPoint.x, endPoint.x);
-        float maxY = System.Math.Max(startPoint.y, endPoint.y);
+        float minX = math.min(startPoint.x, endPoint.x);
+        float minY = math.min(startPoint.y, endPoint.y);
+        float maxX = math.max(startPoint.x, endPoint.x);
+        float maxY = math.max(startPoint.y, endPoint.y);
 
         Rect rect = new(
             minX,
@@ -215,8 +214,8 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         _firstHit = Entity.Null;
 
-        Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
-        if (selectableHit == Entity.Null) return;
+        if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+        Entity selectableHit = hit.Entity.Entity;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
@@ -240,8 +239,8 @@ public class SelectionManager : Singleton<SelectionManager>
         Entity firstHit = _firstHit;
         _firstHit = Entity.Null;
 
-        Entity selectableHit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable).Entity;
-        if (selectableHit == Entity.Null) return;
+        if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+        Entity selectableHit = hit.Entity.Entity;
 
         if (selectableHit != firstHit) return;
 
@@ -271,10 +270,11 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void ShowUnitCommandsUI()
     {
-        var hit = RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Ground);
-        if (hit.Entity == Entity.Null) return;
+        UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
+        if (!Ground.Raycast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), out float distance))
+        { return; }
 
-        _unitCommandUIWorldPosition = hit.Position;
+        _unitCommandUIWorldPosition = ray.GetPoint(distance);
         UnitCommandsUI.gameObject.SetActive(true);
 
         UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
@@ -451,32 +451,11 @@ public class SelectionManager : Singleton<SelectionManager>
         _selected.Clear();
     }
 
-    RaycastHit RayCast(UnityEngine.Ray ray, uint layer)
+    bool RayCast(UnityEngine.Ray ray, uint layer, out Hit hit)
     {
-        // FIXME: this is allocating memory every frame
-        EntityQueryBuilder builder = new EntityQueryBuilder(Allocator.Temp).WithAll<PhysicsWorldSingleton>();
-
-        CollisionWorld collisionWorld;
-        using (EntityQuery singletonQuery = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(builder))
-        {
-            collisionWorld = singletonQuery.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
-        }
-
-        RaycastInput input = new()
-        {
-            Start = ray.origin,
-            End = ray.GetPoint(200f),
-            Filter = new CollisionFilter()
-            {
-                BelongsTo = Layers.All,
-                CollidesWith = layer,
-                GroupIndex = 0,
-            },
-        };
-
-        if (collisionWorld.CastRay(input, out RaycastHit hit))
-        { return hit; }
-
-        return default;
+        var start = ray.origin;
+        var end = ray.GetPoint(200f);
+        NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
+        return QuadrantRayCast.RayCast(map, new Ray(start, end, layer), out hit);
     }
 }

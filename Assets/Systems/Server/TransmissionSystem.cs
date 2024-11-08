@@ -29,14 +29,14 @@ unsafe partial struct TransmissionSystem : ISystem
             var transmission = processor.ValueRW.OutgoingTransmissions[0];
             processor.ValueRW.OutgoingTransmissions.RemoveAt(0);
 
-            NativeHashMap<uint, NativeList<QuadrantEntity>> map = QuadrantSystem.GetMap(state.WorldUnmanaged);
-            int2 grid = QuadrantSystem.ToGrid(transform.ValueRO.Position);
+            NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(state.WorldUnmanaged);
+            Cell grid = QuadrantSystem.ToGrid(transform.ValueRO.Position);
 
             for (int x = -1; x <= 1; x++)
             {
                 for (int z = -1; z <= 1; z++)
                 {
-                    if (!map.TryGetValue(QuadrantSystem.GetKey(grid + new int2(x, z)), out NativeList<QuadrantEntity> cell)) continue;
+                    if (!map.TryGetValue((grid + new Cell(x, z)).key, out NativeList<QuadrantEntity> cell)) continue;
                     for (int i = 0; i < cell.Length; i++)
                     {
                         if (cell[i].Entity == entity) continue;

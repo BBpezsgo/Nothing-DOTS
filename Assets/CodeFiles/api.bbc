@@ -27,6 +27,7 @@ export struct MappedMemory
     Vector2 Position;
     Vector2 Forward;
     f32 RadarDirection;
+    f32 RadarResponse;
 }
 
 export const MappedMemory* Mapped = 640;
@@ -49,7 +50,22 @@ export void sleep(f32 sec)
 
 [External("send")] export void send(any* buffer, i32 length, f32 direction, f32 angle);
 [External("receive")] export i32 receive(any* buffer, i32 length, f32* direction, u8* strength);
-[External("radar")] export f32 radar(i32* metadata);
+[External("radar")] void _radar();
+
+export f32 radar()
+{
+    Mapped.RadarResponse = 0f;
+    _radar();
+    while (!(Mapped.RadarResponse as int))
+    {
+
+    }
+    if (Mapped.RadarResponse.IsNaN())
+    {
+        Mapped.RadarResponse = 0f;
+    }
+    return Mapped.RadarResponse;
+}
 
 [External("toglobal")] export void ToGlobal(Vector2* point);
 [External("tolocal")] export void ToLocal(Vector2* point);

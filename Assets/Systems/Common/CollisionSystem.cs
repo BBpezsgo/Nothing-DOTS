@@ -5,8 +5,8 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [BurstCompile]
-[UpdateBefore(typeof(ProcessorSystemServer))]
-[UpdateBefore(typeof(TransformSystemGroup))]
+[UpdateInGroup(typeof(TransformSystemGroup))]
+[UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public unsafe partial struct CollisionSystem : ISystem
 {
