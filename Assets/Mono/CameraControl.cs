@@ -203,20 +203,29 @@ public class CameraControl : MonoBehaviour
 
     void DragCamera()
     {
-        if (!Mouse.current.rightButton.isPressed || UI.IsMouseHandled) return;
+        if (!Mouse.current.rightButton.isPressed)
+        {
+            startDrag = default;
+            return;
+        }
+
+        if (UI.IsMouseHandled)
+        {
+            return;
+        }
 
         Plane plane = new(Vector3.up, Vector3.zero);
         UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
-        if (plane.Raycast(ray, out float distance))
+        if (plane.Raycast(ray, out float distance) && distance < 300f)
         {
-            if (Mouse.current.rightButton.wasPressedThisFrame)
+            if (startDrag == default)
             {
                 startDrag = ray.GetPoint(distance);
             }
             else
             {
-                velocity += startDrag - ray.GetPoint(distance);
+                velocity += (startDrag - ray.GetPoint(distance)) * 0.1f;
             }
         }
     }
