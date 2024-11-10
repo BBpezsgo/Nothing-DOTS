@@ -52,7 +52,7 @@ unsafe partial struct TransmissionSystem : ISystem
                         if (!transmission.Direction.Equals(float3.zero))
                         {
                             float dot = math.abs(math.dot(transmission.Direction, entityLocalPosition / math.sqrt(entityDistanceSq)));
-                            if (dot < transmission.CosAngle) continue;
+                            if (dot > transmission.CosAngle) continue;
                         }
 
                         var other = processorComponentQ.GetRefRWOptional(cell[i].Entity);
