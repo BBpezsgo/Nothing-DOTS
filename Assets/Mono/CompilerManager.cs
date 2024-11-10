@@ -316,9 +316,9 @@ public class CompilerManager : Singleton<CompilerManager>
 
         List<ProgressRecord<(int, int)>> progresses = new();
 
-        bool FileParser(Uri uri, TokenizerSettings? tokenizerSettings, out ParserResult parserResult)
+        bool FileParser(Uri uri, [NotNullWhen(true)] out string? content)
         {
-            parserResult = default;
+            content = default;
 
             if (!uri.TryGetNetcode(out FileId file))
             { return false; }
@@ -329,7 +329,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 if (!localFile.HasValue)
                 { return false; }
 
-                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(localFile.Value.Data), PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
+                content = Encoding.UTF8.GetString(localFile.Value.Data);
                 return true;
             }
 
@@ -337,7 +337,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (status.IsOk())
             {
-                parserResult = Parser.Parse(StringTokenizer.Tokenize(Encoding.UTF8.GetString(data.File.Data), PreprocessorVariables.Normal, uri, tokenizerSettings).Tokens, uri);
+                content = Encoding.UTF8.GetString(data.File.Data);
                 return true;
             }
 
@@ -407,7 +407,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 {
                     case "position":
                     {
-                        if (field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, null, null)) != sizeof(float2))
+                        if (field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new(), null)) != sizeof(float2))
                         {
                             error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float2)} (a 2D float vector)");
                             return false;
