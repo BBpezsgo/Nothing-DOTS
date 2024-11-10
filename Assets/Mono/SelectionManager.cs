@@ -20,6 +20,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
     bool _isSelectBoxVisible;
     Vector3 _selectionStart = default;
+    Vector3 _rightClick = default;
     HashSet<Entity> _selected = new();
     HashSet<Entity> _candidates = new();
     Entity _firstHit = Entity.Null;
@@ -58,12 +59,21 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (Input.GetMouseButtonDown(1))
         {
+            _rightClick = Input.mousePosition;
             BeginUnitAction();
         }
 
         if (Input.GetMouseButtonUp(1))
         {
-            FinishUnitAction();
+            if ((Input.mousePosition - _rightClick).sqrMagnitude > 10)
+            {
+                _firstHit = default;
+            }
+            else
+            {
+                FinishUnitAction();
+            }
+            _rightClick = default;
         }
 
         UpdateBoxSelect();
@@ -230,7 +240,8 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void FinishUnitAction()
     {
-        if (_firstHit == Entity.Null)
+        if (_firstHit == Entity.Null &&
+            _selected.Count > 0)
         {
             ShowUnitCommandsUI();
             return;
@@ -287,6 +298,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         foreach (Entity selected in _selected)
         {
+            if (!entityManager.Exists(selected)) continue;
             DynamicBuffer<BufferedUnitCommandDefinition> commands = entityManager.GetBuffer<BufferedUnitCommandDefinition>(selected);
 
             for (int i = 0; i < commands.Length; i++)
@@ -338,6 +350,7 @@ public class SelectionManager : Singleton<SelectionManager>
         foreach (Entity selected in yeah)
         {
             yield return null;
+            if (!entityManager.Exists(selected)) continue;
             Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(UnitCommandRequestRpc));
             GhostInstance ghostInstance = entityManager.GetComponentData<GhostInstance>(selected);
             entityManager.SetComponentData(entity, new UnitCommandRequestRpc()
@@ -380,8 +393,20 @@ public class SelectionManager : Singleton<SelectionManager>
         return result.ToArray();
     }
 
-    SelectableUnit GetUnitStatus(Entity unit) => ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<SelectableUnit>(unit);
-    void SetUnitStatus(Entity unit, SelectableUnit status) => ConnectionManager.ClientOrDefaultWorld.EntityManager.SetComponentData<SelectableUnit>(unit, status);
+    SelectableUnit GetUnitStatus(Entity unit)
+    {
+        if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return new()
+        {
+            Status = SelectionStatus.None,
+        };
+        return ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<SelectableUnit>(unit);
+    }
+
+    void SetUnitStatus(Entity unit, SelectableUnit status)
+    {
+        if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return;
+        ConnectionManager.ClientOrDefaultWorld.EntityManager.SetComponentData<SelectableUnit>(unit, status);
+    }
 
     void SelectUnitCandidate(Entity unit, SelectionStatus status)
     {
