@@ -37,7 +37,8 @@ partial struct CompilerSystemClient : ISystem
                 command.ValueRO.Level,
                 command.ValueRO.Message.ToString(),
                 new LanguageCore.Position(command.ValueRO.Position, default),
-                command.ValueRO.FileName.ToUri()
+                command.ValueRO.FileName.ToUri(),
+                null
             ));
 
             if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
