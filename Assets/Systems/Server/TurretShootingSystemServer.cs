@@ -12,7 +12,7 @@ public partial struct TurretShootingSystemServer : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
-        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach ((RefRW<Turret> turret, RefRO<LocalToWorld> localToWorld) in
                     SystemAPI.Query<RefRW<Turret>, RefRO<LocalToWorld>>())
@@ -50,8 +50,5 @@ public partial struct TurretShootingSystemServer : ISystem
             });
             commandBuffer.AddComponent<SendRpcCommandRequest>(request);
         }
-
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

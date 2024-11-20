@@ -11,7 +11,7 @@ partial struct BufferedFileReceiverSystem : ISystem
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         DynamicBuffer<BufferedFileChunk> fileChunks = SystemAPI.GetSingletonBuffer<BufferedFileChunk>();
         DynamicBuffer<BufferedReceivingFile> receivingFiles = SystemAPI.GetSingletonBuffer<BufferedReceivingFile>();
@@ -156,8 +156,5 @@ partial struct BufferedFileReceiverSystem : ISystem
                 receivingFiles[i].Version
             );
         }
-
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

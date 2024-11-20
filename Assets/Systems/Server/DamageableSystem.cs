@@ -8,7 +8,7 @@ public partial struct DamageableSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (damageable, damages, entity) in
             SystemAPI.Query<RefRW<Damageable>, DynamicBuffer<BufferedDamage>>()
@@ -23,8 +23,5 @@ public partial struct DamageableSystem : ISystem
             }
             damages.Clear();
         }
-
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

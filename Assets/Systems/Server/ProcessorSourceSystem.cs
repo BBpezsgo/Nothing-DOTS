@@ -9,7 +9,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SetProcessorSourceRequestRpc>>()
@@ -123,8 +123,5 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 buffer.Clear();
             }
         }
-
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

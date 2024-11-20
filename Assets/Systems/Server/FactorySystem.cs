@@ -18,7 +18,7 @@ public partial struct FactorySystem : ISystem
             return;
         }
 
-        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         DynamicBuffer<BufferedUnit> units = SystemAPI.GetBuffer<BufferedUnit>(unitDatabase);
 
@@ -95,8 +95,5 @@ public partial struct FactorySystem : ISystem
                 Team = unitTeam.ValueRO.Team
             });
         }
-
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

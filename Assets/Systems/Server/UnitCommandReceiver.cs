@@ -12,7 +12,7 @@ public partial struct UnitCommandReceiver : ISystem
     [BurstCompile]
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<UnitCommandRequestRpc>>()
@@ -60,8 +60,5 @@ public partial struct UnitCommandReceiver : ISystem
 
             commandBuffer.DestroyEntity(entity);
         }
-
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

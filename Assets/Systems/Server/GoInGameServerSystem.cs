@@ -18,7 +18,7 @@ public partial struct GoInServerClientSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<GoInGameRpcCommand>>()
@@ -27,8 +27,5 @@ public partial struct GoInServerClientSystem : ISystem
             commandBuffer.AddComponent<NetworkStreamInGame>(request.ValueRO.SourceConnection);
             commandBuffer.DestroyEntity(entity);
         }
-
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

@@ -10,7 +10,7 @@ public partial struct PlayerTeamManager : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (id, entity) in
             SystemAPI.Query<RefRO<NetworkId>>()
@@ -22,7 +22,5 @@ public partial struct PlayerTeamManager : ISystem
                 Team = id.ValueRO.Value,
             });
         }
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

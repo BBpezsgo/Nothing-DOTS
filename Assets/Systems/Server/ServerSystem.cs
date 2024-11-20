@@ -9,7 +9,7 @@ public partial struct ServerSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (id, entity) in
             SystemAPI.Query<RefRO<NetworkId>>()
@@ -18,7 +18,5 @@ public partial struct ServerSystem : ISystem
         {
             commandBuffer.AddComponent<InitializedClient>(entity);
         }
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }

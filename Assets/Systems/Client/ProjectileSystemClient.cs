@@ -20,7 +20,7 @@ partial struct ProjectileSystemClient : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        using EntityCommandBuffer entityCommandBuffer = new(Unity.Collections.Allocator.Temp);
+        EntityCommandBuffer entityCommandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         damageQ.Update(ref state);
         var map = QuadrantSystem.GetMap(ref state);
@@ -51,8 +51,6 @@ partial struct ProjectileSystemClient : ISystem
                 continue;
             }
         }
-
-        entityCommandBuffer.Playback(state.EntityManager);
 
         // EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
 

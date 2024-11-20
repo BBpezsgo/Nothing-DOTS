@@ -13,7 +13,7 @@ partial struct BufferedFileSenderSystem : ISystem
 
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = new(Allocator.Temp);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         DynamicBuffer<BufferedSendingFile> sendingFiles = SystemAPI.GetSingletonBuffer<BufferedSendingFile>();
 
@@ -172,8 +172,5 @@ partial struct BufferedFileSenderSystem : ISystem
 
             commandBuffer.DestroyEntity(entity);
         }
-
-        commandBuffer.Playback(state.EntityManager);
-        commandBuffer.Dispose();
     }
 }
