@@ -260,7 +260,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
         foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
-            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
+            // if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}\r\n{item.GetArrows()}");
 
             if (item.File is null) continue;
@@ -283,7 +283,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
         foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
-            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}");
+            // if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}");
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}");
 
             Entity request = entityCommandBuffer.CreateEntity();
@@ -308,7 +308,6 @@ public class CompilerManager : Singleton<CompilerManager>
 
         CompiledSource source = Instance.CompiledSources[file];
 
-        source.Progress = 0;
         source.IsSuccess = false;
         source.Diagnostics = new DiagnosticsCollection();
         source.Status = CompilationStatus.Compiling;
@@ -321,7 +320,10 @@ public class CompilerManager : Singleton<CompilerManager>
             content = default;
 
             if (!uri.TryGetNetcode(out FileId file))
-            { return false; }
+            {
+                Debug.LogError($"Uri \"{uri}\" aint a netcode uri");
+                return false;
+            }
 
             if (file.Source.IsServer)
             {
@@ -343,18 +345,15 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (status is FileStatus.NotFound or FileStatus.CachedNotFound)
             {
+                Debug.LogError($"Remote file \"{uri}\" not found");
                 return false;
             }
 
             sourcesFromOtherConnectionsNeeded = true;
 
-            source.CompileSecuedued = MonoTime.Now + 5f;
-            source.Status = CompilationStatus.Secuedued;
-            source.StatusChanged = true;
-
             if (status == FileStatus.Receiving)
             {
-                // Debug.Log($"Source \"{file}\" is downloading ...");
+                Debug.Log($"Source \"{file}\" is downloading ...");
                 return false;
             }
 
@@ -365,13 +364,14 @@ public class CompilerManager : Singleton<CompilerManager>
                 source.StatusChanged = true;
             });
             progresses.Add(progress);
-            // Debug.Log($"Source needs file \"{file}\" ...");
-            FileChunkManager.RequestFile(file, progress);
-            // .GetAwaiter()
-            // .OnCompleted(() =>
-            // {
-            //     Debug.Log($"Source \"{file}\" downloaded ...");
-            // });
+            Debug.Log($"Source needs file \"{file}\" ...");
+
+            Awaitable<RemoteFile> task = FileChunkManager.RequestFile(file, progress);
+            Awaitable<RemoteFile>.Awaiter taskAwaiter = task.GetAwaiter();
+            taskAwaiter.OnCompleted(() =>
+            {
+                Debug.Log($"Source \"{file}\" downloaded ...");
+            });
 
             return false;
         }
@@ -426,59 +426,87 @@ public class CompilerManager : Singleton<CompilerManager>
             }),
         };
 
-        // try
-        // {
-        // Debug.Log($"Compiling {file} ...");
-        CompilerResult compiled = Compiler.CompileFile(
-            sourceUri,
-            ExternalFunctions,
-            new CompilerSettings()
-            {
-                BasePath = null,
-            },
-            PreprocessorVariables.Normal,
-            null,
-            source.Diagnostics,
-            null,
-            FileParser,
-            userDefinedAttributes: attributes
-        );
-
-        // Debug.Log($"Generating {file} ...");
-        BBLangGeneratorResult generated = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
+        CompilerResult compiled = CompilerResult.MakeEmpty(sourceUri);
+        BBLangGeneratorResult generated = new()
         {
-            StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
-        }, null, source.Diagnostics);
+            Code = System.Collections.Immutable.ImmutableArray<Instruction>.Empty,
+            DebugInfo = null,
+        };
+        try
+        {
+            compiled = Compiler.CompileFile(
+                sourceUri,
+                ExternalFunctions,
+                new CompilerSettings()
+                {
+                    BasePath = null,
+                },
+                PreprocessorVariables.Normal,
+                null,
+                source.Diagnostics,
+                null,
+                FileParser,
+                userDefinedAttributes: attributes
+            );
 
-        // Debug.Log($"Done {file} ...");
-
-        source.Compiled = compiled;
-        source.CompileSecuedued = default;
-        source.Version = DateTime.UtcNow.Ticks;
-        source.IsSuccess = true;
-        source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
-        source.Code?.Dispose();
-        source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
-        source.Status = CompilationStatus.Compiled;
-        source.StatusChanged = true;
-
-        // Debug.Log($"Source {file} compiled");
-        // }
-        // catch (LanguageException exception)
-        // {
-        //     if (!sourcesFromOtherConnectionsNeeded)
-        //     { Instance._compiledSources[file].Diagnostics.Add(Diagnostic.Error(exception.Message, exception.Position, exception.File, false)); }
-        // }
+            generated = CodeGeneratorForMain.Generate(
+                compiled,
+                new MainGeneratorSettings(MainGeneratorSettings.Default)
+                {
+                    StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
+                },
+                null,
+                source.Diagnostics
+            );
+        }
+        catch (LanguageException exception)
+        {
+            source.Diagnostics.Add(new Diagnostic(
+                DiagnosticsLevel.Error,
+                exception.Message,
+                exception.Position,
+                exception.File,
+                null
+            ));
+        }
+        catch (LanguageExceptionWithoutContext exception)
+        {
+            source.Diagnostics.Add(new DiagnosticWithoutContext(
+                DiagnosticsLevel.Error,
+                exception.Message
+            ));
+        }
 
         if (sourcesFromOtherConnectionsNeeded)
         {
-            Instance._compiledSources[file].Diagnostics.Clear();
-            // Debug.Log($"Compilation will continue for \"{sourceUri}\" ...");
+            source.Diagnostics.Clear();
+            source.CompileSecuedued = MonoTime.Now + 5f;
+            source.Status = CompilationStatus.Secuedued;
+            source.StatusChanged = true;
+        }
+        else if (source.Diagnostics.HasErrors)
+        {
+            source.Status = CompilationStatus.Compiled;
+            source.Compiled = compiled;
+            source.CompileSecuedued = default;
+            source.Version = DateTime.UtcNow.Ticks;
+            source.IsSuccess = false;
+            source.DebugInformation = new CompiledDebugInformation(null);
+            source.Code?.Dispose();
+            source.Code = default;
+            source.Progress = default;
         }
         else
         {
             source.Status = CompilationStatus.Compiled;
-            //  Debug.Log($"Compilation finished for \"{sourceUri}\"");
+            source.Compiled = compiled;
+            source.CompileSecuedued = default;
+            source.Version = DateTime.UtcNow.Ticks;
+            source.IsSuccess = true;
+            source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
+            source.Code?.Dispose();
+            source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
+            source.Progress = default;
         }
     }
 }

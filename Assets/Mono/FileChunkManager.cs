@@ -243,7 +243,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
             }
         }
 
-        foreach ((FileId file, FileRequest task) in Requests.ToArray())
+        foreach ((FileId file, FileRequest task) in Requests)
         {
             (FileStatus status, int received, int total) = GetFileStatus(file, out RemoteFile data, true);
             switch (status)
@@ -254,7 +254,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
                     task.Task.SetResult(data);
                     Requests.Remove(file);
                     CloseFile(file);
-                    break;
+                    goto breakLoop;
                 case FileStatus.Receiving:
                     task.Progress?.Report((received, total));
                     break;
@@ -264,7 +264,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
                     task.Task.SetException(new Exception($"Error while requesting file {file.Name}"));
                     Requests.Remove(file);
                     CloseFile(file);
-                    break;
+                    goto breakLoop;
                 case FileStatus.NotRequested:
                     break;
                 case FileStatus.NotFound:
@@ -274,8 +274,11 @@ public class FileChunkManager : Singleton<FileChunkManager>
                     task.Task.SetException(new FileNotFoundException("Remote file not found", file.Name.ToString()));
                     Requests.Remove(file);
                     CloseFile(file);
-                    break;
+                    goto breakLoop;
             }
+            continue;
+        breakLoop:
+            break;
         }
 
         if (RpcRequests.TryDequeue(out var rpcRequest))

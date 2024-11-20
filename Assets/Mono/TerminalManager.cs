@@ -186,64 +186,88 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         }
         else
         {
+            StringBuilder terminalBuilder = new();
             EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
             Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
             if (processor.SourceFile == default)
             {
-                ui_labelTerminal!.text = "No source";
+                terminalBuilder.AppendLine("No source");
             }
             else
             {
                 CompiledSource source = CompilerManager.Instance.CompiledSources[processor.SourceFile];
+
+                if (source.Status != CompilationStatus.Done || !source.IsSuccess)
+                {
+                    terminalBuilder.AppendLine($"{source.Status}");
+                }
+
+                if (source.Progress != default)
+                {
+                    const int progressBarWidth = 10;
+                    string progressBarFilled = new('#', math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth));
+                    string progressBarEmpty = new(' ', progressBarWidth - progressBarFilled.Length);
+                    terminalBuilder.AppendLine($"Uploading [{progressBarFilled}{progressBarEmpty}]");
+                }
+
                 switch (source.Status)
                 {
                     case CompilationStatus.Secuedued:
+                        {
+                            if (source.CompileSecuedued == 0f)
+                            {
+                                terminalBuilder.AppendLine($"Compilation in ? sec");
+                            }
+                            else
+                            {
+                                terminalBuilder.AppendLine($"Compilation in {System.Math.Max(0f, source.CompileSecuedued - MonoTime.Now):#.0} sec");
+                            }
+                            break;
+                        }
                     case CompilationStatus.Compiling:
                         {
-                            if (source.Progress == 0f &&
-                                source.Status == CompilationStatus.Secuedued)
-                            {
-                                if (source.CompileSecuedued != default)
-                                {
-                                    ui_labelTerminal!.text = $"Compilation secuedued ...";
-                                }
-                                else
-                                {
-                                    ui_labelTerminal!.text = $"Compilation in {source.CompileSecuedued - Time.time:#.00} sec";
-                                }
-                                break;
-                            }
-                            const int progressBarWidth = 10;
-                            string progressBarFilled = new('#', math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth));
-                            string progressBarEmpty = new(' ', progressBarWidth - progressBarFilled.Length);
-                            ui_labelTerminal!.text = $"Uploading [{progressBarFilled}{progressBarEmpty}]";
                             break;
                         }
                     case CompilationStatus.Compiled:
                         {
-                            ui_labelTerminal!.text = "Compiled ...";
+                            terminalBuilder.AppendLine("Compiled");
                             break;
                         }
                     case CompilationStatus.Done:
                         {
                             if (source.IsSuccess)
                             {
-                                ui_labelTerminal!.text = processor.StdOutBuffer.ToString();
+                                terminalBuilder.AppendLine(processor.StdOutBuffer.ToString());
                             }
                             else
                             {
-                                ui_labelTerminal!.text = "Compile failed";
+                                terminalBuilder.AppendLine("Compile failed");
+                                foreach (LanguageCore.Diagnostic item in source.Diagnostics.Diagnostics)
+                                {
+                                    terminalBuilder.AppendLine(item.ToString());
+                                    (string SourceCode, string Arrows)? arrows = item.GetArrows();
+                                    if (arrows.HasValue)
+                                    {
+                                        terminalBuilder.AppendLine(arrows.Value.SourceCode);
+                                        terminalBuilder.AppendLine(arrows.Value.Arrows);
+                                    }
+                                }
+                                foreach (LanguageCore.DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext)
+                                {
+                                    terminalBuilder.AppendLine(item.ToString());
+                                }
                             }
                             break;
                         }
                     case CompilationStatus.None:
                     default:
                         {
-                            ui_labelTerminal!.text = $"???";
+                            terminalBuilder.AppendLine("???");
                             break;
                         }
                 }
             }
+            ui_labelTerminal!.text = terminalBuilder.ToString();
         }
     }
 
