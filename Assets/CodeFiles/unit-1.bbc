@@ -52,7 +52,7 @@ void Receive()
 
     while (1)
     {
-        i32 receivedLength = receive(&v, 2, &receivedDirection, 0);
+        i32 receivedLength = receive(&v, 2, &receivedDirection, 0 as u8*);
         if (receivedLength != 2) { break; }
 
         // {
