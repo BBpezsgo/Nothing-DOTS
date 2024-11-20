@@ -21,13 +21,18 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
         {
             Vector3 screenPoint = MainCamera.Camera.WorldToScreenPoint(item.WorldPosition);
             bool isVisible = screenPoint.z > 0f && screenPoint.z < DisappearDistance;
+
             if (isVisible != item.IsVisible)
             {
                 item.IsVisible = isVisible;
-                item.CanvasGroup.alpha = 0f;
                 item.gameObject.SetActive(isVisible);
             }
-            if (!isVisible) continue;
+
+            if (!isVisible)
+            {
+                item.CanvasGroup.alpha = 0f;
+                continue;
+            }
 
             item.Foreground.fillAmount = item.Percent;
             item.CanvasGroup.alpha = math.clamp(1f - ((screenPoint.z - StartFadeDistance) / (DisappearDistance - StartFadeDistance)), 0f, 1f);
@@ -45,7 +50,7 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
                     break;
             }
 
-            item.Label.text = item.Team.ToString();
+            if (string.IsNullOrEmpty(item.Label.text)) item.Label.text = item.Team.ToString();
 
             screenPoint.z = 0f;
             RectTransform transform = item.GetComponent<RectTransform>();
