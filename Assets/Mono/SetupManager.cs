@@ -82,19 +82,21 @@ public class SetupManager : Singleton<SetupManager>
         List<float2> spawned = new(GeneratedCount);
         int c = 0;
 
+        const float unitRadius = .1f;
+
         bool IsOccupied(float2 position)
         {
             if (SpawnExactUnits)
             {
                 foreach (UnitSetup unit in Units)
                 {
-                    if (math.distance(unit.Spawn, position) < 2f) return true;
+                    if (math.distance(unit.Spawn, position) < 2f * unitRadius) return true;
                 }
             }
 
             foreach (float2 unit in spawned)
             {
-                if (math.distance(unit, position) < 2f) return true;
+                if (math.distance(unit, position) < 2f * unitRadius) return true;
             }
 
             return false;
@@ -147,7 +149,7 @@ public class SetupManager : Singleton<SetupManager>
                 }
             }
         }
-        else
+        else if (GeneratedCount > 0)
         {
             float width = End.x - Start.x;
             float height = End.y - Start.y;
