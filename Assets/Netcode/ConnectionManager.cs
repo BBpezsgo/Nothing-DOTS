@@ -15,6 +15,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     public static World ClientOrDefaultWorld => Instance._clientWorld ?? World.DefaultGameObjectInjectionWorld;
     public static World ServerOrDefaultWorld => Instance._serverWorld ?? World.DefaultGameObjectInjectionWorld;
 
+    [SerializeField] ushort DebugPort = default;
     [SerializeField, NotNull] UIDocument? UI = default;
 
     World? _clientWorld = default;
@@ -38,7 +39,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
             StartCoroutine(StartServerAsync(endpoint));
         };
 
-        StartCoroutine(StartHostAsync(NetworkEndpoint.AnyIpv4));
+        StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
     }
 
     bool HandleInput([NotNullWhen(true)] out NetworkEndpoint endpoint)
