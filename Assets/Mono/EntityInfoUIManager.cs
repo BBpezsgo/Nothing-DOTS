@@ -45,6 +45,8 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
                     break;
             }
 
+            item.Label.text = item.Team.ToString();
+
             screenPoint.z = 0f;
             RectTransform transform = item.GetComponent<RectTransform>();
             transform.anchoredPosition = screenPoint;

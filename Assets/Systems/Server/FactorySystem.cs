@@ -57,8 +57,8 @@ public partial struct FactorySystem : ISystem
             commandBuffer.DestroyEntity(entity);
         }
 
-        foreach ((RefRW<Factory> factory, RefRO<LocalToWorld> localToWorld, Entity entity) in
-                    SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>>()
+        foreach ((RefRW<Factory> factory, RefRO<LocalToWorld> localToWorld, RefRO<UnitTeam> unitTeam, Entity entity) in
+                    SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>, RefRO<UnitTeam>>()
                     .WithEntityAccess())
         {
             DynamicBuffer<BufferedUnit> unitQueue = SystemAPI.GetBuffer<BufferedUnit>(entity);
@@ -90,6 +90,10 @@ public partial struct FactorySystem : ISystem
 
             Entity newUnit = commandBuffer.Instantiate(finishedUnit.Prefab);
             commandBuffer.SetComponent(newUnit, LocalTransform.FromPosition(localToWorld.ValueRO.Position + new float3(0f, 0f, 1.5f)));
+            commandBuffer.SetComponent<UnitTeam>(newUnit, new()
+            {
+                Team = unitTeam.ValueRO.Team
+            });
         }
 
         commandBuffer.Playback(state.EntityManager);

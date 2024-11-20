@@ -25,12 +25,13 @@ public partial struct EntityInfoUISystem : ISystem
             });
         }
 
-        foreach (var (transform, damageable, uiRef, selectable) in
-            SystemAPI.Query<RefRO<LocalTransform>, RefRO<Damageable>, EntityInfoUIReference, RefRO<SelectableUnit>>())
+        foreach (var (transform, damageable, unitTeam, uiRef, selectable) in
+            SystemAPI.Query<RefRO<LocalTransform>, RefRO<Damageable>, RefRO<UnitTeam>, EntityInfoUIReference, RefRO<SelectableUnit>>())
         {
             uiRef.Value.WorldPosition = transform.ValueRO.Position;
             uiRef.Value.Percent = damageable.ValueRO.Health / damageable.ValueRO.MaxHealth;
             uiRef.Value.SelectionStatus = selectable.ValueRO.Status;
+            uiRef.Value.Team = unitTeam.ValueRO.Team;
             uiRef.Value.gameObject.SetActive(selectable.ValueRO.Status != SelectionStatus.None);
         }
 

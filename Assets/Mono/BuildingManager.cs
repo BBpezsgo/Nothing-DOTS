@@ -74,16 +74,6 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         }
     }
 
-    void PlaceBuilding(Vector3 position, BufferedBuilding building)
-    {
-        EntityCommandBuffer commandBuffer = new(Unity.Collections.Allocator.Temp);
-
-        BuildingSystem.PlaceBuilding(commandBuffer, building, position);
-
-        commandBuffer.Playback(ConnectionManager.ServerOrDefaultWorld.EntityManager);
-        commandBuffer.Dispose();
-    }
-
     void Clickable_clickedWithEventInfo(EventBase e)
     {
         if (e.target is not Button button) return;
@@ -207,8 +197,9 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
             if (ConnectionManager.ClientOrDefaultWorld.IsServer())
             {
+                throw new NotImplementedException();
                 // Debug.Log($"Placing building from server");
-                PlaceBuilding(position, SelectedBuilding);
+                // PlaceBuilding(position, SelectedBuilding);
             }
             else
             {

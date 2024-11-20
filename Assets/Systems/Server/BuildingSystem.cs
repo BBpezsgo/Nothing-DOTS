@@ -66,11 +66,17 @@ public partial struct BuildingSystem : ISystem
                 NetworkId = networkId.ValueRO.Value,
             });
 
+            RefRO<PlayerTeam> playerTeam = SystemAPI.GetComponentRO<PlayerTeam>(request.ValueRO.SourceConnection);
+            commandBuffer.SetComponent<UnitTeam>(newEntity, new()
+            {
+                Team = playerTeam.ValueRO.Team,
+            });
+
             commandBuffer.DestroyEntity(entity);
         }
 
-        foreach (var (placeholder, transform, owner, entity) in
-            SystemAPI.Query<RefRW<BuildingPlaceholder>, RefRO<LocalToWorld>, RefRO<GhostOwner>>()
+        foreach (var (placeholder, transform, owner, unitTeam, entity) in
+            SystemAPI.Query<RefRW<BuildingPlaceholder>, RefRO<LocalToWorld>, RefRO<GhostOwner>, RefRO<UnitTeam>>()
             .WithEntityAccess())
         {
             if (placeholder.ValueRO.CurrentProgress >= placeholder.ValueRO.TotalProgress)
@@ -85,6 +91,10 @@ public partial struct BuildingSystem : ISystem
                 commandBuffer.SetComponent<GhostOwner>(newEntity, new()
                 {
                     NetworkId = owner.ValueRO.NetworkId,
+                });
+                commandBuffer.SetComponent<UnitTeam>(newEntity, new()
+                {
+                    Team = unitTeam.ValueRO.Team,
                 });
 
                 commandBuffer.DestroyEntity(entity);
