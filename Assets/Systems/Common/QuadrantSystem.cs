@@ -10,14 +10,16 @@ using UnityEngine;
 public struct QuadrantEntity
 {
     public readonly Entity Entity;
+    public readonly Collider Collider;
     public float3 Position;
     public float3 ResolvedOffset;
     public uint Key;
     public uint Layer;
 
-    public QuadrantEntity(Entity entity, float3 position, uint key, uint layer)
+    public QuadrantEntity(Entity entity, Collider collider, float3 position, uint key, uint layer)
     {
         Entity = entity;
+        Collider = collider;
         Position = position;
         ResolvedOffset = default;
         Key = key;
@@ -77,31 +79,63 @@ public readonly struct Hit
     }
 }
 
+[BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 public partial struct QuadrantSystem : ISystem
 {
     const int QuadrantCellSize = 20;
 
-    public static Cell ToGrid(float3 position)
+    public static Cell ToGrid(float3 worldPosition)
     {
-        if (position.x < 0f) position.x += -QuadrantCellSize;
-        if (position.z < 0f) position.z += -QuadrantCellSize;
+        if (worldPosition.x < 0f) worldPosition.x += -QuadrantCellSize;
+        if (worldPosition.z < 0f) worldPosition.z += -QuadrantCellSize;
         return new(
-            (int)(position.x / QuadrantCellSize),
-            (int)(position.z / QuadrantCellSize)
+            (int)(worldPosition.x / QuadrantCellSize),
+            (int)(worldPosition.z / QuadrantCellSize)
         );
     }
 
-    public static float2 ToGridF(float3 position) => new(
-        math.clamp(position.x / QuadrantCellSize, short.MinValue, short.MaxValue),
-        math.clamp(position.z / QuadrantCellSize, short.MinValue, short.MaxValue)
+    [BurstCompile]
+    public static void ToGrid(in float3 worldPosition, out Cell position)
+    {
+        float3 fixedWorldPosition = worldPosition;
+        if (worldPosition.x < 0f) fixedWorldPosition.x += -QuadrantCellSize;
+        if (worldPosition.z < 0f) fixedWorldPosition.z += -QuadrantCellSize;
+        position = new(
+            (int)(fixedWorldPosition.x / QuadrantCellSize),
+            (int)(fixedWorldPosition.z / QuadrantCellSize)
+        );
+    }
+
+    public static float2 ToGridF(float3 worldPosition) => new(
+        math.clamp(worldPosition.x / QuadrantCellSize, short.MinValue, short.MaxValue),
+        math.clamp(worldPosition.z / QuadrantCellSize, short.MinValue, short.MaxValue)
     );
+
+    [BurstCompile]
+    public static void ToGridF(in float3 worldPosition, out float2 position)
+    {
+        position = new(
+            math.clamp(worldPosition.x / QuadrantCellSize, short.MinValue, short.MaxValue),
+            math.clamp(worldPosition.z / QuadrantCellSize, short.MinValue, short.MaxValue)
+        );
+    }
 
     public static float3 ToWorld(Cell position) => new(
         position.x * QuadrantCellSize,
         0f,
         position.y * QuadrantCellSize
     );
+
+    [BurstCompile]
+    public static void ToWorld(in Cell position, out float3 worldPosition)
+    {
+        worldPosition = new(
+            position.x * QuadrantCellSize,
+            0f,
+            position.y * QuadrantCellSize
+        );
+    }
 
     public static Color CellColor(uint key)
     {
@@ -128,27 +162,29 @@ public partial struct QuadrantSystem : ISystem
         return system.HashMap.AsReadOnly();
     }
 
+    [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
         HashMap = new(128, Allocator.Persistent);
     }
 
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         foreach (var item in HashMap)
         { item.Value.Clear(); }
 
-        foreach (var (inQuadrant, transform, entity) in
-            SystemAPI.Query<RefRW<QuadrantEntityIdentifier>, RefRO<LocalToWorld>>()
+        foreach (var (inQuadrant, collider, transform, entity) in
+            SystemAPI.Query<RefRW<QuadrantEntityIdentifier>, RefRO<Collider>, RefRO<LocalToWorld>>()
             .WithEntityAccess())
         {
-            Cell cell = ToGrid(transform.ValueRO.Position);
+            ToGrid(transform.ValueRO.Position, out Cell cell);
 
             inQuadrant.ValueRW.Added = true;
             inQuadrant.ValueRW.Key = cell.key;
             if (!HashMap.ContainsKey(cell.key))
             { HashMap.Add(cell.key, new(32, Allocator.Persistent)); }
-            HashMap[cell.key].Add(new QuadrantEntity(entity, transform.ValueRO.Position, cell.key, inQuadrant.ValueRO.Layer));
+            HashMap[cell.key].Add(new QuadrantEntity(entity, collider.ValueRO, transform.ValueRO.Position, cell.key, inQuadrant.ValueRO.Layer));
         }
     }
 }

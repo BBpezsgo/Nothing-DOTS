@@ -79,8 +79,11 @@ public static class DebugEx
         }
     }
 
-    public static void DrawBox(Unity.Mathematics.AABB aabb, Color color, float duration = 0f, bool depthTest = true)
+    public static void DrawBox(AABB aabb, Color color, float duration = 0f, bool depthTest = true)
         => DrawBox((Vector3)aabb.Center, aabb.Size, color, duration, depthTest);
+
+    public static void DrawBox(AABB aabb, float3 offset, Color color, float duration = 0f, bool depthTest = true)
+        => DrawBox((Vector3)(aabb.Center + offset), aabb.Size, color, duration, depthTest);
 
     public static void DrawBox(Bounds bounds, Color color, float duration = 0f, bool depthTest = true)
         => DrawBox(bounds.center, bounds.size, color, duration, depthTest);

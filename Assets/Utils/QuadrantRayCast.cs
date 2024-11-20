@@ -1,62 +1,17 @@
-
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
-using UnityEngine;
 
 [BurstCompile]
-public readonly struct Ray
-{
-    public readonly float3 Start;
-    public readonly float3 End;
-    public readonly float3 Direction;
-    public readonly uint Layer;
-    public readonly bool ExcludeContainingBodies;
-
-    public Ray(UnityEngine.Ray ray, float distance, uint layer = Layers.All, bool excludeContainingBodies = true)
-    {
-        Start = ray.origin;
-        End = ray.GetPoint(distance);
-
-#if UNITY_EDITOR && false
-        if (distance == 0f)
-        {
-            Debug.LogWarning("Ray length is the same");
-        }
-#endif
-
-        Direction = ray.direction;
-        Layer = layer;
-        ExcludeContainingBodies = excludeContainingBodies;
-    }
-
-    public Ray(float3 start, float3 end, uint layer = Layers.All, bool excludeContainingBodies = true)
-    {
-#if UNITY_EDITOR && false
-        if (start.Equals(end))
-        {
-            Debug.LogWarning("Ray start and end point is the same");
-        }
-#endif
-
-        Start = start;
-        End = end;
-        Direction = math.normalize(end - start);
-        Layer = layer;
-        ExcludeContainingBodies = excludeContainingBodies;
-    }
-
-    public float3 GetPoint(float distance) => Start + (Direction * distance);
-}
-
 public static class QuadrantRayCast
 {
-    static bool RayCast(
+    [BurstCompile]
+    static bool RayCast_(
         in NativeList<QuadrantEntity> entities,
         in Ray ray,
         out Hit hit)
     {
-        Unity.Mathematics.AABB aabb = new()
+        AABB aabb = new()
         {
             Extents = new float3(1f, 1f, 1f),
         };
@@ -66,7 +21,8 @@ public static class QuadrantRayCast
             aabb.Center = entities[i].Position;
             if (ray.ExcludeContainingBodies && aabb.Contains(ray.Start)) continue;
             // DebugEx.DrawBox(aabb, QuadrantSystem.CellColor(entities[i].Key));
-            if (AABB.RayCast(aabb, ray.Start, ray.Direction, out float distance))
+            if (CollisionSystem.Raycast(entities[i].Collider, entities[i].Position, ray, out float distance) &&
+                (distance * distance) < math.distancesq(ray.End, ray.Start))
             {
                 // DebugEx.DrawPoint(ray.GetPoint(distance), 1f, Color.red, 1f);
                 hit = new(entities[i], distance);
@@ -81,6 +37,7 @@ public static class QuadrantRayCast
     /// <remarks>
     /// Source: javidx9
     /// </remarks>
+    [BurstCompile]
     public static bool RayCast(
         in NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map,
         in Ray ray,
@@ -91,8 +48,8 @@ public static class QuadrantRayCast
 
         if (ray.Start.Equals(ray.End)) { hit = default; return false; }
 
-        float2 _start = QuadrantSystem.ToGridF(ray.Start);
-        float2 _end = QuadrantSystem.ToGridF(ray.End);
+        QuadrantSystem.ToGridF(ray.Start, out float2 _start);
+        QuadrantSystem.ToGridF(ray.End, out float2 _end);
         float2 _dir = math.normalize(_end - _start);
 
         float2 rayUnitStepSize = new(
@@ -100,7 +57,7 @@ public static class QuadrantRayCast
             math.sqrt(1f + (_dir.x / _dir.y) * (_dir.x / _dir.y))
         );
 
-        Cell mapCheck = QuadrantSystem.ToGrid(ray.Start);
+        QuadrantSystem.ToGrid(ray.Start, out Cell mapCheck);
         float2 rayLength1D;
         Cell step;
 
@@ -133,7 +90,7 @@ public static class QuadrantRayCast
         {
             // QuadrantSystem.DrawQuadrant(mapCheck);
             if (map.TryGetValue(mapCheck.key, out NativeList<QuadrantEntity> cell) &&
-                RayCast(cell, ray, out hit))
+                RayCast_(cell, ray, out hit))
             { return true; }
 
             if (rayLength1D.x < rayLength1D.y)
