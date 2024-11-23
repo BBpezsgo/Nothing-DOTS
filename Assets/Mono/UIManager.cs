@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using NaughtyAttributes;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -26,12 +28,22 @@ public class UIManager : Singleton<UIManager>
             _manager.OpenedUIs[_ui].Add(ui);
             return this;
         }
+
+        public UISetup Setup<TUI>(TUI ui)
+            where TUI : IUISetup, IUICleanup
+        {
+            ui.Setup(_ui);
+            _manager.OpenedUIs.TryAdd(_ui, new List<IUICleanup>());
+            _manager.OpenedUIs[_ui].Add(ui);
+            return this;
+        }
     }
 
     [Header("Documents")]
 
     [SerializeField, NotNull] public UIDocument? Unit = default;
     [SerializeField, NotNull] public UIDocument? Factory = default;
+    [SerializeField, NotNull] public UIDocument? Pause = default;
 
     public IEnumerable<UIDocument> UIs
     {
@@ -39,6 +51,7 @@ public class UIManager : Singleton<UIManager>
         {
             yield return Unit;
             yield return Factory;
+            yield return Pause;
         }
     }
 
@@ -59,10 +72,10 @@ public class UIManager : Singleton<UIManager>
         _escGrabbed = _escGrabbed && _escPressed;
     }
 
-    void LateUpdate()
-    {
-        if (GrapESC()) CloseAllUI();
-    }
+    // void LateUpdate()
+    // {
+    //     if (GrapESC()) CloseAllUI();
+    // }
 
     public bool GrapESC()
     {

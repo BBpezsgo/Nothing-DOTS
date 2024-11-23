@@ -281,7 +281,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
             break;
         }
 
-        if (RpcRequests.TryDequeue(out var rpcRequest))
+        if (RpcRequests.TryDequeue(out FileId rpcRequest))
         {
             using EntityCommandBuffer entityCommandBuffer = new(Allocator.Temp);
             Entity rpcEntity = entityCommandBuffer.CreateEntity();
@@ -428,7 +428,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
             return task.Awaitable;
         }
 
-        if (Instance.Requests.TryGetValue(fileName, out var added))
+        if (Instance.Requests.TryGetValue(fileName, out FileRequest added))
         {
             return added.Task.Awaitable;
         }

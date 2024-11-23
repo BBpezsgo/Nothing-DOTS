@@ -3,7 +3,7 @@ using Unity.Transforms;
 using UnityEngine;
 
 [UpdateAfter(typeof(TransformSystemGroup))]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial struct EntityInfoUISystem : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)

@@ -2,8 +2,8 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
-partial struct CompilerSystemClient : ISystem
+[WorldSystemFilter(WorldSystemFilterFlags.ThinClientSimulation)]
+partial struct CompilerSystemThinClient : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)
     {
@@ -13,10 +13,6 @@ partial struct CompilerSystemClient : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilerStatusRpc>>()
             .WithEntityAccess())
         {
-            // Debug.Log($"Received compilation status for {command.ValueRO.FileName}");
-
-            CompilerManager.Instance.HandleRpc(command.ValueRO);
-
             if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
             entityCommandBuffer.DestroyEntity(entity);
         }
@@ -25,22 +21,6 @@ partial struct CompilerSystemClient : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilationAnalysticsRpc>>()
             .WithEntityAccess())
         {
-            if (!CompilerManager.Instance.CompiledSources.TryGetValue(command.ValueRO.FileName, out CompiledSource source))
-            {
-                // Debug.LogWarning($"Received analytics for unknown compiled source \"{command.ValueRO.FileName}\"");
-                if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-                entityCommandBuffer.DestroyEntity(entity);
-                continue;
-            }
-
-            source.Diagnostics.Add(new LanguageCore.Diagnostic(
-                command.ValueRO.Level,
-                command.ValueRO.Message.ToString(),
-                new LanguageCore.Position(command.ValueRO.Position, default),
-                command.ValueRO.FileName.ToUri(),
-                null
-            ));
-
             if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
             entityCommandBuffer.DestroyEntity(entity);
         }

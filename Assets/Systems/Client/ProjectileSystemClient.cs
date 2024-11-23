@@ -6,7 +6,7 @@ using Unity.Transforms;
 [BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 partial struct ProjectileSystemClient : ISystem
 {
     BufferLookup<BufferedDamage> damageQ;

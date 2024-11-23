@@ -23,6 +23,7 @@ public class SetupManager : Singleton<SetupManager>
     [SerializeField, NotNull] public UnitSetup[]? Units = default;
 
     [Header("Generator")]
+    [SerializeField] public int Team = default;
     [SerializeField, NotNull] public string? GeneratedScript = default;
     [SerializeField] public int GeneratedCount = default;
     [SerializeField] public Vector2 Start = default;
@@ -138,6 +139,10 @@ public class SetupManager : Singleton<SetupManager>
                     world.EntityManager.SetComponentData(newUnit, new Processor()
                     {
                         SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
+                    });
+                    world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+                    {
+                        Team = Team,
                     });
                     failed = false;
                     break;

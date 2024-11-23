@@ -30,6 +30,7 @@
 			"using Unity.Entities;",
 			"using UnityEngine;",
 			"",
+			"[AddComponentMenu(\"Authoring/${1:$TM_FILENAME_BASE}\")]",
 			"public class ${1:$TM_FILENAME_BASE} : MonoBehaviour",
 			"{$2",
 			"    class Baker : Baker<${1:$TM_FILENAME_BASE}>",

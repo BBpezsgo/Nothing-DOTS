@@ -307,7 +307,7 @@ public class SelectionManager : Singleton<SelectionManager>
                 int id = commands[i].Id;
                 bool added = false;
 
-                foreach (var existingItemUi in container.Children())
+                foreach (VisualElement? existingItemUi in container.Children())
                 {
                     if (existingItemUi.userData is string _name &&
                         _name == name)
@@ -402,6 +402,14 @@ public class SelectionManager : Singleton<SelectionManager>
         return ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<SelectableUnit>(unit);
     }
 
+    bool IsMine(Entity unit)
+    {
+        if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return false;
+        UnitTeam unitTeam = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<UnitTeam>(unit);
+        Player localPlayer = PlayerManager.GetLocalPlayer();
+        return unitTeam.Team == localPlayer.Team;
+    }
+
     void SetUnitStatus(Entity unit, SelectableUnit status)
     {
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return;
@@ -410,6 +418,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void SelectUnitCandidate(Entity unit, SelectionStatus status)
     {
+        if (!IsMine(unit)) return;
         if (GetUnitStatus(unit).Status == SelectionStatus.None)
         {
             SetUnitStatus(unit, new()
@@ -448,6 +457,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void SelectUnit(Entity unit, SelectionStatus status)
     {
+        if (!IsMine(unit)) return;
         SetUnitStatus(unit, new()
         {
             Status = status,
@@ -478,8 +488,8 @@ public class SelectionManager : Singleton<SelectionManager>
 
     bool RayCast(UnityEngine.Ray ray, uint layer, out Hit hit)
     {
-        var start = ray.origin;
-        var end = ray.GetPoint(200f);
+        Vector3 start = ray.origin;
+        Vector3 end = ray.GetPoint(200f);
         NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
         return QuadrantRayCast.RayCast(map, new Ray(start, end, layer), out hit);
     }

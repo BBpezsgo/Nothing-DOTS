@@ -18,12 +18,36 @@ public partial struct UnitCommandReceiver : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<UnitCommandRequestRpc>>()
             .WithEntityAccess())
         {
-            foreach (var (ghostInstance, processor, commandDefinitions, ghostEntity) in
-                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>>()
+            RefRO<NetworkId> requestConnection = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+
+            int sourceTeam = -1;
+            foreach (var player in
+                SystemAPI.Query<RefRO<Player>>())
+            {
+                if (player.ValueRO.ConnectionId != requestConnection.ValueRO.Value) continue;
+                sourceTeam = player.ValueRO.Team;
+                break;
+            }
+
+            if (sourceTeam == -1)
+            {
+                Debug.LogError("Invalid team");
+                commandBuffer.DestroyEntity(entity);
+                continue;
+            }
+
+            foreach (var (ghostInstance, processor, team, commandDefinitions, ghostEntity) in
+                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, RefRO<UnitTeam>, DynamicBuffer<BufferedUnitCommandDefinition>>()
                 .WithEntityAccess())
             {
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
+
+                if (team.ValueRO.Team != sourceTeam)
+                {
+                    Debug.LogError(string.Format("Can't send commands to units in other team. Source: {0} Target: {1}", sourceTeam, team.ValueRO.Team));
+                    break;
+                }
 
                 for (int i = 0; i < commandDefinitions.Length; i++)
                 {

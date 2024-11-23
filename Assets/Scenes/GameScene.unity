@@ -891,6 +891,7 @@ Transform:
   m_Children:
   - {fileID: 387110818}
   - {fileID: 326294559}
+  - {fileID: 2075893408}
   - {fileID: 814073990}
   - {fileID: 1848802882}
   - {fileID: 1605264180}
@@ -1098,6 +1099,7 @@ MonoBehaviour:
   Prefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
   SpawnExactUnits: 0
   Units: []
+  Team: 2
   GeneratedScript: unit-2.bbc
   GeneratedCount: 1000
   Start: {x: -100, y: -100}
@@ -1326,6 +1328,7 @@ Transform:
   - {fileID: 338171271}
   - {fileID: 1306176954}
   - {fileID: 1759163859}
+  - {fileID: 1933214718}
   - {fileID: 823535327}
   - {fileID: 1996438295}
   - {fileID: 513606388}
@@ -1387,6 +1390,52 @@ MonoBehaviour:
     _Version: 0
     _FreeList: -1
     _FreeCount: 0
+--- !u!1 &1933214717
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1933214718}
+  - component: {fileID: 1933214719}
+  m_Layer: 0
+  m_Name: PauseManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 2147483647
+  m_IsActive: 1
+--- !u!4 &1933214718
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1933214717}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1898065795}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1933214719
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1933214717}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 920bf54d1e8b0275f9c49cf1f8304cf8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  UI_ConnectionItem: {fileID: 9197481963319205126, guid: 476d9567518880df583469a5917a2b59, type: 3}
+  ui: {fileID: 0}
 --- !u!1 &1996438293
 GameObject:
   m_ObjectHideFlags: 0
@@ -1418,6 +1467,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Unit: {fileID: 1848802881}
   Factory: {fileID: 814073991}
+  Pause: {fileID: 2075893409}
   _escPressed: 0
   _escGrabbed: 0
 --- !u!4 &1996438295
@@ -1510,6 +1560,57 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2036511786}
   m_CullTransparentMesh: 1
+--- !u!1 &2075893407
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2075893408}
+  - component: {fileID: 2075893409}
+  m_Layer: 0
+  m_Name: Pause
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 2147483647
+  m_IsActive: 0
+--- !u!4 &2075893408
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2075893407}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1042564337}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2075893409
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2075893407}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_PanelSettings: {fileID: 11400000, guid: f1dbea9b2dcea35ee9e788afec3d1fcd, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 9197481963319205126, guid: 811247c16fa369e79bf4e133750ce58d, type: 3}
+  m_SortingOrder: 0
+  m_WorldSpaceSizeMode: 1
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -10,7 +10,7 @@ public partial struct GoInGameClientSystem : ISystem
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
-        EntityQueryBuilder builder = new(Allocator.Temp);
+        using EntityQueryBuilder builder = new(Allocator.Temp);
         builder.WithAny<NetworkId>();
         builder.WithNone<NetworkStreamInGame>();
         state.RequireForUpdate(state.GetEntityQuery(builder));

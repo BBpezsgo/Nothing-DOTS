@@ -171,6 +171,20 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         {
             driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.Listen(endpoint);
         }
+
+        using (EntityQuery prefabsQ = _serverWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>()))
+        {
+            using EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp); // endSimulationEntityCommandBufferSystemSingletonQ.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(_serverWorld.Unmanaged);
+            PrefabDatabase prefabs = prefabsQ.GetSingleton<PrefabDatabase>();
+            Entity newPlayer = commandBuffer.Instantiate(prefabs.Player);
+            commandBuffer.SetComponent<Player>(newPlayer, new()
+            {
+                ConnectionId = 0,
+                ConnectionState = PlayerConnectionState.Server,
+                Team = -1,
+            });
+            commandBuffer.Playback(_serverWorld.EntityManager);
+        }
     }
 
     IEnumerator CreateClient(NetworkEndpoint endpoint)

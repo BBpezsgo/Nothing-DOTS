@@ -50,7 +50,7 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
                     break;
             }
 
-            if (string.IsNullOrEmpty(item.Label.text)) item.Label.text = item.Team.ToString();
+            // item.Label.text = item.Team.ToString();
 
             screenPoint.z = 0f;
             RectTransform transform = item.GetComponent<RectTransform>();
