@@ -1,3 +1,5 @@
+#define _DEBUG_LINES
+
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -11,23 +13,31 @@ public static class QuadrantRayCast
         in Ray ray,
         out Hit hit)
     {
-        AABB aabb = new()
-        {
-            Extents = new float3(1f, 1f, 1f),
-        };
         for (int i = 0; i < entities.Length; i++)
         {
             if ((entities[i].Layer & ray.Layer) == 0u) continue;
-            aabb.Center = entities[i].Position;
-            if (ray.ExcludeContainingBodies && aabb.Contains(ray.Start)) continue;
-            // DebugEx.DrawBox(aabb, QuadrantSystem.CellColor(entities[i].Key));
-            if (CollisionSystem.Raycast(entities[i].Collider, entities[i].Position, ray, out float distance) &&
-                (distance * distance) < math.distancesq(ray.End, ray.Start))
-            {
-                // DebugEx.DrawPoint(ray.GetPoint(distance), 1f, Color.red, 1f);
-                hit = new(entities[i], distance);
-                return true;
-            }
+
+            if (ray.ExcludeContainingBodies && CollisionSystem.Contains(
+                    entities[i].Collider,
+                    entities[i].Position,
+                    ray.Start))
+            { continue; }
+
+            if (!CollisionSystem.Raycast(
+                    entities[i].Collider,
+                    entities[i].Position,
+                    ray,
+                    out float distance))
+            { continue; }
+            if ((distance * distance) >= math.distancesq(ray.End, ray.Start)) continue;
+
+#if DEBUG_LINES
+            CollisionSystem.Debug(entities[i].Collider, entities[i].Position, QuadrantSystem.CellColor(entities[i].Key), 1f, false);
+            DebugEx.DrawPoint(ray.GetPoint(distance), 1f, QuadrantSystem.CellColor(entities[i].Key), 1f, false);
+            UnityEngine.Debug.DrawLine(ray.Start, ray.End, QuadrantSystem.CellColor(entities[i].Key), 1f, false);
+#endif
+            hit = new(entities[i], distance);
+            return true;
         }
 
         hit = default;
@@ -43,9 +53,6 @@ public static class QuadrantRayCast
         in Ray ray,
         out Hit hit)
     {
-        // DebugEx.DrawPoint(start, 1f, Color.red);
-        // Debug.DrawLine(ray.Start, ray.End, Color.red, 1f);
-
         if (ray.Start.Equals(ray.End)) { hit = default; return false; }
 
         QuadrantSystem.ToGridF(ray.Start, out float2 _start);
@@ -88,7 +95,9 @@ public static class QuadrantRayCast
 
         while (distance < maxDistance)
         {
-            // QuadrantSystem.DrawQuadrant(mapCheck);
+#if DEBUG_LINES
+            QuadrantSystem.DrawQuadrant(mapCheck);
+#endif
             if (map.TryGetValue(mapCheck.key, out NativeList<QuadrantEntity> cell) &&
                 RayCast_(cell, ray, out hit))
             { return true; }

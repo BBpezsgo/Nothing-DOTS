@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -23,8 +24,10 @@ public partial struct UnitRadarSystem : ISystem
 
             processor.ValueRW.RadarRequest = default;
 
-            float3 rayStart = transform.ValueRO.Position + (direction * 1.1f);
-            float3 rayEnd = transform.ValueRO.Position + (direction * (Unit.RadarRadius - 1f));
+            const float offset = 0f;
+
+            float3 rayStart = transform.ValueRO.Position + (direction * offset);
+            float3 rayEnd = transform.ValueRO.Position + (direction * (Unit.RadarRadius - offset));
 
             Ray ray = new(rayStart, rayEnd, Layers.All);
 
@@ -34,7 +37,7 @@ public partial struct UnitRadarSystem : ISystem
                 return;
             }
 
-            float distance = math.distance(ray.GetPoint(hit.Distance), rayStart) + 1.1f;
+            float distance = math.distance(ray.GetPoint(hit.Distance), rayStart) + offset;
 
             if (distance > Unit.RadarRadius) distance = float.NaN;
 

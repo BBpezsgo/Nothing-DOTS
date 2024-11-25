@@ -4,7 +4,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
 [BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
@@ -12,36 +11,68 @@ using UnityEngine;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public unsafe partial struct CollisionSystem : ISystem
 {
+    [BurstCompile]
+    public static void Debug(
+        in Collider collider, in float3 offset,
+        in UnityEngine.Color color, float duration = 0f, bool depthTest = true)
+    {
+        switch (collider.Type)
+        {
+            case ColliderType.Sphere:
+                DebugEx.DrawSphere(offset, collider.Sphere.Radius, color, duration, depthTest);
+                break;
+            case ColliderType.AABB:
+                AABB aabb = collider.AABB.AABB;
+                aabb.Center += offset;
+                DebugEx.DrawBox(aabb, color, duration, depthTest);
+                break;
+            default: throw new UnreachableException();
+        }
+    }
+
+    [BurstCompile]
+    public static bool Contains(
+        in Collider collider, in float3 offset,
+        in float3 point)
+    {
+        switch (collider.Type)
+        {
+            case ColliderType.Sphere:
+                return math.distancesq(point, offset) <= collider.Sphere.Radius * collider.Sphere.Radius;
+            case ColliderType.AABB:
+                AABB aabb = collider.AABB.AABB;
+                aabb.Center += offset;
+                return aabb.Contains(point);
+            default: throw new UnreachableException();
+        }
+    }
+
     /// <summary>
-    /// <seealso href="https://www.khoury.northeastern.edu/home/fell/CS4300/Lectures/Ray-TracingFormulas.pdf">Source</seealso> 
+    /// <seealso href="https://github.com/xhacker/raycast/blob/master/raycast/sphere.cpp">Source</seealso> 
     /// </summary>
     [BurstCompile]
     static bool RaycastSphere(
         in float sphereRadius, in float3 sphereOffset,
         in Ray ray,
-        out float t
-    )
+        out float distance)
     {
-        float3 d = ray.End - ray.Start;
+        float3 rayStartLocal = ray.Start - sphereOffset;
 
-        float a = math.lengthsq(d);
-        float b =
-            2f * d.x * (ray.Start.x - sphereOffset.x) +
-            2f * d.y * (ray.Start.y - sphereOffset.y) +
-            2f * d.z * (ray.Start.z - sphereOffset.z);
-        float c =
-            math.lengthsq(sphereOffset) + math.lengthsq(ray.Start) +
-            -2f * math.dot(sphereOffset, ray.Start) - sphereRadius * sphereRadius;
+        float a = math.dot(ray.Direction, ray.Direction);
+        float b = 2f * math.dot(ray.Direction, rayStartLocal);
+        float c = math.dot(rayStartLocal, rayStartLocal);
+        c -= sphereRadius * sphereRadius;
 
-        float discriminant = b * b - 4f * a * c;
-        if (discriminant < 0f)
+        float dt = b * b - 4f * a * c;
+
+        if (dt < 0)
         {
-            t = default;
+            distance = default;
             return false;
         }
 
-        t = (-b - math.sqrt(b * b - 4f * a * c)) / (2f * a);
-        return true;
+        distance = (-b - math.sqrt(dt)) / (a * 2f);
+        return distance >= 0;
     }
 
     /// <summary>
@@ -51,7 +82,7 @@ public unsafe partial struct CollisionSystem : ISystem
     static bool RaycastAABB(
         in AABB aabb,
         in Ray ray,
-        out float t)
+        out float distance)
     {
         // r.dir is unit direction vector of ray
         float3 dirfrac = 1f / ray.Direction;
@@ -71,18 +102,18 @@ public unsafe partial struct CollisionSystem : ISystem
         // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
         if (tmax < 0)
         {
-            t = tmax;
+            distance = tmax;
             return false;
         }
 
         // if tmin > tmax, ray doesn't intersect AABB
         if (tmin > tmax)
         {
-            t = tmax;
+            distance = tmax;
             return false;
         }
 
-        t = tmin;
+        distance = tmin;
         return true;
     }
 
@@ -90,8 +121,7 @@ public unsafe partial struct CollisionSystem : ISystem
     public static bool Raycast(
         in Collider collider, in float3 offset,
         in Ray ray,
-        out float t
-    )
+        out float distance)
     {
         switch (collider.Type)
         {
@@ -99,14 +129,14 @@ public unsafe partial struct CollisionSystem : ISystem
                 return RaycastSphere(
                     collider.Sphere.Radius, offset,
                     ray,
-                    out t);
+                    out distance);
             case ColliderType.AABB:
                 AABB aabb = collider.AABB.AABB;
                 aabb.Center += offset;
                 return RaycastAABB(
                     aabb,
                     ray,
-                    out t);
+                    out distance);
             default: throw new UnreachableException();
         }
     }
@@ -197,7 +227,7 @@ public unsafe partial struct CollisionSystem : ISystem
         }
         else
         {
-            Debug.LogWarning(string.Format("Unsupported collision combination: {0} - {1}", a.Type, b.Type));
+            UnityEngine.Debug.LogWarning(string.Format("Unsupported collision combination: {0} - {1}", a.Type, b.Type));
             normal = default;
             depth = default;
             return false;

@@ -24,7 +24,7 @@ public readonly struct Ray
         }
 #endif
 
-        Direction = ray.direction;
+        Direction = math.normalize(ray.direction);
         Layer = layer;
         ExcludeContainingBodies = excludeContainingBodies;
     }
