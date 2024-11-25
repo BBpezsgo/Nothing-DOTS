@@ -19,6 +19,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [Header("UI")]
     [SerializeField, ReadOnly] Button? ui_ButtonSelect;
     [SerializeField, ReadOnly] Button? ui_ButtonCompile;
+    [SerializeField, ReadOnly] Button? ui_ButtonHalt;
+    [SerializeField, ReadOnly] Button? ui_ButtonReset;
+    [SerializeField, ReadOnly] Button? ui_ButtonContinue;
     [SerializeField, ReadOnly] Label? ui_labelTerminal;
     [SerializeField, ReadOnly] TextField? ui_inputSourcePath;
     [SerializeField, ReadOnly] UIDocument? ui = default;
@@ -60,6 +63,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_inputSourcePath = ui.rootVisualElement.Q<TextField>("input-source-path");
         ui_ButtonSelect = ui.rootVisualElement.Q<Button>("button-select");
         ui_ButtonCompile = ui.rootVisualElement.Q<Button>("button-compile");
+        ui_ButtonHalt = ui.rootVisualElement.Q<Button>("button-halt");
+        ui_ButtonReset = ui.rootVisualElement.Q<Button>("button-reset");
+        ui_ButtonContinue = ui.rootVisualElement.Q<Button>("button-continue");
         ui_labelTerminal = ui.rootVisualElement.Q<Label>("label-terminal");
 
         {
@@ -102,6 +108,63 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             });
         });
 
+        ui_ButtonHalt.clickable = new Clickable(() =>
+        {
+            World world = ConnectionManager.ClientOrDefaultWorld;
+
+            if (world.IsServer())
+            {
+                Debug.LogError($"Not implemented");
+                return;
+            }
+
+            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+            world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
+            {
+                Entity = ghostInstance,
+                Command = ProcessorCommand.Halt,
+            });
+        });
+
+        ui_ButtonReset.clickable = new Clickable(() =>
+        {
+            World world = ConnectionManager.ClientOrDefaultWorld;
+
+            if (world.IsServer())
+            {
+                Debug.LogError($"Not implemented");
+                return;
+            }
+
+            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+            world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
+            {
+                Entity = ghostInstance,
+                Command = ProcessorCommand.Reset,
+            });
+        });
+
+        ui_ButtonContinue.clickable = new Clickable(() =>
+        {
+            World world = ConnectionManager.ClientOrDefaultWorld;
+
+            if (world.IsServer())
+            {
+                Debug.LogError($"Not implemented");
+                return;
+            }
+
+            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+            world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
+            {
+                Entity = ghostInstance,
+                Command = ProcessorCommand.Continue,
+            });
+        });
+
         RefreshUI(unitEntity);
     }
 
@@ -109,15 +172,24 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     {
         ui_inputSourcePath!.tabIndex = -1;
         ui_ButtonCompile!.tabIndex = -1;
+        ui_ButtonHalt!.tabIndex = -1;
+        ui_ButtonReset!.tabIndex = -1;
         ui_ButtonSelect!.tabIndex = -1;
+        ui_ButtonContinue!.tabIndex = -1;
         ui_labelTerminal!.tabIndex = -1;
 
         ui_ButtonCompile!.SetEnabled(false);
+        ui_ButtonHalt!.SetEnabled(false);
+        ui_ButtonReset!.SetEnabled(false);
         ui_ButtonSelect!.SetEnabled(false);
+        ui_ButtonContinue!.SetEnabled(false);
 
         ui_inputSourcePath!.focusable = false;
         ui_ButtonCompile!.focusable = false;
+        ui_ButtonHalt!.focusable = false;
+        ui_ButtonReset!.focusable = false;
         ui_ButtonSelect!.focusable = false;
+        ui_ButtonContinue!.focusable = false;
         ui_labelTerminal!.focusable = false;
 
         ui_labelTerminal!.Focus();
@@ -128,14 +200,23 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_inputSourcePath!.tabIndex = 0;
         ui_ButtonCompile!.tabIndex = 0;
         ui_ButtonSelect!.tabIndex = 0;
+        ui_ButtonHalt!.tabIndex = 0;
+        ui_ButtonReset!.tabIndex = 0;
+        ui_ButtonContinue!.tabIndex = 0;
         ui_labelTerminal!.tabIndex = 0;
 
         ui_ButtonCompile!.SetEnabled(true);
         ui_ButtonSelect!.SetEnabled(true);
+        ui_ButtonHalt!.SetEnabled(true);
+        ui_ButtonReset!.SetEnabled(true);
+        ui_ButtonContinue!.SetEnabled(true);
 
         ui_inputSourcePath!.focusable = true;
         ui_ButtonCompile!.focusable = true;
         ui_ButtonSelect!.focusable = true;
+        ui_ButtonHalt!.focusable = true;
+        ui_ButtonReset!.focusable = true;
+        ui_ButtonContinue!.focusable = true;
         ui_labelTerminal!.focusable = true;
     }
 
@@ -237,6 +318,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         {
                             if (source.IsSuccess)
                             {
+                                terminalBuilder.AppendLine(processor.Signal.ToString());
+                                terminalBuilder.Append(processor.Crash);
+                                terminalBuilder.AppendLine();
                                 terminalBuilder.AppendLine(processor.StdOutBuffer.ToString());
                             }
                             else
@@ -283,6 +367,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         {
             ui_ButtonSelect!.clickable = null;
             ui_ButtonCompile!.clickable = null;
+            ui_ButtonHalt!.clickable = null;
+            ui_ButtonReset!.clickable = null;
+            ui_ButtonContinue!.clickable = null;
             ui_labelTerminal!.text = string.Empty;
             BlurTerminal();
         }

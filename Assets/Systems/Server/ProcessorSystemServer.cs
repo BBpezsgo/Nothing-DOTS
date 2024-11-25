@@ -9,7 +9,6 @@ using LanguageCore.Runtime;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Collections.LowLevel;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Profiling;
@@ -20,6 +19,8 @@ using UnityEngine;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 unsafe partial struct ProcessorSystemServer : ISystem
 {
+    public const int CyclesPerTick = 128;
+
 #if UNITY_PROFILER
     static readonly ProfilerMarker _ProcessMarker = new("ProcessorSystemServer.Process");
     static readonly ProfilerMarker _ExternalMarker_stdout = new("ProcessorSystemServer.External.stdout");
@@ -581,7 +582,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
             using (ProfilerMarker.AutoScope marker = _ProcessMarker.Auto())
 #endif
             {
-                for (int i = 0; i < 128; i++)
+                for (int i = 0; i < ProcessorSystemServer.CyclesPerTick; i++)
                 {
                     if (processorState.Registers.CodePointer == processorState.Code.Length) break;
                     processorState.Process();
@@ -669,35 +670,44 @@ partial struct ProcessorJob : IJobEntity
             ReadOnlySpan<IExternalFunction>.Empty,
             scopedExternalFunctions,
             ProcessorSystemServer.ExternalFunctionCount
-        );
-
-        for (int i = 0; i < 128; i++)
+        )
         {
-            if (processorState.Registers.CodePointer == processorState.Code.Length) break;
-            processorState.Process();
+            Signal = processor.ValueRO.Signal,
+            Crash = processor.ValueRO.Crash,
+        };
+
+        for (int i = 0; i < ProcessorSystemServer.CyclesPerTick; i++)
+        {
             if (processorState.Signal != Signal.None)
             {
-                switch (processorState.Signal)
-                {
-                    case Signal.UserCrash:
-                        Debug.LogError("Crashed");
-                        break;
-                    case Signal.StackOverflow:
-                        Debug.LogError("Stack Overflow");
-                        break;
-                    case Signal.Halt:
-                        Debug.LogError("Halted");
-                        break;
-                    case Signal.UndefinedExternalFunction:
-                        Debug.LogError("Undefined External Function");
-                        break;
-                }
-                processorState.Registers.CodePointer = processorState.Code.Length;
+                // if (!processor.ValueRO.SignalNotified)
+                // {
+                //     processor.ValueRW.SignalNotified = true;
+                //     switch (processorState.Signal)
+                //     {
+                //         case Signal.UserCrash:
+                //             Debug.LogError("Crashed");
+                //             break;
+                //         case Signal.StackOverflow:
+                //             Debug.LogError("Stack Overflow");
+                //             break;
+                //         case Signal.Halt:
+                //             Debug.LogError("Halted");
+                //             break;
+                //         case Signal.UndefinedExternalFunction:
+                //             Debug.LogError("Undefined External Function");
+                //             break;
+                //     }
+                // }
                 break;
             }
+            processor.ValueRW.SignalNotified = false;
+            processorState.Process();
         }
 
         processor.ValueRW.Registers = processorState.Registers;
-        processor.ValueRW.StatusLED.Status = 1;
+        processor.ValueRW.Signal = processorState.Signal;
+        processor.ValueRW.Crash = processorState.Crash;
+        processor.ValueRW.StatusLED.Status = processorState.Signal == Signal.None ? 1 : 2;
     }
 }

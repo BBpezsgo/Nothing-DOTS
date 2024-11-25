@@ -25,10 +25,14 @@ partial struct ProcessorSystemClient : ISystem
             SystemAPI.Query<RefRO<Processor>>())
         {
             if (processor.ValueRO.StatusLED.LED != Entity.Null)
-                _emissionColorQ.GetRefRW(processor.ValueRO.StatusLED.LED).ValueRW.Value =
-                    processor.ValueRO.StatusLED.Status == 1 ?
-                    new float4(0f, 1f, 0f, 1f) * 10f :
-                    default;
+            {
+                _emissionColorQ.GetRefRW(processor.ValueRO.StatusLED.LED).ValueRW.Value = processor.ValueRO.StatusLED.Status switch
+                {
+                    1 => new float4(0f, 1f, 0f, 1f) * 10f,
+                    2 => new float4(1f, 1f, 0f, 1f) * 10f,
+                    _ => default,
+                };
+            }
 
             if (processor.ValueRO.NetworkSendLED.LED != Entity.Null)
                 _emissionColorQ.GetRefRW(processor.ValueRO.NetworkSendLED.LED).ValueRW.Value =

@@ -49,6 +49,9 @@ public struct Processor : IComponentData
     public FixedList128Bytes<BufferedUnitTransmission> IncomingTransmissions;
     public FixedList128Bytes<BufferedUnitTransmissionOutgoing> OutgoingTransmissions;
     public FixedList128Bytes<UnitCommandRequest> CommandQueue;
+    [GhostField] public int Crash;
+    [GhostField] public Signal Signal;
+    public bool SignalNotified;
 
     public float3 RadarRequest;
     public float RadarResponse;

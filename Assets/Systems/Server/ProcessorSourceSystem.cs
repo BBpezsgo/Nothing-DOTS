@@ -12,6 +12,41 @@ unsafe partial struct ProcessorSourceSystem : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ProcessorCommandRequestRpc>>()
+            .WithEntityAccess())
+        {
+            foreach (var (ghostInstance, ghostEntity) in
+                SystemAPI.Query<RefRO<GhostInstance>>()
+                .WithEntityAccess())
+            {
+                NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+
+                if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
+                if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
+
+                RefRW<Processor> processor = SystemAPI.GetComponentRW<Processor>(ghostEntity);
+
+                switch (command.ValueRO.Command)
+                {
+                    case ProcessorCommand.Halt:
+                        processor.ValueRW.Signal = Signal.Halt;
+                        break;
+                    case ProcessorCommand.Reset:
+                        ResetProcessor(processor);
+                        break;
+                    case ProcessorCommand.Continue:
+                        processor.ValueRW.Signal = Signal.None;
+                        processor.ValueRW.Crash = 0;
+                        break;
+                }
+
+                break;
+            }
+
+            commandBuffer.DestroyEntity(entity);
+        }
+
+        foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SetProcessorSourceRequestRpc>>()
             .WithEntityAccess())
         {
@@ -59,21 +94,9 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 continue;
             }
 
-            if (processor.ValueRO.SourceVersion < source.Version)
+            if (processor.ValueRO.SourceVersion != source.Version)
             {
-                processor.ValueRW.StdOutBuffer.Clear();
-
-                ProcessorState processorState_ = new(
-                    ProcessorSystemServer.BytecodeInterpreterSettings,
-                    default,
-                    default,
-                    default,
-                    default,
-                    default,
-                    default
-                );
-                processorState_.Setup();
-                processor.ValueRW.Registers = processorState_.Registers;
+                ResetProcessor(processor);
                 processor.ValueRW.SourceVersion = source.Version;
 
                 commandDefinitions.Clear();
@@ -111,17 +134,30 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 continue;
             }
-            else if (processor.ValueRO.SourceVersion > source.Version)
-            {
-                CompilerManager.Instance.Recompile(processor.ValueRO.SourceFile);
-                buffer.Clear();
-                continue;
-            }
 
             if (!source.IsSuccess)
             {
                 buffer.Clear();
             }
         }
+    }
+
+    public static void ResetProcessor(RefRW<Processor> processor)
+    {
+        processor.ValueRW.StdOutBuffer.Clear();
+
+        ProcessorState processorState_ = new(
+            ProcessorSystemServer.BytecodeInterpreterSettings,
+            default,
+            default,
+            default,
+            default,
+            default,
+            default
+        );
+        processorState_.Setup();
+        processor.ValueRW.Registers = processorState_.Registers;
+        processor.ValueRW.Signal = processorState_.Signal;
+        processor.ValueRW.Crash = processorState_.Crash;
     }
 }
