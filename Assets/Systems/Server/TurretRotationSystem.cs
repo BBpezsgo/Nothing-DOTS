@@ -15,12 +15,11 @@ public partial struct TurretRotationSystem : ISystem
         foreach ((RefRW<LocalTransform> transform, RefRO<Turret> turret) in
                     SystemAPI.Query<RefRW<LocalTransform>, RefRO<Turret>>())
         {
-            const float speed = 90f;
-            quaternion target = quaternion.EulerXYZ(
-                turret.ValueRO.TargetAngle,
-                turret.ValueRO.TargetRotation,
-                0);
-            Utils.RotateTowards(ref transform.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
+            const float speed = 180f;
+            Utils.QuaternionToEuler(transform.ValueRO.Rotation, out float3 euler);
+            float x = math.radians(UnityEngine.Mathf.MoveTowardsAngle(math.degrees(euler.x), math.degrees(turret.ValueRO.TargetAngle), speed * SystemAPI.Time.DeltaTime));
+            float y = math.radians(UnityEngine.Mathf.MoveTowardsAngle(math.degrees(euler.y), math.degrees(turret.ValueRO.TargetRotation), speed * SystemAPI.Time.DeltaTime));
+            transform.ValueRW.Rotation = quaternion.EulerXYZ(x, y, 0);
         }
     }
 }
