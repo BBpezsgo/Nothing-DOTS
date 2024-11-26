@@ -6,6 +6,45 @@ using Unity.Mathematics;
 public static partial class Utils
 {
     [BurstCompile]
+    public static float Repeat(float t, float length) => math.clamp(t - math.floor(t / length) * length, 0f, length);
+
+    [BurstCompile]
+    public static float MoveTowards(float current, float target, float maxDelta)
+    {
+        if (math.abs(target - current) <= maxDelta)
+        {
+            return target;
+        }
+
+        return current + math.sign(target - current) * maxDelta;
+    }
+
+    [BurstCompile]
+    public static float DeltaAngle(float current, float target)
+    {
+        float num = Repeat(target - current, math.PI2);
+        if (num > math.PI)
+        {
+            num -= math.PI2;
+        }
+
+        return num;
+    }
+
+    [BurstCompile]
+    public static float MoveTowardsAngle(float current, float target, float maxDelta)
+    {
+        float num = DeltaAngle(current, target);
+        if (0f - maxDelta < num && num < maxDelta)
+        {
+            return target;
+        }
+
+        target = current + num;
+        return MoveTowards(current, target, maxDelta);
+    }
+
+    [BurstCompile]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float Rad(in quaternion a, in quaternion b)
     {
