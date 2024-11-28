@@ -53,6 +53,9 @@ public struct Processor : IComponentData
     [GhostField] public Signal Signal;
     public bool SignalNotified;
 
+    /// <summary>
+    /// Direction in local space
+    /// </summary>
     public float3 RadarRequest;
     public float RadarResponse;
 

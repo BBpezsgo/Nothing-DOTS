@@ -18,27 +18,38 @@ public static class DebugEx
     /// <summary>
     /// Square with edge of length 1
     /// </summary>
-    static readonly ImmutableArray<float3> UnitSquare = ImmutableArray.Create<float3>(
-        new(-0.5f, 0.5f, 0.0f),
-        new(0.5f, 0.5f, 0.0f),
-        new(0.5f, -0.5f, 0.0f),
-        new(-0.5f, -0.5f, 0.0f)
-    );
+    static readonly ImmutableArray<float3> UnitSquare;
     /// <summary>
     /// Cube with edge of length 1
     /// </summary>
-    static readonly ImmutableArray<float3> UnitCube = ImmutableArray.Create<float3>(
-        new(-0.5f, 0.5f, -0.5f),
-        new(0.5f, 0.5f, -0.5f),
-        new(0.5f, -0.5f, -0.5f),
-        new(-0.5f, -0.5f, -0.5f),
+    static readonly ImmutableArray<float3> UnitCube;
+    static readonly ImmutableArray<float3> UnitSphere;
 
-        new(-0.5f, 0.5f, 0.5f),
-        new(0.5f, 0.5f, 0.5f),
-        new(0.5f, -0.5f, 0.5f),
-        new(-0.5f, -0.5f, 0.5f)
-    );
-    static readonly ImmutableArray<float3> UnitSphere = ImmutableArray.Create(MakeUnitSphere(16));
+    static DebugEx()
+    {
+        UnitSquare = ImmutableArray.Create<float3>(
+            new(-0.5f, 0.5f, 0.0f),
+            new(0.5f, 0.5f, 0.0f),
+            new(0.5f, -0.5f, 0.0f),
+            new(-0.5f, -0.5f, 0.0f)
+        );
+
+        System.ReadOnlySpan<float3> unitCube = stackalloc float3[]
+        {
+            new(-0.5f, 0.5f, -0.5f),
+            new(0.5f, 0.5f, -0.5f),
+            new(0.5f, -0.5f, -0.5f),
+            new(-0.5f, -0.5f, -0.5f),
+
+            new(-0.5f, 0.5f, 0.5f),
+            new(0.5f, 0.5f, 0.5f),
+            new(0.5f, -0.5f, 0.5f),
+            new(-0.5f, -0.5f, 0.5f)
+        };
+        UnitCube = ImmutableArray.Create(unitCube);
+
+        UnitSphere = ImmutableArray.Create(MakeUnitSphere(16));
+    }
 
     static float3[] MakeUnitSphere(int len)
     {
@@ -130,5 +141,22 @@ public static class DebugEx
         Debug.DrawLine(start, new float3(end.x, 0f, start.z), color, duration, depthTest);
         Debug.DrawLine(new float3(start.x, 0f, end.z), end, color, duration, depthTest);
         Debug.DrawLine(new float3(end.x, 0f, start.z), end, color, duration, depthTest);
+    }
+
+    public static void DrawFOV(float3 origin, float3 direction, float angle, float distance, Color color, float duration = 0f, bool depthTest = true)
+    {
+        const float step = 0.01f;
+        float directionAngle = math.atan2(direction.z, direction.x);
+        float3 prevPoint = origin;
+        if (angle < 0f) angle += math.TAU;
+        for (float i = -angle; i <= angle; i += step)
+        {
+            float currentAngle = directionAngle + i;
+            float3 point = new(math.cos(currentAngle), 0f, math.sin(currentAngle));
+            point *= distance;
+            Debug.DrawLine(prevPoint, point, color, duration, depthTest);
+            prevPoint = point;
+        }
+        Debug.DrawLine(prevPoint, origin, color, duration, depthTest);
     }
 }

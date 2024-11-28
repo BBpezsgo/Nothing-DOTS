@@ -1,0 +1,235 @@
+using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
+using "turret.bbc";
+using "move.bbc";
+using "api.bbc";
+
+*Mapped = new MappedMemory;
+
+const f32 PI = 3.14159265359f;
+const f32 TAU = PI * 2f;
+const u8 true = (u8)1;
+const u8 false = (u8)0;
+const f32 DISTANCE_THRESHOLD = 5f * 5f;
+
+const u8 REQUEST_HEADER = 0b_11110000;
+const u8 RESPONSE_HEADER = 0b_01111000;
+
+void Receive()
+{
+    u8[3] v;
+    f32 direction;
+
+    while (1)
+    {
+        i32 receivedLength = receive(&v, 3, &direction, 0 as u8*);
+        if (!receivedLength) { break; }
+
+        if (v[0] == (u8)REQUEST_HEADER && receivedLength == 3)
+        {
+            byte2 p;
+            Vector2 pos;
+            p.x = v[1] as i8;
+            p.y = v[2] as i8;
+            ToFloat2(&p, &pos);
+
+            if (DistanceSqr(pos, Mapped.Position) < 2f * 2f)
+            {
+                debug(pos, 0x00FFFF);
+
+                v[0] = (u8)RESPONSE_HEADER;
+                v[1] = p.x as u8;
+                v[2] = p.y as u8;
+                send(&v, 3, direction, 0.1f);
+                // PrintLine("Send response ...");
+            }
+        }
+        else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
+        {
+            Vector2 pos;
+            byte2 p;
+            p.x = v[1] as i8;
+            p.y = v[2] as i8;
+            ToFloat2(&p, &pos);
+            ToLocal(&pos);
+            ToByte2(&pos, &p);
+            AddUnitScore(&units, p, 1);
+
+            ldebug(pos, 0x00FF00);
+
+            // PrintLine("Object identified ...");
+        }
+    }
+}
+
+int GetUnit(List<Unit>* units, byte2 unit)
+{
+    for (int i = 0; i < units.Length(); i++)
+    {
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        if (distanceSqr < DISTANCE_THRESHOLD)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void RecordUnit(List<Unit>* units, Unit unit)
+{
+    int recorded = GetUnit(units, unit.Position);
+    if (recorded != -1) { return; }
+    if (units.Length() >= 8)
+    {
+        PrintLine("Too many units recorded");
+        units.Raw()[0] = unit;
+    }
+    else
+    {
+        units.Add(unit);
+    }
+}
+
+void RemoveUnit(List<Unit>* units, byte2 unit)
+{
+    u8 isNotDone = true;
+    for (int i = 0; isNotDone && i < units.Length(); i++)
+    {
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        if (distanceSqr < DISTANCE_THRESHOLD)
+        {
+            isNotDone = false;
+            units.Remove(i);
+        }
+    }
+}
+
+void AddUnitScore(List<Unit>* units, byte2 unit, int score)
+{
+    int recorded = GetUnit(units, unit);
+    if (recorded == -1)
+    {
+        Unit newUnit = new Unit;
+        newUnit.Recorded = time();
+        newUnit.Expires = time() + 10f;
+        newUnit.Score = score;
+        newUnit.Position = unit;
+        RecordUnit(units, newUnit);
+    }
+    else
+    {
+        Unit* recordedUnit = &units.Raw()[recorded];
+        recordedUnit.Score += score;
+    }
+}
+
+void Radar()
+{
+    // PrintLine("Radar ...");
+    f32 radarDistance = radar();
+    if (radarDistance > 0f &&
+        Abs(prevRadarDistance - radarDistance) > .5f)
+    {
+        prevRadarDistance = radarDistance;
+
+        Vector2 point;
+        point.x = Cos(Mapped.RadarDirection);
+        point.y = Sin(Mapped.RadarDirection);
+        point.x *= radarDistance;
+        point.y *= radarDistance;
+
+        byte2 pLocal;
+        ToByte2(&point, &pLocal);
+
+        int recorded = GetUnit(&units, pLocal);
+        if (recorded == -1 ||
+            (&units).Raw()[recorded].Score <= 0)
+        {
+            // PrintLine("Identifying object ...");
+
+            Vector2 pointGlobal = point;
+            ToGlobal(&pointGlobal);
+            byte2 p;
+            ToByte2(&pointGlobal, &p);
+
+            u8[3] v;
+            v[0] = (u8)REQUEST_HEADER;
+            v[1] = p.x as u8;
+            v[2] = p.y as u8;
+            send(&v, 3, Mapped.RadarDirection, Asin(1.2f / radarDistance));
+
+            ldebug(point, 0x0000FF);
+
+            AddUnitScore(&units, pLocal, 0);
+        }
+    }
+    if (radarDistance == 0f)
+    {
+        prevRadarDistance = 0f;
+    }
+    Mapped.RadarDirection = (Mapped.RadarDirection + 0.1f) % TAU;
+}
+
+struct Unit
+{
+    byte2 Position;
+    f32 Recorded;
+    f32 Expires;
+    i32 Score;
+}
+
+f32 prevRadarDistance = 0f;
+Vector2 targetedPosition = new Vector2;
+Vector2 currentTarget = new Vector2;
+List<Unit> units = new List<Unit>(4);
+
+while (1)
+{
+    Receive();
+
+    Radar();
+
+    currentTarget = new Vector2;
+
+    for (int i = (&units).Length() - 1; i >= 0; i--)
+    {
+        Unit* unit = &((&units).Raw())[i];
+        if (time() >= unit.Expires)
+        {
+            (&units).Remove(i);
+        }
+        else if (unit.Score > 0)
+        {
+            Vector2 p1;
+            byte2 p2 = unit.Position;
+            ToFloat2(&p2, &p1);
+            ldebug(p1, 0x00FF00);
+        }
+        else if (unit.Score <= 0 &&
+                 time() >= unit.Recorded + 2f)
+        {
+            Vector2 p1;
+            byte2 p2 = unit.Position;
+            ToFloat2(&p2, &p1);
+            ldebug(p1, 0xFF0000);
+            currentTarget = p1;
+        }
+        else
+        {
+            Vector2 p1;
+            byte2 p2 = unit.Position;
+            ToFloat2(&p2, &p1);
+            ldebug(p1, 0xFFFF00);
+        }
+    }
+
+    if (currentTarget.x != 0f &&
+        currentTarget.x != 0f)
+    {
+        ShootAt(currentTarget, &targetedPosition);
+    }
+}

@@ -160,15 +160,16 @@ unsafe partial struct ProcessorSystemServer : ISystem
         float3 direction;
         if (angle != 0f)
         {
-            direction.x = math.sin(directionAngle);
+            direction.x = math.cos(directionAngle);
             direction.y = 0f;
-            direction.z = math.cos(directionAngle);
+            direction.z = math.sin(directionAngle);
+            direction = scope->LocalTransform.ValueRO.TransformDirection(direction);
         }
         else
         {
             direction = default;
         }
-        float cosAngle = math.abs(math.cos(angle / 2f));
+        float cosAngle = math.abs(math.cos(angle));
 
         scope->Processor.ValueRW.NetworkSendLED.Blink();
 
@@ -177,74 +178,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         if (scope->Processor.ValueRW.OutgoingTransmissions.Length >= scope->Processor.ValueRW.OutgoingTransmissions.Capacity)
         { scope->Processor.ValueRW.OutgoingTransmissions.RemoveAt(0); }
-        scope->Processor.ValueRW.OutgoingTransmissions.Add(new BufferedUnitTransmissionOutgoing(scope->WorldTransform.ValueRO.Position, direction, data, cosAngle));
-
-        /*
-
-        NativeParallelHashMap<uint, NativeList<QuadrantEntity>> map = QuadrantSystem.GetMap(scope->World);
-        int2 grid = QuadrantSystem.ToGrid(scope->SourcePosition);
-
-        for (int x = -1; x <= 1; x++)
-        {
-            for (int z = -1; z <= 1; z++)
-            {
-                if (!map.TryGetValue(QuadrantSystem.GetKey(grid + new int2(x, z)), out NativeList<QuadrantEntity> cell)) continue;
-                for (int i = 0; i < cell.Length; i++)
-                {
-                    if (cell[i].Entity == scope->SourceEntity) continue;
-
-                    float3 entityLocalPosition = cell[i].Position;
-                    entityLocalPosition.x = cell[i].Position.x - scope->SourcePosition.x;
-                    entityLocalPosition.y = 0f;
-                    entityLocalPosition.z = cell[i].Position.z - scope->SourcePosition.z;
-
-                    float entityDistanceSq = math.lengthsq(entityLocalPosition);
-                    if (entityDistanceSq > (Unit.TransmissionRadius * Unit.TransmissionRadius)) continue;
-
-                    if (angle != 0f)
-                    {
-                        float dot = math.abs(math.dot(direction, entityLocalPosition / math.sqrt(entityDistanceSq)));
-                        if (dot < cosAngle) continue;
-                    }
-
-                    var other = scope->ProcessorComponentQ.GetRefRWOptional(cell[i].Entity);
-                    if (!other.IsValid) continue;
-
-                    ref var transmissions = ref other.ValueRW.IncomingTransmissions;
-
-                    if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
-                    transmissions.Add(new BufferedUnitTransmission(scope->SourcePosition, data));
-                }
-            }
-        }
-
-        */
-
-        /*
-
-        using NativeArray<Entity> entities = scope->ProcessorEntitiesQ.ToEntityArray(Allocator.Temp);
-
-        for (int i = 0; i < entities.Length; i++)
-        {
-            if (entities[i] == scope->SourceEntity) continue;
-
-            if (angle != 0f)
-            {
-                float3 entityDirection = scope->EntityManager.GetComponentData<LocalToWorld>(entities[i]).Position;
-                entityDirection.x -= scope->SourcePosition.x;
-                entityDirection.y = 0f;
-                entityDirection.z -= scope->SourcePosition.z;
-                entityDirection = math.normalize(entityDirection);
-                float dot = math.abs(math.dot(direction, entityDirection));
-                if (dot < cosAngle) continue;
-            }
-
-            DynamicBuffer<BufferedUnitTransmission> transmissions = scope->EntityManager.GetBuffer<BufferedUnitTransmission>(entities[i]);
-            if (transmissions.Length > 128) transmissions.RemoveAt(0);
-            transmissions.Add(new BufferedUnitTransmission(scope->SourcePosition, data));
-        }
-
-        */
+        scope->Processor.ValueRW.OutgoingTransmissions.Add(new BufferedUnitTransmissionOutgoing(scope->WorldTransform.ValueRO.Position, direction, data, cosAngle, angle));
     }
 
     [BurstCompile]
@@ -281,17 +215,17 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         if (directionPtr > 0)
         {
+            float3 transformed = scope->LocalTransform.ValueRO.InverseTransformPoint(first.Source);
+            transformed = math.normalize(transformed);
             Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-            RefRO<LocalTransform> transform = scope->LocalTransform;
-            float3 transformed = transform.ValueRO.InverseTransformPoint(first.Source);
-            memory.Set(directionPtr, math.atan2(transformed.x, transformed.z));
+            memory.Set(directionPtr, math.atan2(transformed.z, transformed.x));
         }
 
-        if (strengthPtr > 0)
-        {
-            Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-            memory.Set(strengthPtr, (byte)255);
-        }
+        // if (strengthPtr > 0)
+        // {
+        //     Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
+        //     memory.Set(strengthPtr, (byte)255);
+        // }
 
         if (copyLength >= first.Data.Length)
         {
@@ -337,36 +271,17 @@ unsafe partial struct ProcessorSystemServer : ISystem
         using ProfilerMarker.AutoScope marker = _ExternalMarker_radar.Auto();
 #endif
 
-        // returnValue.Set(0f);
-
         FunctionScope* scope = (FunctionScope*)_scope;
 
         UnitProcessorSystem.MappedMemory* mapped = (UnitProcessorSystem.MappedMemory*)((nint)scope->Memory + Processor.MappedMemoryStart);
 
         float3 direction;
-        direction.x = math.sin(mapped->RadarDirection);
+        direction.x = math.cos(mapped->RadarDirection);
         direction.y = 0f;
-        direction.z = math.cos(mapped->RadarDirection);
+        direction.z = math.sin(mapped->RadarDirection);
 
         scope->Processor.ValueRW.RadarResponse = 0f;
         scope->Processor.ValueRW.RadarRequest = direction;
-
-        // LocalToWorld radar = scope->EntityManager.GetComponentData<LocalToWorld>(scope->EntityManager.GetComponentData<Unit>(scope->SourceEntity).Radar);
-        /*
-        var Start = scope->WorldTransform.ValueRO.Position + (direction * 1.1f);
-        var End = scope->WorldTransform.ValueRO.Position + (direction * (Unit.RadarRadius - 1f));
-
-        if (!QuadrantRayCast.RayCast(scope->SpatialMap, Start, End, Layers.All, out var hit))
-        { return; }
-
-        scope->Processor.ValueRW.RadarLED.Blink();
-
-        float distance = math.distance(hit.Position, Start) + 1f;
-
-        if (distance >= Unit.RadarRadius) return;
-
-        returnValue.Set(distance);
-        */
     }
 
     [BurstCompile]
@@ -535,84 +450,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
         {
             scopedExternalFunctions = scopedExternalFunctions,
         }.ScheduleParallel();
-
-        /*
-        foreach (var (processor, transform, code, entity) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, DynamicBuffer<BufferedInstruction>>()
-            .WithEntityAccess())
-        {
-            if (processor.ValueRO.SourceFile == default)
-            {
-                processor.ValueRW.StatusLED.Status = 0;
-                continue;
-            }
-
-            if (code.IsEmpty)
-            {
-                processor.ValueRW.StatusLED.Status = 0;
-                continue;
-            }
-
-            FunctionScope transmissionScope = new()
-            {
-                Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
-                EntityManager = state.EntityManager,
-                World = state.WorldUnmanaged,
-                Processor = processor,
-                SourceEntity = entity,
-                SourcePosition = transform.ValueRO.Position,
-                ProcessorEntitiesQ = processorEntitiesQ,
-                ProcessorComponentQ = processorComponentQ,
-                CollisionWorld = collisionWorld,
-            };
-            for (int i = 0; i < ExternalFunctionCount; i++)
-            { scopedExternalFunctions[i].Scope = (nint)(&transmissionScope); }
-
-            ProcessorState processorState = new(
-                BytecodeInterpreterSettings,
-                processor.ValueRW.Registers,
-                new Span<byte>(Unsafe.AsPointer(ref processor.ValueRW.Memory), Processor.TotalMemorySize),
-                new ReadOnlySpan<Instruction>(code.GetUnsafeReadOnlyPtr(), code.Length),
-                ReadOnlySpan<IExternalFunction>.Empty,
-                scopedExternalFunctions,
-                ExternalFunctionCount
-            );
-
-#if UNITY_PROFILER
-            using (ProfilerMarker.AutoScope marker = _ProcessMarker.Auto())
-#endif
-            {
-                for (int i = 0; i < ProcessorSystemServer.CyclesPerTick; i++)
-                {
-                    if (processorState.Registers.CodePointer == processorState.Code.Length) break;
-                    processorState.Process();
-                    if (processorState.Signal != Signal.None)
-                    {
-                        switch (processorState.Signal)
-                        {
-                            case Signal.UserCrash:
-                                Debug.LogError("Crashed");
-                                break;
-                            case Signal.StackOverflow:
-                                Debug.LogError("Stack Overflow");
-                                break;
-                            case Signal.Halt:
-                                Debug.LogError("Halted");
-                                break;
-                            case Signal.UndefinedExternalFunction:
-                                Debug.LogError("Undefined External Function");
-                                break;
-                        }
-                        processorState.Registers.CodePointer = processorState.Code.Length;
-                        break;
-                    }
-                }
-            }
-
-            processor.ValueRW.Registers = processorState.Registers;
-            processor.ValueRW.StatusLED.Status = 1;
-        }
-        */
     }
 }
 

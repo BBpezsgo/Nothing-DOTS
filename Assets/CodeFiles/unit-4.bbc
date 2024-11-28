@@ -1,0 +1,207 @@
+using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
+using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
+using "turret.bbc";
+using "move.bbc";
+using "api.bbc";
+
+*Mapped = new MappedMemory;
+
+const f32 PI = 3.14159265359f;
+const f32 TAU = PI * 2f;
+const u8 true = (u8)1;
+const u8 false = (u8)0;
+const f32 DISTANCE_THRESHOLD = 50f;
+
+const u8 REQUEST_HEADER = 0b_11110000;
+const u8 RESPONSE_HEADER = 0b_01111000;
+
+void Receive()
+{
+    u8[3] v;
+    f32 direction;
+
+    while (1)
+    {
+        i32 receivedLength = receive(&v, 3, &direction, 0 as u8*);
+        if (!receivedLength) { break; }
+
+        if (v[0] == (u8)REQUEST_HEADER && receivedLength == 3)
+        {
+            byte2 p;
+            Vector2 pos;
+            p.x = v[1] as i8;
+            p.y = v[2] as i8;
+            ToFloat2(&p, &pos);
+
+            if (DistanceSqr(pos, Mapped.Position) < 2f * 2f)
+            {
+                debug(pos, 0x00FFFF);
+
+                v[0] = (u8)RESPONSE_HEADER;
+                v[1] = p.x as u8;
+                v[2] = p.y as u8;
+                send(&v, 3, direction, 0.1f);
+                // PrintLine("Send response ...");
+            }
+        }
+        else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
+        {
+            Vector2 pos;
+            byte2 p;
+            p.x = v[1] as i8;
+            p.y = v[2] as i8;
+            ToFloat2(&p, &pos);
+            ToLocal(&pos);
+            Unit unit;
+            ToByte2(&pos, &unit.Position);
+            unit.Recorded = time();
+            unit.Expires = time() + 10f;
+            RemoveUnit(&enemies, unit.Position);
+
+            ldebug(pos, 0x00FF00);
+
+            // PrintLine("Object identified ...");
+        }
+    }
+}
+
+u8 IsNotRecorded(List<Unit>* units, byte2 unit)
+{
+    u8 isNew = true;
+    for (int i = 0; isNew && i < units.Length(); i++)
+    {
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        if (distanceSqr < DISTANCE_THRESHOLD)
+        {
+            isNew = false;
+        }
+    }
+    return isNew;
+}
+
+void RecordUnit(List<Unit>* units, Unit unit)
+{
+    u8 isNew = IsNotRecorded(units, unit.Position);
+    if (isNew)
+    {
+        if (units.Length() >= 4)
+        {
+            units.Raw()[0] = unit;
+        }
+        else
+        {
+            units.Add(unit);
+        }
+    }
+}
+
+void RemoveUnit(List<Unit>* units, byte2 unit)
+{
+    u8 isNotDone = true;
+    for (int i = 0; isNotDone && i < units.Length(); i++)
+    {
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        if (distanceSqr < DISTANCE_THRESHOLD)
+        {
+            isNotDone = false;
+            units.Remove(i);
+        }
+    }
+}
+
+void Radar()
+{
+    // PrintLine("Radar ...");
+    f32 radarDistance = radar();
+    if (radarDistance > 0f &&
+        Abs(prevRadarDistance - radarDistance) > .5f)
+    {
+        prevRadarDistance = radarDistance;
+
+        Vector2 point;
+        point.x = Cos(Mapped.RadarDirection);
+        point.y = Sin(Mapped.RadarDirection);
+        point.x *= radarDistance;
+        point.y *= radarDistance;
+
+        // PrintLine("Identifying object ...");
+
+        Vector2 pointGlobal = point;
+        ToGlobal(&pointGlobal);
+        byte2 p;
+        ToByte2(&pointGlobal, &p);
+
+        u8[3] v;
+        v[0] = (u8)REQUEST_HEADER;
+        v[1] = p.x as u8;
+        v[2] = p.y as u8;
+        send(&v, 3, Mapped.RadarDirection, Asin(1.2f / radarDistance));
+
+        ldebug(point, 0x0000FF);
+
+        Unit enemy;
+        enemy.Recorded = time();
+        enemy.Expires = time() + 5f;
+        ToByte2(&point, &enemy.Position);
+        RecordUnit(&enemies, enemy);
+    }
+    if (radarDistance == 0f)
+    {
+        prevRadarDistance = 0f;
+    }
+    Mapped.RadarDirection = (Mapped.RadarDirection + 0.1f) % TAU;
+}
+
+struct Unit
+{
+    byte2 Position;
+    f32 Recorded;
+    f32 Expires;
+}
+
+f32 prevRadarDistance = 0f;
+Vector2 targetedPosition = new Vector2;
+Vector2 currentTarget = new Vector2;
+List<Unit> enemies = new List<Unit>(4);
+
+while (1)
+{
+    Receive();
+
+    Radar();
+
+    currentTarget = new Vector2;
+
+    for (int i = (&enemies).Length() - 1; i >= 0; i--)
+    {
+        if (time() >= (&enemies).Raw()[i].Expires)
+        {
+            (&enemies).Remove(i);
+        }
+        else if (time() >= (&enemies).Raw()[i].Recorded + 2f)
+        {
+            Vector2 p1;
+            byte2 p2 = (&enemies).Raw()[i].Position;
+            ToFloat2(&p2, &p1);
+            ldebug(p1, 0xFF0000);
+            currentTarget = p1;
+        }
+        else
+        {
+            Vector2 p1;
+            byte2 p2 = (&enemies).Raw()[i].Position;
+            ToFloat2(&p2, &p1);
+            ldebug(p1, 0xFFFF00);
+        }
+    }
+
+    if (currentTarget.x != 0f &&
+        currentTarget.x != 0f)
+    {
+        ShootAt(currentTarget, &targetedPosition);
+    }
+}

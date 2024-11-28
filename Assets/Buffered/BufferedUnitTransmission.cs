@@ -6,6 +6,9 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct BufferedUnitTransmission : IBufferElementData
 {
+    /// <summary>
+    /// Position in world space
+    /// </summary>
     public float3 Source;
     public FixedList32Bytes<byte> Data;
 

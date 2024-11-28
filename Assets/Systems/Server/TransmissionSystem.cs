@@ -21,8 +21,8 @@ unsafe partial struct TransmissionSystem : ISystem
     {
         processorComponentQ.Update(ref state);
 
-        foreach (var (processor, transform, entity) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>>()
+        foreach (var (processor, transform, localTransform, entity) in
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, RefRO<LocalTransform>>()
             .WithEntityAccess())
         {
             if (processor.ValueRW.OutgoingTransmissions.Length == 0) continue;
@@ -31,6 +31,18 @@ unsafe partial struct TransmissionSystem : ISystem
 
             NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(state.WorldUnmanaged);
             Cell grid = QuadrantSystem.ToGrid(transform.ValueRO.Position);
+
+            // if (!transmission.Direction.Equals(float3.zero))
+            // {
+            //     DebugEx.DrawFOV(
+            //         transmission.Source,
+            //         transmission.Direction,
+            //         transmission.Angle,
+            //         Unit.TransmissionRadius,
+            //         UnityEngine.Color.white,
+            //         1f,
+            //         false);
+            // }
 
             for (int x = -1; x <= 1; x++)
             {
@@ -51,8 +63,12 @@ unsafe partial struct TransmissionSystem : ISystem
 
                         if (!transmission.Direction.Equals(float3.zero))
                         {
-                            float dot = math.abs(math.dot(transmission.Direction, entityLocalPosition / math.sqrt(entityDistanceSq)));
-                            if (dot > transmission.CosAngle) continue;
+                            float dot = math.abs(math.dot(transmission.Direction, math.normalize(entityLocalPosition)));
+                            if (dot < transmission.CosAngle)
+                            {
+                                // UnityEngine.Debug.Log(string.Format("{0} > {1}", dot, transmission.CosAngle));
+                                continue;
+                            }
                         }
 
                         var other = processorComponentQ.GetRefRWOptional(cell[i].Entity);

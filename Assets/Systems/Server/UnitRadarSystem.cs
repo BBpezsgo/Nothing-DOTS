@@ -2,7 +2,6 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -17,11 +16,8 @@ public partial struct UnitRadarSystem : ISystem
             SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>, RefRO<LocalToWorld>>())
         {
             float3 direction = processor.ValueRO.RadarRequest;
-
             if (direction.Equals(default)) continue;
-
             direction = localTransform.ValueRO.TransformDirection(direction);
-
             processor.ValueRW.RadarRequest = default;
 
             const float offset = 0f;
