@@ -26,7 +26,7 @@ export void ShootAt(Vector2 target, Vector2* targetedPosition)
             ldebug(*targetedPosition, 0xFF00FF);
 
             {
-                Vector2 targetDirection = Normalised(new Vector2(target.x, target.y));
+                Vector2 targetDirection = Normalised(target);
                 f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
                 if (targetAngle < 0f) { targetAngle += TAU; }
                 if (targetAngle >= TAU) { targetAngle -= TAU; }
