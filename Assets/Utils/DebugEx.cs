@@ -1,20 +1,11 @@
 
 using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 
-public static class DebugEx
+public static partial class DebugEx
 {
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Label(float3 position, string content)
-    {
-#if UNITY_EDITOR
-        Handles.Label(position, content);
-#endif
-    }
-
     /// <summary>
     /// Square with edge of length 1
     /// </summary>
