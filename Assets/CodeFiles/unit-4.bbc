@@ -8,20 +8,48 @@ using "turret.bbc";
 using "move.bbc";
 using "api.bbc";
 
+[UnitCommand(1, "Attack at")]
+struct CommandAttackAt
+{
+    [Context("position")] Vector2 position;
+}
+
+[UnitCommand(2, "Move to")]
+struct CommandMoveTo
+{
+    [Context("position")] Vector2 position;
+}
+
+const int MaxPacketLength = 9 + 1;
+const u8 REQUEST_HEADER = 0b_11110000;
+const u8 RESPONSE_HEADER = 0b_01111000;
+
+struct VerificationRequestPacket
+{
+    byte Header;
+    Vector2 Position;
+}
+
+struct VerificationResponsePacket
+{
+    byte Header;
+    Vector2 Position;
+}
+
+const int MaxCommandDataSize = 8;
+
 *Mapped = new MappedMemory;
 
 const f32 PI = 3.14159265359f;
 const f32 TAU = PI * 2f;
 const u8 true = (u8)1;
 const u8 false = (u8)0;
-const f32 DISTANCE_THRESHOLD = 50f;
-
-const u8 REQUEST_HEADER = 0b_11110000;
-const u8 RESPONSE_HEADER = 0b_01111000;
+const f32 DistanceThreshold = 2f;
+const f32 DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
 
 void Receive()
 {
-    u8[3] v;
+    u8[MaxPacketLength] v;
     f32 direction;
 
     while (1)
@@ -29,64 +57,68 @@ void Receive()
         i32 receivedLength = receive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)REQUEST_HEADER && receivedLength == 3)
+        if (v[0] == (u8)REQUEST_HEADER &&
+            receivedLength == sizeof(VerificationRequestPacket))
         {
-            byte2 p;
-            Vector2 pos;
-            p.x = v[1] as i8;
-            p.y = v[2] as i8;
-            ToFloat2(&p, &pos);
+            VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
-            if (DistanceSqr(pos, Mapped.Position) < 2f * 2f)
+            VerificationResponsePacket responsePacket = new VerificationResponsePacket;
+            responsePacket.Header = (u8)RESPONSE_HEADER;
+            responsePacket.Position = packet.Position;
+
+            if (DistanceSqr(packet.Position, Mapped.Position) < DistanceThresholdSq)
             {
-                debug(pos, 0x00FFFF);
+                debug(packet.Position, 0x00FFFF);
 
-                v[0] = (u8)RESPONSE_HEADER;
-                v[1] = p.x as u8;
-                v[2] = p.y as u8;
-                send(&v, 3, direction, 0.1f);
-                // PrintLine("Send response ...");
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
+            }
+            else
+            {
+                for (int i = 0; i < (&allies).Length(); i++)
+                {
+                    f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
+                    if (distanceSqr < DistanceThresholdSq)
+                    {
+                        send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
+                        return;
+                    }
+                }
             }
         }
-        else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
+        else if (v[0] == (u8)RESPONSE_HEADER &&
+                 receivedLength == sizeof(VerificationResponsePacket))
         {
-            Vector2 pos;
-            byte2 p;
-            p.x = v[1] as i8;
-            p.y = v[2] as i8;
-            ToFloat2(&p, &pos);
+            VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
+
+            Vector2 pos = packet.Position;
             ToLocal(&pos);
             Unit unit;
-            ToByte2(&pos, &unit.Position);
+            unit.Position = pos;
             unit.Recorded = time();
             unit.Expires = time() + 10f;
-            RemoveUnit(&enemies, unit.Position);
+            unit.VerificationSentAt = time();
+            RemoveUnitAt(&enemies, unit.Position);
+            UpdateUnit(&allies, unit);
 
             ldebug(pos, 0x00FF00);
-
-            // PrintLine("Object identified ...");
         }
     }
 }
 
-u8 IsNotRecorded(List<Unit>* units, byte2 unit)
+int UnitIndexAt(List<Unit>* units, Vector2 position)
 {
-    u8 isNew = true;
-    for (int i = 0; isNew && i < units.Length(); i++)
+    for (int i = 0; i < units.Length(); i++)
     {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
-        if (distanceSqr < DISTANCE_THRESHOLD)
-        {
-            isNew = false;
-        }
+        if (DistanceSqr(units.Raw()[i].Position, position) < DistanceThresholdSq)
+        { return i; }
     }
-    return isNew;
+    return -1;
 }
 
-void RecordUnit(List<Unit>* units, Unit unit)
+void UpdateUnit(List<Unit>* units, Unit unit)
 {
-    u8 isNew = IsNotRecorded(units, unit.Position);
-    if (isNew)
+    int existing = UnitIndexAt(units, unit.Position);
+    if (existing == -1)
     {
         if (units.Length() >= 4)
         {
@@ -97,15 +129,21 @@ void RecordUnit(List<Unit>* units, Unit unit)
             units.Add(unit);
         }
     }
+    else
+    {
+        unit.Position.x = (units.Raw()[existing].Position.x + unit.Position.x) * 0.5f;
+        unit.Position.y = (units.Raw()[existing].Position.y + unit.Position.y) * 0.5f;
+        units[existing] = unit;
+    }
 }
 
-void RemoveUnit(List<Unit>* units, byte2 unit)
+void RemoveUnitAt(List<Unit>* units, Vector2 unit)
 {
     u8 isNotDone = true;
     for (int i = 0; isNotDone && i < units.Length(); i++)
     {
         f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
-        if (distanceSqr < DISTANCE_THRESHOLD)
+        if (distanceSqr < DistanceThresholdSq)
         {
             isNotDone = false;
             units.Remove(i);
@@ -115,7 +153,6 @@ void RemoveUnit(List<Unit>* units, byte2 unit)
 
 void Radar()
 {
-    // PrintLine("Radar ...");
     f32 radarDistance = radar();
     if (radarDistance > 0f &&
         Abs(prevRadarDistance - radarDistance) > .5f)
@@ -128,26 +165,12 @@ void Radar()
         point.x *= radarDistance;
         point.y *= radarDistance;
 
-        // PrintLine("Identifying object ...");
-
-        Vector2 pointGlobal = point;
-        ToGlobal(&pointGlobal);
-        byte2 p;
-        ToByte2(&pointGlobal, &p);
-
-        u8[3] v;
-        v[0] = (u8)REQUEST_HEADER;
-        v[1] = p.x as u8;
-        v[2] = p.y as u8;
-        send(&v, 3, Mapped.RadarDirection, Asin(1.2f / radarDistance));
-
-        ldebug(point, 0x0000FF);
-
         Unit enemy;
         enemy.Recorded = time();
-        enemy.Expires = time() + 5f;
-        ToByte2(&point, &enemy.Position);
-        RecordUnit(&enemies, enemy);
+        enemy.Expires = time() + 8f;
+        enemy.Position = point;
+        SendVerificationRequest(&enemy);
+        UpdateUnit(&enemies, enemy);
     }
     if (radarDistance == 0f)
     {
@@ -156,17 +179,47 @@ void Radar()
     Mapped.RadarDirection = (Mapped.RadarDirection + 0.1f) % TAU;
 }
 
+void TrySendVerificationRequest(Unit* unit)
+{
+    if (unit.VerificationSentAt + 1f < time())
+    {
+        SendVerificationRequest(unit);
+    }
+}
+
+void SendVerificationRequest(Unit* unit)
+{
+    Vector2 point = unit.Position;
+
+    ToGlobal(&point);
+
+    VerificationRequestPacket packet = new VerificationRequestPacket;
+    packet.Header = (u8)REQUEST_HEADER;
+    packet.Position = point;
+
+    // send(&v, sizeof(VerificationRequestPacket), Mapped.RadarDirection, Asin(1.2f / radarDistance));
+    send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
+
+    debug(point, 0x0000FF);
+
+    unit.VerificationSentAt = time();
+}
+
 struct Unit
 {
-    byte2 Position;
+    Vector2 Position;
     f32 Recorded;
     f32 Expires;
+    f32 VerificationSentAt;
 }
 
 f32 prevRadarDistance = 0f;
 Vector2 targetedPosition = new Vector2;
 Vector2 currentTarget = new Vector2;
 List<Unit> enemies = new List<Unit>(4);
+List<Unit> allies = new List<Unit>(4);
+Vector2 currentDestination = new Vector2;
+u8 shouldShoot = false;
 
 while (1)
 {
@@ -175,6 +228,7 @@ while (1)
     Radar();
 
     currentTarget = new Vector2;
+    shouldShoot = false;
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
     {
@@ -182,26 +236,76 @@ while (1)
         {
             (&enemies).Remove(i);
         }
-        else if (time() >= (&enemies).Raw()[i].Recorded + 2f)
-        {
-            Vector2 p1;
-            byte2 p2 = (&enemies).Raw()[i].Position;
-            ToFloat2(&p2, &p1);
-            ldebug(p1, 0xFF0000);
-            currentTarget = p1;
-        }
         else
         {
-            Vector2 p1;
-            byte2 p2 = (&enemies).Raw()[i].Position;
-            ToFloat2(&p2, &p1);
-            ldebug(p1, 0xFFFF00);
+            TrySendVerificationRequest(&(&enemies).Raw()[i]);
+            Vector2 p = (&enemies).Raw()[i].Position;
+            if (time() >= (&enemies).Raw()[i].Recorded + 4f)
+            {
+                ldebug(p, 0xFF0000);
+                currentTarget = p;
+                shouldShoot = true;
+            }
+            else if (time() >= (&enemies).Raw()[i].Recorded + 1f)
+            {
+                ldebug(p, 0xFF8800);
+                currentTarget = p;
+            }
+            else
+            {
+                ldebug(p, 0xFFFF00);
+            }
         }
     }
 
-    if (currentTarget.x != 0f &&
-        currentTarget.x != 0f)
+    for (int i = (&allies).Length() - 1; i >= 0; i--)
     {
-        ShootAt(currentTarget, &targetedPosition);
+        if (time() >= (&allies).Raw()[i].Expires)
+        {
+            TrySendVerificationRequest(&(&allies).Raw()[i]);
+            (&allies).Remove(i);
+        }
+        else
+        {
+            Vector2 p = (&allies).Raw()[i].Position;
+            ldebug(p, 0x00FF00);
+        }
+    }
+
+    byte[MaxCommandDataSize] _command;
+
+    int commandId = dequeue_command(&_command);
+
+    if (commandId == 1)
+    {
+        CommandAttackAt* command = &_command as CommandAttackAt*;
+        currentTarget = command.position;
+        currentDestination = new Vector2;
+        ToLocal(&currentTarget);
+    }
+    else if (commandId == 2)
+    {
+        CommandMoveTo* command = &_command as CommandMoveTo*;
+        currentTarget = new Vector2;
+        currentDestination = command.position;
+    }
+
+    if (currentTarget.x != 0f &&
+        currentTarget.y != 0f)
+    {
+        if (shouldShoot)
+        {
+            ShootAt(currentTarget, &targetedPosition);
+        }
+        else
+        {
+            TargetAt(currentTarget, &targetedPosition);
+        }
+    }
+
+    if (currentDestination.x != 0f &&
+        currentDestination.y != 0f)
+    {
+        MoveTo(currentDestination.x, currentDestination.y);
     }
 }
