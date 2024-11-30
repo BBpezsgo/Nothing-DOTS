@@ -43,7 +43,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
     {
         public required RefRW<Processor> Processor;
         public required void* Memory;
-        public required Entity SourceEntity;
         public required RefRO<LocalToWorld> WorldTransform;
         public required RefRO<LocalTransform> LocalTransform;
     }
@@ -170,8 +169,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
         }
         float cosAngle = math.abs(math.cos(angle));
 
-        scope->Processor.ValueRW.NetworkSendLED.Blink();
-
         FixedList32Bytes<byte> data = new();
         data.AddRange((byte*)((nint)scope->Memory + bufferPtr), length);
 
@@ -190,7 +187,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         returnValue.Set(0);
 
-        (int bufferPtr, int length, int directionPtr, int strengthPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int, int>(arguments);
+        (int bufferPtr, int length, int directionPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
         if (bufferPtr <= 0 || length <= 0) return;
         if (bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Bruh");
 
@@ -205,13 +202,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         Buffer.MemoryCopy(((byte*)&first.Data) + 2, (byte*)scope->Memory + bufferPtr, copyLength, copyLength);
 
-        // for (int i = 0; i < copyLength; i++)
-        // {
-        //     *((byte*)scope->Memory + bufferPtr + i) = first->Data[i];
-        // }
-
-        scope->Processor.ValueRW.NetworkReceiveLED.Blink();
-
         if (directionPtr > 0)
         {
             float3 transformed = scope->LocalTransform.ValueRO.InverseTransformPoint(first.Source);
@@ -219,12 +209,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
             Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
             memory.Set(directionPtr, math.atan2(transformed.z, transformed.x));
         }
-
-        // if (strengthPtr > 0)
-        // {
-        //     Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-        //     memory.Set(strengthPtr, (byte)255);
-        // }
 
         if (copyLength >= first.Data.Length)
         {
@@ -418,7 +402,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_atan).Value, 18, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
 
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_send).Value, 21, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_receive).Value, 22, ExternalFunctionGenerator.SizeOf<int, int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_receive).Value, 22, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_radar).Value, 23, 0, 0, default);
 
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_toglobal).Value, 31, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
@@ -491,7 +475,6 @@ partial struct ProcessorJob : IJobEntity
         {
             Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
             Processor = processor,
-            SourceEntity = entity,
             WorldTransform = worldTransform,
             LocalTransform = localTransform,
         };
@@ -516,25 +499,25 @@ partial struct ProcessorJob : IJobEntity
         {
             if (processorState.Signal != Signal.None)
             {
-                // if (!processor.ValueRO.SignalNotified)
-                // {
-                //     processor.ValueRW.SignalNotified = true;
-                //     switch (processorState.Signal)
-                //     {
-                //         case Signal.UserCrash:
-                //             Debug.LogError("Crashed");
-                //             break;
-                //         case Signal.StackOverflow:
-                //             Debug.LogError("Stack Overflow");
-                //             break;
-                //         case Signal.Halt:
-                //             Debug.LogError("Halted");
-                //             break;
-                //         case Signal.UndefinedExternalFunction:
-                //             Debug.LogError("Undefined External Function");
-                //             break;
-                //     }
-                // }
+                if (!processor.ValueRO.SignalNotified)
+                {
+                    processor.ValueRW.SignalNotified = true;
+                    switch (processorState.Signal)
+                    {
+                        case Signal.UserCrash:
+                            Debug.LogError("Crashed");
+                            break;
+                        case Signal.StackOverflow:
+                            Debug.LogError("Stack Overflow");
+                            break;
+                        case Signal.Halt:
+                            Debug.LogError("Halted");
+                            break;
+                        case Signal.UndefinedExternalFunction:
+                            Debug.LogError("Undefined External Function");
+                            break;
+                    }
+                }
                 break;
             }
             processor.ValueRW.SignalNotified = false;

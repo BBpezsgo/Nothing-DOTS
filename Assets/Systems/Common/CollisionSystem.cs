@@ -192,6 +192,40 @@ public unsafe partial struct CollisionSystem : ISystem
     }
 
     [BurstCompile]
+    static bool AABBAABBIntersect(
+        in float3 originA, in AABB a,
+        in float3 originB, in AABB b,
+        out float3 normal, out float depth
+    )
+    {
+        AABB _a = a;
+        AABB _b = b;
+
+        _a.Center += originA;
+        _b.Center += originB;
+
+        normal = default;
+        depth = default;
+
+        if (
+            a.Min.x <= b.Max.x &&
+            a.Max.x >= b.Min.x &&
+            a.Min.y <= b.Max.y &&
+            a.Max.y >= b.Min.y &&
+            a.Min.z <= b.Max.z &&
+            a.Max.z >= b.Min.z
+        )
+        {
+            // float dx = Math.Min(a.Max.x - b.Min.x, b.Max.x - a.Min.x);
+            // float dy = Math.Min(a.Max.y - b.Min.y, b.Max.y - a.Min.y);
+            // float dz = Math.Min(a.Max.z - b.Min.z, b.Max.z - a.Min.z);
+            return true;
+        }
+
+        return false;
+    }
+
+    [BurstCompile]
     public static bool Intersect(
         in Collider a, in float3 positionA,
         in Collider b, in float3 positionB,
@@ -222,6 +256,15 @@ public unsafe partial struct CollisionSystem : ISystem
             return CircleRectIntersect(
                 positionB, b.Sphere.Radius,
                 positionA, a.AABB.AABB,
+                out normal, out depth
+            );
+        }
+        else if (a.Type == ColliderType.AABB &&
+                 b.Type == ColliderType.AABB)
+        {
+            return AABBAABBIntersect(
+                positionA, a.AABB.AABB,
+                positionB, b.AABB.AABB,
                 out normal, out depth
             );
         }

@@ -36,7 +36,7 @@ partial struct CompilerSystemClient : ISystem
             source.Diagnostics.Add(new LanguageCore.Diagnostic(
                 command.ValueRO.Level,
                 command.ValueRO.Message.ToString(),
-                new LanguageCore.Position(command.ValueRO.Position, default),
+                new LanguageCore.Position(command.ValueRO.Position, command.ValueRO.AbsolutePosition),
                 command.ValueRO.FileName.ToUri(),
                 null
             ));

@@ -9,7 +9,7 @@ public struct CompilationAnalysticsRpc : IRpcCommand
 {
     public FileId FileName;
     public MutableRange<SinglePosition> Position;
-
+    public MutableRange<int> AbsolutePosition;
     public DiagnosticsLevel Level;
-    public FixedString128Bytes Message;
+    public FixedString512Bytes Message;
 }

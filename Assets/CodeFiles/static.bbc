@@ -11,8 +11,7 @@ while (1)
     u8[2] v;
 
     f32 receivedDirection;
-    u8 receivedStrength;
-    i32 receivedLength = receive(&v, 2, &receivedDirection, &receivedStrength);
+    i32 receivedLength = receive(&v, 2, &receivedDirection);
     if (receivedLength == 2) {
         if (v[0] == (u8)1 &&
             v[1] == (u8)2)

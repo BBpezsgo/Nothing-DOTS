@@ -328,8 +328,25 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 terminalBuilder.AppendLine("Compile failed");
                                 foreach (LanguageCore.Diagnostic item in source.Diagnostics.Diagnostics)
                                 {
+                                    if (item.Level is
+                                        LanguageCore.DiagnosticsLevel.Hint or
+                                        LanguageCore.DiagnosticsLevel.OptimizationNotice or
+                                        LanguageCore.DiagnosticsLevel.Information)
+                                    { continue; }
+
                                     terminalBuilder.AppendLine(item.ToString());
-                                    (string SourceCode, string Arrows)? arrows = item.GetArrows();
+                                    (string SourceCode, string Arrows)? arrows = item.GetArrows((uri) =>
+                                    {
+                                        if (!uri.TryGetNetcode(out FileId file)) return null;
+
+                                        (FileStatus fileStatus, _, _) = FileChunkManager.GetFileStatus(file, out var remoteFile, false);
+                                        if (fileStatus.IsOk())
+                                        {
+                                            return Encoding.UTF8.GetString(remoteFile.File.Data);
+                                        }
+
+                                        return null;
+                                    });
                                     if (arrows.HasValue)
                                     {
                                         terminalBuilder.AppendLine(arrows.Value.SourceCode);

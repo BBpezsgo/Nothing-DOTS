@@ -39,7 +39,7 @@ void Receive()
 
     while (1)
     {
-        i32 receivedLength = receive(&v, 3, 0 as f32*, 0 as u8*);
+        i32 receivedLength = receive(&v, 3, 0 as f32*);
         if (!receivedLength) { break; }
 
         if (v[0] == (u8)REQUEST_HEADER && receivedLength == 3)

@@ -32,17 +32,19 @@ unsafe partial struct TransmissionSystem : ISystem
             NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(state.WorldUnmanaged);
             Cell grid = QuadrantSystem.ToGrid(transform.ValueRO.Position);
 
-            // if (!transmission.Direction.Equals(float3.zero))
-            // {
-            //     DebugEx.DrawFOV(
-            //         transmission.Source,
-            //         transmission.Direction,
-            //         transmission.Angle,
-            //         Unit.TransmissionRadius,
-            //         UnityEngine.Color.white,
-            //         1f,
-            //         false);
-            // }
+            processor.ValueRW.NetworkSendLED.Blink();
+
+            if (!transmission.Direction.Equals(float3.zero))
+            {
+                DebugEx.DrawFOV(
+                    transmission.Source,
+                    transmission.Direction,
+                    transmission.Angle,
+                    Unit.TransmissionRadius,
+                    Color.white,
+                    1f,
+                    false);
+            }
 
             for (int x = -1; x <= 1; x++)
             {
@@ -73,6 +75,8 @@ unsafe partial struct TransmissionSystem : ISystem
 
                         var other = processorComponentQ.GetRefRWOptional(cell[i].Entity);
                         if (!other.IsValid) continue;
+
+                        other.ValueRW.NetworkReceiveLED.Blink();
 
                         ref var transmissions = ref other.ValueRW.IncomingTransmissions;
 
