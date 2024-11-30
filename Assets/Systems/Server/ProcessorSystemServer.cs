@@ -13,7 +13,6 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Profiling;
 using Unity.Transforms;
-using UnityEngine;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -299,7 +298,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
-            new Vector3(position.x, 0.5f, position.y),
+            new float3(position.x, 0.5f, position.y),
             new Color(
                 (color & 0xFF0000) >> 16,
                 (color & 0x00FF00) >> 8,
@@ -323,11 +322,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
         FunctionScope* scope = (FunctionScope*)_scope;
 
         RefRO<LocalTransform> transform = scope->LocalTransform;
-        float3 transformed = transform.ValueRO.TransformPoint(new Vector3(position.x, 0f, position.y));
+        float3 transformed = transform.ValueRO.TransformPoint(new float3(position.x, 0f, position.y));
 
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
-            new Vector3(transformed.x, 0.5f, transformed.z),
+            new float3(transformed.x, 0.5f, transformed.z),
             new Color(
                 (color & 0xFF0000) >> 16,
                 (color & 0x00FF00) >> 8,

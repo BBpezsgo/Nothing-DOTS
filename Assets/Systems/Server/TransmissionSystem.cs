@@ -21,8 +21,8 @@ unsafe partial struct TransmissionSystem : ISystem
     {
         processorComponentQ.Update(ref state);
 
-        foreach (var (processor, transform, localTransform, entity) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, RefRO<LocalTransform>>()
+        foreach (var (processor, transform, entity) in
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>>()
             .WithEntityAccess())
         {
             if (processor.ValueRW.OutgoingTransmissions.Length == 0) continue;
@@ -66,7 +66,7 @@ unsafe partial struct TransmissionSystem : ISystem
                             float dot = math.abs(math.dot(transmission.Direction, math.normalize(entityLocalPosition)));
                             if (dot < transmission.CosAngle)
                             {
-                                // UnityEngine.Debug.Log(string.Format("{0} > {1}", dot, transmission.CosAngle));
+                                // Debug.Log(string.Format("{0} > {1}", dot, transmission.CosAngle));
                                 continue;
                             }
                         }

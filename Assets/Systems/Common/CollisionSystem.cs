@@ -14,7 +14,7 @@ public unsafe partial struct CollisionSystem : ISystem
     [BurstCompile]
     public static void Debug(
         in Collider collider, in float3 offset,
-        in UnityEngine.Color color, float duration = 0f, bool depthTest = true)
+        in Color color, float duration = 0f, bool depthTest = true)
     {
         switch (collider.Type)
         {

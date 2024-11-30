@@ -46,7 +46,7 @@ partial struct ProjectileSystemServer : ISystem
             if (!QuadrantRayCast.RayCast(map, ray, out Hit hit))
             { continue; }
 
-            if (damageQ.TryGetBuffer(hit.Entity.Entity, out var damage))
+            if (damageQ.TryGetBuffer(hit.Entity.Entity, out DynamicBuffer<BufferedDamage> damage))
             {
                 damage.Add(new BufferedDamage(1f, math.normalize(projectile.ValueRO.Velocity)));
                 entityCommandBuffer.DestroyEntity(entity);

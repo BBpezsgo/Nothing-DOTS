@@ -1,9 +1,7 @@
 using System;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
-using UnityEngine;
 
 #pragma warning disable CS0162 // Unreachable code detected
 
