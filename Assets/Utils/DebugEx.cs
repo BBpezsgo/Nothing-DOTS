@@ -5,6 +5,7 @@ using UnityEngine;
 
 public static partial class DebugEx
 {
+#if UNITY_EDITOR && EDITOR_DEBUG
     /// <summary>
     /// Square with edge of length 1
     /// </summary>
@@ -56,9 +57,11 @@ public static partial class DebugEx
         }
         return v;
     }
+#endif
 
     public static void DrawSphere(float3 pos, float radius, Color color, float duration = 0f, bool depthTest = true)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         int len = UnitSphere.Length / 3;
         for (int i = 0; i < len; i++)
         {
@@ -74,6 +77,7 @@ public static partial class DebugEx
             float3 eZ = pos + (radius * UnitSphere[(2 * len) + ((i + 1) % len)]);
             Debug.DrawLine(sZ, eZ, color, duration);
         }
+#endif
     }
 
     public static void DrawBox(AABB aabb, Color color, float duration = 0f, bool depthTest = true)
@@ -87,6 +91,7 @@ public static partial class DebugEx
 
     public static void DrawBox(float3 pos, float3 size, Color color, float duration = 0f, bool depthTest = true)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         for (int i = 0; i < 4; i++)
         {
             float3 s = pos + (UnitCube[i] * size);
@@ -105,17 +110,21 @@ public static partial class DebugEx
             float3 e = pos + (UnitCube[i + 4] * size);
             Debug.DrawLine(s, e, color, duration, depthTest);
         }
+#endif
     }
 
     public static void DrawAxes(float3 pos, float scale = 1f, float duration = 0f, bool depthTest = true)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         Debug.DrawLine(pos, pos + new float3(scale, 0f, 0f), Color.red, duration, depthTest);
         Debug.DrawLine(pos, pos + new float3(0f, scale, 0f), Color.green, duration, depthTest);
         Debug.DrawLine(pos, pos + new float3(0f, 0f, scale), Color.blue, duration, depthTest);
+#endif
     }
 
     public static void DrawPoint(float3 position, float scale, Color color, float duration = 0f, bool depthTest = true)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         float3 right = new(scale, 0f, 0f);
         float3 up = new(0f, scale, 0f);
         float3 forward = new(0f, 0f, scale);
@@ -123,18 +132,22 @@ public static partial class DebugEx
         Debug.DrawLine(position - up, position + up, color, duration, depthTest);
         Debug.DrawLine(position - right, position + right, color, duration, depthTest);
         Debug.DrawLine(position - forward, position + forward, color, duration, depthTest);
+#endif
     }
 
     public static void DrawRectangle(float3 start, float3 end, Color color, float duration = 0f, bool depthTest = true)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         Debug.DrawLine(start, new float3(start.x, 0f, end.z), color, duration, depthTest);
         Debug.DrawLine(start, new float3(end.x, 0f, start.z), color, duration, depthTest);
         Debug.DrawLine(new float3(start.x, 0f, end.z), end, color, duration, depthTest);
         Debug.DrawLine(new float3(end.x, 0f, start.z), end, color, duration, depthTest);
+#endif
     }
 
     public static void DrawFOV(float3 origin, float3 direction, float angle, float distance, Color color, float duration = 0f, bool depthTest = true)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         const float step = 0.01f;
         float directionAngle = math.atan2(direction.z, direction.x);
         float3 prevPoint = origin;
@@ -148,5 +161,6 @@ public static partial class DebugEx
             prevPoint = point;
         }
         Debug.DrawLine(prevPoint, origin, color, duration, depthTest);
+#endif
     }
 }

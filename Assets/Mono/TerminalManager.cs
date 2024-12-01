@@ -36,7 +36,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             return;
         }
 
-        if (Time.time >= refreshAt || selectingFile != null)
+        if (Time.time >= refreshAt || !selectingFile.IsDefault)
         {
             if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(selectedUnitEntity))
             {

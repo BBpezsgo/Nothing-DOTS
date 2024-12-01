@@ -1,3 +1,7 @@
+#if UNITY_EDITOR && EDITOR_DEBUG
+#define _DEBUG_LINES
+#endif
+
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -34,6 +38,7 @@ unsafe partial struct TransmissionSystem : ISystem
 
             processor.ValueRW.NetworkSendLED.Blink();
 
+#if DEBUG_LINES
             if (!transmission.Direction.Equals(float3.zero))
             {
                 DebugEx.DrawFOV(
@@ -45,6 +50,7 @@ unsafe partial struct TransmissionSystem : ISystem
                     1f,
                     false);
             }
+#endif
 
             for (int x = -1; x <= 1; x++)
             {

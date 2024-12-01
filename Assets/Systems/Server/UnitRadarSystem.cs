@@ -1,3 +1,7 @@
+#if UNITY_EDITOR && EDITOR_DEBUG
+#define _DEBUG_LINES
+#endif
+
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -29,7 +33,9 @@ public partial struct UnitRadarSystem : ISystem
 
             Ray ray = new(rayStart, rayEnd, Layers.All);
 
-            // Debug.DrawLine(rayStart, rayEnd, Color.white, 1f);
+#if DEBUG_LINES
+            Debug.DrawLine(rayStart, rayEnd, Color.white, 1f);
+#endif
 
             if (!QuadrantRayCast.RayCast(map, ray, out Hit hit))
             {
@@ -41,7 +47,9 @@ public partial struct UnitRadarSystem : ISystem
 
             if (distance > Unit.RadarRadius) distance = float.NaN;
 
-            // DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 1f, Color.white, 1f, false);
+#if DEBUG_LINES
+            DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 1f, Color.white, 1f, false);
+#endif
 
             processor.ValueRW.RadarResponse = distance;
         }

@@ -16,6 +16,7 @@ public unsafe partial struct CollisionSystem : ISystem
         in Collider collider, in float3 offset,
         in Color color, float duration = 0f, bool depthTest = true)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         switch (collider.Type)
         {
             case ColliderType.Sphere:
@@ -28,6 +29,7 @@ public unsafe partial struct CollisionSystem : ISystem
                 break;
             default: throw new UnreachableException();
         }
+#endif
     }
 
     [BurstCompile]

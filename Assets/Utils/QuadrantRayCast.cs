@@ -1,4 +1,6 @@
+#if UNITY_EDITOR && EDITOR_DEBUG
 #define _DEBUG_LINES
+#endif
 
 using Unity.Burst;
 using Unity.Collections;

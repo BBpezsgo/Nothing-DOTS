@@ -7,6 +7,7 @@ public static partial class DebugEx
 {
     public static void Label(float3 position, string text)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         DebugDrawer? drawer = DebugDrawer.InstanceOrNull;
         if (drawer == null) return;
         drawer._labels.Add(new DebugDrawer.DebugLabel(
@@ -17,11 +18,13 @@ public static partial class DebugEx
             MonoTime.Now,
             MonoTime.Now + 1f
         ));
+#endif
     }
 }
 
 public class DebugDrawer : Singleton<DebugDrawer>
 {
+#if UNITY_EDITOR && EDITOR_DEBUG
     public readonly struct DebugLabel
     {
         public readonly string Text;
@@ -77,4 +80,5 @@ public class DebugDrawer : Singleton<DebugDrawer>
             UnityEditor.Handles.EndGUI();
         }
     }
+#endif
 }

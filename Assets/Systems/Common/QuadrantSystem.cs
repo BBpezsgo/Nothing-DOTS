@@ -6,6 +6,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[BurstCompile]
 public struct QuadrantEntity
 {
     public readonly Entity Entity;
@@ -66,6 +67,7 @@ public struct Cell : IEquatable<Cell>
     public override readonly string ToString() => $"Cell({x}, {y})";
 }
 
+[BurstCompile]
 public readonly struct Hit
 {
     public readonly QuadrantEntity Entity;
@@ -138,17 +140,23 @@ public partial struct QuadrantSystem : ISystem
 
     public static Color CellColor(uint key)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         if (key == uint.MaxValue) return Color.white;
         var random = Unity.Mathematics.Random.CreateFromIndex(key);
         var c = random.NextFloat3();
         return new Color(c.x, c.y, c.z);
+#else
+        return default;
+#endif
     }
 
     public static void DrawQuadrant(Cell cell)
     {
+#if UNITY_EDITOR && EDITOR_DEBUG
         float3 start = ToWorld(cell);
         float3 end = start + new float3(QuadrantCellSize, 0f, QuadrantCellSize);
         DebugEx.DrawRectangle(start, end, CellColor(cell.key), .1f);
+#endif
     }
 
     NativeParallelHashMap<uint, NativeList<QuadrantEntity>> HashMap;

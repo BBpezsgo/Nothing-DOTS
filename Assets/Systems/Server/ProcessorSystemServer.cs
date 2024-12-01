@@ -1,5 +1,7 @@
 #define _UNITY_PROFILER
-#define DEBUG_LINES
+#if UNITY_EDITOR && EDITOR_DEBUG
+#define _DEBUG_LINES
+#endif
 
 using System;
 using System.Runtime.CompilerServices;
