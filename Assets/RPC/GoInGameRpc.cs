@@ -2,7 +2,7 @@ using Unity.Burst;
 using Unity.NetCode;
 
 [BurstCompile]
-public struct GoInGameRpcCommand : IRpcCommand
+public struct GoInGameRpc : IRpcCommand
 {
 
 }

@@ -8,17 +8,17 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct FactorySystem : ISystem
 {
+    void ISystem.OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<UnitDatabase>();
+    }
+
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        if (!SystemAPI.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
-        {
-            Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
-            return;
-        }
-
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
+        Entity unitDatabase = SystemAPI.GetSingletonEntity<UnitDatabase>();
         DynamicBuffer<BufferedUnit> units = SystemAPI.GetBuffer<BufferedUnit>(unitDatabase);
 
         foreach (var (request, command, entity) in

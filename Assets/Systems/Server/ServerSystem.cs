@@ -13,6 +13,7 @@ public partial struct ServerSystem : ISystem
     void ISystem.OnCreate(ref SystemState state)
     {
         _teamCounter = 1;
+        state.RequireForUpdate<PrefabDatabase>();
     }
 
     [BurstCompile]

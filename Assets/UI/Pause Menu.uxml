@@ -6,7 +6,7 @@
             <ui:ScrollView horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="AlwaysVisible" name="list-connections">
                 <ui:Instance template="ConnectionItem" name="ConnectionItem" />
             </ui:ScrollView>
-            <ui:Button text="Exit" />
+            <ui:Button text="Exit" name="button-exit" />
         </ui:GroupBox>
     </ui:VisualElement>
 </ui:UXML>

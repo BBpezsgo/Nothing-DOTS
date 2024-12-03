@@ -11,7 +11,7 @@ public partial struct GoInServerClientSystem : ISystem
     void ISystem.OnCreate(ref SystemState state)
     {
         EntityQueryBuilder builder = new(Allocator.Temp);
-        builder.WithAll<ReceiveRpcCommandRequest, GoInGameRpcCommand>();
+        builder.WithAll<ReceiveRpcCommandRequest, GoInGameRpc>();
         state.RequireForUpdate(state.GetEntityQuery(builder));
     }
 
@@ -21,7 +21,7 @@ public partial struct GoInServerClientSystem : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<GoInGameRpcCommand>>()
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<GoInGameRpc>>()
             .WithEntityAccess())
         {
             commandBuffer.AddComponent<NetworkStreamInGame>(request.ValueRO.SourceConnection);

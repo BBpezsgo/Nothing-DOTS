@@ -9,6 +9,11 @@ partial struct BufferedFileSenderSystem : ISystem
 {
     const bool DebugLog = false;
 
+    void ISystem.OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<BufferedFiles>();
+    }
+
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);

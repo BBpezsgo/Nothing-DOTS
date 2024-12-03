@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
+using LanguageCore.Runtime;
 using NaughtyAttributes;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -23,6 +25,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [SerializeField, ReadOnly] Button? ui_ButtonReset;
     [SerializeField, ReadOnly] Button? ui_ButtonContinue;
     [SerializeField, ReadOnly] Label? ui_labelTerminal;
+    [SerializeField, ReadOnly] ScrollView? ui_scrollTerminal;
     [SerializeField, ReadOnly] TextField? ui_inputSourcePath;
     [SerializeField, ReadOnly] UIDocument? ui = default;
 
@@ -67,6 +70,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonReset = ui.rootVisualElement.Q<Button>("button-reset");
         ui_ButtonContinue = ui.rootVisualElement.Q<Button>("button-continue");
         ui_labelTerminal = ui.rootVisualElement.Q<Label>("label-terminal");
+        ui_scrollTerminal = ui.rootVisualElement.Q<ScrollView>("scroll-terminal");
 
         {
             EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -177,12 +181,14 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonSelect!.tabIndex = -1;
         ui_ButtonContinue!.tabIndex = -1;
         ui_labelTerminal!.tabIndex = -1;
+        ui_scrollTerminal!.tabIndex = -1;
 
         ui_ButtonCompile!.SetEnabled(false);
         ui_ButtonHalt!.SetEnabled(false);
         ui_ButtonReset!.SetEnabled(false);
         ui_ButtonSelect!.SetEnabled(false);
         ui_ButtonContinue!.SetEnabled(false);
+        ui_scrollTerminal!.SetEnabled(false);
 
         ui_inputSourcePath!.focusable = false;
         ui_ButtonCompile!.focusable = false;
@@ -191,6 +197,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonSelect!.focusable = false;
         ui_ButtonContinue!.focusable = false;
         ui_labelTerminal!.focusable = false;
+        ui_scrollTerminal!.focusable = false;
 
         ui_labelTerminal!.Focus();
     }
@@ -204,12 +211,14 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonReset!.tabIndex = 0;
         ui_ButtonContinue!.tabIndex = 0;
         ui_labelTerminal!.tabIndex = 0;
+        ui_scrollTerminal!.tabIndex = 0;
 
         ui_ButtonCompile!.SetEnabled(true);
         ui_ButtonSelect!.SetEnabled(true);
         ui_ButtonHalt!.SetEnabled(true);
         ui_ButtonReset!.SetEnabled(true);
         ui_ButtonContinue!.SetEnabled(true);
+        ui_scrollTerminal!.SetEnabled(true);
 
         ui_inputSourcePath!.focusable = true;
         ui_ButtonCompile!.focusable = true;
@@ -218,10 +227,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonReset!.focusable = true;
         ui_ButtonContinue!.focusable = true;
         ui_labelTerminal!.focusable = true;
+        ui_scrollTerminal!.focusable = true;
     }
 
-    public void RefreshUI(Entity unitEntity)
+    public unsafe void RefreshUI(Entity unitEntity)
     {
+        bool isBottom = ui_scrollTerminal!.scrollOffset == ui_labelTerminal!.layout.max - ui_scrollTerminal.contentViewport.layout.size;
+
         if (!selectingFile.IsEmpty)
         {
             if (Input.GetKeyDown(KeyCode.Q))
@@ -272,7 +284,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
             if (processor.SourceFile == default)
             {
-                terminalBuilder.AppendLine("No source");
+                terminalBuilder.AppendLine("<color=red>No source</color>");
             }
             else
             {
@@ -318,14 +330,38 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         {
                             if (source.IsSuccess)
                             {
-                                terminalBuilder.AppendLine(processor.Signal.ToString());
-                                terminalBuilder.Append(processor.Crash);
-                                terminalBuilder.AppendLine();
-                                terminalBuilder.AppendLine(processor.StdOutBuffer.ToString());
+                                switch (processor.Signal)
+                                {
+                                    case Signal.None:
+                                        terminalBuilder.AppendLine(processor.StdOutBuffer.ToString());
+                                        break;
+                                    case Signal.UserCrash:
+                                        // RuntimeException exception = new(
+                                        //     HeapUtils.GetString(new ReadOnlySpan<byte>(&processor.Memory, Processor.TotalMemorySize), processor.Crash) ?? "null",
+                                        //     new RuntimeContext(
+                                        //         processor.Registers,
+                                        //         new ReadOnlySpan<byte>(&processor.Memory, 1024).ToImmutableArray(),
+                                        //         source.Code!.Value.ToImmutableArray(),
+                                        //         ProcessorSystemServer.BytecodeInterpreterSettings.StackStart
+                                        //     ),
+                                        //     source.DebugInformation);
+                                        // terminalBuilder.AppendLine(exception.ToString(false));
+                                        terminalBuilder.AppendLine("<color=red>Crashed</color>");
+                                        break;
+                                    case Signal.StackOverflow:
+                                        terminalBuilder.AppendLine("<color=red>Stack overflow</color>");
+                                        break;
+                                    case Signal.Halt:
+                                        terminalBuilder.AppendLine("Halted");
+                                        break;
+                                    case Signal.UndefinedExternalFunction:
+                                        terminalBuilder.AppendLine($"<color=red>Undefined external function {processor.Crash}</color>");
+                                        break;
+                                }
                             }
                             else
                             {
-                                terminalBuilder.AppendLine("Compile failed");
+                                terminalBuilder.AppendLine("<color=red>Compile failed</color>");
                                 foreach (LanguageCore.Diagnostic item in source.Diagnostics.Diagnostics)
                                 {
                                     if (item.Level is
@@ -369,6 +405,11 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 }
             }
             ui_labelTerminal!.text = terminalBuilder.ToString();
+        }
+
+        if (isBottom)
+        {
+            ui_scrollTerminal!.scrollOffset = ui_labelTerminal!.layout.max - ui_scrollTerminal.contentViewport.layout.size;
         }
     }
 

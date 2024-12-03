@@ -60,7 +60,7 @@ public struct NetcodeEndPoint : IEquatable<NetcodeEndPoint>, IRpcCommandSerializ
             return ConnectionEntity = entities[i];
         }
         throw new Exception($"Connection entity {ConnectionId} not found");
-        return Entity.Null;
+        // return Entity.Null;
     }
 
     public Entity GetEntity(ref SystemState state)
@@ -85,7 +85,7 @@ public struct NetcodeEndPoint : IEquatable<NetcodeEndPoint>, IRpcCommandSerializ
             return ConnectionEntity = entities[i];
         }
         throw new Exception($"Connection entity {ConnectionId} not found");
-        return Entity.Null;
+        // return Entity.Null;
     }
 
     public override readonly bool Equals(object obj) => obj is NetcodeEndPoint other && Equals(other);

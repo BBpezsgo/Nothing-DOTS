@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 using Unity.Networking.Transport;
@@ -9,17 +10,13 @@ using UnityEngine.UIElements;
 
 public class ConnectionManager : PrivateSingleton<ConnectionManager>
 {
-    public static World? ClientWorld => Instance._clientWorld;
-    public static World? ServerWorld => Instance._serverWorld;
+    public static World? ClientWorld => NetcodeBootstrap.ClientWorld;
+    public static World? ServerWorld => NetcodeBootstrap.ServerWorld;
 
-    public static World ClientOrDefaultWorld => Instance._clientWorld ?? World.DefaultGameObjectInjectionWorld;
-    public static World ServerOrDefaultWorld => Instance._serverWorld ?? World.DefaultGameObjectInjectionWorld;
-
+    public static World ClientOrDefaultWorld => NetcodeBootstrap.ClientWorld ?? World.DefaultGameObjectInjectionWorld;
+    public static World ServerOrDefaultWorld => NetcodeBootstrap.ServerWorld ?? World.DefaultGameObjectInjectionWorld;
     [SerializeField] ushort DebugPort = default;
     [SerializeField, NotNull] UIDocument? UI = default;
-
-    World? _clientWorld = default;
-    World? _serverWorld = default;
 
     void Start()
     {
@@ -39,7 +36,9 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
             StartCoroutine(StartServerAsync(endpoint));
         };
 
+#if UNITY_EDITOR
         StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
+#endif
     }
 
     bool HandleInput([NotNullWhen(true)] out NetworkEndpoint endpoint)
@@ -98,18 +97,18 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     {
         SetInputEnabled(false);
 
-        DestroyLocalWorld();
+        NetcodeBootstrap.DestroyLocalWorld();
 
-        yield return StartCoroutine(CreateServer(endpoint));
+        yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint));
 
-        World.DefaultGameObjectInjectionWorld ??= _serverWorld!;
+        World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
-        using (EntityQuery driverQ = _serverWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
+        using (EntityQuery driverQ = ServerWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
         {
             endpoint = driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.GetLocalEndPoint();
         }
 
-        yield return StartCoroutine(CreateClient(endpoint));
+        yield return StartCoroutine(NetcodeBootstrap.CreateClient(endpoint));
 
         UI.gameObject.SetActive(false);
 
@@ -120,11 +119,11 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     {
         SetInputEnabled(false);
 
-        DestroyLocalWorld();
+        NetcodeBootstrap.DestroyLocalWorld();
 
-        yield return StartCoroutine(CreateClient(endpoint));
+        yield return StartCoroutine(NetcodeBootstrap.CreateClient(endpoint));
 
-        World.DefaultGameObjectInjectionWorld ??= _clientWorld!;
+        World.DefaultGameObjectInjectionWorld ??= ClientWorld!;
 
         UI.gameObject.SetActive(false);
     }
@@ -133,100 +132,63 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     {
         SetInputEnabled(false);
 
-        DestroyLocalWorld();
+        NetcodeBootstrap.DestroyLocalWorld();
 
-        yield return StartCoroutine(CreateServer(endpoint));
+        yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint));
 
-        World.DefaultGameObjectInjectionWorld ??= _serverWorld!;
+        World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
-        UI.gameObject.SetActive(false);
+        // UI.gameObject.SetActive(false);
     }
 
-    IEnumerator CreateServer(NetworkEndpoint endpoint)
+    public static void KickClient(int connectionId)
     {
-        _serverWorld = ClientServerBootstrap.CreateServerWorld("ServerWorld");
+        if (ServerWorld == null) return;
 
-        SubScene[] subScenes = FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        // using EntityQuery networkStreamConnectionQ = Instance.ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkStreamConnection>());
+        using EntityQuery networkIdQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkId>());
+        using NativeArray<Entity> entities = networkIdQ.ToEntityArray(Allocator.Temp);
 
-        while (!_serverWorld.IsCreated)
+        // using EntityQuery driverQ = Instance.ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>());
+        // RefRW<NetworkStreamDriver> driver = driverQ.GetSingletonRW<NetworkStreamDriver>();
+
+        for (int i = 0; i < entities.Length; i++)
         {
-            yield return null;
-        }
-
-        if (subScenes != null)
-        {
-            for (int i = 0; i < subScenes.Length; i++)
+            NetworkId networkId = ServerWorld.EntityManager.GetComponentData<NetworkId>(entities[i]);
+            if (networkId.Value != connectionId) continue;
+            ServerWorld.EntityManager.AddComponentData<NetworkStreamRequestDisconnect>(entities[i], new()
             {
-                SceneSystem.LoadParameters loadParameters = new() { Flags = SceneLoadFlags.BlockOnStreamIn };
-                Entity sceneEntity = SceneSystem.LoadSceneAsync(_serverWorld.Unmanaged, new Unity.Entities.Hash128(subScenes[i].SceneGUID.Value), loadParameters);
-                while (!SceneSystem.IsSceneLoaded(_serverWorld.Unmanaged, sceneEntity))
-                {
-                    _serverWorld.Update();
-                    yield return null;
-                }
-            }
-        }
-
-        using (EntityQuery driverQ = _serverWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
-        {
-            driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.Listen(endpoint);
-        }
-
-        using (EntityQuery prefabsQ = _serverWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>()))
-        {
-            using EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp); // endSimulationEntityCommandBufferSystemSingletonQ.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(_serverWorld.Unmanaged);
-            PrefabDatabase prefabs = prefabsQ.GetSingleton<PrefabDatabase>();
-            Entity newPlayer = commandBuffer.Instantiate(prefabs.Player);
-            commandBuffer.SetComponent<Player>(newPlayer, new()
-            {
-                ConnectionId = 0,
-                ConnectionState = PlayerConnectionState.Server,
-                Team = -1,
+                Reason = NetworkStreamDisconnectReason.ClosedByRemote,
             });
-            commandBuffer.Playback(_serverWorld.EntityManager);
         }
     }
 
-    IEnumerator CreateClient(NetworkEndpoint endpoint)
+    public static void StopServer()
     {
-        _clientWorld = ClientServerBootstrap.CreateClientWorld("ClientWorld");
-
-        SubScene[] subScenes = FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-
-        while (!_clientWorld.IsCreated)
+        if (ServerWorld != null)
         {
-            yield return null;
-        }
+            using EntityQuery networkStreamConnectionQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkStreamConnection>());
+            using EntityQuery networkIdQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkId>());
+            using NativeArray<Entity> entities = networkIdQ.ToEntityArray(Allocator.Temp);
 
-        if (subScenes != null)
-        {
-            for (int i = 0; i < subScenes.Length; i++)
+            using EntityQuery driverQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>());
+            RefRW<NetworkStreamDriver> driver = driverQ.GetSingletonRW<NetworkStreamDriver>();
+
+            for (int i = 0; i < entities.Length; i++)
             {
-                SceneSystem.LoadParameters loadParameters = new() { Flags = SceneLoadFlags.BlockOnStreamIn };
-                Entity sceneEntity = SceneSystem.LoadSceneAsync(_clientWorld.Unmanaged, new Unity.Entities.Hash128(subScenes[i].SceneGUID.Value), loadParameters);
-                while (!SceneSystem.IsSceneLoaded(_clientWorld.Unmanaged, sceneEntity))
+                ServerWorld.EntityManager.AddComponentData<NetworkStreamRequestDisconnect>(entities[i], new()
                 {
-                    _clientWorld.Update();
-                    yield return null;
-                }
+                    Reason = NetworkStreamDisconnectReason.ClosedByRemote,
+                });
             }
+
+            NetcodeBootstrap.Stop();
         }
 
-        using (EntityQuery driverQ = _clientWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
+        if (NetcodeBootstrap.LocalWorld == null)
         {
-            driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.Connect(_clientWorld.EntityManager, endpoint);
-        }
-    }
-
-    void DestroyLocalWorld()
-    {
-        foreach (World world in World.All)
-        {
-            if (world.Flags == WorldFlags.Game)
-            {
-                world.Dispose();
-                break;
-            }
+            World.DefaultGameObjectInjectionWorld = null!;
+            NetcodeBootstrap.LocalWorld = ClientServerBootstrap.CreateLocalWorld("Empty");
         }
     }
 }

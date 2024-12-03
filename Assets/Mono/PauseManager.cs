@@ -1,8 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
 using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
@@ -50,11 +48,17 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
         refreshAt = 0f;
 
         ui.gameObject.SetActive(true);
+        ui.rootVisualElement.Q<Button>("button-exit").clicked += OnButtonExit;
+    }
+
+    void OnButtonExit()
+    {
+        ConnectionManager.StopServer();
     }
 
     public void RefreshUI()
     {
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (ui == null || !ui.gameObject.activeSelf || ConnectionManager.ClientOrDefaultWorld == null) return;
 
         ScrollView connectionsList = ui.rootVisualElement.Q<ScrollView>("list-connections");
 
@@ -66,9 +70,19 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
         for (int i = 0; i < players.Length; i++)
         {
-            if (players[i].ConnectionState == PlayerConnectionState.Disconnected) continue;
+            Player player = players[i];
+            if (player.ConnectionState == PlayerConnectionState.Disconnected) continue;
             TemplateContainer newItem = UI_ConnectionItem.Instantiate();
-            newItem.Q<Label>().text = players[i].ConnectionId.ToString();
+            newItem.Q<Label>().text = player.ConnectionId.ToString();
+            newItem.Q<Button>("button-kick").clicked += () =>
+            {
+                ConnectionManager.KickClient(player.ConnectionId);
+                RefreshUI();
+            };
+            newItem.Q<Button>("button-kick").SetEnabled(
+                ConnectionManager.ServerWorld != null &&
+                player.ConnectionId != 0
+            );
             connectionsList.Add(newItem);
         }
     }
@@ -76,5 +90,6 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
     public void Cleanup(UIDocument ui)
     {
         refreshAt = float.PositiveInfinity;
+        ui.rootVisualElement.Q<Button>("button-exit").clicked -= OnButtonExit;
     }
 }
