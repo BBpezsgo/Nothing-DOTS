@@ -92,7 +92,7 @@ while (1)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
         currentBuildAt = command.position;
-        currentDestination = command.position;
+        currentDestination = new Vector2;
     }
     else if (commandId == 2)
     {
@@ -113,7 +113,15 @@ while (1)
         float d = DistanceSqr(Mapped.Position, currentBuildAt);
         if (d < 10f * 10f)
         {
-            ShootAt(currentBuildAt, &targetedPosition);
+            Vector2 currentBuildAtLocal = currentBuildAt;
+            ToLocal(&currentBuildAtLocal);
+            ShootAt(currentBuildAtLocal, &targetedPosition);
+            StopMoving();
+        }
+        else
+        {
+            MoveTo(currentBuildAt.x, currentBuildAt.y);
+            PrintLine(d);
         }
     }
 }

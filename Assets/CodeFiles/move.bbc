@@ -5,6 +5,12 @@ using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
 using "api.bbc";
 
+export void StopMoving()
+{
+    Mapped.InputSteer = (i8)0;
+    Mapped.InputForward = (i8)0;
+}
+
 export void MoveTo(f32 targetX, f32 targetY)
 {
     Vector2 forward = Mapped.Forward;

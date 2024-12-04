@@ -73,7 +73,49 @@ export u8 TargetAt(Vector2 target, Vector2* targetedPosition)
     return (u8)0;
 }
 
+export u8 TargetAtSimple(Vector2 target, Vector2* targetedPosition)
+{
+    if (target.x == 0f &&
+        target.y == 0f)
+    {
+        return (u8)0;
+    }
+
+    if (targetedPosition.x != target.x ||
+        targetedPosition.y != target.y)
+    {
+        *targetedPosition = target;
+        target.y -= 0.2f;
+
+        ldebug(*targetedPosition, 0xFF00FF);
+
+        {
+            Vector2 targetDirection = Normalised(target);
+            f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
+            if (targetAngle < 0f) { targetAngle += TAU; }
+            if (targetAngle >= TAU) { targetAngle -= TAU; }
+            Mapped.TurretTargetRotation = targetAngle;
+        }
+
+        Mapped.TurretTargetAngle = 0.00001f; // TODO: fix this
+    }
+
+    f32 diff = Abs(Mapped.TurretCurrentRotation - Mapped.TurretTargetRotation);
+
+    if (diff < 0.1f || TAU - diff < 0.1f)
+    {
+        return (u8)1;
+    }
+
+    return (u8)0;
+}
+
 export void ShootAt(Vector2 target, Vector2* targetedPosition)
 {
     Mapped.InputShoot = TargetAt(target, targetedPosition);
+}
+
+export void ShootAtSimple(Vector2 target, Vector2* targetedPosition)
+{
+    Mapped.InputShoot = TargetAtSimple(target, targetedPosition);
 }

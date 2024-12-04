@@ -18,7 +18,7 @@ public partial struct BuilderSystem : ISystem
             if (turret.ValueRO.Type != TurretType.Builder) continue;
             turret.ValueRW.ShootRequested = false;
 
-            Ray ray = new(localToWorld.ValueRO.Position, localToWorld.ValueRO.Position - (localToWorld.ValueRO.Right * Builder.BuildRadius), Layers.BuildingPlaceholder >> 1);
+            Ray ray = new(localToWorld.ValueRO.Position, localToWorld.ValueRO.Position + (localToWorld.ValueRO.Up * Builder.BuildRadius), Layers.BuildingPlaceholder, false);
 
             Debug.DrawLine(ray.Start, ray.End, Color.white, 0.2f, false);
 

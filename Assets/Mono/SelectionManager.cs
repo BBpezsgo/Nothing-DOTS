@@ -243,9 +243,9 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void FinishUnitAction()
     {
-        if (_firstHit == Entity.Null &&
-            _selected.Count > 0)
+        if (_selected.Count > 0)
         {
+            _firstHit = Entity.Null;
             ShowUnitCommandsUI();
             return;
         }
@@ -311,6 +311,8 @@ public class SelectionManager : Singleton<SelectionManager>
         foreach (Entity selected in _selected)
         {
             if (!entityManager.Exists(selected)) continue;
+            if (!entityManager.HasBuffer<BufferedUnitCommandDefinition>(selected)) continue;
+
             DynamicBuffer<BufferedUnitCommandDefinition> commands = entityManager.GetBuffer<BufferedUnitCommandDefinition>(selected);
 
             for (int i = 0; i < commands.Length; i++)
@@ -339,6 +341,8 @@ public class SelectionManager : Singleton<SelectionManager>
                 container.Add(itemUi);
             }
         }
+
+        if (container.childCount == 0) UnitCommandsUI.gameObject.SetActive(false);
     }
 
     void HideUnitCommandsUI()

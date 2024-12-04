@@ -144,31 +144,33 @@ public unsafe partial struct CollisionSystem : ISystem
     }
 
     [BurstCompile]
+    static void ClosestPoint(
+        in AABB aabb, in float3 point, out float3 closestPoint
+    )
+    {
+        closestPoint = math.clamp(point, aabb.Min, aabb.Max);
+    }
+
+    [BurstCompile]
     static bool CircleRectIntersect(
         in float3 sphereOrigin, float sphereRadius,
         in float3 aabbOrigin, in AABB aabb,
         out float3 normal, out float depth)
     {
-        float nearestX = math.max(aabbOrigin.x + aabb.Min.x, math.min(sphereOrigin.x, aabbOrigin.x + aabb.Max.x));
-        float nearestY = math.max(aabbOrigin.y + aabb.Min.y, math.min(sphereOrigin.y, aabbOrigin.y + aabb.Max.y));
-        float nearestZ = math.max(aabbOrigin.z + aabb.Min.z, math.min(sphereOrigin.y, aabbOrigin.z + aabb.Max.z));
-        float3 dist = new(
-            sphereOrigin.x - nearestX,
-            sphereOrigin.y - nearestY,
-            sphereOrigin.z - nearestZ);
+        depth = default;
+        float3 closestPoint = math.clamp(sphereOrigin, aabb.Min + aabbOrigin, aabb.Max + aabbOrigin);
+        normal = sphereOrigin - closestPoint;
+        float distanceSquared = math.lengthsq(normal);
+        float radiusSquared = sphereRadius * sphereRadius;
+        if (distanceSquared >= radiusSquared)
+        { return false; }
+        float distance = math.sqrt(distanceSquared);
+        if (distance == 0f)
+        { return false; }
 
-        if (dist.Equals(default))
-        {
-            depth = default;
-            normal = default;
-            return false;
-        }
-
-        float distLength = math.length(dist);
-
-        depth = sphereRadius - distLength;
-        normal = dist / distLength * depth;
-        return depth > 0f;
+        normal /= distance;
+        depth = sphereRadius - distance;
+        return true;
     }
 
     [BurstCompile]
@@ -301,6 +303,9 @@ public unsafe partial struct CollisionSystem : ISystem
                         b->Collider, b->Position,
                         out float3 normal, out float depth
                         )) continue;
+
+                    Debug(a->Collider, a->Position, Color.green, 0.1f, false);
+                    Debug(b->Collider, b->Position, Color.green, 0.1f, false);
 
                     normal.y = 0f;
                     depth = math.clamp(depth, 0f, 0.1f);
