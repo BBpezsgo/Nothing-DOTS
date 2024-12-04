@@ -57,18 +57,33 @@ public partial struct BuildingSystem : ISystem
                 continue;
             }
 
+            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+
+            Player? requestPlayer = default;
+
+            foreach (var player in
+                SystemAPI.Query<RefRO<Player>>())
+            {
+                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                requestPlayer = player.ValueRO;
+                break;
+            }
+            
+            if (!requestPlayer.HasValue)
+            {
+                Debug.LogError(string.Format("Failed to place building: requested by {0} but aint have a team", networkId.ValueRO));
+                return;
+            }
+
             Entity newEntity = BuildingSystem.PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
 
-            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            commandBuffer.SetComponent<UnitTeam>(newEntity, new()
+            {
+                Team = requestPlayer.Value.Team,
+            });
             commandBuffer.SetComponent<GhostOwner>(newEntity, new()
             {
                 NetworkId = networkId.ValueRO.Value,
-            });
-
-            RefRO<PlayerTeam> playerTeam = SystemAPI.GetComponentRO<PlayerTeam>(request.ValueRO.SourceConnection);
-            commandBuffer.SetComponent<UnitTeam>(newEntity, new()
-            {
-                Team = playerTeam.ValueRO.Team,
             });
 
             commandBuffer.DestroyEntity(entity);
