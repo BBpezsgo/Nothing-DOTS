@@ -40,7 +40,7 @@ partial struct ProjectileSystemClient : ISystem
                 continue;
             }
 
-            Ray ray = new(lastPosition, newPosition, Layers.All);
+            Ray ray = new(lastPosition, newPosition, Layers.Default);
 
             if (!QuadrantRayCast.RayCast(map, ray, out var hit))
             { continue; }

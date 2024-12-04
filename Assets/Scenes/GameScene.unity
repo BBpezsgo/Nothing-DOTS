@@ -1096,16 +1096,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89984eadfd7d09bb2850b5543089be3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Prefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
-  SpawnExactUnits: 0
-  Units: []
+  SpawnExactUnits: 1
+  Units:
+  - Prefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
+    Spawn:
+      x: 2
+      y: 1
+    Script: unit-4.bbc
+    Team: 2
+  - Prefab: {fileID: 2099412289264216910, guid: 2433642d39f17be6aa8ad8c596976581, type: 3}
+    Spawn:
+      x: 4
+      y: 6
+    Script: builder.bbc
+    Team: 2
   Team: 2
-  GeneratedScript: unit-2.bbc
-  GeneratedCount: 1000
-  Start: {x: -100, y: -100}
-  End: {x: 100, y: 100}
+  GeneratedScript: unit-4.bbc
+  GeneratedCount: 0
+  Start: {x: -10, y: -10}
+  End: {x: 10, y: 10}
+  RandomUnitPrefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
   RandomRotation: 1
-  RandomPosition: 0
+  RandomPosition: 1
 --- !u!1 &1674000394
 GameObject:
   m_ObjectHideFlags: 0
@@ -1259,7 +1271,7 @@ GameObject:
   - component: {fileID: 1854023023}
   - component: {fileID: 1854023024}
   m_Layer: 0
-  m_Name: HealthBarManager
+  m_Name: EntityInfoUIManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

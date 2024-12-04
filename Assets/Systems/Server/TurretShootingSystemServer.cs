@@ -23,6 +23,8 @@ public partial struct TurretShootingSystemServer : ISystem
                     SystemAPI.Query<RefRW<Turret>, RefRO<LocalToWorld>>())
         {
             if (!turret.ValueRO.ShootRequested) continue;
+            if (turret.ValueRO.Type != TurretType.Combat) continue;
+
             turret.ValueRW.ShootRequested = false;
             Entity instance = commandBuffer.Instantiate(turret.ValueRO.ProjectilePrefab);
             commandBuffer.SetComponent(instance, new LocalTransform

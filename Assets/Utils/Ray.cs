@@ -12,7 +12,7 @@ public readonly struct Ray
     [MarshalAs(UnmanagedType.U1)]
     public readonly bool ExcludeContainingBodies;
 
-    public Ray(UnityEngine.Ray ray, float distance, uint layer = Layers.All, bool excludeContainingBodies = true)
+    public Ray(UnityEngine.Ray ray, float distance, uint layer, bool excludeContainingBodies = true)
     {
         Start = ray.origin;
         End = ray.GetPoint(distance);
@@ -29,7 +29,7 @@ public readonly struct Ray
         ExcludeContainingBodies = excludeContainingBodies;
     }
 
-    public Ray(float3 start, float3 end, uint layer = Layers.All, bool excludeContainingBodies = true)
+    public Ray(float3 start, float3 end, uint layer, bool excludeContainingBodies = true)
     {
 #if UNITY_EDITOR && false
         if (start.Equals(end))

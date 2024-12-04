@@ -1,12 +1,12 @@
-using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Turret")]
 public class TurretAuthoring : MonoBehaviour
 {
-    [NotNull] public GameObject? CannonBallPrefab = default;
-    [NotNull] public Transform? CannonBallSpawn = default;
+    public TurretType Type = default;
+    public GameObject? CannonBallPrefab = default;
+    public Transform? CannonBallSpawn = default;
 
     class Baker : Baker<TurretAuthoring>
     {
@@ -15,8 +15,9 @@ public class TurretAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new Turret
             {
-                ProjectilePrefab = GetEntity(authoring.CannonBallPrefab, TransformUsageFlags.Dynamic),
-                ShootPosition = GetEntity(authoring.CannonBallSpawn, TransformUsageFlags.Dynamic)
+                Type = authoring.Type,
+                ProjectilePrefab = authoring.CannonBallPrefab == null ? Entity.Null : GetEntity(authoring.CannonBallPrefab, TransformUsageFlags.Dynamic),
+                ShootPosition = authoring.CannonBallSpawn == null ? Entity.Null : GetEntity(authoring.CannonBallSpawn, TransformUsageFlags.Dynamic)
             });
         }
     }

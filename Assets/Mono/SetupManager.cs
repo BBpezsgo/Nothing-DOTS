@@ -10,14 +10,14 @@ using UnityEngine;
 [Serializable]
 public class UnitSetup
 {
+    [SerializeField, NotNull] public GameObject? Prefab = default;
     [SerializeField] public float2 Spawn = default;
     [SerializeField, NotNull] public string? Script = default;
+    [SerializeField] public int Team = default;
 }
 
 public class SetupManager : Singleton<SetupManager>
 {
-    [SerializeField, NotNull] public GameObject? Prefab = default;
-
     [Header("Exact Spawns")]
     [SerializeField] bool SpawnExactUnits = default;
     [SerializeField, NotNull] public UnitSetup[]? Units = default;
@@ -28,6 +28,7 @@ public class SetupManager : Singleton<SetupManager>
     [SerializeField] public int GeneratedCount = default;
     [SerializeField] public Vector2 Start = default;
     [SerializeField] public Vector2 End = default;
+    [SerializeField] public GameObject? RandomUnitPrefab = default;
 
     [SerializeField] public bool RandomRotation = default;
     [SerializeField] public bool RandomPosition = default;
@@ -51,32 +52,47 @@ public class SetupManager : Singleton<SetupManager>
 
         DynamicBuffer<BufferedUnit> units = world.EntityManager.GetBuffer<BufferedUnit>(buildingDatabase, true);
 
-        BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, Prefab.name);
-
-        if (unit.Prefab == Entity.Null)
-        {
-            Debug.LogWarning($"Prefab \"{Prefab.name}\" not found");
-            return;
-        }
-
         if (SpawnExactUnits)
         {
             foreach (UnitSetup unitSetup in Units)
             {
+                BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
+
+                if (unit.Prefab == Entity.Null)
+                {
+                    Debug.LogWarning($"Prefab \"{unitSetup.Prefab.name}\" not found");
+                    continue;
+                }
+
                 Entity newUnit = world.EntityManager.Instantiate(unit.Prefab);
                 world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(new float3(unitSetup.Spawn.x, 0.5f, unitSetup.Spawn.y)));
                 world.EntityManager.SetComponentData(newUnit, new Processor()
                 {
                     SourceFile = new FileId(unitSetup.Script, NetcodeEndPoint.Server),
                 });
+                world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+                {
+                    Team = Team,
+                });
             }
         }
 
-        StartCoroutine(SpawnRandomUnits(unit.Prefab));
+        StartCoroutine(SpawnRandomUnits(units));
     }
 
-    IEnumerator SpawnRandomUnits(Entity prefab)
+    IEnumerator SpawnRandomUnits(DynamicBuffer<BufferedUnit> units)
     {
+        if (RandomUnitPrefab == null)
+        { yield break; }
+
+        BufferedUnit prefab = units.FirstOrDefault(static (v, c) => v.Name == c, RandomUnitPrefab.name);
+
+        if (prefab.Prefab == Entity.Null)
+        {
+            Debug.LogWarning($"Prefab \"{RandomUnitPrefab.name}\" not found");
+            yield break;
+        }
+
         yield return new WaitForSecondsRealtime(0.1f);
 
         World world = ConnectionManager.ServerOrDefaultWorld;
@@ -122,7 +138,7 @@ public class SetupManager : Singleton<SetupManager>
                     );
                     if (IsOccupied(generated)) continue;
                     spawned.Add(generated);
-                    Entity newUnit = world.EntityManager.Instantiate(prefab);
+                    Entity newUnit = world.EntityManager.Instantiate(prefab.Prefab);
                     if (RandomRotation)
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
@@ -174,7 +190,7 @@ public class SetupManager : Singleton<SetupManager>
                     if (IsOccupied(generated)) continue;
 
                     spawned.Add(generated);
-                    Entity newUnit = world.EntityManager.Instantiate(prefab);
+                    Entity newUnit = world.EntityManager.Instantiate(prefab.Prefab);
                     if (RandomRotation)
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(

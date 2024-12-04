@@ -100,7 +100,7 @@ public partial struct BuildingSystem : ISystem
                 continue;
             }
 
-            placeholder.ValueRW.CurrentProgress += SystemAPI.Time.DeltaTime;
+            // placeholder.ValueRW.CurrentProgress += SystemAPI.Time.DeltaTime;
         }
     }
 }

@@ -12,6 +12,8 @@ using UnityEngine.UIElements;
 
 public class SelectionManager : Singleton<SelectionManager>
 {
+    const uint Layer = Layers.Selectable | Layers.BuildingPlaceholder;
+
     [SerializeField] float BoxSelectDistanceThreshold = default;
     [SerializeField, NotNull] RectTransform? SelectBox = default;
     [SerializeField, NotNull] UIDocument? UnitCommandsUI = default;
@@ -128,7 +130,7 @@ public class SelectionManager : Singleton<SelectionManager>
         {
             SetSelectBoxVisible(false);
 
-            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
             Entity selectableHit = hit.Entity.Entity;
             SelectUnitCandidate(selectableHit, SelectionStatus.Candidate);
 
@@ -147,7 +149,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (Vector2.Distance(startPoint, endPoint) < BoxSelectDistanceThreshold)
         {
-            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
             Entity selectableHit = hit.Entity.Entity;
             SelectUnitCandidate(selectableHit, SelectionStatus.Candidate);
             SetSelectBoxVisible(false);
@@ -193,7 +195,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (Vector2.Distance(startPoint, endPoint) < BoxSelectDistanceThreshold)
         {
-            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+            if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
             Entity selectableHit = hit.Entity.Entity;
             if (GetUnitStatus(selectableHit).Status == SelectionStatus.Selected &&
                 _selected.Count > 0 &&
@@ -224,8 +226,9 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         _firstHit = Entity.Null;
 
-        if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+        if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
         Entity selectableHit = hit.Entity.Entity;
+        if (!IsMine(selectableHit)) return;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
@@ -250,8 +253,10 @@ public class SelectionManager : Singleton<SelectionManager>
         Entity firstHit = _firstHit;
         _firstHit = Entity.Null;
 
-        if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.Selectable, out Hit hit)) return;
+        if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
         Entity selectableHit = hit.Entity.Entity;
+
+        if (!IsMine(selectableHit)) return;
 
         if (selectableHit != firstHit) return;
 
@@ -272,6 +277,13 @@ public class SelectionManager : Singleton<SelectionManager>
         }
 
         if (entityManager.HasComponent<Unit>(selectableHit))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, selectableHit);
+            return;
+        }
+
+        if (entityManager.HasComponent<Builder>(selectableHit))
         {
             UIManager.Instance.OpenUI(UIManager.Instance.Unit)
                 .Setup(TerminalManager.Instance, selectableHit);
@@ -402,7 +414,7 @@ public class SelectionManager : Singleton<SelectionManager>
         return ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<SelectableUnit>(unit);
     }
 
-    bool IsMine(Entity unit)
+    static bool IsMine(Entity unit)
     {
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return false;
         UnitTeam unitTeam = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<UnitTeam>(unit);

@@ -34,7 +34,22 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
                 continue;
             }
 
-            item.Foreground.fillAmount = item.Percent;
+            item.HealthBar.Foreground.fillAmount = item.HealthPercent;
+            bool healthBarVisible = item.HealthPercent != default;
+            if (item.HealthBar.IsVisible != healthBarVisible)
+            {
+                item.HealthBar.IsVisible = healthBarVisible;
+                item.HealthBar.Object.SetActive(healthBarVisible);
+            }
+
+            item.BuildingProgress.Foreground.fillAmount = item.BuildingProgressPercent;
+            bool buildingProgressVisible = item.BuildingProgressPercent != default;
+            if (item.BuildingProgress.IsVisible != buildingProgressVisible)
+            {
+                item.BuildingProgress.IsVisible = buildingProgressVisible;
+                item.BuildingProgress.Object.SetActive(buildingProgressVisible);
+            }
+
             item.CanvasGroup.alpha = math.clamp(1f - ((screenPoint.z - StartFadeDistance) / (DisappearDistance - StartFadeDistance)), 0f, 1f);
 
             switch (item.SelectionStatus)

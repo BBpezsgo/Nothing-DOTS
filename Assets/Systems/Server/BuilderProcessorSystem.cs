@@ -15,7 +15,7 @@ using f32 = System.Single;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-partial struct UnitProcessorSystem : ISystem
+partial struct BuilderProcessorSystem : ISystem
 {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct MappedMemory
@@ -36,8 +36,8 @@ partial struct UnitProcessorSystem : ISystem
     [BurstCompile]
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
-        foreach (var (processor, unit, vehicle, transform, entity) in
-                    SystemAPI.Query<RefRW<Processor>, RefRW<Unit>, RefRW<Vehicle>, RefRW<LocalToWorld>>()
+        foreach (var (processor, builder, vehicle, transform, entity) in
+                    SystemAPI.Query<RefRW<Processor>, RefRW<Builder>, RefRW<Vehicle>, RefRW<LocalToWorld>>()
                     .WithEntityAccess())
         {
             MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
@@ -50,24 +50,10 @@ partial struct UnitProcessorSystem : ISystem
             mapped->Position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
             mapped->Forward = new(transform.ValueRO.Forward.x, transform.ValueRO.Forward.z);
 
-            if (unit.ValueRO.Radar != Entity.Null &&
-                float.IsFinite(mapped->RadarDirection))
+            if (builder.ValueRO.Turret != Entity.Null)
             {
-                RefRW<LocalTransform> radar = SystemAPI.GetComponentRW<LocalTransform>(unit.ValueRO.Radar);
-                // const float speed = 720f;
-                quaternion target = quaternion.EulerXYZ(
-                    0f,
-                    mapped->RadarDirection,
-                    0f);
-                // Utils.RotateTowards(ref radar.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
-                radar.ValueRW.Rotation = target;
-                mapped->RadarResponse = processor.ValueRW.RadarResponse;
-            }
-
-            if (unit.ValueRO.Turret != Entity.Null)
-            {
-                RefRW<Turret> turret = SystemAPI.GetComponentRW<Turret>(unit.ValueRO.Turret);
-                RefRO<LocalTransform> turretTransform = SystemAPI.GetComponentRO<LocalTransform>(unit.ValueRO.Turret);
+                RefRW<Turret> turret = SystemAPI.GetComponentRW<Turret>(builder.ValueRO.Turret);
+                RefRO<LocalTransform> turretTransform = SystemAPI.GetComponentRO<LocalTransform>(builder.ValueRO.Turret);
 
                 if (mapped->InputShoot != 0)
                 {

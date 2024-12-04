@@ -69,7 +69,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             commandBuffer.DestroyEntity(entity);
         }
 
-        foreach ((RefRW<Processor> processor, DynamicBuffer<BufferedUnitCommandDefinition> commandDefinitions, Entity entity) in
+        foreach (var (processor, commandDefinitions, entity) in
                     SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>>()
                     .WithEntityAccess())
         {

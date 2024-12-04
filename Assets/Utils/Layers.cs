@@ -11,4 +11,5 @@ public static class Layers
     public const uint UI = 1u << 5;
     public const uint Selectable = 1u << 6;
     public const uint Ground = 1u << 7;
+    public const uint BuildingPlaceholder = 1u << 8;
 }

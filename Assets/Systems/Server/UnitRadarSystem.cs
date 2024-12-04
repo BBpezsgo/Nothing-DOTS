@@ -31,7 +31,7 @@ public partial struct UnitRadarSystem : ISystem
             float3 rayStart = transform.ValueRO.Position + (direction * offset);
             float3 rayEnd = transform.ValueRO.Position + (direction * (Unit.RadarRadius - offset));
 
-            Ray ray = new(rayStart, rayEnd, Layers.All);
+            Ray ray = new(rayStart, rayEnd, Layers.Default);
 
 #if DEBUG_LINES
             Debug.DrawLine(rayStart, rayEnd, Color.white, 1f);

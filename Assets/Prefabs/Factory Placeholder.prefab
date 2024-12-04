@@ -14,7 +14,9 @@ GameObject:
   - component: {fileID: -6907688571721120180}
   - component: {fileID: 8301287405214306567}
   - component: {fileID: -7239837160215501677}
-  m_Layer: 0
+  - component: {fileID: 1477827117777453607}
+  - component: {fileID: 6020588902082921935}
+  m_Layer: 8
   m_Name: Factory Placeholder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -101,7 +103,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50ab1f204f4924353adf608f02b43471, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  TotalProgress: 10
 --- !u!114 &8301287405214306567
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -138,3 +139,36 @@ MonoBehaviour:
   UsePreSerialization: 0
   RollbackPredictedSpawnedGhostState: 0
   RollbackPredictionOnStructuralChanges: 1
+--- !u!114 &1477827117777453607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7887398088158380673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51861ae5f12b232baa32ed1cb3b04781, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!65 &6020588902082921935
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7887398088158380673}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}

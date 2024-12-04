@@ -11,6 +11,8 @@ public class BuildingPlaceholderAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<BuildingPlaceholder>(entity);
             AddComponent<UnitTeam>(entity);
+            AddComponent<SelectableUnit>(entity);
+            AddComponent<EntityWithInfoUI>(entity);
         }
     }
 }
