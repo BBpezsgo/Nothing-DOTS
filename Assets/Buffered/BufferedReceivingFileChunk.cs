@@ -3,14 +3,14 @@ using Unity.Collections;
 using Unity.Entities;
 
 [BurstCompile]
-public struct BufferedFileChunk : IBufferElementData
+public struct BufferedReceivingFileChunk : IBufferElementData
 {
     public NetcodeEndPoint Source;
     public int TransactionId;
     public int ChunkIndex;
     public FixedBytes126 Data;
 
-    public BufferedFileChunk(
+    public BufferedReceivingFileChunk(
         NetcodeEndPoint source,
         int transactionId,
         int chunkIndex,

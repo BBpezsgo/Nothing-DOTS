@@ -80,15 +80,23 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
         BlurTerminal();
 
-        ui_ButtonSelect.clickable = new Clickable(() =>
+        if (!string.IsNullOrWhiteSpace(FileChunkManager.BasePath))
         {
-            selectingFile = Directory.GetFiles(FileChunkManager.BasePath)
-                .Select(v => Path.GetRelativePath(FileChunkManager.BasePath, v))
-                .Where(v => !v.EndsWith(".meta"))
-                .ToImmutableArray();
-            selectingFileI = 0;
-            SelectTerminal();
-        });
+            ui_ButtonSelect.SetEnabled(true);
+            ui_ButtonSelect.clickable = new Clickable(() =>
+            {
+                selectingFile = Directory.GetFiles(FileChunkManager.BasePath)
+                    .Select(v => Path.GetRelativePath(FileChunkManager.BasePath, v))
+                    .Where(v => !v.EndsWith(".meta"))
+                    .ToImmutableArray();
+                selectingFileI = 0;
+                SelectTerminal();
+            });
+        }
+        else
+        {
+            ui_ButtonSelect.SetEnabled(false);
+        }
 
         ui_ButtonCompile.clickable = new Clickable(() =>
         {
@@ -100,7 +108,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 return;
             }
 
-            string file = Path.Combine(FileChunkManager.BasePath, ui_inputSourcePath.value);
+            string file =
+                string.IsNullOrWhiteSpace(FileChunkManager.BasePath)
+                ? ui_inputSourcePath.value
+                : Path.Combine(FileChunkManager.BasePath, ui_inputSourcePath.value);
 
             Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(SetProcessorSourceRequestRpc));
             GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);

@@ -6,6 +6,7 @@ public enum FileRequestMethod
 {
     OnlyHeader,
     Header,
+    HeaderAndData,
 }
 
 [BurstCompile]

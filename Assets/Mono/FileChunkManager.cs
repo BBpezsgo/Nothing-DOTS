@@ -208,7 +208,12 @@ public class _Drawer4 : DictionaryDrawer<FileId, FileRequest> { }
 
 public class FileChunkManager : Singleton<FileChunkManager>
 {
-    public const string BasePath = "/home/BB/Projects/Nothing-DOTS/Assets/CodeFiles";
+    public const string? BasePath
+#if UNITY_EDITOR
+        = "/home/BB/Projects/Nothing-DOTS/Assets/CodeFiles";
+#else
+        = null;
+#endif
 
     [SerializeField, NotNull] SerializableDictionary<string, FileData>? LocalFiles = default;
     [SerializeField, NotNull] SerializableDictionary<FileId, RemoteFile>? RemoteFiles = default;
@@ -266,6 +271,8 @@ public class FileChunkManager : Singleton<FileChunkManager>
                     CloseFile(file);
                     goto breakLoop;
                 case FileStatus.NotRequested:
+                    if (RpcRequests.Count == 0)
+                    { RpcRequests.Enqueue(file); }
                     break;
                 case FileStatus.NotFound:
                 case FileStatus.CachedNotFound:
@@ -287,15 +294,17 @@ public class FileChunkManager : Singleton<FileChunkManager>
             Entity rpcEntity = entityCommandBuffer.CreateEntity();
             entityCommandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
             {
-                Method = FileRequestMethod.Header,
+                Method = FileRequestMethod.HeaderAndData,
                 FileName = rpcRequest.Name,
             });
+            Entity targetConnection = rpcRequest.Source.GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager);
             entityCommandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
             {
-                TargetConnection = rpcRequest.Source.GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager),
+                TargetConnection = targetConnection,
             });
             entityCommandBuffer.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
             entityCommandBuffer.Dispose();
+            Debug.Log($"Sending file request {rpcRequest}");
         }
     }
 
@@ -340,6 +349,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
         }
 
         DynamicBuffer<BufferedReceivingFile> fileHeaders = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BufferedReceivingFile>(Instance.DatabaseEntity);
+        DynamicBuffer<BufferedReceivingFileChunk> fileChunks = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BufferedReceivingFileChunk>(Instance.DatabaseEntity);
 
         for (int i = fileHeaders.Length - 1; i >= 0; i--)
         {
@@ -362,7 +372,15 @@ public class FileChunkManager : Singleton<FileChunkManager>
                     new FileId(header.FileName, header.Source)
                 );
                 if (removeIfDone)
-                { fileHeaders.RemoveAt(i); }
+                {
+                    fileHeaders.RemoveAt(i);
+                    for (int j = fileChunks.Length - 1; j >= 0; j--)
+                    {
+                        if (fileChunks[j].Source != header.Source) continue;
+                        if (fileChunks[j].TransactionId != header.TransactionId) continue;
+                        fileChunks.RemoveAt(j);
+                    }
+                }
                 return (FileStatus.NotFound, default, default);
             }
 
@@ -374,14 +392,21 @@ public class FileChunkManager : Singleton<FileChunkManager>
                     new FileId(header.FileName, header.Source)
                 );
                 if (removeIfDone)
-                { fileHeaders.RemoveAt(i); }
+                {
+                    fileHeaders.RemoveAt(i);
+                    for (int j = fileChunks.Length - 1; j >= 0; j--)
+                    {
+                        if (fileChunks[j].Source != header.Source) continue;
+                        if (fileChunks[j].TransactionId != header.TransactionId) continue;
+                        fileChunks.RemoveAt(j);
+                    }
+                }
                 return (FileStatus.Received, default, default);
             }
 
             FixedBytes126[] chunks = new FixedBytes126[FileChunkManager.GetChunkLength(header.TotalLength)];
             bool[] received = new bool[FileChunkManager.GetChunkLength(header.TotalLength)];
 
-            DynamicBuffer<BufferedFileChunk> fileChunks = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BufferedFileChunk>(Instance.DatabaseEntity, true);
             for (int j = 0; j < fileChunks.Length; j++)
             {
                 if (fileChunks[j].TransactionId != header.TransactionId) continue;
@@ -408,7 +433,15 @@ public class FileChunkManager : Singleton<FileChunkManager>
                 new FileId(header.FileName, header.Source)
             );
             if (removeIfDone)
-            { fileHeaders.RemoveAt(i); }
+            {
+                fileHeaders.RemoveAt(i);
+                for (int j = fileChunks.Length - 1; j >= 0; j--)
+                {
+                    if (fileChunks[j].Source != header.Source) continue;
+                    if (fileChunks[j].TransactionId != header.TransactionId) continue;
+                    fileChunks.RemoveAt(j);
+                }
+            }
             return (FileStatus.Received, received.Length, received.Length);
         }
 
@@ -455,11 +488,14 @@ public class FileChunkManager : Singleton<FileChunkManager>
         if (fileName[0] == '~')
         { fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + fileName[1..]); }
 
-        if (File.Exists(Path.Combine(BasePath, "." + fileName)))
-        { return FileData.FromLocal(Path.Combine(BasePath, "." + fileName)); }
+        if (!string.IsNullOrWhiteSpace(BasePath))
+        {
+            if (File.Exists(Path.Combine(BasePath, "." + fileName)))
+            { return FileData.FromLocal(Path.Combine(BasePath, "." + fileName)); }
 
-        if (File.Exists(Path.Combine(BasePath, fileName)))
-        { return FileData.FromLocal(Path.Combine(BasePath, fileName)); }
+            if (File.Exists(Path.Combine(BasePath, fileName)))
+            { return FileData.FromLocal(Path.Combine(BasePath, fileName)); }
+        }
 
         if (File.Exists(fileName))
         { return FileData.FromLocal(fileName); }

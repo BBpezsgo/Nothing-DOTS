@@ -10,9 +10,10 @@ public class BufferedFilesAuthoring : MonoBehaviour
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new BufferedFiles());
-            AddBuffer<BufferedFileChunk>(entity);
+            AddBuffer<BufferedReceivingFileChunk>(entity);
             AddBuffer<BufferedReceivingFile>(entity);
             AddBuffer<BufferedSendingFile>(entity);
+            AddBuffer<BufferedSentFileChunk>(entity);
         }
     }
 }

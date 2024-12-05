@@ -7,6 +7,8 @@ using Unity.NetCode;
 partial struct BufferedFileReceiverSystem : ISystem
 {
     const bool DebugLog = false;
+    const int ChunkRequestsLimit = 10;
+    const double ChunkRequestsCooldown = 1d;
 
     void ISystem.OnCreate(ref SystemState state)
     {
@@ -17,7 +19,7 @@ partial struct BufferedFileReceiverSystem : ISystem
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        DynamicBuffer<BufferedFileChunk> fileChunks = SystemAPI.GetSingletonBuffer<BufferedFileChunk>();
+        DynamicBuffer<BufferedReceivingFileChunk> fileChunks = SystemAPI.GetSingletonBuffer<BufferedReceivingFileChunk>();
         DynamicBuffer<BufferedReceivingFile> receivingFiles = SystemAPI.GetSingletonBuffer<BufferedReceivingFile>();
 
         foreach (var (request, command, entity) in
@@ -64,8 +66,36 @@ partial struct BufferedFileReceiverSystem : ISystem
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
 
+            bool fileFound = false;
+            for (int i = 0; i < receivingFiles.Length; i++)
+            {
+                if (receivingFiles[i].Source != ep) continue;
+                if (receivingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
+
+                receivingFiles[i] = new BufferedReceivingFile(
+                    receivingFiles[i].Kind,
+                    receivingFiles[i].Source,
+                    receivingFiles[i].TransactionId,
+                    receivingFiles[i].FileName,
+                    receivingFiles[i].TotalLength,
+                    SystemAPI.Time.ElapsedTime,
+                    receivingFiles[i].Version
+                );
+                fileFound = true;
+                if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)}");
+
+                break;
+            }
+
+            if (!fileFound)
+            {
+                commandBuffer.DestroyEntity(entity);
+                Debug.LogWarning("Unexpected file chunk");
+                continue;
+            }
+
             bool added = false;
-            BufferedFileChunk fileChunk = new(
+            BufferedReceivingFileChunk fileChunk = new(
                 ep,
                 command.ValueRO.TransactionId,
                 command.ValueRO.ChunkIndex,
@@ -90,25 +120,6 @@ partial struct BufferedFileReceiverSystem : ISystem
                 if (DebugLog) Debug.Log($"Received chunk {fileChunk.ChunkIndex}");
             }
 
-            for (int i = 0; i < receivingFiles.Length; i++)
-            {
-                if (receivingFiles[i].Source != ep) continue;
-                if (receivingFiles[i].TransactionId != fileChunk.TransactionId) continue;
-
-                receivingFiles[i] = new BufferedReceivingFile(
-                    receivingFiles[i].Kind,
-                    receivingFiles[i].Source,
-                    receivingFiles[i].TransactionId,
-                    receivingFiles[i].FileName,
-                    receivingFiles[i].TotalLength,
-                    SystemAPI.Time.ElapsedTime,
-                    receivingFiles[i].Version
-                );
-                if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {fileChunk.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)}");
-
-                break;
-            }
-
             commandBuffer.DestroyEntity(entity);
         }
 
@@ -116,7 +127,7 @@ partial struct BufferedFileReceiverSystem : ISystem
         for (int i = 0; i < receivingFiles.Length; i++)
         {
             double delta = SystemAPI.Time.ElapsedTime - receivingFiles[i].LastRedeivedAt;
-            if (delta < 0.5d) continue;
+            if (delta < ChunkRequestsCooldown) continue;
             if (receivingFiles[i].Kind != FileHeaderKind.Ok) continue;
 
             NativeArray<bool> receivedChunks = new(FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength), Allocator.Temp);
@@ -143,7 +154,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                     TargetConnection = receivingFiles[i].Source.GetEntity(ref state),
                 });
                 if (DebugLog) Debug.Log($"Requesting chunk {j} for file \"{receivingFiles[i].FileName}\"");
-                if (++requested >= 15) break;
+                if (++requested >= ChunkRequestsLimit) break;
             }
 
             receivedChunks.Dispose();

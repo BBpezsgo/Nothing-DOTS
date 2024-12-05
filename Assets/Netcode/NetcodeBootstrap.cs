@@ -22,17 +22,17 @@ class NetcodeBootstrap : ClientServerBootstrap
 
     public static void DestroyLocalWorld()
     {
-        // LocalWorld?.Dispose();
-        // foreach (World world in World.All)
-        // {
-        //     if (world == LocalWorld) continue;
-        //     if (world.Flags == WorldFlags.Game)
-        //     {
-        //         world.Dispose();
-        //         break;
-        //     }
-        // }
-        // LocalWorld = null;
+        LocalWorld?.Dispose();
+        foreach (World world in World.All)
+        {
+            if (world == LocalWorld) continue;
+            if (world.Flags == WorldFlags.Game)
+            {
+                world.Dispose();
+                break;
+            }
+        }
+        LocalWorld = null;
     }
 
     public static IEnumerator CreateServer(NetworkEndpoint endpoint)
@@ -110,24 +110,6 @@ class NetcodeBootstrap : ClientServerBootstrap
         using (EntityQuery driverQ = ClientWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
         {
             driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.Connect(ClientWorld.EntityManager, endpoint);
-        }
-    }
-
-    public static void Start()
-    {
-        ServerWorld = CreateServerWorld("ServerWorld");
-        ClientWorld = CreateClientWorld("ClientWorld");
-
-        NetworkEndpoint ep = NetworkEndpoint.AnyIpv4.WithPort(2222);
-        {
-            using var drvQuery = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>());
-            drvQuery.GetSingletonRW<NetworkStreamDriver>().ValueRW.Listen(ep);
-        }
-
-        ep = NetworkEndpoint.LoopbackIpv4.WithPort(2222);
-        {
-            using var drvQuery = ClientWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>());
-            drvQuery.GetSingletonRW<NetworkStreamDriver>().ValueRW.Connect(ClientWorld.EntityManager, ep);
         }
     }
 

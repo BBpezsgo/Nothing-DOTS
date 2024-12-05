@@ -4,7 +4,6 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 using Unity.Networking.Transport;
-using Unity.Scenes;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -138,19 +137,15 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
-        // UI.gameObject.SetActive(false);
+        UI.gameObject.SetActive(false);
     }
 
     public static void KickClient(int connectionId)
     {
         if (ServerWorld == null) return;
 
-        // using EntityQuery networkStreamConnectionQ = Instance.ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkStreamConnection>());
         using EntityQuery networkIdQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkId>());
         using NativeArray<Entity> entities = networkIdQ.ToEntityArray(Allocator.Temp);
-
-        // using EntityQuery driverQ = Instance.ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>());
-        // RefRW<NetworkStreamDriver> driver = driverQ.GetSingletonRW<NetworkStreamDriver>();
 
         for (int i = 0; i < entities.Length; i++)
         {
