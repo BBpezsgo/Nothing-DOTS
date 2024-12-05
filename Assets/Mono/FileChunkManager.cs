@@ -208,12 +208,7 @@ public class _Drawer4 : DictionaryDrawer<FileId, FileRequest> { }
 
 public class FileChunkManager : Singleton<FileChunkManager>
 {
-    public const string? BasePath
-#if UNITY_EDITOR
-        = "/home/BB/Projects/Nothing-DOTS/Assets/CodeFiles";
-#else
-        = null;
-#endif
+    public static string? BasePath => Application.streamingAssetsPath;
 
     [SerializeField, NotNull] SerializableDictionary<string, FileData>? LocalFiles = default;
     [SerializeField, NotNull] SerializableDictionary<FileId, RemoteFile>? RemoteFiles = default;
