@@ -35,7 +35,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
             StartCoroutine(StartServerAsync(endpoint));
         };
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && EDITOR_DEBUG
         StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
 #endif
     }

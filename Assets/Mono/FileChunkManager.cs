@@ -233,14 +233,13 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
         {
             using EntityQuery databaseQ = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(BufferedFiles));
-            if (databaseQ.TryGetSingletonEntity<BufferedFiles>(out Entity bufferedFiles))
+            if (!databaseQ.TryGetSingletonEntity<BufferedFiles>(out Entity bufferedFiles))
             {
-                DatabaseEntity = bufferedFiles;
+                // Debug.LogError($"Buffered files singleton not found");
+                return;
             }
-            else
-            {
-                Debug.LogError($"Buffered files singleton not found");
-            }
+
+            DatabaseEntity = bufferedFiles;
         }
 
         foreach ((FileId file, FileRequest task) in Requests)
