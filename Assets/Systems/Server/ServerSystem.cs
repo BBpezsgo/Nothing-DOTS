@@ -2,6 +2,7 @@ using System;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.NetCode;
+using Unity.Transforms;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -22,6 +23,7 @@ public partial struct ServerSystem : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         PrefabDatabase prefabs = SystemAPI.GetSingleton<PrefabDatabase>();
+        var spawns = SystemAPI.GetSingletonBuffer<BufferedSpawn>(false);
 
         foreach (var (id, entity) in
             SystemAPI.Query<RefRO<NetworkId>>()
@@ -65,6 +67,42 @@ public partial struct ServerSystem : ISystem
             {
                 item.ValueRW.ConnectionId = -1;
                 item.ValueRW.ConnectionState = PlayerConnectionState.Disconnected;
+            }
+            else
+            {
+                if (!item.ValueRO.IsCoreComputerSpawned)
+                {
+                    for (int i = 0; i < spawns.Length; i++)
+                    {
+                        if (spawns[i].IsOccupied) continue;
+                        spawns[i] = spawns[i] with { IsOccupied = true };
+
+                        Entity coreComputer = commandBuffer.Instantiate(prefabs.CoreComputer);
+                        commandBuffer.SetComponent<UnitTeam>(coreComputer, new()
+                        {
+                            Team = item.ValueRO.Team
+                        });
+                        commandBuffer.SetComponent<LocalTransform>(coreComputer, LocalTransform.FromPosition(spawns[i].Position));
+                        commandBuffer.SetComponent<GhostOwner>(coreComputer, new()
+                        {
+                            NetworkId = item.ValueRO.ConnectionId,
+                        });
+
+                        Entity builder = commandBuffer.Instantiate(prefabs.Builder);
+                        commandBuffer.SetComponent<UnitTeam>(builder, new()
+                        {
+                            Team = item.ValueRO.Team
+                        });
+                        commandBuffer.SetComponent<LocalTransform>(builder, LocalTransform.FromPosition(spawns[i].Position + new Unity.Mathematics.float3(2f, 0.5f, 2f)));
+                        commandBuffer.SetComponent<GhostOwner>(builder, new()
+                        {
+                            NetworkId = item.ValueRO.ConnectionId,
+                        });
+
+                        break;
+                    }
+                    item.ValueRW.IsCoreComputerSpawned = true;
+                }
             }
         }
     }

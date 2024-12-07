@@ -14,12 +14,7 @@ public partial struct BuildingSystem : ISystem
         float3 position)
     {
         Entity newEntity = commandBuffer.Instantiate(building.PlaceholderPrefab);
-        commandBuffer.SetComponent<LocalTransform>(newEntity, new()
-        {
-            Position = position,
-            Rotation = quaternion.identity,
-            Scale = 1f,
-        });
+        commandBuffer.SetComponent<LocalTransform>(newEntity, LocalTransform.FromPosition(position));
         commandBuffer.SetComponent<BuildingPlaceholder>(newEntity, new()
         {
             BuildingPrefab = building.Prefab,
@@ -96,12 +91,7 @@ public partial struct BuildingSystem : ISystem
             if (placeholder.ValueRO.CurrentProgress >= placeholder.ValueRO.TotalProgress)
             {
                 Entity newEntity = commandBuffer.Instantiate(placeholder.ValueRO.BuildingPrefab);
-                commandBuffer.SetComponent<LocalTransform>(newEntity, new()
-                {
-                    Position = transform.ValueRO.Position,
-                    Rotation = transform.ValueRO.Rotation,
-                    Scale = 1f,
-                });
+                commandBuffer.SetComponent<LocalTransform>(newEntity, LocalTransform.FromPositionRotation(transform.ValueRO.Position, transform.ValueRO.Rotation));
                 commandBuffer.SetComponent<GhostOwner>(newEntity, new()
                 {
                     NetworkId = owner.ValueRO.NetworkId,

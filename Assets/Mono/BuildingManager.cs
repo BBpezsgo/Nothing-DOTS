@@ -158,7 +158,13 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             ApplyHologram(BuildingHologram, SelectedBuilding);
         }
 
-        Vector3 position = MainCamera.Camera.ScreenToWorldPosition(Mouse.current.position.value);
+        UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Mouse.current.position.value);
+        Plane plane = new(Vector3.up, Vector3.zero);
+
+        if (!plane.Raycast(ray, out float distance))
+        { return; }
+
+        Vector3 position = ray.GetPoint(distance);
         position.y = 0.5f;
 
         if (Input.GetKey(KeyCode.LeftControl))
@@ -166,8 +172,13 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
         BuildingHologram.transform.position = position;
 
-        // TODO: this
-        IsValidPosition = true;
+        var map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
+        Collider placeholderCollider = new(true, new AABBCollider() { AABB = new AABB() { Extents = new float3(1f, 1f, 1f) }, });
+
+        IsValidPosition = !CollisionSystem.Intersect(
+            map,
+            placeholderCollider, position,
+            out _, out _);
 
         MeshRenderer[] renderers = BuildingHologram.GetComponentsInChildren<MeshRenderer>();
 

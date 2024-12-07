@@ -27,12 +27,7 @@ public partial struct TurretShootingSystemServer : ISystem
 
             turret.ValueRW.ShootRequested = false;
             Entity instance = commandBuffer.Instantiate(turret.ValueRO.ProjectilePrefab);
-            commandBuffer.SetComponent(instance, new LocalTransform
-            {
-                Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
-                Rotation = quaternion.identity,
-                Scale = 1f,
-            });
+            commandBuffer.SetComponent(instance, LocalTransform.FromPosition(SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position));
             commandBuffer.SetComponent(instance, new Projectile
             {
                 Velocity = math.normalize(localToWorld.ValueRO.Up) * Projectile.Speed,

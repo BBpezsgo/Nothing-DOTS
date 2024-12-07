@@ -21,18 +21,21 @@ public enum ColliderType : byte
 [StructLayout(LayoutKind.Explicit)]
 public readonly struct Collider : IComponentData
 {
-    [FieldOffset(0)] public readonly ColliderType Type;
-    [FieldOffset(1)] public readonly SphereCollider Sphere;
-    [FieldOffset(1)] public readonly AABBCollider AABB;
+    [FieldOffset(0)] public readonly bool IsStatic;
+    [FieldOffset(1)] public readonly ColliderType Type;
+    [FieldOffset(2)] public readonly SphereCollider Sphere;
+    [FieldOffset(2)] public readonly AABBCollider AABB;
 
-    public Collider(SphereCollider sphere) : this()
+    public Collider(bool isStatic, SphereCollider sphere) : this()
     {
+        IsStatic = isStatic;
         Type = ColliderType.Sphere;
         Sphere = sphere;
     }
 
-    public Collider(AABBCollider aabb) : this()
+    public Collider(bool isStatic, AABBCollider aabb) : this()
     {
+        IsStatic = isStatic;
         Type = ColliderType.AABB;
         AABB = aabb;
     }

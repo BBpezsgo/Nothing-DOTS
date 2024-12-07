@@ -6,6 +6,8 @@ using UnityEngine;
 public class PrefabDatabaseAuthoring : MonoBehaviour
 {
     [NotNull] public GameObject? PlayerPrefab = default;
+    [NotNull] public GameObject? CoreComputerPrefab = default;
+    [NotNull] public GameObject? Builder = default;
 
     class Baker : Baker<PrefabDatabaseAuthoring>
     {
@@ -15,6 +17,8 @@ public class PrefabDatabaseAuthoring : MonoBehaviour
             AddComponent<PrefabDatabase>(entity, new()
             {
                 Player = GetEntity(authoring.PlayerPrefab, TransformUsageFlags.Dynamic),
+                CoreComputer = GetEntity(authoring.CoreComputerPrefab, TransformUsageFlags.Dynamic),
+                Builder = GetEntity(authoring.Builder, TransformUsageFlags.Dynamic),
             });
         }
     }

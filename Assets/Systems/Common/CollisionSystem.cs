@@ -212,12 +212,14 @@ public unsafe partial struct CollisionSystem : ISystem
         depth = default;
 
         if (
-            a.Min.x <= b.Max.x &&
-            a.Max.x >= b.Min.x &&
-            a.Min.y <= b.Max.y &&
-            a.Max.y >= b.Min.y &&
-            a.Min.z <= b.Max.z &&
-            a.Max.z >= b.Min.z
+            _a.Min.x <= _b.Max.x &&
+            _a.Max.x >= _b.Min.x &&
+
+            _a.Min.y <= _b.Max.y &&
+            _a.Max.y >= _b.Min.y &&
+
+            _a.Min.z <= _b.Max.z &&
+            _a.Max.z >= _b.Min.z
         )
         {
             // float dx = Math.Min(a.Max.x - b.Min.x, b.Max.x - a.Min.x);
@@ -282,6 +284,41 @@ public unsafe partial struct CollisionSystem : ISystem
     }
 
     [BurstCompile]
+    public static bool Intersect(
+        in Unity.Collections.NativeParallelHashMap<uint, Unity.Collections.NativeList<QuadrantEntity>>.ReadOnly quadrantMap,
+        in Collider collider, in float3 colliderPosition,
+        out float3 normal, out float depth)
+    {
+        normal = default;
+        depth = default;
+
+        if (!quadrantMap.TryGetValue(QuadrantSystem.ToGrid(colliderPosition).key, out var quadrant)) return false;
+
+        return Intersect(
+            quadrant,
+            collider, colliderPosition,
+            out normal, out depth);
+    }
+
+    [BurstCompile]
+    public static bool Intersect(
+        in Unity.Collections.NativeList<QuadrantEntity> quadrant,
+        in Collider collider, in float3 colliderPosition,
+        out float3 normal, out float depth)
+    {
+        normal = default;
+        depth = default;
+
+        for (int i = 0; i < quadrant.Length; i++)
+        {
+            if (Intersect(quadrant[i].Collider, quadrant[i].Position, collider, colliderPosition, out normal, out depth))
+            { return true; }
+        }
+
+        return false;
+    }
+
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         var map = QuadrantSystem.GetMap(ref state);
@@ -298,6 +335,8 @@ public unsafe partial struct CollisionSystem : ISystem
                 {
                     QuadrantEntity* b = &pair.Value.GetUnsafePtr()[j];
 
+                    if (a->Collider.IsStatic && b->Collider.IsStatic) continue;
+
                     if (!Intersect(
                         a->Collider, a->Position,
                         b->Collider, b->Position,
@@ -310,14 +349,31 @@ public unsafe partial struct CollisionSystem : ISystem
                     normal.y = 0f;
                     depth = math.clamp(depth, 0f, 0.1f);
 
-                    float3 displaceA = normal * (depth * 0.5f);
-                    float3 displaceB = normal * (depth * -0.5f);
+                    if (a->Collider.IsStatic)
+                    {
+                        float3 displaceB = normal * depth;
 
-                    a->ResolvedOffset += displaceA;
-                    a->Position += displaceA;
+                        b->ResolvedOffset += displaceB;
+                        b->Position += displaceB;
+                    }
+                    else if (b->Collider.IsStatic)
+                    {
+                        float3 displaceA = normal * depth;
 
-                    b->ResolvedOffset += displaceB;
-                    b->Position += displaceB;
+                        a->ResolvedOffset += displaceA;
+                        a->Position += displaceA;
+                    }
+                    else
+                    {
+                        float3 displaceA = normal * (depth * 0.5f);
+                        float3 displaceB = normal * (depth * -0.5f);
+
+                        a->ResolvedOffset += displaceA;
+                        a->Position += displaceA;
+
+                        b->ResolvedOffset += displaceB;
+                        b->Position += displaceB;
+                    }
                 }
                 RefRW<LocalTransform> transformA = SystemAPI.GetComponentRW<LocalTransform>(a->Entity);
                 transformA.ValueRW.Position += a->ResolvedOffset;
