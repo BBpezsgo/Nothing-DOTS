@@ -8,13 +8,13 @@ public struct BufferedReceivingFileChunk : IBufferElementData
     public NetcodeEndPoint Source;
     public int TransactionId;
     public int ChunkIndex;
-    public FixedBytes126 Data;
+    public FileChunk Data;
 
     public BufferedReceivingFileChunk(
         NetcodeEndPoint source,
         int transactionId,
         int chunkIndex,
-        FixedBytes126 data)
+        FileChunk data)
     {
         Source = source;
         TransactionId = transactionId;

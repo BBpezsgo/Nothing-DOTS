@@ -1,5 +1,6 @@
+global using FileChunk = Unity.Collections.FixedBytes126;
+
 using Unity.Burst;
-using Unity.Collections;
 using Unity.NetCode;
 
 [BurstCompile]
@@ -9,5 +10,5 @@ public struct FileChunkRpc : IRpcCommand
 
     public required int TransactionId;
     public required int ChunkIndex;
-    public required FixedBytes126 Data;
+    public required FileChunk Data;
 }

@@ -294,21 +294,6 @@ public unsafe partial struct CollisionSystem : ISystem
 
         if (!quadrantMap.TryGetValue(QuadrantSystem.ToGrid(colliderPosition).key, out var quadrant)) return false;
 
-        return Intersect(
-            quadrant,
-            collider, colliderPosition,
-            out normal, out depth);
-    }
-
-    [BurstCompile]
-    public static bool Intersect(
-        in Unity.Collections.NativeList<QuadrantEntity> quadrant,
-        in Collider collider, in float3 colliderPosition,
-        out float3 normal, out float depth)
-    {
-        normal = default;
-        depth = default;
-
         for (int i = 0; i < quadrant.Length; i++)
         {
             if (Intersect(quadrant[i].Collider, quadrant[i].Position, collider, colliderPosition, out normal, out depth))

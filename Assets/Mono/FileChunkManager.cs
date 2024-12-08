@@ -210,7 +210,6 @@ public class FileChunkManager : Singleton<FileChunkManager>
 {
     public static string? BasePath => Application.streamingAssetsPath;
 
-    [SerializeField, NotNull] SerializableDictionary<string, FileData>? LocalFiles = default;
     [SerializeField, NotNull] SerializableDictionary<FileId, RemoteFile>? RemoteFiles = default;
     [SerializeField, NotNull] SerializableDictionary<FileId, FileRequest>? Requests = default;
     [NotNull] Queue<FileId>? RpcRequests = default;
@@ -219,7 +218,6 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
     void Start()
     {
-        LocalFiles = new();
         RemoteFiles = new();
         Requests = new();
         RpcRequests = new();
@@ -245,6 +243,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
         foreach ((FileId file, FileRequest task) in Requests)
         {
             (FileStatus status, int received, int total) = GetFileStatus(file, out RemoteFile data, true);
+            task.Progress?.Report((received, total));
             switch (status)
             {
                 case FileStatus.Received:
@@ -255,7 +254,6 @@ public class FileChunkManager : Singleton<FileChunkManager>
                     CloseFile(file);
                     goto breakLoop;
                 case FileStatus.Receiving:
-                    task.Progress?.Report((received, total));
                     break;
                 case FileStatus.Error:
                     Debug.LogError($"Error while requesting file {file.Name}");
@@ -398,7 +396,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
                 return (FileStatus.Received, default, default);
             }
 
-            FixedBytes126[] chunks = new FixedBytes126[FileChunkManager.GetChunkLength(header.TotalLength)];
+            FileChunk[] chunks = new FileChunk[FileChunkManager.GetChunkLength(header.TotalLength)];
             bool[] received = new bool[FileChunkManager.GetChunkLength(header.TotalLength)];
 
             for (int j = 0; j < fileChunks.Length; j++)
@@ -462,10 +460,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
         Instance.Requests.Add(fileName, new FileRequest(task, progress));
 
-        if (status == FileStatus.Receiving)
-        {
-            progress?.Report((received, total));
-        }
+        progress?.Report((received, total));
 
         Instance.RpcRequests.Enqueue(fileName);
 
@@ -475,9 +470,6 @@ public class FileChunkManager : Singleton<FileChunkManager>
     public static FileData? GetLocalFile(string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName)) return null;
-
-        if (Instance.LocalFiles.TryGetValue(fileName, out FileData file))
-        { return file; }
 
         if (fileName[0] == '~')
         { fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + fileName[1..]); }

@@ -46,7 +46,7 @@ public class CompiledSource : IInspect<CompiledSource>
     public DiagnosticsCollection Diagnostics;
     public CompilerResult Compiled;
 
-    public CompiledSource(
+    CompiledSource(
         FileId sourceFile,
         long version,
         CompilationStatus status,
@@ -119,11 +119,6 @@ public class CompilerManager : Singleton<CompilerManager>
     public void AddEmpty(FileId file)
     {
         _compiledSources.Add(file, CompiledSource.Empty(file));
-    }
-
-    public void Recompile(FileId file)
-    {
-        _compiledSources[file] = CompiledSource.Empty(file);
     }
 
     public void HandleRpc(CompilerStatusRpc rpc)
@@ -359,18 +354,23 @@ public class CompilerManager : Singleton<CompilerManager>
 
             ProgressRecord<(int, int)> progress = new(v =>
             {
-                float total = progresses.Sum(v => (float)v.Progress.Item1 / (float)v.Progress.Item2);
+                float total = progresses.Sum(v => v.Progress.Item2 == 0 ? 0f : (float)v.Progress.Item1 / (float)v.Progress.Item2);
                 source.Progress = total / (float)progresses.Count;
                 source.StatusChanged = true;
             });
             progresses.Add(progress);
-            Debug.Log($"Source needs file \"{file}\" ...");
+            // Debug.Log($"Source needs file \"{file}\" ...");
 
             Awaitable<RemoteFile> task = FileChunkManager.RequestFile(file, progress);
             Awaitable<RemoteFile>.Awaiter taskAwaiter = task.GetAwaiter();
             taskAwaiter.OnCompleted(() =>
             {
                 Debug.Log($"Source \"{file}\" downloaded ...");
+                if (source.Status == CompilationStatus.Secuedued &&
+                    source.CompileSecuedued != 1f)
+                {
+                    source.CompileSecuedued = 1f;
+                }
             });
 
             return false;
@@ -494,7 +494,7 @@ public class CompilerManager : Singleton<CompilerManager>
             source.DebugInformation = new CompiledDebugInformation(null);
             source.Code?.Dispose();
             source.Code = default;
-            source.Progress = default;
+            source.Progress = float.NaN;
         }
         else
         {
@@ -506,7 +506,7 @@ public class CompilerManager : Singleton<CompilerManager>
             source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
             source.Code?.Dispose();
             source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
-            source.Progress = default;
+            source.Progress = float.NaN;
         }
     }
 }

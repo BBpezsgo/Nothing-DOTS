@@ -300,13 +300,37 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             else
             {
                 CompiledSource source = CompilerManager.Instance.CompiledSources[processor.SourceFile];
+                const string SpinnerChars = "-\\|/";
+                char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
 
                 if (source.Status != CompilationStatus.Done || !source.IsSuccess)
                 {
-                    terminalBuilder.AppendLine($"{source.Status}");
+                    switch (source.Status)
+                    {
+                        case CompilationStatus.None:
+                            break;
+                        case CompilationStatus.Secuedued:
+                            if (source.Status == CompilationStatus.Secuedued &&
+                                !float.IsNaN(source.Progress))
+                            {
+                                terminalBuilder.AppendLine($"Compiling {spinner}");
+                            }
+                            else
+                            {
+                                terminalBuilder.AppendLine($"Secuedued {spinner}");
+                            }
+                            break;
+                        case CompilationStatus.Compiling:
+                            terminalBuilder.AppendLine($"Compiling {spinner}");
+                            break;
+                        case CompilationStatus.Compiled:
+                            break;
+                        case CompilationStatus.Done:
+                            break;
+                    }
                 }
 
-                if (source.Progress != default)
+                if (!float.IsNaN(source.Progress) && source.Progress != 1f)
                 {
                     const int progressBarWidth = 10;
                     string progressBarFilled = new('#', math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth));
@@ -318,13 +342,16 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 {
                     case CompilationStatus.Secuedued:
                         {
-                            if (source.CompileSecuedued == 0f)
+                            if (float.IsNaN(source.Progress))
                             {
-                                terminalBuilder.AppendLine($"Compilation in ? sec");
-                            }
-                            else
-                            {
-                                terminalBuilder.AppendLine($"Compilation in {System.Math.Max(0f, source.CompileSecuedued - MonoTime.Now):#.0} sec");
+                                if (source.CompileSecuedued == default)
+                                {
+                                    terminalBuilder.AppendLine($"Compilation in ? sec {spinner}");
+                                }
+                                else
+                                {
+                                    terminalBuilder.AppendLine($"Compilation in {math.max(0f, source.CompileSecuedued - MonoTime.Now):#.0} sec {spinner}");
+                                }
                             }
                             break;
                         }

@@ -137,7 +137,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     {
                         TransactionId = sendingFiles[i].TransactionId,
                         ChunkIndex = command.ValueRO.ChunkIndex,
-                        Data = *(FixedBytes126*)bufferPtr,
+                        Data = *(FileChunk*)bufferPtr,
                     });
                 }
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
@@ -212,7 +212,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     {
                         TransactionId = sendingFiles[i].TransactionId,
                         ChunkIndex = j,
-                        Data = *(FixedBytes126*)bufferPtr,
+                        Data = *(FileChunk*)bufferPtr,
                     });
                 }
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
