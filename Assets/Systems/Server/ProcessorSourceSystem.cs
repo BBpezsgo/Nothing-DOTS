@@ -65,9 +65,9 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 if (CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
                 {
                     if (source.LatestVersion == command.ValueRO.Version)
-                    { Debug.Log(string.Format("Update source file {0} latest version ({1} -> {2})", command.ValueRO.Source, source.LatestVersion, command.ValueRO.Version)); }
-                    else
                     { Debug.Log(string.Format("Source file {0} not changed", command.ValueRO.Source)); }
+                    else
+                    { Debug.Log(string.Format("Update source file {0} latest version ({1} -> {2})", command.ValueRO.Source, source.LatestVersion, command.ValueRO.Version)); }
                     source.LatestVersion = command.ValueRO.Version;
                 }
                 else

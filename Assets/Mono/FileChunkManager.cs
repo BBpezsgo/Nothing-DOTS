@@ -210,7 +210,6 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
     [SerializeField, NotNull] SerializableDictionary<FileId, RemoteFile>? RemoteFiles = default;
     [SerializeField, NotNull] List<FileRequest>? Requests = default;
-    [NotNull] Queue<(FileHeaderRequestRpc, NetcodeEndPoint)>? RpcRequests = default;
     float NextCheckAt;
     Entity DatabaseEntity;
 
@@ -218,164 +217,104 @@ public class FileChunkManager : Singleton<FileChunkManager>
     {
         RemoteFiles = new();
         Requests = new();
-        RpcRequests = new();
         NextCheckAt = 0f;
     }
 
     void Update()
     {
         if (NextCheckAt > Time.time) return;
-        NextCheckAt = Time.time + 1f;
+        NextCheckAt = Time.time + .2f;
 
         {
             using EntityQuery databaseQ = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(BufferedFiles));
-            if (!databaseQ.TryGetSingletonEntity<BufferedFiles>(out Entity bufferedFiles))
+            if (!databaseQ.TryGetSingletonEntity<BufferedFiles>(out DatabaseEntity))
             {
                 if (EnableLogging) Debug.LogError($"[{nameof(FileChunkManager)}]: Buffered files singleton not found");
                 return;
             }
-
-            DatabaseEntity = bufferedFiles;
         }
+
+        EntityCommandBuffer commandBuffer = default;
+
+        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BufferedReceivingFile>(DatabaseEntity);
+        DynamicBuffer<BufferedReceivingFileChunk> fileChunks = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BufferedReceivingFileChunk>(DatabaseEntity);
 
         for (int i = Requests.Count - 1; i >= 0; i--)
         {
-            (FileId file, AwaitableCompletionSource<RemoteFile> task, IProgress<(int Current, int Total)>? progress) = Requests[i];
-            (FileStatus status, int received, int total) = GetFileStatus(file, out RemoteFile data, true);
-            progress?.Report((received, total));
-            switch (status)
+            HandleRequest(
+                ref commandBuffer,
+                fileHeaders,
+                fileChunks,
+                Requests[i],
+                out bool shouldDelete
+            );
+
+            if (shouldDelete)
             {
-                case FileStatus.Received:
-                    RemoteFiles[file] = data;
-                    task.SetResult(data);
-                    Requests.RemoveAt(i);
-                    CloseFile(file);
-                    break;
-                case FileStatus.Receiving:
-                    break;
-                case FileStatus.Error:
-                    Debug.LogError($"[{nameof(FileChunkManager)}]: Error while requesting file {file.Name}");
-                    RemoteFiles.Remove(file);
-                    task.SetException(new Exception($"Error while requesting file {file.Name}"));
-                    Requests.RemoveAt(i);
-                    CloseFile(file);
-                    break;
-                case FileStatus.NotRequested:
-                    if (RpcRequests.Count == 0)
-                    {
-                        RpcRequests.Enqueue((
-                            new FileHeaderRequestRpc()
-                            {
-                                FileName = file.Name,
-                            },
-                            file.Source
-                        ));
-                    }
-                    break;
-                case FileStatus.NotFound:
-                    Debug.LogError($"[{nameof(FileChunkManager)}]: Remote file \"{file.Name}\" not found");
-                    RemoteFiles.Remove(file);
-                    task.SetException(new FileNotFoundException("Remote file not found", file.Name.ToString()));
-                    Requests.RemoveAt(i);
-                    CloseFile(file);
-                    break;
+                Requests.RemoveAt(i);
+                DeleteRequest(
+                    i,
+                    fileHeaders,
+                    fileChunks
+                );
             }
         }
 
-        if (RpcRequests.TryDequeue(out var rpcRequest))
+        if (commandBuffer.IsCreated)
         {
-            using EntityCommandBuffer entityCommandBuffer = new(Allocator.Temp);
-            Entity rpcEntity = entityCommandBuffer.CreateEntity();
-            entityCommandBuffer.AddComponent(rpcEntity, rpcRequest.Item1);
-            Entity targetConnection = rpcRequest.Item2.GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager);
-            entityCommandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
-            {
-                TargetConnection = targetConnection,
-            });
-            entityCommandBuffer.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
-            entityCommandBuffer.Dispose();
-            if (EnableLogging) Debug.Log($"[{nameof(FileChunkManager)}]: Sending file request {rpcRequest}");
+            commandBuffer.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
+            commandBuffer.Dispose();
         }
     }
 
-    void CloseFile(FileId file)
+    static void DeleteRequest(
+        int headerIndex,
+        DynamicBuffer<BufferedReceivingFile> fileHeaders,
+        DynamicBuffer<BufferedReceivingFileChunk> fileChunks)
     {
-        using EntityCommandBuffer entityCommandBuffer = new(Allocator.Temp);
-        Entity rpcEntity = entityCommandBuffer.CreateEntity();
-        entityCommandBuffer.AddComponent(rpcEntity, new CloseFileRpc()
+        BufferedReceivingFile header = fileHeaders[headerIndex];
+        fileHeaders.RemoveAt(headerIndex);
+        for (int i = fileChunks.Length - 1; i >= 0; i--)
         {
-            FileName = file.Name,
-        });
-        entityCommandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
-        {
-            TargetConnection = file.Source.GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager),
-        });
-        entityCommandBuffer.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
-        entityCommandBuffer.Dispose();
+            if (fileChunks[i].Source != header.Source) continue;
+            if (fileChunks[i].TransactionId != header.TransactionId) continue;
+            fileChunks.RemoveAt(i);
+        }
     }
 
-    public static unsafe (FileStatus Status, int Received, int Total) GetFileStatus(FileId fileName, out RemoteFile file, bool removeIfDone = false)
+    unsafe void HandleRequest(
+        ref EntityCommandBuffer commandBuffer,
+        DynamicBuffer<BufferedReceivingFile> fileHeaders,
+        DynamicBuffer<BufferedReceivingFileChunk> fileChunks,
+        in FileRequest request,
+        out bool shouldDelete)
     {
-        if (!Instance.Requests.Any(v => v.File == fileName) &&
-            Instance.RemoteFiles.TryGetValue(fileName, out RemoteFile cached))
-        {
-            if (cached.Kind == FileResponseStatus.OK)
-            {
-                file = cached;
-                return (FileStatus.Received, default, default);
-            }
-            else if (cached.Kind == FileResponseStatus.NotFound)
-            {
-                file = cached;
-                return (FileStatus.NotFound, default, default);
-            }
-        }
-
-        if (Instance.DatabaseEntity == Entity.Null)
-        {
-            Debug.LogWarning($"[{nameof(FileChunkManager)}]: Failed to get {nameof(BufferedFiles)} entity singleton");
-            file = default;
-            return (FileStatus.Error, default, default);
-        }
-
-        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BufferedReceivingFile>(Instance.DatabaseEntity);
-        DynamicBuffer<BufferedReceivingFileChunk> fileChunks = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BufferedReceivingFileChunk>(Instance.DatabaseEntity);
+        shouldDelete = false;
 
         for (int i = fileHeaders.Length - 1; i >= 0; i--)
         {
             BufferedReceivingFile header = fileHeaders[i];
-            if (header.FileName != fileName.Name) continue;
-            if (header.Source != fileName.Source) continue;
-
-            if (Instance.DatabaseEntity == Entity.Null)
-            {
-                Debug.LogWarning($"[{nameof(FileChunkManager)}]: Failed to get {nameof(BufferedFiles)} entity singleton");
-                file = default;
-                return (FileStatus.Error, default, default);
-            }
+            if (header.FileName != request.File.Name) continue;
+            if (header.Source != request.File.Source) continue;
 
             if (header.Kind == FileResponseStatus.NotFound)
             {
-                file = new RemoteFile(
-                    header.Kind,
-                    new FileData(Array.Empty<byte>(), header.Version),
-                    new FileId(header.FileName, header.Source)
-                );
-                if (removeIfDone)
-                {
-                    fileHeaders.RemoveAt(i);
-                    for (int j = fileChunks.Length - 1; j >= 0; j--)
-                    {
-                        if (fileChunks[j].Source != header.Source) continue;
-                        if (fileChunks[j].TransactionId != header.TransactionId) continue;
-                        fileChunks.RemoveAt(j);
-                    }
-                }
-                return (FileStatus.NotFound, default, default);
+                shouldDelete = true;
+
+                Debug.LogError($"[{nameof(FileChunkManager)}]: Remote file \"{request.File.Name}\" not found");
+                RemoteFiles.Remove(request.File);
+                request.Progress?.Report(default);
+                request.Task.SetException(new FileNotFoundException("Remote file not found", request.File.Name.ToString()));
+                if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                CloseRemoteFile(commandBuffer, request.File);
+
+                return;
             }
 
-            FileChunk[] chunks = new FileChunk[FileChunkManager.GetChunkLength(header.TotalLength)];
-            bool[] received = new bool[FileChunkManager.GetChunkLength(header.TotalLength)];
+            int totalLength = FileChunkManager.GetChunkLength(header.TotalLength);
+
+            FileChunk[] chunks = new FileChunk[totalLength];
+            bool[] received = new bool[totalLength];
 
             for (int j = 0; j < fileChunks.Length; j++)
             {
@@ -384,11 +323,12 @@ public class FileChunkManager : Singleton<FileChunkManager>
                 received[fileChunks[j].ChunkIndex] = true;
             }
 
-            if (received.Any(v => !v))
-            {
-                file = default;
-                return (FileStatus.Receiving, received.Count(v => v), received.Length);
-            }
+            int receivedLength = received.Count(v => v);
+
+            request.Progress?.Report((receivedLength, totalLength));
+
+            if (receivedLength < totalLength)
+            { return; }
 
             byte[] data = new byte[header.TotalLength];
             for (int j = 0; j < chunks.Length; j++)
@@ -397,49 +337,106 @@ public class FileChunkManager : Singleton<FileChunkManager>
                 Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[j]), chunkSize);
                 chunk.CopyTo(data.AsSpan(j * FileChunkResponseRpc.ChunkSize));
             }
-            file = new RemoteFile(
+
+            RemoteFile remoteFile = new(
                 header.Kind,
                 new FileData(data, header.Version),
                 new FileId(header.FileName, header.Source)
             );
-            if (removeIfDone)
-            {
-                fileHeaders.RemoveAt(i);
-                for (int j = fileChunks.Length - 1; j >= 0; j--)
-                {
-                    if (fileChunks[j].Source != header.Source) continue;
-                    if (fileChunks[j].TransactionId != header.TransactionId) continue;
-                    fileChunks.RemoveAt(j);
-                }
-            }
-            return (FileStatus.Received, received.Length, received.Length);
+
+            shouldDelete = true;
+
+            RemoteFiles[request.File] = remoteFile;
+            request.Task.SetResult(remoteFile);
+            if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+            CloseRemoteFile(commandBuffer, request.File);
+
+            return;
         }
 
-        if (EnableLogging) Debug.LogWarning($"[{nameof(FileChunkManager)}]: File {fileName} not requested");
-        file = default;
-        return (FileStatus.NotRequested, default, default);
+        if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+
+        Entity rpcEntity = commandBuffer.CreateEntity();
+        commandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
+        {
+            FileName = request.File.Name,
+        });
+        Entity targetConnection = request.File.Source.GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager);
+        commandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
+        {
+            TargetConnection = targetConnection,
+        });
+        if (EnableLogging) Debug.Log($"[{nameof(FileChunkManager)}]: Sending request for file {request.File}"); ;
     }
 
-    public static Awaitable<RemoteFile> RequestFile(FileId fileName, IProgress<(int Current, int Total)>? progress, bool force)
+    static void CloseRemoteFile(EntityCommandBuffer commandBuffer, FileId fileId)
     {
-        (FileStatus status, int received, int total) = GetFileStatus(fileName, out RemoteFile data, true);
-        AwaitableCompletionSource<RemoteFile> task = new();
-
-        if (status == FileStatus.Received && !force)
+        Entity rpcEntity = commandBuffer.CreateEntity();
+        commandBuffer.AddComponent(rpcEntity, new CloseFileRpc()
         {
-            task.SetResult(data);
-            return task.Awaitable;
+            FileName = fileId.Name,
+        });
+        commandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
+        {
+            TargetConnection = fileId.Source.GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager),
+        });
+    }
+
+    public static bool TryGetRemoteFile(FileId fileId, out RemoteFile remoteFile)
+    {
+        if (!Instance.Requests.Any(v => v.File == fileId) &&
+            Instance.RemoteFiles.TryGetValue(fileId, out RemoteFile cached))
+        {
+            if (cached.Kind == FileResponseStatus.OK)
+            {
+                remoteFile = cached;
+                return true;
+            }
+            else if (cached.Kind == FileResponseStatus.NotFound)
+            {
+                remoteFile = default;
+                return false;
+            }
+        }
+        remoteFile = default;
+        return false;
+    }
+
+    public static FileStatus GetRequestStatus(FileId fileId)
+    {
+        if (Instance.DatabaseEntity == Entity.Null)
+        {
+            Debug.LogWarning($"[{nameof(FileChunkManager)}]: Failed to get {nameof(BufferedFiles)} entity singleton");
+            return FileStatus.Error;
         }
 
+        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<BufferedReceivingFile>(Instance.DatabaseEntity, true);
+
+        for (int i = fileHeaders.Length - 1; i >= 0; i--)
+        {
+            BufferedReceivingFile header = fileHeaders[i];
+            if (header.FileName != fileId.Name) continue;
+            if (header.Source != fileId.Source) continue;
+
+            if (header.Kind == FileResponseStatus.NotFound)
+            { return FileStatus.NotFound; }
+
+            return FileStatus.Receiving;
+        }
+
+        return FileStatus.NotRequested;
+    }
+
+    public static Awaitable<RemoteFile> RequestFile(FileId fileId, IProgress<(int Current, int Total)>? progress)
+    {
         for (int i = 0; i < Instance.Requests.Count; i++)
         {
-            if (Instance.Requests[i].File != fileName) continue;
+            if (Instance.Requests[i].File != fileId) continue;
             return Instance.Requests[i].Task.Awaitable;
         }
 
-        Instance.Requests.Add(new FileRequest(fileName, task, progress));
-
-        progress?.Report((received, total));
+        AwaitableCompletionSource<RemoteFile> task = new();
+        Instance.Requests.Add(new FileRequest(fileId, task, progress));
         return task.Awaitable;
     }
 
@@ -490,18 +487,14 @@ public readonly struct FileRequest : IInspect<FileRequest>
     public readonly AwaitableCompletionSource<RemoteFile> Task;
     public readonly IProgress<(int Current, int Total)>? Progress;
 
-    public FileRequest(FileId file, AwaitableCompletionSource<RemoteFile> task, IProgress<(int Current, int Total)>? progress)
+    public FileRequest(
+        FileId file,
+        AwaitableCompletionSource<RemoteFile> task,
+        IProgress<(int Current, int Total)>? progress)
     {
         File = file;
         Task = task;
         Progress = progress;
-    }
-
-    public void Deconstruct(out FileId file, out AwaitableCompletionSource<RemoteFile> task, out IProgress<(int Current, int Total)>? progress)
-    {
-        file = File;
-        task = Task;
-        progress = Progress;
     }
 
     public FileRequest OnGUI(Rect rect, FileRequest value)

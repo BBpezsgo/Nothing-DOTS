@@ -411,10 +411,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     terminalBuilder.AppendLine(item.ToString());
                                     (string SourceCode, string Arrows)? arrows = item.GetArrows((uri) =>
                                     {
-                                        if (!uri.TryGetNetcode(out FileId file)) return null;
+                                        if (!uri.TryGetNetcode(out FileId fileId)) return null;
 
-                                        (FileStatus fileStatus, _, _) = FileChunkManager.GetFileStatus(file, out var remoteFile, false);
-                                        if (fileStatus.IsOk())
+                                        if (FileChunkManager.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
                                         {
                                             return Encoding.UTF8.GetString(remoteFile.File.Data);
                                         }

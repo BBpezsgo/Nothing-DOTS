@@ -334,15 +334,15 @@ public class CompilerManager : Singleton<CompilerManager>
         {
             content = default;
 
-            if (!uri.TryGetNetcode(out FileId file))
+            if (!uri.TryGetNetcode(out FileId fileId))
             {
                 Debug.LogError($"[{nameof(CompilerManager)}]: Uri \"{uri}\" aint a netcode uri");
                 return false;
             }
 
-            if (file.Source.IsServer)
+            if (fileId.Source.IsServer)
             {
-                FileData? localFile = FileChunkManager.GetLocalFile(file.Name.ToString());
+                FileData? localFile = FileChunkManager.GetLocalFile(fileId.Name.ToString());
                 if (!localFile.HasValue)
                 { return false; }
 
@@ -350,15 +350,15 @@ public class CompilerManager : Singleton<CompilerManager>
                 return true;
             }
 
-            (FileStatus status, _, _) = FileChunkManager.GetFileStatus(file, out RemoteFile data, true);
-
-            if (status.IsOk())
+            if (FileChunkManager.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
             {
-                content = Encoding.UTF8.GetString(data.File.Data);
+                content = Encoding.UTF8.GetString(remoteFile.File.Data);
                 return true;
             }
 
-            if (status is FileStatus.NotFound)
+            FileStatus status = FileChunkManager.GetRequestStatus(fileId);
+
+            if (status == FileStatus.NotFound)
             {
                 Debug.LogError($"[{nameof(CompilerManager)}]: Remote file \"{uri}\" not found");
                 return false;
@@ -368,7 +368,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (status == FileStatus.Receiving)
             {
-                if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{file}\" is downloading ...");
+                if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{fileId}\" is downloading ...");
                 return false;
             }
 
@@ -376,16 +376,16 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 float total = progresses.Sum(v => v.Progress.Item2 == 0 ? 0f : (float)v.Progress.Item1 / (float)v.Progress.Item2);
                 source.Progress = total / (float)progresses.Count;
+                source.Diagnostics.Clear();
                 source.StatusChanged = true;
             });
             progresses.Add(progress);
-            if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source needs file \"{file}\" ...");
+            if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source needs file \"{fileId}\" ...");
 
-            Awaitable<RemoteFile> task = FileChunkManager.RequestFile(file, progress, force);
-            Awaitable<RemoteFile>.Awaiter taskAwaiter = task.GetAwaiter();
-            taskAwaiter.OnCompleted(() =>
+            Awaitable<RemoteFile> task = FileChunkManager.RequestFile(fileId, progress);
+            task.GetAwaiter().OnCompleted(() =>
             {
-                if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{file}\" downloaded ...");
+                if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{fileId}\" downloaded ...");
                 if (source.Status == CompilationStatus.Secuedued &&
                     source.CompileSecuedued != 1f)
                 {
