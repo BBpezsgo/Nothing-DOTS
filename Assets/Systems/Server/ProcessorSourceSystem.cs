@@ -1,3 +1,5 @@
+#pragma warning disable CS0162 // Unreachable code detected
+
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 using Unity.Collections;
@@ -7,6 +9,8 @@ using Unity.NetCode;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 unsafe partial struct ProcessorSourceSystem : ISystem
 {
+    const bool EnableLogging = false;
+
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
@@ -64,15 +68,18 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 if (CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
                 {
-                    if (source.LatestVersion == command.ValueRO.Version)
-                    { Debug.Log(string.Format("Source file {0} not changed", command.ValueRO.Source)); }
-                    else
-                    { Debug.Log(string.Format("Update source file {0} latest version ({1} -> {2})", command.ValueRO.Source, source.LatestVersion, command.ValueRO.Version)); }
+                    if (EnableLogging)
+                    {
+                        if (source.LatestVersion == command.ValueRO.Version)
+                        { Debug.Log(string.Format("Source file {0} not changed", command.ValueRO.Source)); }
+                        else
+                        { Debug.Log(string.Format("Update source file {0} latest version ({1} -> {2})", command.ValueRO.Source, source.LatestVersion, command.ValueRO.Version)); }
+                    }
                     source.LatestVersion = command.ValueRO.Version;
                 }
                 else
                 {
-                    Debug.Log(string.Format("Creating new source file {0}", command.ValueRO.Source));
+                    if (EnableLogging) Debug.Log(string.Format("Creating new source file {0}", command.ValueRO.Source));
                     CompilerManager.Instance.AddEmpty(processor.ValueRO.SourceFile, command.ValueRO.Version);
                 }
 
@@ -96,6 +103,8 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
             if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
             {
+                if (EnableLogging) Debug.Log(string.Format("Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
+                CompilerManager.Instance.AddEmpty(processor.ValueRO.SourceFile, default);
                 buffer.Clear();
                 continue;
             }
