@@ -29,6 +29,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [SerializeField, ReadOnly] TextField? ui_inputSourcePath;
     [SerializeField, ReadOnly] UIDocument? ui = default;
 
+    readonly StringBuilder _terminalBuilder = new();
+
     void Update()
     {
         if (ui == null || !ui.gameObject.activeSelf) return;
@@ -244,6 +246,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     public unsafe void RefreshUI(Entity unitEntity)
     {
         bool isBottom = ui_scrollTerminal!.scrollOffset == ui_labelTerminal!.layout.max - ui_scrollTerminal.contentViewport.layout.size;
+        _terminalBuilder.Clear();
 
         if (!selectingFile.IsEmpty)
         {
@@ -277,25 +280,23 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     return;
                 }
 
-                StringBuilder builder = new();
                 for (int i = 0; i < selectingFile.Length; i++)
                 {
-                    if (selectingFileI == i) builder.Append("> ");
-                    else builder.Append("  ");
-                    builder.Append(selectingFile[i]);
-                    builder.AppendLine();
+                    if (selectingFileI == i) _terminalBuilder.Append("> ");
+                    else _terminalBuilder.Append("  ");
+                    _terminalBuilder.Append(selectingFile[i]);
+                    _terminalBuilder.AppendLine();
                 }
-                ui_labelTerminal!.text = builder.ToString();
+                ui_labelTerminal!.text = _terminalBuilder.ToString();
             }
         }
         else
         {
-            StringBuilder terminalBuilder = new();
             EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
             Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
             if (processor.SourceFile == default)
             {
-                terminalBuilder.AppendLine("<color=red>No source</color>");
+                _terminalBuilder.AppendLine("<color=red>No source</color>");
             }
             else
             {
@@ -313,15 +314,21 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                             if (source.Status == CompilationStatus.Secuedued &&
                                 !float.IsNaN(source.Progress))
                             {
-                                terminalBuilder.AppendLine($"Compiling {spinner}");
+                                _terminalBuilder.Append("Compiling ");
+                                _terminalBuilder.Append(spinner);
+                                _terminalBuilder.AppendLine();
                             }
                             else
                             {
-                                terminalBuilder.AppendLine($"Secuedued {spinner}");
+                                _terminalBuilder.Append("Secuedued ");
+                                _terminalBuilder.Append(spinner);
+                                _terminalBuilder.AppendLine();
                             }
                             break;
                         case CompilationStatus.Compiling:
-                            terminalBuilder.AppendLine($"Compiling {spinner}");
+                            _terminalBuilder.Append("Compiling ");
+                            _terminalBuilder.Append(spinner);
+                            _terminalBuilder.AppendLine();
                             break;
                         case CompilationStatus.Compiled:
                             break;
@@ -333,9 +340,15 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 if (!float.IsNaN(source.Progress) && source.Progress != 1f)
                 {
                     const int progressBarWidth = 10;
-                    string progressBarFilled = new('#', math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth));
-                    string progressBarEmpty = new(' ', progressBarWidth - progressBarFilled.Length);
-                    terminalBuilder.AppendLine($"Uploading [{progressBarFilled}{progressBarEmpty}]");
+
+                    int progressBarFilledWidth = math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth);
+                    int progressBarEmptyWidth = progressBarWidth - progressBarFilledWidth;
+
+                    _terminalBuilder.Append("Uploading [");
+                    _terminalBuilder.Append('#', progressBarFilledWidth);
+                    _terminalBuilder.Append(' ', progressBarEmptyWidth);
+                    _terminalBuilder.Append(']');
+                    _terminalBuilder.AppendLine();
                 }
 
                 switch (source.Status)
@@ -346,12 +359,14 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                             {
                                 if (source.CompileSecuedued == default)
                                 {
-                                    terminalBuilder.AppendLine($"Compilation in ? sec {spinner}");
+                                    _terminalBuilder.AppendLine("Compilation in ? sec ");
                                 }
                                 else
                                 {
-                                    terminalBuilder.AppendLine($"Compilation in {math.max(0f, source.CompileSecuedued - MonoTime.Now):#.0} sec {spinner}");
+                                    _terminalBuilder.AppendLine($"Compilation in {math.max(0f, source.CompileSecuedued - MonoTime.Now):#.0} sec ");
                                 }
+                                _terminalBuilder.Append(spinner);
+                                _terminalBuilder.AppendLine();
                             }
                             break;
                         }
@@ -361,7 +376,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         }
                     case CompilationStatus.Compiled:
                         {
-                            terminalBuilder.AppendLine("Compiled");
+                            _terminalBuilder.AppendLine("Compiled");
                             break;
                         }
                     case CompilationStatus.Done:
@@ -371,7 +386,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 switch (processor.Signal)
                                 {
                                     case Signal.None:
-                                        terminalBuilder.AppendLine(processor.StdOutBuffer.ToString());
+                                        _terminalBuilder.AppendLine(processor.StdOutBuffer.ToString());
                                         break;
                                     case Signal.UserCrash:
                                         // RuntimeException exception = new(
@@ -384,22 +399,22 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                         //     ),
                                         //     source.DebugInformation);
                                         // terminalBuilder.AppendLine(exception.ToString(false));
-                                        terminalBuilder.AppendLine("<color=red>Crashed</color>");
+                                        _terminalBuilder.AppendLine("<color=red>Crashed</color>");
                                         break;
                                     case Signal.StackOverflow:
-                                        terminalBuilder.AppendLine("<color=red>Stack overflow</color>");
+                                        _terminalBuilder.AppendLine("<color=red>Stack overflow</color>");
                                         break;
                                     case Signal.Halt:
-                                        terminalBuilder.AppendLine("Halted");
+                                        _terminalBuilder.AppendLine("Halted");
                                         break;
                                     case Signal.UndefinedExternalFunction:
-                                        terminalBuilder.AppendLine($"<color=red>Undefined external function {processor.Crash}</color>");
+                                        _terminalBuilder.AppendLine($"<color=red>Undefined external function {processor.Crash}</color>");
                                         break;
                                 }
                             }
                             else
                             {
-                                terminalBuilder.AppendLine("<color=red>Compile failed</color>");
+                                _terminalBuilder.AppendLine("<color=red>Compile failed</color>");
                                 foreach (LanguageCore.Diagnostic item in source.Diagnostics.Diagnostics)
                                 {
                                     if (item.Level is
@@ -408,7 +423,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                         LanguageCore.DiagnosticsLevel.Information)
                                     { continue; }
 
-                                    terminalBuilder.AppendLine(item.ToString());
+                                    _terminalBuilder.AppendLine(item.ToString());
                                     (string SourceCode, string Arrows)? arrows = item.GetArrows((uri) =>
                                     {
                                         if (!uri.TryGetNetcode(out FileId fileId)) return null;
@@ -422,13 +437,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     });
                                     if (arrows.HasValue)
                                     {
-                                        terminalBuilder.AppendLine(arrows.Value.SourceCode);
-                                        terminalBuilder.AppendLine(arrows.Value.Arrows);
+                                        _terminalBuilder.AppendLine(arrows.Value.SourceCode);
+                                        _terminalBuilder.AppendLine(arrows.Value.Arrows);
                                     }
                                 }
                                 foreach (LanguageCore.DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext)
                                 {
-                                    terminalBuilder.AppendLine(item.ToString());
+                                    _terminalBuilder.AppendLine(item.ToString());
                                 }
                             }
                             break;
@@ -436,12 +451,12 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     case CompilationStatus.None:
                     default:
                         {
-                            terminalBuilder.AppendLine("???");
+                            _terminalBuilder.AppendLine("???");
                             break;
                         }
                 }
             }
-            ui_labelTerminal!.text = terminalBuilder.ToString();
+            ui_labelTerminal!.text = _terminalBuilder.ToString();
         }
 
         if (isBottom)

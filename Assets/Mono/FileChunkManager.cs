@@ -222,7 +222,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
     void Update()
     {
-        if (NextCheckAt > Time.time) return;
+        if (NextCheckAt > Time.time || Requests.Count == 0) return;
         NextCheckAt = Time.time + .2f;
 
         {
