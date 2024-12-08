@@ -33,9 +33,9 @@ partial struct BufferedFileSenderSystem : ISystem
             if (!localFile.HasValue)
             {
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
+                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderResponseRpc()
                 {
-                    Kind = FileHeaderKind.NotFound,
+                    Kind = FileResponseStatus.NotFound,
                     FileName = command.ValueRO.FileName,
                     TransactionId = default,
                     TotalLength = default,
@@ -48,66 +48,29 @@ partial struct BufferedFileSenderSystem : ISystem
                 continue;
             }
 
-            /*
-            bool found = false;
-
-            for (int i = 0; i < sendingFiles.Length; i++)
-            {
-                if (sendingFiles[i].Destination != ep) continue;
-                if (sendingFiles[i].FileName != command.ValueRO.FileName) continue;
-
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
-                {
-                    Kind = FileHeaderKind.Ok,
-                    FileName = sendingFiles[i].FileName,
-                    TransactionId = sendingFiles[i].TransactionId,
-                    TotalLength = localFile.Value.Data.Length,
-                    Version = localFile.Value.Version,
-                });
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
-                found = true;
-                if (DebugLog) Debug.Log($"Sending file header (again) \"{sendingFiles[i].FileName}\": {{ id: {sendingFiles[i].TransactionId} }}");
-
-                break;
-            }
-
-            if (found)
-            {
-                commandBuffer.DestroyEntity(entity);
-                continue;
-            }
-            */
-
             {
                 int transactionId = Maths.Random.Integer();
-                FileHeaderKind kind = command.ValueRO.Method switch
-                {
-                    FileRequestMethod.OnlyHeader => FileHeaderKind.OnlyHeader,
-                    _ => FileHeaderKind.Ok,
-                };
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
                 int totalLength = localFile.Value.Data.Length;
-                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderRpc()
+
+                Entity responseRpcEntity = commandBuffer.CreateEntity();
+                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderResponseRpc()
                 {
-                    Kind = kind,
+                    Kind = FileResponseStatus.OK,
                     FileName = command.ValueRO.FileName,
                     TransactionId = transactionId,
                     TotalLength = totalLength,
                     Version = localFile.Value.Version,
                 });
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
-                if (command.ValueRO.Method != FileRequestMethod.OnlyHeader)
-                {
-                    sendingFiles.Add(new BufferedSendingFile(
-                        ep,
-                        transactionId,
-                        command.ValueRO.FileName,
-                        command.ValueRO.Method == FileRequestMethod.HeaderAndData,
-                        SystemAPI.Time.ElapsedTime,
-                        totalLength
-                    ));
-                }
+
+                sendingFiles.Add(new BufferedSendingFile(
+                    ep,
+                    transactionId,
+                    command.ValueRO.FileName,
+                    true,
+                    SystemAPI.Time.ElapsedTime,
+                    totalLength
+                ));
                 if (DebugLog) Debug.Log($"Sending file header \"{command.ValueRO.FileName}\": {{ id: {command.ValueRO.FileName.GetHashCode()} length: {totalLength}b }}");
             }
 
@@ -130,10 +93,10 @@ partial struct BufferedFileSenderSystem : ISystem
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
                 FileData? file = FileChunkManager.GetLocalFile(sendingFiles[i].FileName.ToString());
                 int chunkSize = FileChunkManager.GetChunkSize(file!.Value.Data.Length, command.ValueRO.ChunkIndex);
-                Span<byte> buffer = file!.Value.Data.AsSpan().Slice(command.ValueRO.ChunkIndex * FileChunkRpc.ChunkSize, chunkSize);
+                Span<byte> buffer = file!.Value.Data.AsSpan().Slice(command.ValueRO.ChunkIndex * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)
                 {
-                    commandBuffer.AddComponent(responseRpcEntity, new FileChunkRpc
+                    commandBuffer.AddComponent(responseRpcEntity, new FileChunkResponseRpc
                     {
                         TransactionId = sendingFiles[i].TransactionId,
                         ChunkIndex = command.ValueRO.ChunkIndex,
@@ -205,10 +168,10 @@ partial struct BufferedFileSenderSystem : ISystem
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
                 FileData? file = FileChunkManager.GetLocalFile(sendingFiles[i].FileName.ToString());
                 int chunkSize = FileChunkManager.GetChunkSize(file!.Value.Data.Length, j);
-                Span<byte> buffer = file!.Value.Data.AsSpan().Slice(j * FileChunkRpc.ChunkSize, chunkSize);
+                Span<byte> buffer = file!.Value.Data.AsSpan().Slice(j * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)
                 {
-                    commandBuffer.AddComponent(responseRpcEntity, new FileChunkRpc
+                    commandBuffer.AddComponent(responseRpcEntity, new FileChunkResponseRpc
                     {
                         TransactionId = sendingFiles[i].TransactionId,
                         ChunkIndex = j,
@@ -226,6 +189,14 @@ partial struct BufferedFileSenderSystem : ISystem
                 if (DebugLog) Debug.Log($"Sending chunk {j} for file {sendingFiles[i].FileName}");
 
                 if (++sent >= ChunkSendingLimit) break;
+            }
+
+            if (sent > 0)
+            {
+                sendingFiles[i] = sendingFiles[i] with
+                {
+                    LastSentAt = SystemAPI.Time.ElapsedTime
+                };
             }
         }
         if (currentSentChunks.IsCreated) currentSentChunks.Dispose();

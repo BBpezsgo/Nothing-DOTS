@@ -1,3 +1,5 @@
+#pragma warning disable CS0162 // Unreachable code detected
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -17,16 +19,13 @@ public enum FileStatus
     Receiving,
     Received,
     NotFound,
-    Cached,
-    CachedNotFound,
 }
 
 public static class FileStatusExtensions
 {
     public static bool IsOk(this FileStatus status) =>
         status is
-        FileStatus.Received or
-        FileStatus.Cached;
+        FileStatus.Received;
 }
 
 [BurstCompile]
@@ -60,7 +59,6 @@ public struct NetcodeEndPoint : IEquatable<NetcodeEndPoint>, IRpcCommandSerializ
             return ConnectionEntity = entities[i];
         }
         throw new Exception($"Connection entity {ConnectionId} not found");
-        // return Entity.Null;
     }
 
     public Entity GetEntity(ref SystemState state)
@@ -85,7 +83,6 @@ public struct NetcodeEndPoint : IEquatable<NetcodeEndPoint>, IRpcCommandSerializ
             return ConnectionEntity = entities[i];
         }
         throw new Exception($"Connection entity {ConnectionId} not found");
-        // return Entity.Null;
     }
 
     public override readonly bool Equals(object obj) => obj is NetcodeEndPoint other && Equals(other);
@@ -174,11 +171,11 @@ public struct FileId : IEquatable<FileId>, IInspect<FileId>
 
 public readonly struct RemoteFile : IInspect<RemoteFile>
 {
-    public readonly FileHeaderKind Kind;
+    public readonly FileResponseStatus Kind;
     public readonly FileData File;
     public readonly FileId Source;
 
-    public RemoteFile(FileHeaderKind kind, FileData file, FileId source)
+    public RemoteFile(FileResponseStatus kind, FileData file, FileId source)
     {
         Kind = kind;
         File = file;
@@ -208,11 +205,12 @@ public class _Drawer4 : DictionaryDrawer<FileId, FileRequest> { }
 
 public class FileChunkManager : Singleton<FileChunkManager>
 {
+    const bool EnableLogging = false;
     public static string? BasePath => Application.streamingAssetsPath;
 
     [SerializeField, NotNull] SerializableDictionary<FileId, RemoteFile>? RemoteFiles = default;
-    [SerializeField, NotNull] SerializableDictionary<FileId, FileRequest>? Requests = default;
-    [NotNull] Queue<FileId>? RpcRequests = default;
+    [SerializeField, NotNull] List<FileRequest>? Requests = default;
+    [NotNull] Queue<(FileHeaderRequestRpc, NetcodeEndPoint)>? RpcRequests = default;
     float NextCheckAt;
     Entity DatabaseEntity;
 
@@ -233,70 +231,70 @@ public class FileChunkManager : Singleton<FileChunkManager>
             using EntityQuery databaseQ = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(BufferedFiles));
             if (!databaseQ.TryGetSingletonEntity<BufferedFiles>(out Entity bufferedFiles))
             {
-                // Debug.LogError($"Buffered files singleton not found");
+                if (EnableLogging) Debug.LogError($"[{nameof(FileChunkManager)}]: Buffered files singleton not found");
                 return;
             }
 
             DatabaseEntity = bufferedFiles;
         }
 
-        foreach ((FileId file, FileRequest task) in Requests)
+        for (int i = Requests.Count - 1; i >= 0; i--)
         {
+            (FileId file, AwaitableCompletionSource<RemoteFile> task, IProgress<(int Current, int Total)>? progress) = Requests[i];
             (FileStatus status, int received, int total) = GetFileStatus(file, out RemoteFile data, true);
-            task.Progress?.Report((received, total));
+            progress?.Report((received, total));
             switch (status)
             {
                 case FileStatus.Received:
-                case FileStatus.Cached:
                     RemoteFiles[file] = data;
-                    task.Task.SetResult(data);
-                    Requests.Remove(file);
+                    task.SetResult(data);
+                    Requests.RemoveAt(i);
                     CloseFile(file);
-                    goto breakLoop;
+                    break;
                 case FileStatus.Receiving:
                     break;
                 case FileStatus.Error:
-                    Debug.LogError($"Error while requesting file {file.Name}");
+                    Debug.LogError($"[{nameof(FileChunkManager)}]: Error while requesting file {file.Name}");
                     RemoteFiles.Remove(file);
-                    task.Task.SetException(new Exception($"Error while requesting file {file.Name}"));
-                    Requests.Remove(file);
+                    task.SetException(new Exception($"Error while requesting file {file.Name}"));
+                    Requests.RemoveAt(i);
                     CloseFile(file);
-                    goto breakLoop;
+                    break;
                 case FileStatus.NotRequested:
                     if (RpcRequests.Count == 0)
-                    { RpcRequests.Enqueue(file); }
+                    {
+                        RpcRequests.Enqueue((
+                            new FileHeaderRequestRpc()
+                            {
+                                FileName = file.Name,
+                            },
+                            file.Source
+                        ));
+                    }
                     break;
                 case FileStatus.NotFound:
-                case FileStatus.CachedNotFound:
-                    Debug.LogError($"Remote file \"{file.Name}\" not found");
+                    Debug.LogError($"[{nameof(FileChunkManager)}]: Remote file \"{file.Name}\" not found");
                     RemoteFiles.Remove(file);
-                    task.Task.SetException(new FileNotFoundException("Remote file not found", file.Name.ToString()));
-                    Requests.Remove(file);
+                    task.SetException(new FileNotFoundException("Remote file not found", file.Name.ToString()));
+                    Requests.RemoveAt(i);
                     CloseFile(file);
-                    goto breakLoop;
+                    break;
             }
-            continue;
-        breakLoop:
-            break;
         }
 
-        if (RpcRequests.TryDequeue(out FileId rpcRequest))
+        if (RpcRequests.TryDequeue(out var rpcRequest))
         {
             using EntityCommandBuffer entityCommandBuffer = new(Allocator.Temp);
             Entity rpcEntity = entityCommandBuffer.CreateEntity();
-            entityCommandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
-            {
-                Method = FileRequestMethod.HeaderAndData,
-                FileName = rpcRequest.Name,
-            });
-            Entity targetConnection = rpcRequest.Source.GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager);
+            entityCommandBuffer.AddComponent(rpcEntity, rpcRequest.Item1);
+            Entity targetConnection = rpcRequest.Item2.GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager);
             entityCommandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
             {
                 TargetConnection = targetConnection,
             });
             entityCommandBuffer.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
             entityCommandBuffer.Dispose();
-            Debug.Log($"Sending file request {rpcRequest}");
+            if (EnableLogging) Debug.Log($"[{nameof(FileChunkManager)}]: Sending file request {rpcRequest}");
         }
     }
 
@@ -318,24 +316,24 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
     public static unsafe (FileStatus Status, int Received, int Total) GetFileStatus(FileId fileName, out RemoteFile file, bool removeIfDone = false)
     {
-        if (!Instance.Requests.ContainsKey(fileName) &&
+        if (!Instance.Requests.Any(v => v.File == fileName) &&
             Instance.RemoteFiles.TryGetValue(fileName, out RemoteFile cached))
         {
-            if (cached.Kind == FileHeaderKind.Ok)
+            if (cached.Kind == FileResponseStatus.OK)
             {
                 file = cached;
-                return (FileStatus.Cached, default, default);
+                return (FileStatus.Received, default, default);
             }
-            else if (cached.Kind == FileHeaderKind.NotFound)
+            else if (cached.Kind == FileResponseStatus.NotFound)
             {
                 file = cached;
-                return (FileStatus.CachedNotFound, default, default);
+                return (FileStatus.NotFound, default, default);
             }
         }
 
         if (Instance.DatabaseEntity == Entity.Null)
         {
-            Debug.LogWarning($"Failed to get {nameof(BufferedFiles)} entity singleton");
+            Debug.LogWarning($"[{nameof(FileChunkManager)}]: Failed to get {nameof(BufferedFiles)} entity singleton");
             file = default;
             return (FileStatus.Error, default, default);
         }
@@ -351,12 +349,12 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
             if (Instance.DatabaseEntity == Entity.Null)
             {
-                Debug.LogWarning($"Failed to get {nameof(BufferedFiles)} entity singleton");
+                Debug.LogWarning($"[{nameof(FileChunkManager)}]: Failed to get {nameof(BufferedFiles)} entity singleton");
                 file = default;
                 return (FileStatus.Error, default, default);
             }
 
-            if (header.Kind == FileHeaderKind.NotFound)
+            if (header.Kind == FileResponseStatus.NotFound)
             {
                 file = new RemoteFile(
                     header.Kind,
@@ -374,26 +372,6 @@ public class FileChunkManager : Singleton<FileChunkManager>
                     }
                 }
                 return (FileStatus.NotFound, default, default);
-            }
-
-            if (header.Kind == FileHeaderKind.OnlyHeader)
-            {
-                file = new RemoteFile(
-                    header.Kind,
-                    new FileData(Array.Empty<byte>(), header.Version),
-                    new FileId(header.FileName, header.Source)
-                );
-                if (removeIfDone)
-                {
-                    fileHeaders.RemoveAt(i);
-                    for (int j = fileChunks.Length - 1; j >= 0; j--)
-                    {
-                        if (fileChunks[j].Source != header.Source) continue;
-                        if (fileChunks[j].TransactionId != header.TransactionId) continue;
-                        fileChunks.RemoveAt(j);
-                    }
-                }
-                return (FileStatus.Received, default, default);
             }
 
             FileChunk[] chunks = new FileChunk[FileChunkManager.GetChunkLength(header.TotalLength)];
@@ -417,7 +395,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
             {
                 int chunkSize = FileChunkManager.GetChunkSize(header.TotalLength, j);
                 Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[j]), chunkSize);
-                chunk.CopyTo(data.AsSpan(j * FileChunkRpc.ChunkSize));
+                chunk.CopyTo(data.AsSpan(j * FileChunkResponseRpc.ChunkSize));
             }
             file = new RemoteFile(
                 header.Kind,
@@ -437,33 +415,31 @@ public class FileChunkManager : Singleton<FileChunkManager>
             return (FileStatus.Received, received.Length, received.Length);
         }
 
-        // Debug.LogWarning($"File {fileName} not requested");
+        if (EnableLogging) Debug.LogWarning($"[{nameof(FileChunkManager)}]: File {fileName} not requested");
         file = default;
         return (FileStatus.NotRequested, default, default);
     }
 
-    public static Awaitable<RemoteFile> RequestFile(FileId fileName, IProgress<(int Current, int Total)>? progress)
+    public static Awaitable<RemoteFile> RequestFile(FileId fileName, IProgress<(int Current, int Total)>? progress, bool force)
     {
         (FileStatus status, int received, int total) = GetFileStatus(fileName, out RemoteFile data, true);
         AwaitableCompletionSource<RemoteFile> task = new();
 
-        if (status == FileStatus.Received)
+        if (status == FileStatus.Received && !force)
         {
             task.SetResult(data);
             return task.Awaitable;
         }
 
-        if (Instance.Requests.TryGetValue(fileName, out FileRequest added))
+        for (int i = 0; i < Instance.Requests.Count; i++)
         {
-            return added.Task.Awaitable;
+            if (Instance.Requests[i].File != fileName) continue;
+            return Instance.Requests[i].Task.Awaitable;
         }
 
-        Instance.Requests.Add(fileName, new FileRequest(task, progress));
+        Instance.Requests.Add(new FileRequest(fileName, task, progress));
 
         progress?.Report((received, total));
-
-        Instance.RpcRequests.Enqueue(fileName);
-
         return task.Awaitable;
     }
 
@@ -486,14 +462,14 @@ public class FileChunkManager : Singleton<FileChunkManager>
         if (File.Exists(fileName))
         { return FileData.FromLocal(fileName); }
 
-        Debug.LogWarning($"Local file \"{fileName}\" does not exists");
+        Debug.LogWarning($"[{nameof(FileChunkManager)}]: Local file \"{fileName}\" does not exists");
         return null;
     }
 
     public static int GetChunkLength(int bytes)
     {
-        int n = bytes / FileChunkRpc.ChunkSize;
-        int rem = bytes % FileChunkRpc.ChunkSize;
+        int n = bytes / FileChunkResponseRpc.ChunkSize;
+        int rem = bytes % FileChunkResponseRpc.ChunkSize;
         if (rem != 0) n++;
         return n;
     }
@@ -502,25 +478,28 @@ public class FileChunkManager : Singleton<FileChunkManager>
     {
         if (chunkIndex == FileChunkManager.GetChunkLength(totalLength) - 1)
         {
-            return totalLength - (FileChunkManager.GetChunkLength(totalLength) - 1) * FileChunkRpc.ChunkSize;
+            return totalLength - (FileChunkManager.GetChunkLength(totalLength) - 1) * FileChunkResponseRpc.ChunkSize;
         }
-        return FileChunkRpc.ChunkSize;
+        return FileChunkResponseRpc.ChunkSize;
     }
 }
 
 public readonly struct FileRequest : IInspect<FileRequest>
 {
+    public readonly FileId File;
     public readonly AwaitableCompletionSource<RemoteFile> Task;
     public readonly IProgress<(int Current, int Total)>? Progress;
 
-    public FileRequest(AwaitableCompletionSource<RemoteFile> task, IProgress<(int Current, int Total)>? progress)
+    public FileRequest(FileId file, AwaitableCompletionSource<RemoteFile> task, IProgress<(int Current, int Total)>? progress)
     {
+        File = file;
         Task = task;
         Progress = progress;
     }
 
-    public void Deconstruct(out AwaitableCompletionSource<RemoteFile> task, out IProgress<(int Current, int Total)>? progress)
+    public void Deconstruct(out FileId file, out AwaitableCompletionSource<RemoteFile> task, out IProgress<(int Current, int Total)>? progress)
     {
+        file = File;
         task = Task;
         progress = Progress;
     }
@@ -532,11 +511,11 @@ public readonly struct FileRequest : IInspect<FileRequest>
         GUI.enabled = false;
         if (value.Progress is ProgressRecord<(int Current, int Total)> progressRecord)
         {
-            UnityEditor.EditorGUI.ProgressBar(rect, progressRecord.Progress.Total == 0 ? 0f : (float)progressRecord.Progress.Current / (float)progressRecord.Progress.Total, string.Empty);
+            UnityEditor.EditorGUI.ProgressBar(rect, progressRecord.Progress.Total == 0 ? 0f : (float)progressRecord.Progress.Current / (float)progressRecord.Progress.Total, File.ToString());
         }
         else
         {
-            GUI.Label(rect, "...");
+            GUI.Label(rect, File.ToString());
         }
         GUI.enabled = true;
 #endif

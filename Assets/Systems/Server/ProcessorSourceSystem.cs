@@ -61,7 +61,20 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 RefRW<Processor> processor = SystemAPI.GetComponentRW<Processor>(ghostEntity);
                 processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, ep);
-                processor.ValueRW.SourceVersion = command.ValueRO.Version;
+
+                if (CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
+                {
+                    if (source.LatestVersion == command.ValueRO.Version)
+                    { Debug.Log(string.Format("Update source file {0} latest version ({1} -> {2})", command.ValueRO.Source, source.LatestVersion, command.ValueRO.Version)); }
+                    else
+                    { Debug.Log(string.Format("Source file {0} not changed", command.ValueRO.Source)); }
+                    source.LatestVersion = command.ValueRO.Version;
+                }
+                else
+                {
+                    Debug.Log(string.Format("Creating new source file {0}", command.ValueRO.Source));
+                    CompilerManager.Instance.AddEmpty(processor.ValueRO.SourceFile, command.ValueRO.Version);
+                }
 
                 break;
             }
@@ -81,9 +94,8 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 continue;
             }
 
-            if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out var source))
+            if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
             {
-                CompilerManager.Instance.AddEmpty(processor.ValueRO.SourceFile);
                 buffer.Clear();
                 continue;
             }
@@ -94,10 +106,10 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 continue;
             }
 
-            if (processor.ValueRO.SourceVersion != source.Version)
+            if (processor.ValueRO.CompiledSourceVersion != source.CompiledVersion)
             {
                 ResetProcessor(processor);
-                processor.ValueRW.SourceVersion = source.Version;
+                processor.ValueRW.CompiledSourceVersion = source.CompiledVersion;
 
                 commandDefinitions.Clear();
 

@@ -4,9 +4,10 @@ using Unity.NetCode;
 [BurstCompile]
 public struct CompilerStatusRpc : IRpcCommand
 {
-    public FileId FileName;
-    public CompilationStatus Status;
-    public float Progress;
-    public bool IsSuccess;
-    public long Version;
+    public required FileId FileName;
+    public required CompilationStatus Status;
+    public required float Progress;
+    public required bool IsSuccess;
+    public required long CompiledVersion;
+    public required long LatestVersion;
 }

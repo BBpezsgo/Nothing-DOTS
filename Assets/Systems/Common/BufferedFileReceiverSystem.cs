@@ -23,7 +23,7 @@ partial struct BufferedFileReceiverSystem : ISystem
         DynamicBuffer<BufferedReceivingFile> receivingFiles = SystemAPI.GetSingletonBuffer<BufferedReceivingFile>();
 
         foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderRpc>>()
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderResponseRpc>>()
             .WithEntityAccess())
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
@@ -61,7 +61,7 @@ partial struct BufferedFileReceiverSystem : ISystem
         }
 
         foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileChunkRpc>>()
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileChunkResponseRpc>>()
             .WithEntityAccess())
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
@@ -72,15 +72,10 @@ partial struct BufferedFileReceiverSystem : ISystem
                 if (receivingFiles[i].Source != ep) continue;
                 if (receivingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
 
-                receivingFiles[i] = new BufferedReceivingFile(
-                    receivingFiles[i].Kind,
-                    receivingFiles[i].Source,
-                    receivingFiles[i].TransactionId,
-                    receivingFiles[i].FileName,
-                    receivingFiles[i].TotalLength,
-                    SystemAPI.Time.ElapsedTime,
-                    receivingFiles[i].Version
-                );
+                receivingFiles[i] = receivingFiles[i] with
+                {
+                    LastRedeivedAt = SystemAPI.Time.ElapsedTime
+                };
                 fileFound = true;
                 if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)}");
 
@@ -128,7 +123,7 @@ partial struct BufferedFileReceiverSystem : ISystem
         {
             double delta = SystemAPI.Time.ElapsedTime - receivingFiles[i].LastRedeivedAt;
             if (delta < ChunkRequestsCooldown) continue;
-            if (receivingFiles[i].Kind != FileHeaderKind.Ok) continue;
+            if (receivingFiles[i].Kind != FileResponseStatus.OK) continue;
 
             NativeArray<bool> receivedChunks = new(FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength), Allocator.Temp);
 
@@ -161,15 +156,10 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             if (requested == 0) continue;
 
-            receivingFiles[i] = new BufferedReceivingFile(
-                receivingFiles[i].Kind,
-                receivingFiles[i].Source,
-                receivingFiles[i].TransactionId,
-                receivingFiles[i].FileName,
-                receivingFiles[i].TotalLength,
-                SystemAPI.Time.ElapsedTime,
-                receivingFiles[i].Version
-            );
+            receivingFiles[i] = receivingFiles[i] with
+            {
+                LastRedeivedAt = SystemAPI.Time.ElapsedTime
+            };
         }
     }
 }

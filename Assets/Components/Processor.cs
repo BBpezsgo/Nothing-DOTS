@@ -42,7 +42,7 @@ public struct Processor : IComponentData
     public const int MappedMemorySize = TotalMemorySize - UserMemorySize;
 
     [GhostField] public FileId SourceFile;
-    public long SourceVersion;
+    public long CompiledSourceVersion;
 
     public Registers Registers;
     public FixedBytes1024 Memory;

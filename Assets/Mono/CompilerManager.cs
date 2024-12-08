@@ -1,3 +1,5 @@
+#pragma warning disable CS0162 // Unreachable code detected
+
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
@@ -10,7 +12,6 @@ using LanguageCore.BBLang.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Parser;
 using LanguageCore.Runtime;
-using LanguageCore.Tokenizing;
 using Maths;
 using Unity.Collections;
 using Unity.Entities;
@@ -30,7 +31,8 @@ public enum CompilationStatus
 public class CompiledSource : IInspect<CompiledSource>
 {
     public readonly FileId SourceFile;
-    public long Version;
+    public long CompiledVersion;
+    public long LatestVersion;
     public CompilationStatus Status;
 
     public float CompileSecuedued;
@@ -48,7 +50,8 @@ public class CompiledSource : IInspect<CompiledSource>
 
     CompiledSource(
         FileId sourceFile,
-        long version,
+        long compiledVersion,
+        long latestVersion,
         CompilationStatus status,
         float compileSecuedued,
         float progress,
@@ -58,7 +61,8 @@ public class CompiledSource : IInspect<CompiledSource>
         DiagnosticsCollection diagnostics)
     {
         SourceFile = sourceFile;
-        Version = version;
+        CompiledVersion = compiledVersion;
+        LatestVersion = latestVersion;
         CompileSecuedued = compileSecuedued;
         Progress = progress;
         IsSuccess = isSuccess;
@@ -69,9 +73,10 @@ public class CompiledSource : IInspect<CompiledSource>
         Compiled = CompilerResult.MakeEmpty(sourceFile.ToUri());
     }
 
-    public static CompiledSource Empty(FileId sourceFile) => new(
+    public static CompiledSource Empty(FileId sourceFile, long latestVersion) => new(
         sourceFile,
         default,
+        latestVersion,
         CompilationStatus.Secuedued,
         (float)MonoTime.Now + 1f,
         0,
@@ -83,7 +88,8 @@ public class CompiledSource : IInspect<CompiledSource>
 
     public static CompiledSource FromRpc(CompilerStatusRpc rpc) => new(
         rpc.FileName,
-        rpc.Version,
+        rpc.CompiledVersion,
+        rpc.LatestVersion,
         CompilationStatus.None,
         default,
         rpc.Progress,
@@ -112,13 +118,15 @@ public class _Drawer1 : DictionaryDrawer<FileId, CompiledSource> { }
 
 public class CompilerManager : Singleton<CompilerManager>
 {
+    const bool EnableLogging = false;
+
     [SerializeField, NotNull] SerializableDictionary<FileId, CompiledSource>? _compiledSources = default;
 
     public IReadOnlyDictionary<FileId, CompiledSource> CompiledSources => _compiledSources;
 
-    public void AddEmpty(FileId file)
+    public void AddEmpty(FileId file, long latestVersion)
     {
-        _compiledSources.Add(file, CompiledSource.Empty(file));
+        _compiledSources.Add(file, CompiledSource.Empty(file, latestVersion));
     }
 
     public void HandleRpc(CompilerStatusRpc rpc)
@@ -196,13 +204,14 @@ public class CompilerManager : Singleton<CompilerManager>
                     source.Status = CompilationStatus.Compiling;
                     source.CompileSecuedued = default;
                     Task.Factory.StartNew(static (object state)
-                        => CompileSourceTask((FileId)state), (object)file)
+                        // TODO: recompiling
+                        => CompileSourceTask(((FileId, bool))state), (object)(file, false))
                         .ContinueWith(task =>
                         {
                             if (task.IsFaulted)
                             { Debug.LogException(task.Exception); }
                             else if (task.IsCanceled)
-                            { Debug.LogError($"Compilation task cancelled"); }
+                            { Debug.LogError($"[{nameof(CompilerManager)}]: Compilation task cancelled"); }
                         });
                     if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
                     SendCompilationStatus(source, entityCommandBuffer);
@@ -216,6 +225,14 @@ public class CompilerManager : Singleton<CompilerManager>
                     SendCompilationStatus(source, entityCommandBuffer);
                     break;
                 case CompilationStatus.Done:
+                    if (source.CompiledVersion < source.LatestVersion)
+                    {
+                        Debug.Log($"[{nameof(CompilerManager)}]: Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
+                        source.Status = CompilationStatus.Secuedued;
+                        source.CompileSecuedued = 1f;
+                        if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
+                        SendCompilationStatus(source, entityCommandBuffer);
+                    }
                     break;
             }
             if (source.StatusChanged && source.LastStatusSync + 0.5f < Time.time)
@@ -244,19 +261,20 @@ public class CompilerManager : Singleton<CompilerManager>
                 Status = source.Status,
                 Progress = source.Progress,
                 IsSuccess = source.IsSuccess,
-                Version = source.Version,
+                CompiledVersion = source.CompiledVersion,
+                LatestVersion = source.LatestVersion,
             });
             entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
-            // Debug.Log($"Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
+            if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
         foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
-            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}\r\n{item.GetArrows()}");
-            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}\r\n{item.GetArrows()}");
+            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerManager)}]: {item}\r\n{item.GetArrows()}");
+            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerManager)}]: {item}\r\n{item.GetArrows()}");
 
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
@@ -278,8 +296,8 @@ public class CompilerManager : Singleton<CompilerManager>
 
         foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
-            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{item}");
-            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"{item}");
+            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerManager)}]: {item}");
+            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerManager)}]: {item}");
 
             Entity request = entityCommandBuffer.CreateEntity();
             entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
@@ -294,10 +312,12 @@ public class CompilerManager : Singleton<CompilerManager>
         }
     }
 
-    public static unsafe void CompileSourceTask(FileId file)
+    public static unsafe void CompileSourceTask((FileId File, bool Force) args)
     {
+        (FileId file, bool force) = args;
+
         Uri sourceUri = file.ToUri();
-        // Debug.Log($"Compilation started for \"{sourceUri}\" ...");
+        if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Compilation started for \"{sourceUri}\" ...");
 
         bool sourcesFromOtherConnectionsNeeded = false;
 
@@ -316,7 +336,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (!uri.TryGetNetcode(out FileId file))
             {
-                Debug.LogError($"Uri \"{uri}\" aint a netcode uri");
+                Debug.LogError($"[{nameof(CompilerManager)}]: Uri \"{uri}\" aint a netcode uri");
                 return false;
             }
 
@@ -338,9 +358,9 @@ public class CompilerManager : Singleton<CompilerManager>
                 return true;
             }
 
-            if (status is FileStatus.NotFound or FileStatus.CachedNotFound)
+            if (status is FileStatus.NotFound)
             {
-                Debug.LogError($"Remote file \"{uri}\" not found");
+                Debug.LogError($"[{nameof(CompilerManager)}]: Remote file \"{uri}\" not found");
                 return false;
             }
 
@@ -348,7 +368,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (status == FileStatus.Receiving)
             {
-                Debug.Log($"Source \"{file}\" is downloading ...");
+                if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{file}\" is downloading ...");
                 return false;
             }
 
@@ -359,13 +379,13 @@ public class CompilerManager : Singleton<CompilerManager>
                 source.StatusChanged = true;
             });
             progresses.Add(progress);
-            // Debug.Log($"Source needs file \"{file}\" ...");
+            if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source needs file \"{file}\" ...");
 
-            Awaitable<RemoteFile> task = FileChunkManager.RequestFile(file, progress);
+            Awaitable<RemoteFile> task = FileChunkManager.RequestFile(file, progress, force);
             Awaitable<RemoteFile>.Awaiter taskAwaiter = task.GetAwaiter();
             taskAwaiter.OnCompleted(() =>
             {
-                Debug.Log($"Source \"{file}\" downloaded ...");
+                if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{file}\" downloaded ...");
                 if (source.Status == CompilationStatus.Secuedued &&
                     source.CompileSecuedued != 1f)
                 {
@@ -489,7 +509,7 @@ public class CompilerManager : Singleton<CompilerManager>
             source.Status = CompilationStatus.Compiled;
             source.Compiled = compiled;
             source.CompileSecuedued = default;
-            source.Version = DateTime.UtcNow.Ticks;
+            source.CompiledVersion = DateTime.UtcNow.Ticks;
             source.IsSuccess = false;
             source.DebugInformation = new CompiledDebugInformation(null);
             source.Code?.Dispose();
@@ -501,7 +521,7 @@ public class CompilerManager : Singleton<CompilerManager>
             source.Status = CompilationStatus.Compiled;
             source.Compiled = compiled;
             source.CompileSecuedued = default;
-            source.Version = DateTime.UtcNow.Ticks;
+            source.CompiledVersion = DateTime.UtcNow.Ticks;
             source.IsSuccess = true;
             source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
             source.Code?.Dispose();

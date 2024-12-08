@@ -4,7 +4,7 @@ using Unity.Burst;
 using Unity.NetCode;
 
 [BurstCompile]
-public struct FileChunkRpc : IRpcCommand
+public struct FileChunkResponseRpc : IRpcCommand
 {
     public const int ChunkSize = 126;
 
