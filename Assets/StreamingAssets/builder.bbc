@@ -68,7 +68,7 @@ void Receive()
 
             if (DistanceSqr(packet.Position, Mapped.Position) < DistanceThresholdSq)
             {
-                debug(packet.Position, 0x00FFFF);
+                debug(packet.Position, CYAN);
 
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
             }

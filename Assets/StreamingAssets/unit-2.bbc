@@ -76,7 +76,7 @@ void Receive()
             unit.Expires = time() + 10f;
             RemoveUnit(&enemies, unit.Position);
 
-            ldebug(pos, 0x00FF00);
+            ldebug(pos, GREEN);
 
             PrintLine("Object identified ...");
         }
@@ -155,7 +155,7 @@ void Radar()
         v[2] = p.y as u8;
         send(&v, 3, 0f, 0f);
 
-        ldebug(point, 0x0000FF);
+        ldebug(point, BLUE);
 
         Unit enemy;
         enemy.Recorded = time();
@@ -202,7 +202,7 @@ while (1)
             Vector2 p1;
             byte2 p2 = (&enemies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
-            ldebug(p1, 0xFF0000);
+            ldebug(p1, RED);
             currentTarget = p1;
         }
         else

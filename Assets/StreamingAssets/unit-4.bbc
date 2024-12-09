@@ -68,7 +68,7 @@ void Receive()
 
             if (DistanceSqr(packet.Position, Mapped.Position) < DistanceThresholdSq)
             {
-                debug(packet.Position, 0x00FFFF);
+                debug(packet.Position, CYAN);
 
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
             }
@@ -100,7 +100,7 @@ void Receive()
             RemoveUnitAt(&enemies, unit.Position);
             UpdateUnit(&allies, unit);
 
-            ldebug(pos, 0x00FF00);
+            ldebug(pos, GREEN);
         }
     }
 }
@@ -200,7 +200,7 @@ void SendVerificationRequest(Unit* unit)
     // send(&v, sizeof(VerificationRequestPacket), Mapped.RadarDirection, Asin(1.2f / radarDistance));
     send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
 
-    debug(point, 0x0000FF);
+    debug(point, BLUE);
 
     unit.VerificationSentAt = time();
 }
@@ -242,18 +242,18 @@ while (1)
             Vector2 p = (&enemies).Raw()[i].Position;
             if (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
-                ldebug(p, 0xFF0000);
+                ldebug(p, RED);
                 currentTarget = p;
                 shouldShoot = true;
             }
             else if (time() >= (&enemies).Raw()[i].Recorded + 1f)
             {
-                ldebug(p, 0xFF8800);
+                ldebug(p, YELLOW);
                 currentTarget = p;
             }
             else
             {
-                ldebug(p, 0xFFFF00);
+                ldebug(p, YELLOW);
             }
         }
     }
@@ -268,7 +268,7 @@ while (1)
         else
         {
             Vector2 p = (&allies).Raw()[i].Position;
-            ldebug(p, 0x00FF00);
+            ldebug(p, GREEN);
         }
     }
 

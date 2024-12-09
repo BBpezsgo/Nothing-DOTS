@@ -26,7 +26,7 @@ export u8 TargetAt(Vector2 target, Vector2* targetedPosition)
         *targetedPosition = target;
         target.y -= 0.2f;
 
-        ldebug(*targetedPosition, 0xFF00FF);
+        ldebug(*targetedPosition, MAGENTA);
 
         {
             Vector2 targetDirection = Normalised(target);
@@ -87,7 +87,7 @@ export u8 TargetAtSimple(Vector2 target, Vector2* targetedPosition)
         *targetedPosition = target;
         target.y -= 0.2f;
 
-        ldebug(*targetedPosition, 0xFF00FF);
+        ldebug(*targetedPosition, MAGENTA);
 
         {
             Vector2 targetDirection = Normalised(target);

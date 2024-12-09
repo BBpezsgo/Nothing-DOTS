@@ -29,7 +29,7 @@ void SendResponse(f32 direction)
     // Vector2 point;
     // point.x = Sin(direction) * 10f;
     // point.y = Cos(direction) * 10f;
-    // ldebug(point, 0x00FFFF);
+    // ldebug(point, CYAN);
 }
 
 void SendRequest(f32 direction)
@@ -42,7 +42,7 @@ void SendRequest(f32 direction)
     Vector2 point;
     point.x = Sin(direction) * 10f;
     point.y = Cos(direction) * 10f;
-    ldebug(point, 0x0000FF);
+    ldebug(point, BLUE);
 }
 
 void Receive()
@@ -59,7 +59,7 @@ void Receive()
         //     Vector2 point;
         //     point.x = Sin(receivedDirection) * 10f;
         //     point.y = Cos(receivedDirection) * 10f;
-        //     ldebug(point, 0xFF00FF);
+        //     ldebug(point, YELLOW);
         // }
 
         if (v[0] == (u8)1 &&
@@ -86,7 +86,7 @@ void Receive()
                     point.x = Sin(receivedDirection) * requestSentToDistance;
                     point.y = Cos(receivedDirection) * requestSentToDistance;
                     ToByte2(&point, &unit.Position);
-                    ldebug(point, 0x00FF00);
+                    ldebug(point, GREEN);
 
                     requestSentAt = 0f;
                     requestSentToDistance = 0f;
@@ -99,7 +99,7 @@ void Receive()
                     Vector2 point;
                     point.x = Sin(receivedDirection) * 10f;
                     point.y = Cos(receivedDirection) * 10f;
-                    ldebug(point, 0xFFFF00);
+                    ldebug(point, YELLOW);
                     // PrintLine(diff);
                 }
             }
@@ -166,7 +166,7 @@ void Radar()
         // point.y = Cos(Mapped.RadarDirection);
         // point.x *= radarDistance;
         // point.y *= radarDistance;
-        // ldebug(point, 0xFFFFFF);
+        // ldebug(point, WHITE);
 
         // PrintLine("Identifying object ...");
 
@@ -213,7 +213,7 @@ while (1)
             requestSentToDistance = 0f;
             requestSentToDirection = 0f;
 
-            ldebug(point, 0xFF0000);
+            ldebug(point, RED);
 
             Unit enemy;
             enemy.Expires = time() + 5f;
@@ -237,7 +237,7 @@ while (1)
             Vector2 p1;
             byte2 p2 = (&enemies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
-            ldebug(p1, 0xFF0000);
+            ldebug(p1, RED);
             currentTarget = p1;
         }
     }

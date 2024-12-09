@@ -3,6 +3,7 @@
 
 - NaughtyAttributes [![GitHub](https://img.shields.io/badge/GitHub-100000?style=flat&logo=github&logoColor=white)](https://github.com/dbrizov/NaughtyAttributes)
 - NuGetForUnity [![GitHub](https://img.shields.io/badge/GitHub-100000?style=flat&logo=github&logoColor=white)](https://github.com/GlitchEnzo/NuGetForUnity)
+- Segments [![GitHub](https://img.shields.io/badge/GitHub-100000?style=flat&logo=github&logoColor=white)](https://github.com/andrew-raphael-lukasik/segments)
 - System.Collections.Immutable [![NuGet](https://img.shields.io/badge/NuGet-004880?style=flat&logo=nuget&logoColor=white)](https://www.nuget.org/packages/system.collections.immutable/)
 - System.Runtime.CompilerServices.Unsafe [![NuGet](https://img.shields.io/badge/NuGet-004880?style=flat&logo=nuget&logoColor=white)](https://www.nuget.org/packages/system.runtime.compilerservices.unsafe/)
 

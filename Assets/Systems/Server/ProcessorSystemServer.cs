@@ -1,6 +1,6 @@
 #define _UNITY_PROFILER
 #if UNITY_EDITOR && EDITOR_DEBUG
-#define _DEBUG_LINES
+#define DEBUG_LINES
 #endif
 
 using System;
@@ -47,6 +47,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required void* Memory;
         public required RefRO<LocalToWorld> WorldTransform;
         public required RefRO<LocalTransform> LocalTransform;
+        public required NativeList<BufferedLine>.ParallelWriter DebugLines;
     }
 
     static readonly Unity.Mathematics.Random _sharedRandom = Unity.Mathematics.Random.CreateFromIndex(420);
@@ -278,17 +279,21 @@ unsafe partial struct ProcessorSystemServer : ISystem
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
 #endif
 
-        (float2 position, int color) = ExternalFunctionGenerator.TakeParameters<float2, int>(arguments);
+        (float2 position, byte color) = ExternalFunctionGenerator.TakeParameters<float2, byte>(arguments);
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
+        scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
+            scope->WorldTransform.ValueRO.Position,
+            new float3(position.x, 0.5f, position.y)
+        ), (byte)color, MonoTime.Now + 1f));
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
             new float3(position.x, 0.5f, position.y),
             new Color(
-                (color & 0xFF0000) >> 16,
-                (color & 0x00FF00) >> 8,
-                (color & 0x0000FF) >> 0
+                (color & 0b100) != 0 ? 1f : 0f,
+                (color & 0b010) != 0 ? 1f : 0f,
+                (color & 0b001) != 0 ? 1f : 0f
             ),
             1f);
 #endif
@@ -303,20 +308,24 @@ unsafe partial struct ProcessorSystemServer : ISystem
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
 #endif
 
-        (float2 position, int color) = ExternalFunctionGenerator.TakeParameters<float2, int>(arguments);
+        (float2 position, byte color) = ExternalFunctionGenerator.TakeParameters<float2, byte>(arguments);
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
         RefRO<LocalTransform> transform = scope->LocalTransform;
         float3 transformed = transform.ValueRO.TransformPoint(new float3(position.x, 0f, position.y));
 
+        scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
+            scope->WorldTransform.ValueRO.Position,
+            new float3(transformed.x, 0.5f, transformed.z)
+        ), (byte)color, MonoTime.Now + 1f));
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
             new float3(transformed.x, 0.5f, transformed.z),
             new Color(
-                (color & 0xFF0000) >> 16,
-                (color & 0x00FF00) >> 8,
-                (color & 0x0000FF) >> 0
+                (color & 0b100) != 0 ? 1f : 0f,
+                (color & 0b010) != 0 ? 1f : 0f,
+                (color & 0b001) != 0 ? 1f : 0f
             ),
             1f);
 #endif
@@ -412,8 +421,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_time).Value, 33, 0, ExternalFunctionGenerator.SizeOf<float>(), default);
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_random).Value, 34, 0, ExternalFunctionGenerator.SizeOf<int>(), default);
 
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug).Value, 41, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug).Value, 42, ExternalFunctionGenerator.SizeOf<float2, int>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug).Value, 41, ExternalFunctionGenerator.SizeOf<float2, byte>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug).Value, 42, ExternalFunctionGenerator.SizeOf<float2, byte>(), 0, default);
 
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_dequeue_command).Value, 51, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
 
@@ -421,19 +430,45 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
+    NativeList<BufferedLine> debugLines;
 
     void ISystem.OnCreate(ref SystemState state)
     {
+        state.RequireForUpdate<DebugLines>();
         scopedExternalFunctions = new NativeArray<ExternalFunctionScopedSync>(ExternalFunctionCount, Allocator.Persistent);
         GenerateExternalFunctions((ExternalFunctionScopedSync*)scopedExternalFunctions.GetUnsafePtr());
+        debugLines = new NativeList<BufferedLine>(256, Allocator.Persistent);
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
+        DynamicBuffer<BufferedLine> lines = SystemAPI.GetSingletonBuffer<BufferedLine>();
+        for (int i = 0; i < debugLines.Length; i++)
+        {
+            for (int j = 0; j < lines.Length; j++)
+            {
+                if (debugLines[i].Value.Equals(lines[j].Value))
+                {
+                    lines[j] = lines[j] with
+                    {
+                        DieAt = debugLines[i].DieAt
+                    };
+                    goto next;
+                }
+            }
+            goto add;
+        next:
+            continue;
+        add:
+            lines.Add(debugLines[i]);
+        }
+        debugLines.Clear();
+
         new ProcessorJob()
         {
             scopedExternalFunctions = scopedExternalFunctions,
+            debugLines = debugLines.AsParallelWriter(),
         }.ScheduleParallel();
     }
 }
@@ -443,6 +478,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 partial struct ProcessorJob : IJobEntity
 {
     [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
+    public NativeList<BufferedLine>.ParallelWriter debugLines;
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(
@@ -479,6 +515,7 @@ partial struct ProcessorJob : IJobEntity
             Processor = processor,
             WorldTransform = worldTransform,
             LocalTransform = localTransform,
+            DebugLines = debugLines,
         };
         for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
         { scopedExternalFunctions[i].Scope = (nint)(void*)&transmissionScope; }

@@ -36,7 +36,7 @@ while (1)
 {
     Radar();
 
-    ldebug(currentTarget, 0xff0000);
+    ldebug(currentTarget, RED);
 
     ShootAt(currentTarget, &targetedPosition);
 }

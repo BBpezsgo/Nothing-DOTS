@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.andrewraphaellukasik.segments": "https://github.com/andrew-raphael-lukasik/segments.git#upm",
     "com.bb.bblang": "file:/home/BB/Projects/BBLang/Unity",
     "com.bb.math": "file:/home/BB/Projects/Math/Unity",
     "com.dbrizov.naughtyattributes": "https://github.com/dbrizov/NaughtyAttributes.git#upm",

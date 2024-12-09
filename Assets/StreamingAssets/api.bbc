@@ -38,6 +38,14 @@ export void sleep(f32 sec)
     while (time() < at) { }
 }
 
+export const u8 RED = (u8)0b100;
+export const u8 GREEN = (u8)0b010;
+export const u8 BLUE = (u8)0b001;
+export const u8 CYAN = (u8)0b011;
+export const u8 MAGENTA = (u8)0b110;
+export const u8 YELLOW = (u8)0b101;
+export const u8 WHITE = (u8)0b111;
+
 [External("atan2")] export f32 Atan2(f32 x, f32 y);
 [External("sin")] export f32 Sin(f32 v);
 [External("cos")] export f32 Cos(f32 v);
@@ -79,8 +87,8 @@ export void ToGlobal(byte2* point)
 [External("tolocal")] export void ToLocal(Vector2* point);
 [External("time")] export f32 time();
 
-[External("debug")] export void debug(Vector2 position, i32 color);
-[External("ldebug")] export void ldebug(Vector2 localPosition, i32 color);
+[External("debug")] export void debug(Vector2 position, u8 color);
+[External("ldebug")] export void ldebug(Vector2 localPosition, u8 color);
 
 [External("dequeue_command")] export int dequeue_command(any* data);
 
