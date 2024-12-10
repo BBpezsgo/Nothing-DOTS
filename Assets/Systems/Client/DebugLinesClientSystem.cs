@@ -26,16 +26,16 @@ public partial class DebugLinesClientSystem : SystemBase
     protected override void OnUpdate()
     {
         DynamicBuffer<BufferedLine> lines = SystemAPI.GetSingletonBuffer<BufferedLine>(true);
+
         for (int i = 0; i < _batches.Length; i++)
         {
-            Segments.Batch batch = _batches[i];
-            batch.Dependency.Complete();
+            _batches[i].Dependency.Complete();
+            _batches[i].buffer.Clear();
+        }
 
-            batch.buffer.Clear();
-            for (int j = 0; j < lines.Length; j++)
-            {
-                batch.buffer.Add(lines[j].Value);
-            }
+        for (int i = 0; i < lines.Length; i++)
+        {
+            _batches[lines[i].Color - 1].buffer.Add(lines[i].Value);
         }
     }
 }
