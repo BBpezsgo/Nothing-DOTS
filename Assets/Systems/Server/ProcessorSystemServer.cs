@@ -286,7 +286,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
             scope->WorldTransform.ValueRO.Position,
             new float3(position.x, 0.5f, position.y)
-        ), (byte)color, MonoTime.Now + 1f));
+        ), color, MonoTime.Now + 1f));
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
             new float3(position.x, 0.5f, position.y),
@@ -318,7 +318,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
             scope->WorldTransform.ValueRO.Position,
             new float3(transformed.x, 0.5f, transformed.z)
-        ), (byte)color, MonoTime.Now + 1f));
+        ), color, MonoTime.Now + 1f));
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
             new float3(transformed.x, 0.5f, transformed.z),

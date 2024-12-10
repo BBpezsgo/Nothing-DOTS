@@ -57,7 +57,7 @@ partial struct UnitProcessorSystem : ISystem
                 // const float speed = 720f;
                 quaternion target = quaternion.EulerXYZ(
                     0f,
-                    mapped->RadarDirection,
+                    -mapped->RadarDirection + math.PIHALF,
                     0f);
                 // Utils.RotateTowards(ref radar.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
                 radar.ValueRW.Rotation = target;
@@ -85,7 +85,7 @@ partial struct UnitProcessorSystem : ISystem
                     turret.ValueRW.TargetAngle = mapped->TurretTargetAngle + math.PIHALF;
                 }
 
-                Utils.QuaternionToEuler(turretTransform.ValueRO.Rotation, out float3 euler);
+                turretTransform.ValueRO.Rotation.ToEuler(out float3 euler);
                 mapped->TurretCurrentRotation = euler.y;
                 mapped->TurretCurrentAngle = euler.x - math.PIHALF;
             }

@@ -46,7 +46,7 @@ public static partial class Utils
 
     [BurstCompile]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float Rad(in quaternion a, in quaternion b)
+    static float Rad(in quaternion a, in quaternion b)
     {
         float dot = math.min(math.abs(math.dot(a, b)), 1f);
         return dot > 0.999999f ? 0f : math.acos(dot) * 2f;
@@ -64,10 +64,10 @@ public static partial class Utils
     }
 
     /// <summary>
-    /// <seealso href="https://discussions.unity.com/t/is-there-a-conversion-method-from-quaternion-to-euler/731052/39"/>
+    /// <seealso href="https://discussions.unity.com/t/is-there-a-conversion-method-from-quaternion-to-euler/731052/39">Source</seealso>
     /// </summary>
     [BurstCompile]
-    public static void QuaternionToEuler(in quaternion q, out float3 euler)
+    public static void ToEuler(this in quaternion q, out float3 euler)
     {
         const float epsilon = 1e-6f;
         const float cutoff = (1f - 2f * epsilon) * (1f - 2f * epsilon);

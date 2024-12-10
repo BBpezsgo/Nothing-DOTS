@@ -71,7 +71,7 @@ partial struct BuilderProcessorSystem : ISystem
                     turret.ValueRW.TargetAngle = mapped->TurretTargetAngle + math.PIHALF;
                 }
 
-                Utils.QuaternionToEuler(turretTransform.ValueRO.Rotation, out float3 euler);
+                turretTransform.ValueRO.Rotation.ToEuler(out float3 euler);
                 mapped->TurretCurrentRotation = euler.y;
                 mapped->TurretCurrentAngle = euler.x - math.PIHALF;
             }
