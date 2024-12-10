@@ -31,7 +31,7 @@ public partial struct UnitRadarSystem : ISystem
             float3 rayStart = transform.ValueRO.Position + (direction * offset);
             float3 rayEnd = transform.ValueRO.Position + (direction * (Unit.RadarRadius - offset));
 
-            Ray ray = new(rayStart, rayEnd, Layers.Default);
+            Ray ray = new(rayStart, rayEnd, Layers.BuildingOrUnit);
 
 #if DEBUG_LINES
             Debug.DrawLine(rayStart, rayEnd, Color.white, 1f);
@@ -45,11 +45,11 @@ public partial struct UnitRadarSystem : ISystem
 
             float distance = math.distance(ray.GetPoint(hit.Distance), rayStart) + offset;
 
-            if (distance > Unit.RadarRadius) distance = float.NaN;
-
 #if DEBUG_LINES
             DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 1f, Color.white, 1f, false);
 #endif
+
+            if (distance > Unit.RadarRadius) distance = float.NaN;
 
             processor.ValueRW.RadarResponse = distance;
         }

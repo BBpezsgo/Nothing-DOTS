@@ -2,6 +2,7 @@ public static class Layers
 {
     public const uint None = 0u;
     public const uint All = ~0u;
+    public const uint BuildingOrUnit = Default | Selectable;
 
     public const uint Default = 1u << 0;
     public const uint TransparentFX = 1u << 1;
