@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -9,7 +8,8 @@ using UnityEngine;
 /// <summary>
 /// <seealso href="https://assetstore.unity.com/packages/vfx/shaders/fullscreen-camera-effects/aos-fog-of-war-249249">Source</seealso>
 /// </summary>
-public partial class FogOfWarSystem : SystemBase
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+public partial class FogOfWarSystemClient : SystemBase
 {
     [NotNull] FogOfWarSettings? _settings = default;
     [NotNull] Shadowcaster? _shadowcaster = default;
@@ -17,7 +17,7 @@ public partial class FogOfWarSystem : SystemBase
     float _fogRefreshRateTimer;
     Texture2D? _fogPlaneTextureLerpTarget;
     Texture2D? _fogPlaneTextureLerpBuffer;
-    LevelData _levelData;
+    [NotNull] TileState[]? _levelData = default;
 
     protected override void OnCreate()
     {
@@ -28,44 +28,58 @@ public partial class FogOfWarSystem : SystemBase
     protected override void OnStartRunning()
     {
         _settings = SystemAPI.ManagedAPI.GetSingleton<FogOfWarSettings>();
-        _levelData = new LevelData();
+        _levelData = new TileState[_settings.LevelDimensionX * _settings.LevelDimensionY];
         _shadowcaster = new Shadowcaster(_settings, _levelData);
 
+
+        var map = QuadrantSystem.GetMap(World.Unmanaged);
         for (int x = 0; x < _settings.LevelDimensionX; x++)
         {
-            _levelData.AddColumn(new LevelColumnType(Enumerable.Repeat(ETileState.Empty, _settings.LevelDimensionY)));
-        }
-
-        /*
-        for (int x = 0; x < Settings.LevelDimensionX; x++)
-        {
-            for (int y = 0; y < Settings.LevelDimensionY; y++)
+            for (int y = 0; y < _settings.LevelDimensionY; y++)
             {
-                yield return null;
-
-                bool isObstacleHit = Physics.BoxCast(
-                    new float3(
-                        GetWorldX(x),
-                        Settings.LevelMidPoint.y + Settings.RayStartHeight,
-                        GetWorldY(y)),
-                    new float3(
-                        (Settings.UnitScale - Settings.ScanSpacingPerUnit) / 2.0f,
-                        Settings.UnitScale / 2.0f,
-                        (Settings.UnitScale - Settings.ScanSpacingPerUnit) / 2.0f),
-                    (float3)Vector3.down,
-                    Quaternion.identity,
-                    Settings.RayMaxDistance,
-                    Settings.ObstacleLayers,
-                    (QueryTriggerInteraction)(2 - Convert.ToInt32(Settings.IgnoreTriggers)));
+                Collider collider = new(true, new AABBCollider()
+                {
+                    AABB = new AABB()
+                    {
+                        Center = default,
+                        Extents = new float3(
+                            (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f,
+                            _settings.UnitScale / 2.0f,
+                            (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f)
+                    },
+                });
+                var point = new float3(
+                    _settings.GetWorldX(x),
+                    _settings.LevelMidPoint.y,
+                    _settings.GetWorldY(y));
+                bool isObstacleHit = CollisionSystem.Intersect(map, collider, point,
+                    out _, out _);
+                // bool isObstacleHit = Physics.BoxCast(
+                //     new float3(
+                //         _settings.GetWorldX(x),
+                //         _settings.LevelMidPoint.y + _settings.RayStartHeight,
+                //         _settings.GetWorldY(y)),
+                //     new float3(
+                //         (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f,
+                //         _settings.UnitScale / 2.0f,
+                //         (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f),
+                //     (float3)Vector3.down,
+                //     Quaternion.identity,
+                //     _settings.RayMaxDistance,
+                //     _settings.ObstacleLayers,
+                //     (QueryTriggerInteraction)(2 - Convert.ToInt32(_settings.IgnoreTriggers)));
 
                 if (isObstacleHit)
                 {
-                    FogOfWarManager.LevelColumn? col = LevelData[x];
-                    if (col != null) col[y] = FogOfWarManager.LevelColumn.ETileState.Obstacle;
+                    _levelData[y * _settings.LevelDimensionX + x] = TileState.Obstacle;
+                    CollisionSystem.Debug(collider, point, Color.red, 100f, false);
+                }
+                else
+                {
+                    CollisionSystem.Debug(collider, point, Color.green, 100f, false);
                 }
             }
         }
-        */
 
         InitializeFog();
 
@@ -84,22 +98,21 @@ public partial class FogOfWarSystem : SystemBase
                 _settings.LevelMidPoint.z);
         }
 
-        _fogRefreshRateTimer += SystemAPI.Time.DeltaTime;
-
-        if (_fogRefreshRateTimer < 1 / _settings.FogRefreshRate)
-        {
-            UpdateFogPlaneTextureBuffer();
-            return;
-        }
-
-        // This is to cancel out minor excess values
-        _fogRefreshRateTimer -= 1 / _settings.FogRefreshRate;
+        // _fogRefreshRateTimer += SystemAPI.Time.DeltaTime;
+        // 
+        // if (_fogRefreshRateTimer < 1 / _settings.FogRefreshRate)
+        // {
+        //     UpdateFogPlaneTextureBuffer();
+        //     return;
+        // }
+        // 
+        // // This is to cancel out minor excess values
+        // _fogRefreshRateTimer -= 1 / _settings.FogRefreshRate;
 
         foreach (var (fogRevealer, transform) in
             SystemAPI.Query<RefRW<FogRevealer>, RefRO<LocalToWorld>>())
         {
-            if (fogRevealer.ValueRO.UpdateOnlyOnMove == false)
-            { break; }
+            if (!fogRevealer.ValueRO.UpdateOnlyOnMove) break;
 
             int2 currentLevelCoordinates = fogRevealer.ValueRW.CurrentLevelCoordinates = new(
                 _settings.GetUnitX(transform.ValueRO.Position.x),
@@ -166,11 +179,17 @@ public partial class FogOfWarSystem : SystemBase
         UpdateFogPlaneTextureTarget();
     }
 
-    // Doing shader business on the script, if we pull this out as a shader pass, same operations must be repeated
     void UpdateFogPlaneTextureBuffer()
     {
         if (_fogPlaneTextureLerpBuffer == null ||
             _fogPlaneTextureLerpTarget == null) return;
+
+        _fogPlaneTextureLerpBuffer.CopyPixels(_fogPlaneTextureLerpTarget);
+        _fogPlaneTextureLerpBuffer.Apply();
+
+        return;
+
+        // FIXME: This takes 40ms every frame
 
         Color32[] bufferPixels = _fogPlaneTextureLerpBuffer.GetPixels32();
         Color32[] targetPixels = _fogPlaneTextureLerpTarget.GetPixels32();
@@ -197,7 +216,7 @@ public partial class FogOfWarSystem : SystemBase
 
         _fogPlane.GetComponent<MeshRenderer>().material.SetColor("_Color", _settings.FogColor);
 
-        _fogPlaneTextureLerpTarget.SetPixels(_shadowcaster.FogField.GetColors(_settings.FogPlaneAlpha, _settings));
+        _fogPlaneTextureLerpTarget.SetPixels32(_shadowcaster.FogField.GetColors(_settings.KeepRevealedTiles, _settings.RevealedTileOpacity, _settings.FogPlaneAlpha));
 
         _fogPlaneTextureLerpTarget.Apply();
     }
@@ -212,8 +231,8 @@ public partial class FogOfWarSystem : SystemBase
         if (additionalRadius == 0)
         {
             return
-                _shadowcaster.FogField[levelCoordinates.x]?[levelCoordinates.y] ==
-                ETileVisibility.Revealed;
+                _shadowcaster.FogField[levelCoordinates] ==
+                TileVisibility.Revealed;
         }
 
         int scanResult = 0;
@@ -222,18 +241,17 @@ public partial class FogOfWarSystem : SystemBase
         {
             for (int yIterator = -1; yIterator < additionalRadius + 1; yIterator++)
             {
-                if (_settings.CheckLevelGridRange(new int2(
+                int2 currentPoint = new int2(
                     levelCoordinates.x + xIterator,
-                    levelCoordinates.y + yIterator)) == false)
+                    levelCoordinates.y + yIterator);
+
+                if (!_settings.CheckLevelGridRange(currentPoint))
                 {
                     scanResult = 0;
-
                     break;
                 }
 
-                scanResult += Convert.ToInt32(
-                    _shadowcaster.FogField[levelCoordinates.x + xIterator]?[levelCoordinates.y + yIterator] ==
-                    ETileVisibility.Revealed);
+                scanResult += Convert.ToInt32(_shadowcaster.FogField[currentPoint] == TileVisibility.Revealed);
             }
         }
 

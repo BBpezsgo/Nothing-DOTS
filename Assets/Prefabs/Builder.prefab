@@ -102,6 +102,7 @@ GameObject:
   - component: {fileID: 3261324739484046761}
   - component: {fileID: 7659298787817415821}
   - component: {fileID: 4802622824793686659}
+  - component: {fileID: 7258662800468155469}
   m_Layer: 6
   m_Name: Builder
   m_TagString: Untagged
@@ -180,6 +181,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51861ae5f12b232baa32ed1cb3b04781, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  IsStatic: 0
 --- !u!114 &3261324739484046761
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -208,7 +210,7 @@ MonoBehaviour:
   SupportedGhostModes: 3
   OptimizationMode: 0
   Importance: 1
-  prefabId: 95f9e0627990352efa94411860d0a894
+  prefabId: 2433642d39f17be6aa8ad8c596976581
   HasOwner: 1
   SupportAutoCommandTarget: 1
   TrackInterpolationDelay: 0
@@ -237,6 +239,20 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.67462397
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7258662800468155469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2099412289264216910}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c33d37567c9524679e960cd8ed6721c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SightRange: 10
+  UpdateOnlyOnMove: 1
 --- !u!1 &2337461011409878972
 GameObject:
   m_ObjectHideFlags: 0

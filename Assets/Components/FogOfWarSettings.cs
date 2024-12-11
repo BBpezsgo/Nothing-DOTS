@@ -1,3 +1,4 @@
+using System;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -35,18 +36,9 @@ public class FogOfWarSettings : IComponentData
         levelCoordinates.y < LevelDimensionY;
 
     /// <summary>
-    /// Checks if the given world coordinates are within level dimension range.
-    /// </summary>
-    public bool CheckWorldGridRange(float3 worldCoordinates)
-    {
-        int2 levelCoordinates = WorldToLevel(worldCoordinates);
-        return CheckLevelGridRange(levelCoordinates);
-    }
-
-    /// <summary>
     /// Converts level coordinates into world coordinates.
     /// </summary>
-    public float3 GetWorldVector(int2 worldCoordinates) => new(
+    public float3 GetWorld(int2 worldCoordinates) => new(
         GetWorldX(worldCoordinates.x + (LevelDimensionX / 2)),
         0,
         GetWorldY(worldCoordinates.y + (LevelDimensionY / 2))
@@ -55,27 +47,27 @@ public class FogOfWarSettings : IComponentData
     /// <summary>
     /// Converts level coordinate to corresponding unit world coordinates.
     /// </summary>
-    public float GetWorldY(int yValue)
+    public float GetWorldY(int y)
     {
         if (LevelDimensionY % 2 == 0)
         {
-            return LevelMidPoint.z - ((LevelDimensionY / 2.0f) - yValue) * UnitScale;
+            return LevelMidPoint.z - ((LevelDimensionY / 2f) - y) * UnitScale;
         }
 
-        return LevelMidPoint.z - ((LevelDimensionY / 2.0f) - (yValue + 0.5f)) * UnitScale;
+        return LevelMidPoint.z - ((LevelDimensionY / 2f) - (y + 0.5f)) * UnitScale;
     }
 
     /// <summary>
     /// Converts level coordinate to corresponding unit world coordinates.
     /// </summary>
-    public float GetWorldX(int xValue)
+    public float GetWorldX(int x)
     {
         if (LevelDimensionX % 2 == 0)
         {
-            return LevelMidPoint.x - ((LevelDimensionX / 2.0f) - xValue) * UnitScale;
+            return LevelMidPoint.x - ((LevelDimensionX / 2f) - x) * UnitScale;
         }
 
-        return LevelMidPoint.x - ((LevelDimensionX / 2.0f) - (xValue + 0.5f)) * UnitScale;
+        return LevelMidPoint.x - ((LevelDimensionX / 2f) - (x + 0.5f)) * UnitScale;
     }
 
     /// <summary>
@@ -83,7 +75,7 @@ public class FogOfWarSettings : IComponentData
     /// </summary>
     public int2 WorldToLevel(float3 worldCoordinates)
     {
-        int2 unitWorldCoordinates = GetUnitVector(worldCoordinates);
+        int2 unitWorldCoordinates = GetUnit(worldCoordinates);
 
         return new int2(
             unitWorldCoordinates.x + (LevelDimensionX / 2),
@@ -93,7 +85,7 @@ public class FogOfWarSettings : IComponentData
     /// <summary>
     /// Converts "pure" world coordinates into unit world coordinates.
     /// </summary>
-    public int2 GetUnitVector(float3 worldCoordinates) => new(
+    public int2 GetUnit(float3 worldCoordinates) => new(
         GetUnitX(worldCoordinates.x),
         GetUnitY(worldCoordinates.z)
     );
@@ -101,10 +93,10 @@ public class FogOfWarSettings : IComponentData
     /// <summary>
     /// Converts world coordinate to unit world coordinates.
     /// </summary>
-    public int GetUnitX(float xValue) => Mathf.RoundToInt((xValue - LevelMidPoint.x) / UnitScale);
+    public int GetUnitX(float x) => (int)MathF.Round((x - LevelMidPoint.x) / UnitScale);
 
     /// <summary>
     /// Converts world coordinate to unit world coordinates.
     /// </summary>
-    public int GetUnitY(float yValue) => Mathf.RoundToInt((yValue - LevelMidPoint.z) / UnitScale);
+    public int GetUnitY(float y) => (int)MathF.Round((y - LevelMidPoint.z) / UnitScale);
 }

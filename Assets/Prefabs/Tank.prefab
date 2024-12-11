@@ -563,8 +563,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c33d37567c9524679e960cd8ed6721c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SightRange: 5
-  UpdateOnlyOnMove: 0
+  SightRange: 20
+  UpdateOnlyOnMove: 1
 --- !u!1 &3090239875511047508
 GameObject:
   m_ObjectHideFlags: 0

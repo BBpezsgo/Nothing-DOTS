@@ -9,37 +9,37 @@ using UnityEngine;
 [AddComponentMenu("Authoring/FogOfWarSettingsAuthoring")]
 public class FogOfWarSettingsAuthoring : MonoBehaviour
 {
-    [SerializeField] public float3 levelMidPoint = default;
+    [SerializeField] float3 levelMidPoint = default;
 
-    [Range(1, 30)]
-    [SerializeField] public float FogRefreshRate = 10;
-    [SerializeField] public bool keepRevealedTiles = false;
+    [Min(0f)]
+    [SerializeField] float fogRefreshRate = 10f;
+    [SerializeField] bool keepRevealedTiles = false;
 
     [Header("Fog Properties")]
-    [Range(0, 100)]
-    [SerializeField] public float fogPlaneHeight = 1;
-    [SerializeField, NotNull] public Material? fogPlaneMaterial = null;
-    [SerializeField] public Color fogColor = new Color32(5, 15, 25, 255);
-    [Range(0, 1)]
-    [SerializeField] public float fogPlaneAlpha = 1;
-    [Range(1, 5)]
-    [SerializeField] public float fogLerpSpeed = 2.5f;
-    [Range(1, 1)]
-    [SerializeField] public float revealedTileOpacity = 0.5f;
+    [SerializeField] float fogPlaneHeight = 1f;
+    [SerializeField, NotNull] Material? fogPlaneMaterial = default;
+    [SerializeField] Color fogColor = new Color32(5, 15, 25, 255);
+    [Range(0f, 1f)]
+    [SerializeField] float fogPlaneAlpha = 1f;
+    [Min(0f)]
+    [SerializeField] float fogLerpSpeed = 2.5f;
+    [Range(0f, 1f)]
+    [SerializeField] float revealedTileOpacity = 0.5f;
 
     [Header("Scan Properties")]
-    [Range(1, 128)]
+    [Min(1)]
     [Tooltip("If you need more than 128 units, consider using raycasting-based fog modules instead.")]
-    [SerializeField] public int levelDimensionX = 11;
-    [Range(1, 128)]
+    [SerializeField] int levelDimensionX = 11;
+    [Min(1)]
     [Tooltip("If you need more than 128 units, consider using raycasting-based fog modules instead.")]
-    [SerializeField] public int levelDimensionY = 11;
-    [SerializeField] public float unitScale = 1;
-    [SerializeField] public float scanSpacingPerUnit = 0.25f;
-    [SerializeField] public float rayStartHeight = 5;
-    [SerializeField] public float rayMaxDistance = 10;
-    [SerializeField] public LayerMask obstacleLayers = new LayerMask();
-    [SerializeField] public bool ignoreTriggers = true;
+    [SerializeField] int levelDimensionY = 11;
+    [SerializeField] float unitScale = 1f;
+    [SerializeField] float scanSpacingPerUnit = 0.25f;
+    [SerializeField] float rayStartHeight = 5f;
+    [Min(0f)]
+    [SerializeField] float rayMaxDistance = 10f;
+    [SerializeField] LayerMask obstacleLayers = default;
+    [SerializeField] bool ignoreTriggers = true;
 
     class Baker : Baker<FogOfWarSettingsAuthoring>
     {
@@ -50,7 +50,7 @@ public class FogOfWarSettingsAuthoring : MonoBehaviour
             {
                 LevelMidPoint = authoring.levelMidPoint,
 
-                FogRefreshRate = authoring.FogRefreshRate,
+                FogRefreshRate = authoring.fogRefreshRate,
                 KeepRevealedTiles = authoring.keepRevealedTiles,
 
                 FogPlaneHeight = authoring.fogPlaneHeight,

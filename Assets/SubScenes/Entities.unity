@@ -339,9 +339,9 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
-  FogRefreshRate: 10
-  keepRevealedTiles: 0
-  fogPlaneHeight: 1
+  fogRefreshRate: 1
+  keepRevealedTiles: 1
+  fogPlaneHeight: 0
   fogPlaneMaterial: {fileID: 2100000, guid: 36b93ac6fcf129c449491654e397fe4a, type: 2}
   fogColor: {r: 0.019607844, g: 0.05882353, b: 0.09803922, a: 1}
   fogPlaneAlpha: 1
