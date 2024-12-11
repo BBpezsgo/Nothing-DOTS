@@ -99,8 +99,6 @@ void Receive()
             unit.VerificationSentAt = time();
             RemoveUnitAt(&enemies, unit.Position);
             UpdateUnit(&allies, unit);
-
-            ldebug(pos, GREEN);
         }
     }
 }

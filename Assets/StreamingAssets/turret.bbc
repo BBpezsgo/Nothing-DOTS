@@ -26,8 +26,6 @@ export u8 TargetAt(Vector2 target, Vector2* targetedPosition)
         *targetedPosition = target;
         target.y -= 0.2f;
 
-        ldebug(*targetedPosition, MAGENTA);
-
         {
             Vector2 targetDirection = Normalised(target);
             f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
@@ -86,8 +84,6 @@ export u8 TargetAtSimple(Vector2 target, Vector2* targetedPosition)
     {
         *targetedPosition = target;
         target.y -= 0.2f;
-
-        ldebug(*targetedPosition, MAGENTA);
 
         {
             Vector2 targetDirection = Normalised(target);

@@ -34,6 +34,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
     static readonly ProfilerMarker _ExternalMarker_other = new("ProcessorSystemServer.External.other");
 #endif
 
+    const float DebugLineDuration = 0.5f;
+
     public static readonly BytecodeInterpreterSettings BytecodeInterpreterSettings = new()
     {
         HeapSize = Processor.HeapSize,
@@ -274,7 +276,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _debug(nint _scope, nint arguments, nint returnValue)
     {
-#if DEBUG_LINES
 #if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
 #endif
@@ -286,7 +287,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
         scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
             scope->WorldTransform.ValueRO.Position,
             new float3(position.x, 0.5f, position.y)
-        ), color, MonoTime.Now + 1f));
+        ), color, MonoTime.Now + DebugLineDuration));
+
+#if DEBUG_LINES
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
             new float3(position.x, 0.5f, position.y),
@@ -295,7 +298,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 (color & 0b010) != 0 ? 1f : 0f,
                 (color & 0b001) != 0 ? 1f : 0f
             ),
-            1f);
+            DebugLineDuration);
 #endif
     }
 
@@ -303,7 +306,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _ldebug(nint _scope, nint arguments, nint returnValue)
     {
-#if DEBUG_LINES
 #if UNITY_PROFILER
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
 #endif
@@ -318,7 +320,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
         scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
             scope->WorldTransform.ValueRO.Position,
             new float3(transformed.x, 0.5f, transformed.z)
-        ), color, MonoTime.Now + 1f));
+        ), color, MonoTime.Now + DebugLineDuration));
+
+#if DEBUG_LINES
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
             new float3(transformed.x, 0.5f, transformed.z),
@@ -327,7 +331,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 (color & 0b010) != 0 ? 1f : 0f,
                 (color & 0b001) != 0 ? 1f : 0f
             ),
-            1f);
+            DebugLineDuration);
 #endif
     }
 
