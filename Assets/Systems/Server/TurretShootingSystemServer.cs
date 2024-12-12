@@ -19,11 +19,10 @@ public partial struct TurretShootingSystemServer : ISystem
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        foreach ((RefRW<Turret> turret, RefRO<LocalToWorld> localToWorld) in
+        foreach (var (turret, localToWorld) in
                     SystemAPI.Query<RefRW<Turret>, RefRO<LocalToWorld>>())
         {
             if (!turret.ValueRO.ShootRequested) continue;
-            if (turret.ValueRO.Type != TurretType.Combat) continue;
 
             turret.ValueRW.ShootRequested = false;
             Entity instance = commandBuffer.Instantiate(turret.ValueRO.ProjectilePrefab);

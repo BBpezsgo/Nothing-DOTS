@@ -11,11 +11,10 @@ public partial struct BuilderSystem : ISystem
     {
         var map = QuadrantSystem.GetMap(ref state);
 
-        foreach ((RefRW<Turret> turret, RefRO<LocalToWorld> localToWorld) in
-                    SystemAPI.Query<RefRW<Turret>, RefRO<LocalToWorld>>())
+        foreach (var (turret, localToWorld) in
+                    SystemAPI.Query<RefRW<BuilderTurret>, RefRO<LocalToWorld>>())
         {
             if (!turret.ValueRO.ShootRequested) continue;
-            if (turret.ValueRO.Type != TurretType.Builder) continue;
             turret.ValueRW.ShootRequested = false;
 
             Ray ray = new(localToWorld.ValueRO.Position, localToWorld.ValueRO.Position + (localToWorld.ValueRO.Up * Builder.BuildRadius), Layers.BuildingPlaceholder, false);

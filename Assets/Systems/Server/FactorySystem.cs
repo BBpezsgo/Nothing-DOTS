@@ -27,6 +27,7 @@ public partial struct FactorySystem : ISystem
         {
             foreach (var (ghostInstance, ghostEntity) in
                 SystemAPI.Query<RefRO<GhostInstance>>()
+                .WithAll<Factory>()
                 .WithEntityAccess())
             {
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.FactoryEntity.ghostId) continue;

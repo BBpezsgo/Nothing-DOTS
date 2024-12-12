@@ -1,3 +1,7 @@
+#if UNITY_EDITOR && EDITOR_DEBUG
+#define DEBUG_COLLISIONS
+#endif
+
 using System;
 using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
@@ -311,14 +315,14 @@ public unsafe partial struct CollisionSystem : ISystem
         var enumerator = map.GetEnumerator();
         while (enumerator.MoveNext())
         {
-            var pair = enumerator.Current;
-            for (int i = 0; i < pair.Value.Length; i++)
+            var quadrant = enumerator.Current.Value;
+            for (int i = 0; i < quadrant.Length; i++)
             {
-                QuadrantEntity* a = &pair.Value.GetUnsafePtr()[i];
+                QuadrantEntity* a = &quadrant.GetUnsafePtr()[i];
                 a->ResolvedOffset = default;
-                for (int j = i + 1; j < pair.Value.Length; j++)
+                for (int j = i + 1; j < quadrant.Length; j++)
                 {
-                    QuadrantEntity* b = &pair.Value.GetUnsafePtr()[j];
+                    QuadrantEntity* b = &quadrant.GetUnsafePtr()[j];
 
                     if (a->Collider.IsStatic && b->Collider.IsStatic) continue;
 
@@ -328,15 +332,17 @@ public unsafe partial struct CollisionSystem : ISystem
                         out float3 normal, out float depth
                         )) continue;
 
+#if DEBUG_COLLISIONS
                     Debug(a->Collider, a->Position, Color.green, 0.1f, false);
                     Debug(b->Collider, b->Position, Color.green, 0.1f, false);
+#endif
 
                     normal.y = 0f;
                     depth = math.clamp(depth, 0f, 0.1f);
 
                     if (a->Collider.IsStatic)
                     {
-                        float3 displaceB = normal * depth;
+                        float3 displaceB = normal * -depth;
 
                         b->ResolvedOffset += displaceB;
                         b->Position += displaceB;

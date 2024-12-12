@@ -52,7 +52,7 @@ partial struct BuilderProcessorSystem : ISystem
 
             if (builder.ValueRO.Turret != Entity.Null)
             {
-                RefRW<Turret> turret = SystemAPI.GetComponentRW<Turret>(builder.ValueRO.Turret);
+                RefRW<BuilderTurret> turret = SystemAPI.GetComponentRW<BuilderTurret>(builder.ValueRO.Turret);
                 RefRO<LocalTransform> turretTransform = SystemAPI.GetComponentRO<LocalTransform>(builder.ValueRO.Turret);
 
                 if (mapped->InputShoot != 0)

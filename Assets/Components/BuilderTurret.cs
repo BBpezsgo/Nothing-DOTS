@@ -1,8 +1,7 @@
 using Unity.Entities;
 
-public struct Turret : IComponentData
+public struct BuilderTurret : IComponentData
 {
-    public Entity ProjectilePrefab;
     public Entity ShootPosition;
     
     public bool ShootRequested;

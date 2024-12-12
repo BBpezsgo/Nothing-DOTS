@@ -262,7 +262,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8234557897954276900}
-  - component: {fileID: 346648645906499385}
+  - component: {fileID: 2430554611588040871}
   - component: {fileID: 749940887925636781}
   m_Layer: 6
   m_Name: Turret
@@ -288,7 +288,7 @@ Transform:
   - {fileID: 1253753139288835947}
   m_Father: {fileID: 7771675183155895622}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
---- !u!114 &346648645906499385
+--- !u!114 &2430554611588040871
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -297,12 +297,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 2337461011409878972}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d28ede47d52acde3f86e5a9e76d9d5cf, type: 3}
+  m_Script: {fileID: 11500000, guid: 5361f1f881979683a8aee164db5ef5a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Type: 1
-  CannonBallPrefab: {fileID: 0}
-  CannonBallSpawn: {fileID: 0}
+  ShootPosition: {fileID: 0}
 --- !u!114 &749940887925636781
 MonoBehaviour:
   m_ObjectHideFlags: 0

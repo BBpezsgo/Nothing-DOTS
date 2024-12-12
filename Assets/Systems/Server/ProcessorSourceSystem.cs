@@ -19,16 +19,13 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ProcessorCommandRequestRpc>>()
             .WithEntityAccess())
         {
-            foreach (var (ghostInstance, ghostEntity) in
-                SystemAPI.Query<RefRO<GhostInstance>>()
-                .WithEntityAccess())
+            foreach (var (ghostInstance, processor) in
+                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
                 NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
 
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
-
-                RefRW<Processor> processor = SystemAPI.GetComponentRW<Processor>(ghostEntity);
 
                 switch (command.ValueRO.Command)
                 {
@@ -54,16 +51,14 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SetProcessorSourceRequestRpc>>()
             .WithEntityAccess())
         {
-            foreach (var (ghostInstance, ghostEntity) in
-                SystemAPI.Query<RefRO<GhostInstance>>()
-                .WithEntityAccess())
+            foreach (var (ghostInstance, processor) in
+                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
                 NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
 
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
 
-                RefRW<Processor> processor = SystemAPI.GetComponentRW<Processor>(ghostEntity);
                 processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, ep);
 
                 if (CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
@@ -89,15 +84,12 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             commandBuffer.DestroyEntity(entity);
         }
 
-        foreach (var (processor, commandDefinitions, entity) in
-                    SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>>()
-                    .WithEntityAccess())
+        foreach (var (processor, commandDefinitions, instructions) in
+                    SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>, DynamicBuffer<BufferedInstruction>>())
         {
-            DynamicBuffer<BufferedInstruction> buffer = SystemAPI.GetBuffer<BufferedInstruction>(entity);
-
             if (processor.ValueRO.SourceFile == default)
             {
-                buffer.Clear();
+                instructions.Clear();
                 continue;
             }
 
@@ -105,13 +97,13 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             {
                 if (EnableLogging) Debug.Log(string.Format("Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
                 CompilerManager.Instance.AddEmpty(processor.ValueRO.SourceFile, default);
-                buffer.Clear();
+                instructions.Clear();
                 continue;
             }
 
             if (!source.Code.HasValue)
             {
-                buffer.Clear();
+                instructions.Clear();
                 continue;
             }
 
@@ -149,16 +141,16 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                     commandDefinitions.Add(new(structAttribute.Parameters[0].GetInt(), structAttribute.Parameters[1].Value, parameterTypes));
                 }
 
-                buffer.Clear();
+                instructions.Clear();
                 NativeArray<BufferedInstruction> code = source.Code.Value.Reinterpret<BufferedInstruction>();
-                buffer.CopyFrom(code);
+                instructions.CopyFrom(code);
 
                 continue;
             }
 
             if (!source.IsSuccess)
             {
-                buffer.Clear();
+                instructions.Clear();
             }
         }
     }
