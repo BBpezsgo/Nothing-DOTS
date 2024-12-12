@@ -4,8 +4,8 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using LanguageCore;
 using LanguageCore.BBLang.Generator;
@@ -330,46 +330,38 @@ public class CompilerManager : Singleton<CompilerManager>
 
         List<ProgressRecord<(int, int)>> progresses = new();
 
-        bool FileParser(Uri uri, [NotNullWhen(true)] out string? content)
+        Awaitable<Stream?>? FileParser(Uri uri)
         {
-            content = default;
-
             if (!uri.TryGetNetcode(out FileId fileId))
             {
                 Debug.LogError($"[{nameof(CompilerManager)}]: Uri \"{uri}\" aint a netcode uri");
-                return false;
+                return null;
             }
 
             if (fileId.Source.IsServer)
             {
                 FileData? localFile = FileChunkManager.GetLocalFile(fileId.Name.ToString());
                 if (!localFile.HasValue)
-                { return false; }
+                { return null; }
 
-                content = Encoding.UTF8.GetString(localFile.Value.Data);
-                return true;
+                var task = new AwaitableCompletionSource<Stream?>();
+                task.SetResult(new MemoryStream(localFile.Value.Data));
+                return task.Awaitable;
             }
 
-            if (FileChunkManager.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
-            {
-                content = Encoding.UTF8.GetString(remoteFile.File.Data);
-                return true;
-            }
+            // if (FileChunkManager.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
+            // {
+            //     var task = new AwaitableCompletionSource<Stream?>();
+            //     task.SetResult(new MemoryStream(remoteFile.File.Data));
+            //     return task.Awaitable;
+            // }
 
             FileStatus status = FileChunkManager.GetRequestStatus(fileId);
 
             if (status == FileStatus.NotFound)
             {
                 Debug.LogError($"[{nameof(CompilerManager)}]: Remote file \"{uri}\" not found");
-                return false;
-            }
-
-            sourcesFromOtherConnectionsNeeded = true;
-
-            if (status == FileStatus.Receiving)
-            {
-                if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{fileId}\" is downloading ...");
-                return false;
+                return null;
             }
 
             ProgressRecord<(int, int)> progress = new(v =>
@@ -382,18 +374,20 @@ public class CompilerManager : Singleton<CompilerManager>
             progresses.Add(progress);
             if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source needs file \"{fileId}\" ...");
 
-            Awaitable<RemoteFile> task = FileChunkManager.RequestFile(fileId, progress);
-            task.GetAwaiter().OnCompleted(() =>
             {
-                if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{fileId}\" downloaded ...");
-                if (source.Status == CompilationStatus.Secuedued &&
-                    source.CompileSecuedued != 1f)
+                AwaitableCompletionSource<Stream?> result = new();
+                Awaitable<RemoteFile> task = FileChunkManager.RequestFile(fileId, progress);
+                task.GetAwaiter().OnCompleted(() =>
                 {
-                    source.CompileSecuedued = 1f;
-                }
-            });
-
-            return false;
+                    MemoryStream data = new(task.GetAwaiter().GetResult().File.Data);
+                    result.SetResult(data);
+                    if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{fileId}\" downloaded ...");
+                    if (source.Status == CompilationStatus.Secuedued &&
+                        source.CompileSecuedued != 1f)
+                    { source.CompileSecuedued = 1f; }
+                });
+                return result.Awaitable;
+            }
         }
 
         UserDefinedAttribute[] attributes = new UserDefinedAttribute[]

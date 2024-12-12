@@ -212,19 +212,22 @@ public class FileChunkManager : Singleton<FileChunkManager>
     [SerializeField, NotNull] List<FileRequest>? Requests = default;
     float NextCheckAt;
     Entity DatabaseEntity;
+    bool IsColdRun;
 
     void Start()
     {
         RemoteFiles = new();
         Requests = new();
         NextCheckAt = 0f;
+        IsColdRun = true;
     }
 
     void Update()
     {
-        if (NextCheckAt > Time.time || Requests.Count == 0) return;
+        if (NextCheckAt > Time.time) return;
         NextCheckAt = Time.time + .2f;
 
+        if (Requests.Count > 0 || IsColdRun)
         {
             using EntityQuery databaseQ = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(BufferedFiles));
             if (!databaseQ.TryGetSingletonEntity<BufferedFiles>(out DatabaseEntity))
@@ -233,6 +236,8 @@ public class FileChunkManager : Singleton<FileChunkManager>
                 return;
             }
         }
+
+        if (Requests.Count == 0) return;
 
         EntityCommandBuffer commandBuffer = default;
 
@@ -246,14 +251,15 @@ public class FileChunkManager : Singleton<FileChunkManager>
                 fileHeaders,
                 fileChunks,
                 Requests[i],
-                out bool shouldDelete
+                out bool shouldDelete,
+                out int headerIndex
             );
 
             if (shouldDelete)
             {
                 Requests.RemoveAt(i);
-                DeleteRequest(
-                    i,
+                CleanupRequest(
+                    headerIndex,
                     fileHeaders,
                     fileChunks
                 );
@@ -267,7 +273,7 @@ public class FileChunkManager : Singleton<FileChunkManager>
         }
     }
 
-    static void DeleteRequest(
+    static void CleanupRequest(
         int headerIndex,
         DynamicBuffer<BufferedReceivingFile> fileHeaders,
         DynamicBuffer<BufferedReceivingFileChunk> fileChunks)
@@ -287,15 +293,19 @@ public class FileChunkManager : Singleton<FileChunkManager>
         DynamicBuffer<BufferedReceivingFile> fileHeaders,
         DynamicBuffer<BufferedReceivingFileChunk> fileChunks,
         in FileRequest request,
-        out bool shouldDelete)
+        out bool shouldDelete,
+        out int headerIndex)
     {
         shouldDelete = false;
+        headerIndex = -1;
 
         for (int i = fileHeaders.Length - 1; i >= 0; i--)
         {
             BufferedReceivingFile header = fileHeaders[i];
             if (header.FileName != request.File.Name) continue;
             if (header.Source != request.File.Source) continue;
+
+            headerIndex = i;
 
             if (header.Kind == FileResponseStatus.NotFound)
             {
