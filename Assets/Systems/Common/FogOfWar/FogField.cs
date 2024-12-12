@@ -31,21 +31,14 @@ public readonly struct FogField
 
     public void Reset(bool keepRevealedTiles)
     {
-        for (int y = 0; y < _height; y++)
+        for (int i = 0; i < _cells.Length; i++)
         {
-            for (int x = 0; x < _width; x++)
-            {
-                ref TileVisibility cell = ref _cells[y * _width + x];
+            ref TileVisibility cell = ref _cells[i];
 
-                if (!keepRevealedTiles)
-                {
-                    cell = TileVisibility.Hidden;
-                    continue;
-                }
-
-                if (cell == TileVisibility.Revealed)
-                { cell = TileVisibility.PreviouslyRevealed; }
-            }
+            if (!keepRevealedTiles)
+            { cell = TileVisibility.Hidden; }
+            else if (cell == TileVisibility.Revealed)
+            { cell = TileVisibility.PreviouslyRevealed; }
         }
     }
 
@@ -55,9 +48,6 @@ public readonly struct FogField
         {
             for (int y = 0; y < _height; y++)
             {
-                // x => y
-                // y => _width - 1 - x
-
                 TileVisibility visibility = _cells[y * _width + x];
 
                 float tileOpacity = 1 - (int)visibility;
@@ -66,7 +56,6 @@ public readonly struct FogField
                     visibility == TileVisibility.PreviouslyRevealed)
                 { tileOpacity = revealedTileOpacity; }
 
-                // The reason that the darker side is the revealed ones is to let users customize fog's color
                 _colors[(_height - y - 1) * _width + (_width - x - 1)] =
                     new Color32(byte.MaxValue, byte.MaxValue, byte.MaxValue, (byte)(tileOpacity * fogPlaneAlpha * byte.MaxValue));
             }

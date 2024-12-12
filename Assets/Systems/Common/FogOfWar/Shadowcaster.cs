@@ -105,6 +105,8 @@ public class Shadowcaster
     /// </summary>
     public void ProcessLevelData(int2 revealerPoint, int sightRange)
     {
+        // TODO: optimize this
+
         QuadrantIterator _quadrantIterator;
 
         // Reveal the first tile where the revealer is at
@@ -146,7 +148,8 @@ public class Shadowcaster
                 {
                     int2 quadrantPoint = new(columnIterator.Depth, _i);
 
-                    if (IsTileObstacle(_quadrantIterator, quadrantPoint) || IsTileVisible(columnIterator, quadrantPoint))
+                    if (IsTileObstacle(_quadrantIterator, quadrantPoint) ||
+                        IsTileVisible(columnIterator, quadrantPoint))
                     {
                         RevealTileIteratively(_quadrantIterator, quadrantPoint, sightRange);
                     }
@@ -155,12 +158,14 @@ public class Shadowcaster
                     {
                         float nextIteratorStartSlope = columnIterator.StartSlope;
 
-                        if (IsTileObstacle(_quadrantIterator, lastQuadrantPoint) && IsTileEmpty(_quadrantIterator, quadrantPoint))
+                        if (IsTileObstacle(_quadrantIterator, lastQuadrantPoint) &&
+                            IsTileEmpty(_quadrantIterator, quadrantPoint))
                         {
                             nextIteratorStartSlope = GetQuadrantSlope(quadrantPoint);
                         }
 
-                        if (IsTileEmpty(_quadrantIterator, lastQuadrantPoint) && IsTileObstacle(_quadrantIterator, quadrantPoint))
+                        if (IsTileEmpty(_quadrantIterator, lastQuadrantPoint) &&
+                            IsTileObstacle(_quadrantIterator, quadrantPoint))
                         {
                             if (!columnIterator.IsProceedable) continue;
 
@@ -181,7 +186,8 @@ public class Shadowcaster
                     firstStepFlag = false;
                 }
 
-                if (IsTileEmpty(_quadrantIterator, lastQuadrantPoint) && columnIterator.IsProceedable)
+                if (IsTileEmpty(_quadrantIterator, lastQuadrantPoint) &&
+                    columnIterator.IsProceedable)
                 {
                     columnIterator = columnIterator.ProceedIfPossible();
 
