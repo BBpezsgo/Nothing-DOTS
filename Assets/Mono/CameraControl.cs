@@ -51,8 +51,6 @@ public class CameraControl : MonoBehaviour
     void OnEnable()
     {
         zoomHeight = cameraTransform.localPosition.y;
-        cameraTransform.LookAt(transform);
-        // cameraTransform.localRotation = Quaternion.Euler(45f, 0f, 0f);
 
         lastPosition = transform.position;
         movement = cameraActions.Camera.Movement;
@@ -178,7 +176,6 @@ public class CameraControl : MonoBehaviour
         );
 
         cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, zoomTarget, Time.deltaTime * zoomDampening);
-        cameraTransform.LookAt(transform);
     }
 
     void CheckMouseAtScreenEdge()
