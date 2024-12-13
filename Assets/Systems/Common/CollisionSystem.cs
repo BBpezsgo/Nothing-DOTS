@@ -1,5 +1,5 @@
 #if UNITY_EDITOR && EDITOR_DEBUG
-#define DEBUG_COLLISIONS
+#define _DEBUG_COLLISIONS
 #endif
 
 using System;

@@ -229,12 +229,14 @@ public class FileChunkManager : Singleton<FileChunkManager>
 
         if (Requests.Count > 0 || IsColdRun)
         {
-            using EntityQuery databaseQ = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(BufferedFiles));
+            EntityQuery databaseQ = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(BufferedFiles));
             if (!databaseQ.TryGetSingletonEntity<BufferedFiles>(out DatabaseEntity))
             {
                 if (EnableLogging) Debug.LogError($"[{nameof(FileChunkManager)}]: Buffered files singleton not found");
+                databaseQ.Dispose();
                 return;
             }
+            databaseQ.Dispose();
         }
 
         if (Requests.Count == 0) return;

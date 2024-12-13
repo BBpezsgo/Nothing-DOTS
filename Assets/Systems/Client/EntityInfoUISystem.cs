@@ -6,6 +6,11 @@ using UnityEngine;
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial struct EntityInfoUISystem : ISystem
 {
+#if UNITY_EDITOR && ENABLE_PROFILER
+    static readonly Unity.Profiling.ProfilerMarker __instantiateUI = new($"{nameof(EntityInfoUISystem)}.InstantiateUI");
+    static readonly Unity.Profiling.ProfilerMarker __destroyUI = new($"{nameof(EntityInfoUISystem)}.DestroyUI");
+#endif
+
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer entityCommandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
@@ -15,6 +20,8 @@ public partial struct EntityInfoUISystem : ISystem
             .WithNone<EntityInfoUIReference>()
             .WithEntityAccess())
         {
+            using Unity.Profiling.ProfilerMarker.AutoScope _ = __instantiateUI.Auto();
+
             GameObject uiPrefab = SystemAPI.ManagedAPI.GetSingleton<UIPrefabs>().EntityInfo;
             Unity.Mathematics.float3 spawnPosition = transform.ValueRO.Position;
             GameObject newUi = Object.Instantiate(uiPrefab, spawnPosition, Quaternion.identity, Object.FindAnyObjectByType<Canvas>(FindObjectsInactive.Exclude).transform);
@@ -26,13 +33,13 @@ public partial struct EntityInfoUISystem : ISystem
         }
 
         foreach (var (uiRef, damageable) in
-            SystemAPI.Query<EntityInfoUIReference,  RefRO<Damageable>>())
+            SystemAPI.Query<EntityInfoUIReference, RefRO<Damageable>>())
         {
             uiRef.Value.HealthPercent = damageable.ValueRO.Health / damageable.ValueRO.MaxHealth;
         }
 
         foreach (var (uiRef, buildingPlaceholder) in
-            SystemAPI.Query<EntityInfoUIReference,  RefRO<BuildingPlaceholder>>())
+            SystemAPI.Query<EntityInfoUIReference, RefRO<BuildingPlaceholder>>())
         {
             uiRef.Value.BuildingProgressPercent = buildingPlaceholder.ValueRO.CurrentProgress / buildingPlaceholder.ValueRO.TotalProgress;
         }
@@ -56,6 +63,8 @@ public partial struct EntityInfoUISystem : ISystem
             .WithNone<EntityWithInfoUI>()
             .WithEntityAccess())
         {
+            using Unity.Profiling.ProfilerMarker.AutoScope _ = __destroyUI.Auto();
+
             Object.Destroy(uiRef.Value.gameObject);
             entityCommandBuffer.RemoveComponent<EntityInfoUIReference>(entity);
         }
