@@ -2,7 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-[UpdateBefore(typeof(ProcessorSystemServer))]
+// [UpdateBefore(typeof(ProcessorSystemServer))]
 public partial class DebugLinesServerSystem : SystemBase
 {
     Random _random;

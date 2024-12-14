@@ -82,53 +82,36 @@ public partial class FogOfWarSystemClient : SystemBase
         }
 
         InitializeFog();
-
-        // This is needed because we do not update the fog when there's no unit-scale movement of each fogRevealer
-        UpdateFogField();
-        Graphics.CopyTexture(_fogPlaneTextureLerpTarget, _fogPlaneTextureLerpBuffer);
     }
 
     protected override void OnUpdate()
     {
-        if (_fogPlane != null)
-        {
-            _fogPlane.transform.position = new float3(
-                _settings.LevelMidPoint.x,
-                _settings.LevelMidPoint.y + _settings.FogPlaneHeight,
-                _settings.LevelMidPoint.z);
-        }
+        _fogRefreshRateTimer += SystemAPI.Time.DeltaTime;
 
-        // _fogRefreshRateTimer += SystemAPI.Time.DeltaTime;
-        // 
-        // if (_fogRefreshRateTimer < 1 / _settings.FogRefreshRate)
-        // {
-        //     UpdateFogPlaneTextureBuffer();
-        //     return;
-        // }
-        // 
-        // // This is to cancel out minor excess values
-        // _fogRefreshRateTimer -= 1 / _settings.FogRefreshRate;
+        if (_fogRefreshRateTimer < 1 / _settings.FogRefreshRate)
+        { return; }
+
+        _fogRefreshRateTimer -= 1 / _settings.FogRefreshRate;
+
+        _shadowcaster.ResetTileVisibility();
 
         foreach (var (fogRevealer, transform) in
             SystemAPI.Query<RefRW<FogRevealer>, RefRO<LocalToWorld>>())
         {
-            if (!fogRevealer.ValueRO.UpdateOnlyOnMove) break;
+            int2 currentLevelCoordinates = _settings.GetUnit(transform.ValueRO.Position);
+            fogRevealer.ValueRW.CurrentLevelCoordinates = currentLevelCoordinates;
 
-            int2 currentLevelCoordinates = fogRevealer.ValueRW.CurrentLevelCoordinates = new(
-                _settings.GetUnitX(transform.ValueRO.Position.x),
-                _settings.GetUnitY(transform.ValueRO.Position.z));
-
-            if (!currentLevelCoordinates.Equals(fogRevealer.ValueRO.LastSeenAt))
-            { break; }
+            if (currentLevelCoordinates.Equals(fogRevealer.ValueRO.LastSeenAt))
+            { continue; }
 
             fogRevealer.ValueRW.LastSeenAt = currentLevelCoordinates;
 
-            // if (fogRevealer == fogRevealers.Last())
-            // { return; }
+            _shadowcaster.ProcessLevelData(
+                fogRevealer.ValueRO.CurrentLevelCoordinates,
+                (int)math.round(fogRevealer.ValueRO.SightRange / _settings.UnitScale));
         }
 
-        UpdateFogField();
-
+        UpdateFogPlaneTextureTarget();
         UpdateFogPlaneTextureBuffer();
     }
 
@@ -157,26 +140,7 @@ public partial class FogOfWarSystemClient : SystemBase
 
         _fogPlane.GetComponent<MeshRenderer>().material = new Material(_settings.FogPlaneMaterial);
         _fogPlane.GetComponent<MeshRenderer>().material.SetTexture("_MainTex", _fogPlaneTextureLerpBuffer);
-        _fogPlane.GetComponent<MeshCollider>().enabled = false;
-    }
-
-    void UpdateFogField()
-    {
-        _shadowcaster.ResetTileVisibility();
-
-        foreach (var (fogRevealer, transform) in
-            SystemAPI.Query<RefRW<FogRevealer>, RefRO<LocalToWorld>>())
-        {
-            fogRevealer.ValueRW.CurrentLevelCoordinates = new(
-                _settings.GetUnitX(transform.ValueRO.Position.x),
-                _settings.GetUnitY(transform.ValueRO.Position.z));
-
-            _shadowcaster.ProcessLevelData(
-                fogRevealer.ValueRO.CurrentLevelCoordinates,
-                Mathf.RoundToInt(fogRevealer.ValueRO.SightRange / _settings.UnitScale));
-        }
-
-        UpdateFogPlaneTextureTarget();
+        GameObject.Destroy(_fogPlane.GetComponent<MeshCollider>());
     }
 
     void UpdateFogPlaneTextureBuffer()
@@ -241,7 +205,7 @@ public partial class FogOfWarSystemClient : SystemBase
         {
             for (int yIterator = -1; yIterator < additionalRadius + 1; yIterator++)
             {
-                int2 currentPoint = new int2(
+                int2 currentPoint = new(
                     levelCoordinates.x + xIterator,
                     levelCoordinates.y + yIterator);
 

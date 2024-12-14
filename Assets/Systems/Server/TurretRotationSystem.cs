@@ -3,8 +3,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[UpdateInGroup(typeof(TransformSystemGroup))]
-[UpdateBefore(typeof(LocalToWorldSystem))]
+// [UpdateInGroup(typeof(TransformSystemGroup))]
+// [UpdateBefore(typeof(LocalToWorldSystem))]
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct TurretRotationSystem : ISystem

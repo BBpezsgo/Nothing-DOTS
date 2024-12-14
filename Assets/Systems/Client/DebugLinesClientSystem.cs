@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Unity.Collections;
 using Unity.Entities;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]

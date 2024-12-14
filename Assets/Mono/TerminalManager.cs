@@ -82,13 +82,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
         BlurTerminal();
 
-        if (!string.IsNullOrWhiteSpace(FileChunkManager.BasePath))
+        if (!string.IsNullOrWhiteSpace(FileChunkManagerSystem.BasePath))
         {
             ui_ButtonSelect.SetEnabled(true);
             ui_ButtonSelect.clickable = new Clickable(() =>
             {
-                selectingFile = Directory.GetFiles(FileChunkManager.BasePath)
-                    .Select(v => Path.GetRelativePath(FileChunkManager.BasePath, v))
+                selectingFile = Directory.GetFiles(FileChunkManagerSystem.BasePath)
+                    .Select(v => Path.GetRelativePath(FileChunkManagerSystem.BasePath, v))
                     .Where(v => !v.EndsWith(".meta"))
                     .ToImmutableArray();
                 selectingFileI = 0;
@@ -111,9 +111,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             }
 
             string file =
-                string.IsNullOrWhiteSpace(FileChunkManager.BasePath)
+                string.IsNullOrWhiteSpace(FileChunkManagerSystem.BasePath)
                 ? ui_inputSourcePath.value
-                : Path.Combine(FileChunkManager.BasePath, ui_inputSourcePath.value);
+                : Path.Combine(FileChunkManagerSystem.BasePath, ui_inputSourcePath.value);
 
             Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(SetProcessorSourceRequestRpc));
             GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
@@ -428,7 +428,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     {
                                         if (!uri.TryGetNetcode(out FileId fileId)) return null;
 
-                                        if (FileChunkManager.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
+                                        if (FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).TryGetRemoteFile(fileId, out RemoteFile remoteFile))
                                         {
                                             return Encoding.UTF8.GetString(remoteFile.File.Data);
                                         }

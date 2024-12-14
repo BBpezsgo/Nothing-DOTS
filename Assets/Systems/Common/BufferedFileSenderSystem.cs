@@ -29,7 +29,7 @@ partial struct BufferedFileSenderSystem : ISystem
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
 
-            FileData? localFile = FileChunkManager.GetLocalFile(command.ValueRO.FileName.ToString());
+            FileData? localFile = FileChunkManagerSystem.GetLocalFile(command.ValueRO.FileName.ToString());
             if (!localFile.HasValue)
             {
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
@@ -91,8 +91,8 @@ partial struct BufferedFileSenderSystem : ISystem
                 if (sendingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
-                FileData? file = FileChunkManager.GetLocalFile(sendingFiles[i].FileName.ToString());
-                int chunkSize = FileChunkManager.GetChunkSize(file!.Value.Data.Length, command.ValueRO.ChunkIndex);
+                FileData? file = FileChunkManagerSystem.GetLocalFile(sendingFiles[i].FileName.ToString());
+                int chunkSize = FileChunkManagerSystem.GetChunkSize(file!.Value.Data.Length, command.ValueRO.ChunkIndex);
                 Span<byte> buffer = file!.Value.Data.AsSpan().Slice(command.ValueRO.ChunkIndex * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)
                 {
@@ -151,7 +151,7 @@ partial struct BufferedFileSenderSystem : ISystem
             double delta = SystemAPI.Time.ElapsedTime - sendingFiles[i].LastSentAt;
             if (delta < ChunkSendingCooldown) continue;
             if (!currentSentChunks.IsCreated) currentSentChunks = new(Allocator.Temp);
-            currentSentChunks.Resize(FileChunkManager.GetChunkLength(sendingFiles[i].TotalLength), NativeArrayOptions.ClearMemory);
+            currentSentChunks.Resize(FileChunkManagerSystem.GetChunkLength(sendingFiles[i].TotalLength), NativeArrayOptions.ClearMemory);
 
             for (int j = 0; j < sentChunks.Length; j++)
             {
@@ -166,8 +166,8 @@ partial struct BufferedFileSenderSystem : ISystem
                 if (currentSentChunks[j]) continue;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
-                FileData? file = FileChunkManager.GetLocalFile(sendingFiles[i].FileName.ToString());
-                int chunkSize = FileChunkManager.GetChunkSize(file!.Value.Data.Length, j);
+                FileData? file = FileChunkManagerSystem.GetLocalFile(sendingFiles[i].FileName.ToString());
+                int chunkSize = FileChunkManagerSystem.GetChunkSize(file!.Value.Data.Length, j);
                 Span<byte> buffer = file!.Value.Data.AsSpan().Slice(j * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)
                 {

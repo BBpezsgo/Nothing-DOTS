@@ -12,15 +12,23 @@ public struct QuadrantEntity
     public readonly Entity Entity;
     public readonly Collider Collider;
     public float3 Position;
+    public float3 LastPosition;
     public float3 ResolvedOffset;
     public uint Key;
     public uint Layer;
 
-    public QuadrantEntity(Entity entity, Collider collider, float3 position, uint key, uint layer)
+    public QuadrantEntity(
+        Entity entity,
+        Collider collider,
+        float3 position,
+        float3 lastPosition,
+        uint key,
+        uint layer)
     {
         Entity = entity;
         Collider = collider;
         Position = position;
+        LastPosition = lastPosition;
         ResolvedOffset = default;
         Key = key;
         Layer = layer;
@@ -81,7 +89,7 @@ public readonly struct Hit
 }
 
 [BurstCompile]
-[UpdateInGroup(typeof(TransformSystemGroup))]
+// [UpdateInGroup(typeof(TransformSystemGroup))]
 public partial struct QuadrantSystem : ISystem
 {
     const int QuadrantCellSize = 20;
@@ -191,7 +199,13 @@ public partial struct QuadrantSystem : ISystem
             inQuadrant.ValueRW.Key = cell.key;
             if (!HashMap.ContainsKey(cell.key))
             { HashMap.Add(cell.key, new(32, Allocator.Persistent)); }
-            HashMap[cell.key].Add(new QuadrantEntity(entity, collider.ValueRO, transform.ValueRO.Position, cell.key, inQuadrant.ValueRO.Layer));
+            HashMap[cell.key].Add(new QuadrantEntity(
+                entity,
+                collider.ValueRO,
+                transform.ValueRO.Position,
+                default,
+                cell.key,
+                inQuadrant.ValueRO.Layer));
         }
     }
 }

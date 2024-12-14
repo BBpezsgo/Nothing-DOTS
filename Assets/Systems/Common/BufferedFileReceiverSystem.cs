@@ -77,7 +77,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                     LastRedeivedAt = SystemAPI.Time.ElapsedTime
                 };
                 fileFound = true;
-                if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength)}");
+                if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength)}");
 
                 break;
             }
@@ -125,7 +125,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             if (delta < ChunkRequestsCooldown) continue;
             if (receivingFiles[i].Kind != FileResponseStatus.OK) continue;
 
-            NativeArray<bool> receivedChunks = new(FileChunkManager.GetChunkLength(receivingFiles[i].TotalLength), Allocator.Temp);
+            NativeArray<bool> receivedChunks = new(FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength), Allocator.Temp);
 
             for (int j = 0; j < fileChunks.Length; j++)
             {

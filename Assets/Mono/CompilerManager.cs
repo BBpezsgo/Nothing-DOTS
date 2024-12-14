@@ -340,7 +340,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (fileId.Source.IsServer)
             {
-                FileData? localFile = FileChunkManager.GetLocalFile(fileId.Name.ToString());
+                FileData? localFile = FileChunkManagerSystem.GetLocalFile(fileId.Name.ToString());
                 if (!localFile.HasValue)
                 { return null; }
 
@@ -349,14 +349,14 @@ public class CompilerManager : Singleton<CompilerManager>
                 return task.Awaitable;
             }
 
-            // if (FileChunkManager.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
+            // if (FileChunkManagerSystem.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
             // {
             //     var task = new AwaitableCompletionSource<Stream?>();
             //     task.SetResult(new MemoryStream(remoteFile.File.Data));
             //     return task.Awaitable;
             // }
 
-            FileStatus status = FileChunkManager.GetRequestStatus(fileId);
+            FileStatus status = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).GetRequestStatus(fileId);
 
             if (status == FileStatus.NotFound)
             {
@@ -376,7 +376,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             {
                 AwaitableCompletionSource<Stream?> result = new();
-                Awaitable<RemoteFile> task = FileChunkManager.RequestFile(fileId, progress);
+                Awaitable<RemoteFile> task = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).RequestFile(fileId, progress);
                 task.GetAwaiter().OnCompleted(() =>
                 {
                     MemoryStream data = new(task.GetAwaiter().GetResult().File.Data);

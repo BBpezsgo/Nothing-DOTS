@@ -10,8 +10,8 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [BurstCompile]
-[UpdateInGroup(typeof(TransformSystemGroup))]
-[UpdateBefore(typeof(LocalToWorldSystem))]
+// [UpdateInGroup(typeof(TransformSystemGroup))]
+// [UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public unsafe partial struct CollisionSystem : ISystem
 {
@@ -307,9 +307,18 @@ public unsafe partial struct CollisionSystem : ISystem
         return false;
     }
 
+    ComponentLookup<LocalTransform> localTransformQ;
+
+    void ISystem.OnCreate(ref SystemState state)
+    {
+        localTransformQ = state.GetComponentLookup<LocalTransform>(false);
+    }
+
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
+        localTransformQ.Update(ref state);
+
         var map = QuadrantSystem.GetMap(ref state);
 
         var enumerator = map.GetEnumerator();
@@ -320,11 +329,16 @@ public unsafe partial struct CollisionSystem : ISystem
             {
                 QuadrantEntity* a = &quadrant.GetUnsafePtr()[i];
                 a->ResolvedOffset = default;
+
                 for (int j = i + 1; j < quadrant.Length; j++)
                 {
                     QuadrantEntity* b = &quadrant.GetUnsafePtr()[j];
 
-                    if (a->Collider.IsStatic && b->Collider.IsStatic) continue;
+                    if ((a->Collider.IsStatic || a->LastPosition.Equals(a->Position)) &&
+                        b->Collider.IsStatic)
+                    { continue; }
+
+                    a->LastPosition = a->Position;
 
                     if (!Intersect(
                         a->Collider, a->Position,
@@ -366,8 +380,8 @@ public unsafe partial struct CollisionSystem : ISystem
                         b->Position += displaceB;
                     }
                 }
-                RefRW<LocalTransform> transformA = SystemAPI.GetComponentRW<LocalTransform>(a->Entity);
-                transformA.ValueRW.Position += a->ResolvedOffset;
+
+                localTransformQ.GetRefRW(a->Entity).ValueRW.Position += a->ResolvedOffset;
                 a->ResolvedOffset = default;
             }
         }

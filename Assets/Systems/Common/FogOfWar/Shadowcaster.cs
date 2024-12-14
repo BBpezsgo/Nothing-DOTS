@@ -141,14 +141,14 @@ public class Shadowcaster
                 // This is to skip the first pass where the lastQuadrantPoint variable is not assigned yet
                 bool firstStepFlag = true;
 
-                int minRow = Mathf.RoundToInt(columnIterator.Depth * columnIterator.StartSlope);
-                int maxRow = Mathf.RoundToInt(columnIterator.Depth * columnIterator.EndSlope);
+                int minRow = (int)math.round(columnIterator.Depth * columnIterator.StartSlope);
+                int maxRow = (int)math.round(columnIterator.Depth * columnIterator.EndSlope);
                 if (columnIterator.EndSlope != 1) maxRow++;
                 for (int _i = minRow; _i < maxRow; _i++)
                 {
                     int2 quadrantPoint = new(columnIterator.Depth, _i);
 
-                    if (IsTileObstacle(_quadrantIterator, quadrantPoint) ||
+                    if (GetTileType(_quadrantIterator, quadrantPoint) == TileState.Obstacle ||
                         IsTileVisible(columnIterator, quadrantPoint))
                     {
                         RevealTileIteratively(_quadrantIterator, quadrantPoint, sightRange);
@@ -158,14 +158,14 @@ public class Shadowcaster
                     {
                         float nextIteratorStartSlope = columnIterator.StartSlope;
 
-                        if (IsTileObstacle(_quadrantIterator, lastQuadrantPoint) &&
-                            IsTileEmpty(_quadrantIterator, quadrantPoint))
+                        if (GetTileType(_quadrantIterator, lastQuadrantPoint) == TileState.Obstacle &&
+                            GetTileType(_quadrantIterator, quadrantPoint) == TileState.Empty)
                         {
                             nextIteratorStartSlope = GetQuadrantSlope(quadrantPoint);
                         }
 
-                        if (IsTileEmpty(_quadrantIterator, lastQuadrantPoint) &&
-                            IsTileObstacle(_quadrantIterator, quadrantPoint))
+                        if (GetTileType(_quadrantIterator, lastQuadrantPoint) == TileState.Empty &&
+                            GetTileType(_quadrantIterator, quadrantPoint) == TileState.Obstacle)
                         {
                             if (!columnIterator.IsProceedable) continue;
 
@@ -186,7 +186,7 @@ public class Shadowcaster
                     firstStepFlag = false;
                 }
 
-                if (IsTileEmpty(_quadrantIterator, lastQuadrantPoint) &&
+                if (GetTileType(_quadrantIterator, lastQuadrantPoint) == TileState.Empty &&
                     columnIterator.IsProceedable)
                 {
                     columnIterator = columnIterator.ProceedIfPossible();
@@ -218,24 +218,14 @@ public class Shadowcaster
         FogField[levelCoordinates] = TileVisibility.Revealed;
     }
 
-    bool IsTileEmpty(in QuadrantIterator quadrantIterator, int2 quadrantPoint)
+    TileState GetTileType(in QuadrantIterator quadrantIterator, int2 quadrantPoint)
     {
         int2 levelCoordinates = quadrantIterator.QuadrantToLevel(quadrantPoint);
 
         if (!_settings.CheckLevelGridRange(levelCoordinates))
-        { return true; }
+        { return TileState.Empty; }
 
-        return _levelData[levelCoordinates.y * _settings.LevelDimensionX + levelCoordinates.x] == TileState.Empty;
-    }
-
-    bool IsTileObstacle(in QuadrantIterator quadrantIterator, int2 quadrantPoint)
-    {
-        int2 levelCoordinates = quadrantIterator.QuadrantToLevel(quadrantPoint);
-
-        if (!_settings.CheckLevelGridRange(levelCoordinates))
-        { return false; }
-
-        return _levelData[levelCoordinates.y * _settings.LevelDimensionX + levelCoordinates.x] == TileState.Obstacle;
+        return _levelData[levelCoordinates.y * _settings.LevelDimensionX + levelCoordinates.x];
     }
 
     static bool IsTileVisible(ColumnIterator columnIterator, int2 quadrantPoint) =>
