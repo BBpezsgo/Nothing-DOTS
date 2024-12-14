@@ -6,6 +6,7 @@
  * All Content (C) 2022 Unlimited Fischl Works, all rights reserved.
  */
 
+using System;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -16,16 +17,16 @@ public readonly struct FogField
 {
     readonly int _width;
     readonly int _height;
-    readonly TileVisibility[] _cells;
+    readonly byte[] _cells;
     readonly Color32[] _colors;
 
-    public ref TileVisibility this[int2 position] => ref _cells[position.y * _width + position.x];
+    public ref byte this[int2 position] => ref _cells[position.y * _width + position.x];
 
     public FogField(int width, int height)
     {
         _width = width;
         _height = height;
-        _cells = new TileVisibility[width * height];
+        _cells = new byte[width * height];
         _colors ??= new Color32[width * height];
     }
 
@@ -33,12 +34,13 @@ public readonly struct FogField
     {
         for (int i = 0; i < _cells.Length; i++)
         {
-            ref TileVisibility cell = ref _cells[i];
+            ref byte cell = ref _cells[i];
+            if (cell > 0) cell--;
 
-            if (!keepRevealedTiles)
-            { cell = TileVisibility.Hidden; }
-            else if (cell == TileVisibility.Revealed)
-            { cell = TileVisibility.PreviouslyRevealed; }
+            // if (!keepRevealedTiles)
+            // { cell = TileVisibility.Hidden; }
+            // else if (cell == TileVisibility.Revealed)
+            // { cell = TileVisibility.PreviouslyRevealed; }
         }
     }
 
@@ -48,16 +50,17 @@ public readonly struct FogField
         {
             for (int y = 0; y < _height; y++)
             {
-                TileVisibility visibility = _cells[y * _width + x];
+                byte visibility = _cells[y * _width + x];
 
-                float tileOpacity = 1 - (int)visibility;
+                // float tileOpacity = 1 - (int)visibility;
+                // if (keepRevealedTiles &&
+                //     visibility == TileVisibility.PreviouslyRevealed)
+                // { tileOpacity = revealedTileOpacity; }
 
-                if (keepRevealedTiles &&
-                    visibility == TileVisibility.PreviouslyRevealed)
-                { tileOpacity = revealedTileOpacity; }
-
-                _colors[(_height - y - 1) * _width + (_width - x - 1)] =
-                    new Color32(byte.MaxValue, byte.MaxValue, byte.MaxValue, (byte)(tileOpacity * fogPlaneAlpha * byte.MaxValue));
+                _colors[(_height - y - 1) * _width + (_width - x - 1)] = new Color32(byte.MaxValue, byte.MaxValue, byte.MaxValue, (byte)(
+                    (byte.MaxValue - Math.Min(byte.MaxValue, visibility * (byte.MaxValue / 200f)))
+                    * fogPlaneAlpha
+                ));
             }
         }
 

@@ -30,9 +30,8 @@ public partial class FogOfWarSystemClient : SystemBase
         _settings = SystemAPI.ManagedAPI.GetSingleton<FogOfWarSettings>();
         _levelData = new TileState[_settings.LevelDimensionX * _settings.LevelDimensionY];
         _shadowcaster = new Shadowcaster(_settings, _levelData);
-
-
         var map = QuadrantSystem.GetMap(World.Unmanaged);
+
         for (int x = 0; x < _settings.LevelDimensionX; x++)
         {
             for (int y = 0; y < _settings.LevelDimensionY; y++)
@@ -87,10 +86,7 @@ public partial class FogOfWarSystemClient : SystemBase
     protected override void OnUpdate()
     {
         _fogRefreshRateTimer += SystemAPI.Time.DeltaTime;
-
-        if (_fogRefreshRateTimer < 1 / _settings.FogRefreshRate)
-        { return; }
-
+        if (_fogRefreshRateTimer < 1 / _settings.FogRefreshRate) return;
         _fogRefreshRateTimer -= 1 / _settings.FogRefreshRate;
 
         _shadowcaster.ResetTileVisibility();
@@ -101,7 +97,9 @@ public partial class FogOfWarSystemClient : SystemBase
             int2 currentLevelCoordinates = _settings.GetUnit(transform.ValueRO.Position);
             fogRevealer.ValueRW.CurrentLevelCoordinates = currentLevelCoordinates;
 
-            if (currentLevelCoordinates.Equals(fogRevealer.ValueRO.LastSeenAt))
+            if (currentLevelCoordinates.Equals(fogRevealer.ValueRO.LastSeenAt) &&
+                _settings.CheckLevelGridRange(currentLevelCoordinates) &&
+                _shadowcaster.FogField[currentLevelCoordinates] > 200)
             { continue; }
 
             fogRevealer.ValueRW.LastSeenAt = currentLevelCoordinates;
@@ -194,9 +192,7 @@ public partial class FogOfWarSystemClient : SystemBase
 
         if (additionalRadius == 0)
         {
-            return
-                _shadowcaster.FogField[levelCoordinates] ==
-                TileVisibility.Revealed;
+            return _shadowcaster.FogField[levelCoordinates] != 0;
         }
 
         int scanResult = 0;
@@ -215,7 +211,7 @@ public partial class FogOfWarSystemClient : SystemBase
                     break;
                 }
 
-                scanResult += Convert.ToInt32(_shadowcaster.FogField[currentPoint] == TileVisibility.Revealed);
+                scanResult += Convert.ToInt32(_shadowcaster.FogField[currentPoint] != 0);
             }
         }
 

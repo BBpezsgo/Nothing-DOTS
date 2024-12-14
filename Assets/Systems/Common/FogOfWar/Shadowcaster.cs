@@ -207,7 +207,7 @@ public class Shadowcaster
         if (math.length(quadrantPoint) > sightRange)
         { return; }
 
-        FogField[levelCoordinates] = TileVisibility.Revealed;
+        FogField[levelCoordinates] = byte.MaxValue;
     }
 
     void RevealTile(int2 levelCoordinates)
@@ -215,7 +215,7 @@ public class Shadowcaster
         if (!_settings.CheckLevelGridRange(levelCoordinates))
         { return; }
 
-        FogField[levelCoordinates] = TileVisibility.Revealed;
+        FogField[levelCoordinates] = byte.MaxValue;
     }
 
     TileState GetTileType(in QuadrantIterator quadrantIterator, int2 quadrantPoint)
