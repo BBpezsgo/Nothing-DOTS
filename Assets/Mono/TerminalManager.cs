@@ -30,6 +30,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [SerializeField, ReadOnly] UIDocument? ui = default;
 
     readonly StringBuilder _terminalBuilder = new();
+    TerminalEmulator? _terminal;
 
     void Update()
     {
@@ -141,6 +142,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             {
                 Entity = ghostInstance,
                 Command = ProcessorCommand.Halt,
+                Data = default,
             });
         });
 
@@ -160,6 +162,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             {
                 Entity = ghostInstance,
                 Command = ProcessorCommand.Reset,
+                Data = default,
             });
         });
 
@@ -179,6 +182,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             {
                 Entity = ghostInstance,
                 Command = ProcessorCommand.Continue,
+                Data = default,
             });
         });
 
@@ -250,6 +254,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
         if (!selectingFile.IsEmpty)
         {
+            _terminal = null;
             if (Input.GetKeyDown(KeyCode.Q))
             {
                 selectingFile = ImmutableArray<string>.Empty;
@@ -296,6 +301,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
             if (processor.SourceFile == default)
             {
+                _terminal = null;
                 _terminalBuilder.AppendLine("<color=red>No source</color>");
             }
             else
@@ -355,6 +361,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 {
                     case CompilationStatus.Secuedued:
                         {
+                            _terminal = null;
                             if (float.IsNaN(source.Progress))
                             {
                                 if (source.CompileSecuedued == default)
@@ -372,10 +379,12 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         }
                     case CompilationStatus.Compiling:
                         {
+                            _terminal = null;
                             break;
                         }
                     case CompilationStatus.Compiled:
                         {
+                            _terminal = null;
                             _terminalBuilder.AppendLine("Compiled");
                             break;
                         }
@@ -383,10 +392,40 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         {
                             if (source.IsSuccess)
                             {
+                                _terminal ??= new TerminalEmulator(ui_labelTerminal);
+                                _terminal.Update();
                                 switch (processor.Signal)
                                 {
                                     case Signal.None:
-                                        _terminalBuilder.AppendLine(processor.StdOutBuffer.ToString());
+                                        _terminalBuilder.Append(processor.StdOutBuffer.ToString());
+                                        if (processor.IsKeyRequested)
+                                        {
+                                            char c = _terminal.RequestKey();
+                                            if (c != default)
+                                            {
+                                                World world = ConnectionManager.ClientOrDefaultWorld;
+
+                                                if (world.IsServer())
+                                                {
+                                                    Debug.LogError($"Not implemented");
+                                                }
+                                                else
+                                                {
+                                                    Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+                                                    GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+                                                    world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
+                                                    {
+                                                        Entity = ghostInstance,
+                                                        Command = ProcessorCommand.Key,
+                                                        Data = unchecked((ushort)c),
+                                                    });
+                                                }
+                                            }
+                                            else if (Time.time % 1f < .5f)
+                                            {
+                                                _terminalBuilder.Append("<mark=#ffffffff>_</mark>");
+                                            }
+                                        }
                                         break;
                                     case Signal.UserCrash:
                                         // RuntimeException exception = new(
@@ -414,6 +453,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                             }
                             else
                             {
+                                _terminal = null;
                                 _terminalBuilder.AppendLine("<color=red>Compile failed</color>");
                                 foreach (LanguageCore.Diagnostic item in source.Diagnostics.Diagnostics)
                                 {
@@ -451,12 +491,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     case CompilationStatus.None:
                     default:
                         {
+                            _terminal = null;
                             _terminalBuilder.AppendLine("???");
                             break;
                         }
                 }
             }
-            ui_labelTerminal!.text = _terminalBuilder.ToString();
+            ui_labelTerminal.text = _terminalBuilder.ToString();
         }
 
         if (isBottom)
@@ -471,6 +512,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         refreshAt = float.PositiveInfinity;
         selectingFile = ImmutableArray<string>.Empty;
         selectingFileI = 0;
+        _terminal = null;
 
         if (ui != null &&
             ui.rootVisualElement != null)

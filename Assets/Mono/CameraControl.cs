@@ -55,6 +55,7 @@ public class CameraControl : MonoBehaviour
         lastPosition = transform.position;
         movement = cameraActions.Camera.Movement;
         keyZoom = cameraActions.Camera.KeyZoom;
+
         cameraActions.Camera.Rotate.performed += RotateCamera;
         cameraActions.Camera.ScrollZoom.performed += ZoomCameraWithWheel;
 
@@ -71,6 +72,13 @@ public class CameraControl : MonoBehaviour
 
     void Update()
     {
+        if (UIManager.Instance.AnyUIVisible)
+        {
+            lastPosition = transform.position;
+            startDrag = default;
+            return;
+        }
+
         GetKeyboardMovement();
         GetKeyZoom();
         if (useScreenEdge)
@@ -147,7 +155,9 @@ public class CameraControl : MonoBehaviour
 
     void RotateCamera(InputAction.CallbackContext inputValue)
     {
-        if (!Mouse.current.middleButton.isPressed || UI.IsMouseHandled) return;
+        if (!Mouse.current.middleButton.isPressed ||
+            UI.IsMouseHandled ||
+            UIManager.Instance.AnyUIVisible) return;
 
         float x = inputValue.ReadValue<Vector2>().x;
         float y = inputValue.ReadValue<Vector2>().y;
@@ -160,6 +170,9 @@ public class CameraControl : MonoBehaviour
 
     void ZoomCameraWithWheel(InputAction.CallbackContext inputValue)
     {
+        if (UI.IsMouseHandled ||
+            UIManager.Instance.AnyUIVisible) return;
+
         float value = -inputValue.ReadValue<Vector2>().y;
         if (Mathf.Abs(value) <= 0f) return;
 

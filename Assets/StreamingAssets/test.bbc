@@ -1,0 +1,13 @@
+using api;
+
+while (1)
+{
+    Print(" > ");
+    string at = ReadLine();
+    Print(" > ");
+    string bt = ReadLine();
+    int a = ParseInt(at);
+    int b = ParseInt(bt);
+    PrintLine(a + b);
+}
+

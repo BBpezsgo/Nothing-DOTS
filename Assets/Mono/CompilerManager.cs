@@ -138,6 +138,7 @@ public class CompilerManager : Singleton<CompilerManager>
     static readonly FrozenDictionary<int, string> ExternalFunctionNames = new Dictionary<int, string>()
     {
         { 01, "stdout" },
+        { 02, "stdin" },
 
         { 11, "sqrt" },
         { 12, "atan2" },
@@ -162,27 +163,6 @@ public class CompilerManager : Singleton<CompilerManager>
 
         { 51, "dequeue_command" },
     }.ToFrozenDictionary();
-
-    static IExternalFunction[]? _externalFunctions;
-    public static unsafe IExternalFunction[] ExternalFunctions
-    {
-        get
-        {
-            if (_externalFunctions is not null) return _externalFunctions;
-
-            ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ProcessorSystemServer.ExternalFunctionCount];
-            ProcessorSystemServer.GenerateExternalFunctions(scopedExternalFunctions);
-            _externalFunctions = new IExternalFunction[ProcessorSystemServer.ExternalFunctionCount];
-
-            for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
-            {
-                ref readonly ExternalFunctionScopedSync externalFunction = ref scopedExternalFunctions[i];
-                _externalFunctions[i] = new ExternalFunctionSync(null!, externalFunction.Id, ExternalFunctionNames[externalFunction.Id], externalFunction.ParametersSize, externalFunction.ReturnValueSize);
-            }
-
-            return _externalFunctions;
-        }
-    }
 
     void Start()
     {
@@ -448,9 +428,22 @@ public class CompilerManager : Singleton<CompilerManager>
         };
         try
         {
+            IExternalFunction[] externalFunctions = new IExternalFunction[ProcessorSystemServer.ExternalFunctionCount];
+            unsafe
+            {
+                ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ProcessorSystemServer.ExternalFunctionCount];
+                ProcessorSystemServer.GenerateExternalFunctions(scopedExternalFunctions);
+
+                for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
+                {
+                    ref readonly ExternalFunctionScopedSync externalFunction = ref scopedExternalFunctions[i];
+                    externalFunctions[i] = new ExternalFunctionSync(null!, externalFunction.Id, ExternalFunctionNames[externalFunction.Id], externalFunction.ParametersSize, externalFunction.ReturnValueSize);
+                }
+            }
+
             compiled = Compiler.CompileFile(
                 sourceUri,
-                ExternalFunctions,
+                externalFunctions,
                 new CompilerSettings()
                 {
                     BasePath = null,

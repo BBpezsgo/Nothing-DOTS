@@ -147,6 +147,18 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     [BurstCompile]
     [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+    static void _stdin(nint _scope, nint arguments, nint returnValue)
+    {
+#if UNITY_PROFILER
+        // using ProfilerMarker.AutoScope marker = _ExternalMarker_stdout.Auto();
+#endif
+
+        ((FunctionScope*)_scope)->Processor.ValueRW.IsKeyRequested = true;
+        ((FunctionScope*)_scope)->Processor.ValueRW.InputKey = default;
+    }
+
+    [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _send(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -398,7 +410,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     #endregion
 
-    public const int ExternalFunctionCount = 19;
+    public const int ExternalFunctionCount = 20;
 
     [BurstCompile]
     public static void GenerateExternalFunctions(ExternalFunctionScopedSync* buffer)
@@ -406,6 +418,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         int i = 0;
 
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_stdout).Value, 01, ExternalFunctionGenerator.SizeOf<char>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_stdin).Value, 02, 0, ExternalFunctionGenerator.SizeOf<char>(), default);
 
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_sqrt).Value, 11, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_atan2).Value, 12, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
@@ -564,6 +577,17 @@ partial struct ProcessorJob : IJobEntity
                 break;
             }
             processor.ValueRW.SignalNotified = false;
+
+            if (processor.ValueRO.IsKeyRequested)
+            {
+                if (processor.ValueRO.InputKey == default) break;
+                char key = processor.ValueRW.InputKey;
+                processor.ValueRW.InputKey = default;
+                processor.ValueRW.IsKeyRequested = false;
+                processorState.Pop(2);
+                processorState.Push(key.AsBytes());
+            }
+
             processorState.Process();
         }
 

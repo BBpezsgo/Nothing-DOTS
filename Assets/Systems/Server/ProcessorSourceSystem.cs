@@ -39,6 +39,9 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                         processor.ValueRW.Signal = Signal.None;
                         processor.ValueRW.Crash = 0;
                         break;
+                    case ProcessorCommand.Key:
+                        processor.ValueRW.InputKey = unchecked((char)command.ValueRO.Data);
+                        break;
                 }
 
                 break;

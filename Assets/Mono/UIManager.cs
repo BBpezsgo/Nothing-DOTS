@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using NaughtyAttributes;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -56,6 +54,8 @@ public class UIManager : Singleton<UIManager>
     }
 
     [NotNull] Dictionary<UIDocument, List<IUICleanup>>? OpenedUIs = default;
+
+    public bool AnyUIVisible => UIs.Any(v => v.gameObject.activeSelf);
 
     [Header("Debug")]
     [SerializeField, ReadOnly] bool _escPressed = false;

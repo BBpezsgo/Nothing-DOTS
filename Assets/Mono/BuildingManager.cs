@@ -127,7 +127,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
                 Hide();
                 return;
             }
-            else
+            else if (!UIManager.Instance.AnyUIVisible)
             {
                 IsValidPosition = false;
                 Show();
