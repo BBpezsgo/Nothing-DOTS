@@ -24,5 +24,18 @@ public partial struct TurretRotationSystem : ISystem
             float y = Utils.MoveTowardsAngle(euler.y, turret.ValueRO.TargetRotation, speed * SystemAPI.Time.DeltaTime);
             transform.ValueRW.Rotation = quaternion.EulerXYZ(x, y, 0);
         }
+
+        foreach ((RefRW<LocalTransform> transform, RefRO<BuilderTurret> turret) in
+                    SystemAPI.Query<RefRW<LocalTransform>, RefRO<BuilderTurret>>())
+        {
+            const float speed = math.PI;
+            transform.ValueRO.Rotation.ToEuler(out float3 euler);
+            // float x =
+            //     Utils.DeltaAngle(euler.y, turret.ValueRO.TargetRotation) < math.PI
+            //     ? Utils.MoveTowardsAngle(euler.x, turret.ValueRO.TargetAngle, speed * SystemAPI.Time.DeltaTime)
+            //     : euler.x;
+            float y = Utils.MoveTowardsAngle(euler.y, turret.ValueRO.TargetRotation, speed * SystemAPI.Time.DeltaTime);
+            transform.ValueRW.Rotation = quaternion.EulerXYZ(math.PIHALF, y, 0f);
+        }
     }
 }
