@@ -75,7 +75,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         avaliableList.Clear();
         queueList.Clear();
 
-        DynamicBuffer<BufferedUnit> queue = entityManager.GetBuffer<BufferedUnit>(factoryEntity);
+        DynamicBuffer<BufferedProducingUnit> queue = entityManager.GetBuffer<BufferedProducingUnit>(factoryEntity);
 
         queueList.SyncList(queue, UI_QueueItem, (item, element, recycled) =>
         {
@@ -134,14 +134,24 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
         if (selectedFactory.TotalProgress == default)
         {
-            selectedFactory.Current = unit;
+            selectedFactory.Current = new BufferedProducingUnit()
+            {
+                Name = unit.Name,
+                Prefab = unit.Prefab,
+                ProductionTime = unit.ProductionTime
+            };
             selectedFactory.CurrentProgress = 0f;
             selectedFactory.TotalProgress = unit.ProductionTime;
         }
         else
         {
-            DynamicBuffer<BufferedUnit> queue = entityManager.GetBuffer<BufferedUnit>(selectedFactoryEntity);
-            queue.Add(unit);
+            DynamicBuffer<BufferedProducingUnit> queue = entityManager.GetBuffer<BufferedProducingUnit>(selectedFactoryEntity);
+            queue.Add(new BufferedProducingUnit()
+            {
+                Name = unit.Name,
+                Prefab = unit.Prefab,
+                ProductionTime = unit.ProductionTime
+            });
         }
         refreshAt = Time.time + .1f;
     }

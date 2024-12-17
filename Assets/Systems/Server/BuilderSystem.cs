@@ -29,7 +29,7 @@ public partial struct BuilderSystem : ISystem
             if (SystemAPI.HasComponent<BuildingPlaceholder>(hit.Entity.Entity))
             {
                 RefRW<BuildingPlaceholder> building = SystemAPI.GetComponentRW<BuildingPlaceholder>(hit.Entity.Entity);
-                building.ValueRW.CurrentProgress += 1f * SystemAPI.Time.DeltaTime;
+                building.ValueRW.CurrentProgress += Builder.BuildSpeed * SystemAPI.Time.DeltaTime;
                 DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 1f, Color.green, 0.2f, false);
                 continue;
             }

@@ -276,6 +276,14 @@ public class SelectionManager : Singleton<SelectionManager>
             return;
         }
 
+        if (entityManager.HasComponent<Facility>(selectableHit))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Facility)
+                .Setup(FacilityManager.Instance, selectableHit)
+                .Setup(TerminalManager.Instance, selectableHit);
+            return;
+        }
+
         if (entityManager.HasComponent<Unit>(selectableHit))
         {
             UIManager.Instance.OpenUI(UIManager.Instance.Unit)

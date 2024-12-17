@@ -13,6 +13,7 @@ public class PlayerAuthoring : MonoBehaviour
             {
                 Team = -1,
             });
+            AddBuffer<BufferedAcquiredResearch>(entity);
         }
     }
 }

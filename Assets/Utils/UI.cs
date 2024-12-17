@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -11,6 +12,32 @@ public static class UIExtensions
     public static void SyncList<T>(
         this VisualElement container,
         DynamicBuffer<T> collection,
+        VisualTreeAsset itemAsset,
+        Action<T, VisualElement, bool> updater)
+        where T : unmanaged
+        => SyncList(
+            container,
+            collection.AsNativeArray(),
+            itemAsset,
+            updater
+        );
+
+    public static void SyncList<T>(
+        this VisualElement container,
+        NativeList<T> collection,
+        VisualTreeAsset itemAsset,
+        Action<T, VisualElement, bool> updater)
+        where T : unmanaged
+        => SyncList(
+            container,
+            collection.AsArray(),
+            itemAsset,
+            updater
+        );
+
+    public static void SyncList<T>(
+        this VisualElement container,
+        NativeArray<T> collection,
         VisualTreeAsset itemAsset,
         Action<T, VisualElement, bool> updater)
         where T : unmanaged

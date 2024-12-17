@@ -12,7 +12,7 @@ public class FactoryAuthoring : MonoBehaviour
             AddComponent<Factory>(entity);
             AddComponent<SelectableUnit>(entity);
             AddComponent<EntityWithInfoUI>(entity);
-            AddBuffer<BufferedUnit>(entity);
+            AddBuffer<BufferedProducingUnit>(entity);
         }
     }
 }

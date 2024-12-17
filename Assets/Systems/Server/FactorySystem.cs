@@ -25,6 +25,28 @@ public partial struct FactorySystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FactoryQueueUnitRequestRpc>>()
             .WithEntityAccess())
         {
+            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+
+            Entity requestPlayer = default;
+
+            foreach (var (player, _entity) in
+                SystemAPI.Query<RefRO<Player>>()
+                .WithEntityAccess())
+            {
+                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                requestPlayer = _entity;
+                break;
+            }
+
+            if (requestPlayer == Entity.Null)
+            {
+                Debug.LogError(string.Format("Failed to queue unit: requested by {0} but aint have a team", networkId.ValueRO));
+                commandBuffer.DestroyEntity(entity);
+                continue;
+            }
+
+            DynamicBuffer<BufferedAcquiredResearch> acquiredResearches = SystemAPI.GetBuffer<BufferedAcquiredResearch>(requestPlayer);
+
             foreach (var (ghostInstance, ghostEntity) in
                 SystemAPI.Query<RefRO<GhostInstance>>()
                 .WithAll<Factory>()
@@ -36,11 +58,9 @@ public partial struct FactorySystem : ISystem
                 BufferedUnit unit = default;
                 for (int i = 0; i < units.Length; i++)
                 {
-                    if (units[i].Name == command.ValueRO.Unit)
-                    {
-                        unit = units[i];
-                        break;
-                    }
+                    if (units[i].Name != command.ValueRO.Unit) continue;
+                    unit = units[i];
+                    break;
                 }
 
                 if (unit.Prefab == Entity.Null)
@@ -49,7 +69,30 @@ public partial struct FactorySystem : ISystem
                     break;
                 }
 
-                SystemAPI.GetBuffer<BufferedUnit>(ghostEntity).Add(unit);
+                if (!unit.RequiredResearch.IsEmpty)
+                {
+                    bool can = false;
+                    foreach (var research in acquiredResearches)
+                    {
+                        if (research.Name != unit.RequiredResearch) continue;
+                        can = true;
+                        break;
+                    }
+
+                    if (!can)
+                    {
+                        Debug.LogWarning($"Can't queue unit \"{unit.Name}\": not researched");
+                        commandBuffer.DestroyEntity(entity);
+                        break;
+                    }
+                }
+
+                SystemAPI.GetBuffer<BufferedProducingUnit>(ghostEntity).Add(new BufferedProducingUnit()
+                {
+                    Name = unit.Name,
+                    Prefab = unit.Prefab,
+                    ProductionTime = unit.ProductionTime,
+                });
 
                 break;
             }
@@ -61,13 +104,13 @@ public partial struct FactorySystem : ISystem
                     SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>, RefRO<UnitTeam>>()
                     .WithEntityAccess())
         {
-            DynamicBuffer<BufferedUnit> unitQueue = SystemAPI.GetBuffer<BufferedUnit>(entity);
+            DynamicBuffer<BufferedProducingUnit> unitQueue = SystemAPI.GetBuffer<BufferedProducingUnit>(entity);
 
             if (factory.ValueRO.TotalProgress == default)
             {
                 if (unitQueue.Length > 0)
                 {
-                    BufferedUnit unit = unitQueue[0];
+                    BufferedProducingUnit unit = unitQueue[0];
                     unitQueue.RemoveAt(0);
                     factory.ValueRW.Current = unit;
                     factory.ValueRW.CurrentProgress = 0f;
@@ -82,7 +125,7 @@ public partial struct FactorySystem : ISystem
             if (factory.ValueRO.CurrentProgress < factory.ValueRO.TotalProgress)
             { continue; }
 
-            BufferedUnit finishedUnit = factory.ValueRO.Current;
+            BufferedProducingUnit finishedUnit = factory.ValueRO.Current;
 
             factory.ValueRW.Current = default;
             factory.ValueRW.CurrentProgress = default;

@@ -41,6 +41,7 @@ public class UIManager : Singleton<UIManager>
 
     [SerializeField, NotNull] public UIDocument? Unit = default;
     [SerializeField, NotNull] public UIDocument? Factory = default;
+    [SerializeField, NotNull] public UIDocument? Facility = default;
     [SerializeField, NotNull] public UIDocument? Pause = default;
 
     public IEnumerable<UIDocument> UIs
@@ -49,6 +50,7 @@ public class UIManager : Singleton<UIManager>
         {
             yield return Unit;
             yield return Factory;
+            yield return Facility;
             yield return Pause;
         }
     }
