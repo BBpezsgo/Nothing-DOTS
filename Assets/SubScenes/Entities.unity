@@ -208,11 +208,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad125676c5e75442ebf367fe335821ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _spawns:
-  - {x: 9.922415, y: 0, z: -1.5199859}
-  - {x: 1.8142881, y: 0, z: 11.570686}
-  - {x: -6.1450753, y: 0, z: 3.5506763}
-  - {x: -2.0980997, y: 0, z: -5.3829985}
+  Spawns:
+  - {x: -10, y: 0, z: -10}
+  - {x: -10, y: 0, z: 10}
+  - {x: 10, y: 0, z: 10}
+  - {x: 10, y: 0, z: -10}
 --- !u!1 &762009497
 GameObject:
   m_ObjectHideFlags: 0

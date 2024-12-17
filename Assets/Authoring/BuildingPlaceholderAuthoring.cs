@@ -1,7 +1,7 @@
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/BuildingPlaceholder")]
+[AddComponentMenu("Authoring/Building Placeholder")]
 public class BuildingPlaceholderAuthoring : MonoBehaviour
 {
     class Baker : Baker<BuildingPlaceholderAuthoring>

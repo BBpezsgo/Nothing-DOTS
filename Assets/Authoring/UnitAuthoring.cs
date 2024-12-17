@@ -14,8 +14,14 @@ public class UnitAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new Unit()
             {
-                Radar = authoring.Radar == null ? Entity.Null : GetEntity(authoring.Radar, TransformUsageFlags.Dynamic),
-                Turret = authoring.Turret == null ? Entity.Null : GetEntity(authoring.Turret, TransformUsageFlags.Dynamic),
+                Radar =
+                    authoring.Radar == null
+                    ? Entity.Null
+                    : GetEntity(authoring.Radar, TransformUsageFlags.Dynamic),
+                Turret =
+                    authoring.Turret == null
+                    ? Entity.Null
+                    : GetEntity(authoring.Turret, TransformUsageFlags.Dynamic),
             });
             AddComponent<SelectableUnit>(entity);
             AddComponent<EntityWithInfoUI>(entity);

@@ -4,7 +4,26 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Spawns")]
 public class SpawnsAuthoring : MonoBehaviour
 {
-    [SerializeField] public Vector3[] _spawns = new Vector3[0];
+    [SerializeField] Vector3[] Spawns = new Vector3[0];
+
+#if UNITY_EDITOR
+    [UnityEditor.CustomEditor(typeof(SpawnsAuthoring))]
+    class Editor : UnityEditor.Editor
+    {
+        public void OnSceneGUI()
+        {
+            SpawnsAuthoring t = (SpawnsAuthoring)target;
+
+            for (int i = 0; i < t.Spawns.Length; i++)
+            {
+                t.Spawns[i] = UnityEditor.Handles.PositionHandle(
+                    new Vector3(t.Spawns[i].x, 0f, t.Spawns[i].z),
+                    Quaternion.identity
+                );
+            }
+        }
+    }
+#endif
 
     class Baker : Baker<SpawnsAuthoring>
     {
@@ -13,29 +32,10 @@ public class SpawnsAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Spawns>(entity);
             DynamicBuffer<BufferedSpawn> buffer = AddBuffer<BufferedSpawn>(entity);
-            foreach (Vector3 spawn in authoring._spawns)
+            foreach (Vector3 spawn in authoring.Spawns)
             {
                 buffer.Add(new BufferedSpawn(spawn, false));
             }
         }
     }
 }
-
-#if UNITY_EDITOR
-[UnityEditor.CustomEditor(typeof(SpawnsAuthoring))]
-public class SpawnsAuthoringEditor : UnityEditor.Editor
-{
-    public void OnSceneGUI()
-    {
-        SpawnsAuthoring t = (SpawnsAuthoring)target;
-
-        for (int i = 0; i < t._spawns.Length; i++)
-        {
-            t._spawns[i] = UnityEditor.Handles.PositionHandle(
-                new Vector3(t._spawns[i].x, 0f, t._spawns[i].z),
-                Quaternion.identity
-            );
-        }
-    }
-}
-#endif

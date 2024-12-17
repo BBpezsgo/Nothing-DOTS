@@ -4,8 +4,8 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Turret")]
 public class TurretAuthoring : MonoBehaviour
 {
-    public GameObject? CannonBallPrefab = default;
-    public Transform? CannonBallSpawn = default;
+    [SerializeField] GameObject? CannonBallPrefab = default;
+    [SerializeField] Transform? CannonBallSpawn = default;
 
     class Baker : Baker<TurretAuthoring>
     {
@@ -14,8 +14,14 @@ public class TurretAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new Turret
             {
-                ProjectilePrefab = authoring.CannonBallPrefab == null ? Entity.Null : GetEntity(authoring.CannonBallPrefab, TransformUsageFlags.Dynamic),
-                ShootPosition = authoring.CannonBallSpawn == null ? Entity.Null : GetEntity(authoring.CannonBallSpawn, TransformUsageFlags.Dynamic)
+                ProjectilePrefab =
+                    authoring.CannonBallPrefab == null
+                    ? Entity.Null
+                    : GetEntity(authoring.CannonBallPrefab, TransformUsageFlags.Dynamic),
+                ShootPosition =
+                    authoring.CannonBallSpawn == null
+                    ? Entity.Null
+                    : GetEntity(authoring.CannonBallSpawn, TransformUsageFlags.Dynamic)
             });
         }
     }

@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/UIPrefabs")]
+[AddComponentMenu("Authoring/UI Prefabs")]
 public class UIPrefabsAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] GameObject? EntityInfo = default;

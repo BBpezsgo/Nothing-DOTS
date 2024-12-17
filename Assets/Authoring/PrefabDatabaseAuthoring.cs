@@ -2,12 +2,12 @@ using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/PrefabDatabase")]
+[AddComponentMenu("Authoring/Prefab Database")]
 public class PrefabDatabaseAuthoring : MonoBehaviour
 {
-    [NotNull] public GameObject? PlayerPrefab = default;
-    [NotNull] public GameObject? CoreComputerPrefab = default;
-    [NotNull] public GameObject? Builder = default;
+    [SerializeField, NotNull] GameObject? PlayerPrefab = default;
+    [SerializeField, NotNull] GameObject? CoreComputerPrefab = default;
+    [SerializeField, NotNull] GameObject? Builder = default;
 
     class Baker : Baker<PrefabDatabaseAuthoring>
     {

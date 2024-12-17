@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/BuildingDatabase")]
+[AddComponentMenu("Authoring/Building Database")]
 public class BuildingDatabaseAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] Item[]? Buildings = default;

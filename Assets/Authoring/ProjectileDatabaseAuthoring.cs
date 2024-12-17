@@ -2,10 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/ProjectileDatabase")]
+[AddComponentMenu("Authoring/Projectile Database")]
 public class ProjectileDatabaseAuthoring : MonoBehaviour
 {
-    [NotNull] public GameObject[]? Projectiles = default;
+    [SerializeField, NotNull] GameObject[]? Projectiles = default;
 
     class Baker : Baker<ProjectileDatabaseAuthoring>
     {
@@ -14,9 +14,9 @@ public class ProjectileDatabaseAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new ProjectileDatabase());
             DynamicBuffer<BufferedProjectile> projectiles = AddBuffer<BufferedProjectile>(entity);
-            for (int i = 0; i < authoring.Projectiles.Length; i++)
+            foreach (GameObject projectile in authoring.Projectiles)
             {
-                projectiles.Add(new(GetEntity(authoring.Projectiles[i], TransformUsageFlags.Dynamic)));
+                projectiles.Add(new(GetEntity(projectile, TransformUsageFlags.Dynamic)));
             }
         }
     }

@@ -16,12 +16,27 @@ public class ProcessorAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Processor>(entity, new()
             {
-                StatusLED = new(authoring.StatusLED == null ? Entity.Null : GetEntity(authoring.StatusLED, TransformUsageFlags.Dynamic)),
-                NetworkReceiveLED = new(authoring.NetworkReceiveLED == null ? Entity.Null : GetEntity(authoring.NetworkReceiveLED, TransformUsageFlags.Dynamic)),
-                NetworkSendLED = new(authoring.NetworkSendLED == null ? Entity.Null : GetEntity(authoring.NetworkSendLED, TransformUsageFlags.Dynamic)),
-                RadarLED = new(authoring.RadarLED == null ? Entity.Null : GetEntity(authoring.RadarLED, TransformUsageFlags.Dynamic)),
+                StatusLED = new(
+                    authoring.StatusLED == null
+                    ? Entity.Null
+                    : GetEntity(authoring.StatusLED, TransformUsageFlags.Dynamic)
+                ),
+                NetworkReceiveLED = new(
+                    authoring.NetworkReceiveLED == null
+                    ? Entity.Null
+                    : GetEntity(authoring.NetworkReceiveLED, TransformUsageFlags.Dynamic)
+                ),
+                NetworkSendLED = new(
+                    authoring.NetworkSendLED == null
+                    ? Entity.Null
+                    : GetEntity(authoring.NetworkSendLED, TransformUsageFlags.Dynamic)
+                ),
+                RadarLED = new(
+                    authoring.RadarLED == null
+                    ? Entity.Null
+                    : GetEntity(authoring.RadarLED, TransformUsageFlags.Dynamic)
+                ),
             });
-            // AddBuffer<BufferedUnitTransmission>(entity);
             AddBuffer<BufferedInstruction>(entity);
             AddBuffer<BufferedUnitCommandDefinition>(entity);
         }

@@ -1,6 +1,7 @@
 using Unity.Entities;
 using UnityEngine;
 
+[AddComponentMenu("Authoring/Entity in Quadrant")]
 public class EntityInQuadrantAuthoring : MonoBehaviour
 {
     [SerializeField] bool IsStatic = default;
@@ -32,7 +33,7 @@ public class EntityInQuadrantAuthoring : MonoBehaviour
                             }
                             break;
                         }
-                    case UnityEngine.BoxCollider v:
+                    case BoxCollider v:
                         {
                             AddComponent<Collider>(entity, new(
                                 authoring.IsStatic,

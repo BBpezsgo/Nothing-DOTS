@@ -5,7 +5,7 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Debug Lines Settings")]
 public class DebugLinesSettingsAuthoring : MonoBehaviour
 {
-    [SerializeField, NotNull] Material[]? _materials = default;
+    [SerializeField, NotNull] Material[]? Materials = default;
 
     class Baker : Baker<DebugLinesSettingsAuthoring>
     {
@@ -13,7 +13,7 @@ public class DebugLinesSettingsAuthoring : MonoBehaviour
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponentObject<DebugLinesSettings>(entity, new(
-                authoring._materials
+                authoring.Materials
             ));
         }
     }

@@ -5,8 +5,8 @@ using UnityEngine;
 public class ResearchAuthoring : MonoBehaviour
 {
     [SerializeField] public string? Name = default;
-    [SerializeField] public float ResearchTime = default;
-    [SerializeField] public ResearchAuthoring[]? Requirements = default;
+    [SerializeField] float ResearchTime = default;
+    [SerializeField] ResearchAuthoring[]? Requirements = default;
 
     class Baker : Baker<ResearchAuthoring>
     {
@@ -22,11 +22,11 @@ public class ResearchAuthoring : MonoBehaviour
             if (authoring.Requirements is not null)
             {
                 requirements.EnsureCapacity(authoring.Requirements.Length);
-                foreach (ResearchAuthoring _requirement in authoring.Requirements)
+                foreach (ResearchAuthoring requirement in authoring.Requirements)
                 {
                     requirements.Add(new BufferedResearchRequirement()
                     {
-                        Name = _requirement.Name,
+                        Name = requirement.Name,
                     });
                 }
             }

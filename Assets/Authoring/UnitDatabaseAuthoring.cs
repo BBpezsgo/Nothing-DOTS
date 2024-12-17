@@ -6,10 +6,10 @@ using UnityEngine;
 [AddComponentMenu("Authoring/UnitDatabase")]
 public class UnitDatabaseAuthoring : MonoBehaviour
 {
-    [NotNull] public Item[]? Units = default;
+    [SerializeField, NotNull] Item[]? Units = default;
 
     [Serializable]
-    public class Item
+    class Item
     {
         [SerializeField, NotNull] public GameObject? Prefab = default;
         [SerializeField] public ResearchAuthoring? RequiredResearch = default;

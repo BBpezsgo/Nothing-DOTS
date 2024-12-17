@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// <seealso href="https://assetstore.unity.com/packages/vfx/shaders/fullscreen-camera-effects/aos-fog-of-war-249249">Source</seealso>
 /// </summary>
-[AddComponentMenu("Authoring/FogRevealerAuthoring")]
+[AddComponentMenu("Authoring/Fog Revealer")]
 public class FogRevealerAuthoring : MonoBehaviour
 {
     [SerializeField] int SightRange = default;

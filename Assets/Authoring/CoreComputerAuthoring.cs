@@ -1,7 +1,7 @@
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/CoreComputer")]
+[AddComponentMenu("Authoring/Core Computer")]
 public class CoreComputerAuthoring : MonoBehaviour
 {
     class Baker : Baker<CoreComputerAuthoring>
