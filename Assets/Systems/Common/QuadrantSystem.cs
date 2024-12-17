@@ -34,7 +34,7 @@ public struct QuadrantEntity
         Layer = layer;
     }
 
-    public override readonly int GetHashCode() => Entity.GetHashCode();
+    [BurstCompile] public override readonly int GetHashCode() => Entity.GetHashCode();
 }
 
 [BurstCompile]
@@ -71,7 +71,7 @@ public struct Cell : IEquatable<Cell>
 
     [BurstCompile] public override readonly int GetHashCode() => unchecked((int)key);
     public override readonly bool Equals(object obj) => obj is Cell other && Equals(other);
-    public readonly bool Equals(Cell other) => key == other.key;
+    [BurstCompile] public readonly bool Equals(Cell other) => key == other.key;
     public override readonly string ToString() => $"Cell({x}, {y})";
 }
 

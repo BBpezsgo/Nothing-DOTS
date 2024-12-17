@@ -8,6 +8,7 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial struct TurretShootingSystemClient : ISystem
 {
+    [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<ProjectileDatabase>();

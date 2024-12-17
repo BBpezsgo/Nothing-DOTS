@@ -1,7 +1,9 @@
 using System;
+using Unity.Burst;
 using Unity.Collections;
 using UnityEngine;
 
+[BurstCompile]
 public struct FileId : IEquatable<FileId>, IInspect<FileId>
 {
     public FixedString64Bytes Name;
