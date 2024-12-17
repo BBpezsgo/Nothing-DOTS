@@ -320,7 +320,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (fileId.Source.IsServer)
             {
-                FileData? localFile = FileChunkManagerSystem.GetLocalFile(fileId.Name.ToString());
+                FileData? localFile = FileChunkManagerSystem.GetFileData(fileId.Name.ToString());
                 if (!localFile.HasValue)
                 { return null; }
 

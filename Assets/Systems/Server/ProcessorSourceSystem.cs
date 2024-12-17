@@ -23,6 +23,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
                 NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+                if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
@@ -58,6 +59,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
                 NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+                if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;

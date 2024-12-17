@@ -1,9 +1,12 @@
+#pragma warning disable CS0162 // Unreachable code detected
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
@@ -29,7 +32,7 @@ public partial class FileChunkManagerSystem : SystemBase
         if ((Requests.Count > 0 || DatabaseEntity == Entity.Null) &&
             !SystemAPI.TryGetSingletonEntity<BufferedFiles>(out DatabaseEntity))
         {
-            if (EnableLogging) Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Buffered files singleton not found");
+            Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Buffered files singleton not found");
             return;
         }
 
@@ -156,6 +159,7 @@ public partial class FileChunkManagerSystem : SystemBase
 
         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
 
+        if (EnableLogging) Debug.Log(string.Format("Requesting file header \"{0}\" from {1} ...", request.File.Name, request.File.Source));
         Entity rpcEntity = commandBuffer.CreateEntity();
         commandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
         {
@@ -240,9 +244,85 @@ public partial class FileChunkManagerSystem : SystemBase
         return task.Awaitable;
     }
 
-    public static FileData? GetLocalFile(string fileName)
+    public static FileData? GetFileData(string fileName)
     {
+        if (EnableLogging) Debug.Log($"Loading file data \"{fileName}\"");
+
         if (string.IsNullOrWhiteSpace(fileName)) return null;
+
+        if (fileName.StartsWith("/i"))
+        {
+            ReadOnlySpan<char> _fileName = fileName;
+            _fileName = _fileName[2..];
+
+            if (EnableLogging) Debug.Log($"Internal \"{_fileName.ToString()}\" ...");
+            if (_fileName.Consume("/e/"))
+            {
+                if (EnableLogging) Debug.Log($"Entity \"{_fileName.ToString()}\" ...");
+
+                if (EnableLogging) Debug.Log($"Ghost \"{_fileName.ToString()}\" ...");
+
+                if (!_fileName.ConsumeInt(out int ghostId))
+                {
+                    Debug.LogError($"Can't get ghost id");
+                    return null;
+                }
+
+                if (!_fileName.Consume('_'))
+                {
+                    Debug.LogError($"Expected separator");
+                    return null;
+                }
+
+                if (!_fileName.ConsumeUInt(out uint spawnTickValue))
+                {
+                    Debug.LogError($"Can't get ghost spawn tick");
+                    return null;
+                }
+
+                NetworkTick spawnTick = new() { SerializedData = spawnTickValue };
+
+                GhostInstance ghostInstance = new()
+                {
+                    ghostId = ghostId,
+                    spawnTick = spawnTick,
+                };
+
+                EntityQuery q = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(GhostInstance));
+                NativeArray<Entity> entities = q.ToEntityArray(Allocator.Temp);
+                q.Dispose();
+
+                Entity entity = Entity.Null;
+                foreach (Entity _entity in entities)
+                {
+                    GhostInstance ghost = World.DefaultGameObjectInjectionWorld.EntityManager.GetComponentData<GhostInstance>(_entity);
+                    if (ghost.ghostId != ghostInstance.ghostId) continue;
+                    if (ghost.spawnTick != ghostInstance.spawnTick) continue;
+                    entity = _entity;
+                    break;
+                }
+                entities.Dispose();
+
+                if (entity == Entity.Null)
+                {
+                    Debug.LogError($"Ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} }} not found");
+                    return null;
+                }
+
+                if (_fileName.Consume("/m"))
+                {
+                    if (EnableLogging) Debug.Log($"Memory ...");
+                    unsafe
+                    {
+                        Processor processor = World.DefaultGameObjectInjectionWorld.EntityManager.GetComponentData<Processor>(entity);
+                        byte[] data = new Span<byte>(&processor.Memory, Processor.TotalMemorySize).ToArray();
+                        return new FileData(data, DateTime.UtcNow.Ticks);
+                    }
+                }
+            }
+
+            return null;
+        }
 
         if (fileName[0] == '~')
         { fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + fileName[1..]); }

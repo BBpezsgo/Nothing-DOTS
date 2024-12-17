@@ -28,8 +28,9 @@ partial struct BufferedFileSenderSystem : ISystem
             .WithEntityAccess())
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
-            FileData? localFile = FileChunkManagerSystem.GetLocalFile(command.ValueRO.FileName.ToString());
+            FileData? localFile = FileChunkManagerSystem.GetFileData(command.ValueRO.FileName.ToString());
             if (!localFile.HasValue)
             {
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
@@ -82,6 +83,7 @@ partial struct BufferedFileSenderSystem : ISystem
             .WithEntityAccess())
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             bool found = false;
 
@@ -91,7 +93,7 @@ partial struct BufferedFileSenderSystem : ISystem
                 if (sendingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
-                FileData? file = FileChunkManagerSystem.GetLocalFile(sendingFiles[i].FileName.ToString());
+                FileData? file = FileChunkManagerSystem.GetFileData(sendingFiles[i].FileName.ToString());
                 int chunkSize = FileChunkManagerSystem.GetChunkSize(file!.Value.Data.Length, command.ValueRO.ChunkIndex);
                 Span<byte> buffer = file!.Value.Data.AsSpan().Slice(command.ValueRO.ChunkIndex * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)
@@ -123,6 +125,7 @@ partial struct BufferedFileSenderSystem : ISystem
             .WithEntityAccess())
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             for (int i = sendingFiles.Length - 1; i >= 0; i--)
             {
@@ -166,7 +169,7 @@ partial struct BufferedFileSenderSystem : ISystem
                 if (currentSentChunks[j]) continue;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
-                FileData? file = FileChunkManagerSystem.GetLocalFile(sendingFiles[i].FileName.ToString());
+                FileData? file = FileChunkManagerSystem.GetFileData(sendingFiles[i].FileName.ToString());
                 int chunkSize = FileChunkManagerSystem.GetChunkSize(file!.Value.Data.Length, j);
                 Span<byte> buffer = file!.Value.Data.AsSpan().Slice(j * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)

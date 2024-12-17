@@ -50,6 +50,48 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required RefRO<LocalToWorld> WorldTransform;
         public required RefRO<LocalTransform> LocalTransform;
         public required NativeList<BufferedLine>.ParallelWriter DebugLines;
+        public required int* Crash;
+        public required Signal* Signal;
+        public required Registers* Registers;
+
+        public void Push(scoped ReadOnlySpan<byte> data)
+        {
+            Registers->StackPointer += data.Length * BytecodeProcessor.StackDirection;
+            ((nint)Memory).Set(Registers->StackPointer, data);
+
+            if (Registers->StackPointer >= global::Processor.UserMemorySize ||
+                Registers->StackPointer < global::Processor.HeapSize)
+            {
+                *Signal = LanguageCore.Runtime.Signal.StackOverflow;
+#if !UNITY
+            throw new RuntimeException("Stack overflow", GetContext(), default);
+#endif
+            }
+        }
+
+        public unsafe void Push<T>(scoped ReadOnlySpan<T> data) where T : unmanaged
+        {
+            fixed (void* ptr = data)
+            {
+                Push(new ReadOnlySpan<byte>(ptr, data.Length * sizeof(T)));
+            }
+        }
+
+        public Span<byte> Pop(int size)
+        {
+            if (Registers->StackPointer >= global::Processor.UserMemorySize ||
+                Registers->StackPointer < global::Processor.HeapSize)
+            {
+                *Signal = LanguageCore.Runtime.Signal.StackOverflow;
+#if !UNITY
+            throw new RuntimeException("Stack overflow", GetContext(), default);
+#endif
+            }
+
+            Span<byte> data = new Span<byte>(Memory, global::Processor.UserMemorySize).Get(Registers->StackPointer, size);
+            Registers->StackPointer -= size * BytecodeProcessor.StackDirection;
+            return data;
+        }
     }
 
     static readonly Unity.Mathematics.Random _sharedRandom = Unity.Mathematics.Random.CreateFromIndex(420);
@@ -165,12 +207,17 @@ unsafe partial struct ProcessorSystemServer : ISystem
         using ProfilerMarker.AutoScope marker = _ExternalMarker_send.Auto();
 #endif
 
-        (int bufferPtr, int length, float directionAngle, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, float, float>(arguments);
-        if (bufferPtr <= 0 || length <= 0) throw new Exception($"Bruh");
-        if (length >= 30) throw new Exception($"Can't");
-        if (bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Bruh");
-
         FunctionScope* scope = (FunctionScope*)_scope;
+
+        scope->Push<char>("Eh");
+        *scope->Crash = scope->Registers->StackPointer;
+        *scope->Signal = Signal.UserCrash;
+        return;
+
+        (int bufferPtr, int length, float directionAngle, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, float, float>(arguments);
+        if (length <= 0 || length >= 30) throw new Exception("Passed buffer length must be in range [0,30] inclusive");
+        if (bufferPtr == 0) throw new Exception($"Passed buffer pointer is null");
+        if (bufferPtr < 0 || bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Passed buffer pointer is invalid");
 
         float3 direction;
         if (angle != 0f)
@@ -205,8 +252,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         returnValue.Set(0);
 
         (int bufferPtr, int length, int directionPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
-        if (bufferPtr <= 0 || length <= 0) return;
-        if (bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Bruh");
+        if (bufferPtr == 0 || length <= 0) return;
+        if (bufferPtr < 0 || bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Passed buffer pointer is invalid");
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
@@ -247,8 +294,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         returnValue.Set(0);
 
         int dataPtr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-        if (dataPtr <= 0) return;
-        if (dataPtr >= Processor.UserMemorySize) throw new Exception($"Bruh");
+        if (dataPtr == 0) return;
+        if (dataPtr < 0 || dataPtr >= Processor.UserMemorySize) throw new Exception($"Passed data pointer is invalid");
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
@@ -533,6 +580,9 @@ partial struct ProcessorJob : IJobEntity
             WorldTransform = worldTransform,
             LocalTransform = localTransform,
             DebugLines = debugLines,
+            Crash = null,
+            Registers = null,
+            Signal = null,
         };
         for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
         { scopedExternalFunctions[i].Scope = (nint)(void*)&transmissionScope; }
@@ -550,6 +600,10 @@ partial struct ProcessorJob : IJobEntity
             Signal = processor.ValueRO.Signal,
             Crash = processor.ValueRO.Crash,
         };
+
+        transmissionScope.Crash = &processorState.Crash;
+        transmissionScope.Signal = &processorState.Signal;
+        transmissionScope.Registers = &processorState.Registers;
 
         for (int i = 0; i < ProcessorSystemServer.CyclesPerTick; i++)
         {

@@ -31,6 +31,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
     readonly StringBuilder _terminalBuilder = new();
     TerminalEmulator? _terminal;
+    byte[]? _memory;
+    ProgressRecord<(int, int)>? _memoryDownloadProgress;
+    Awaitable<RemoteFile>? _memoryDownloadTask;
 
     void Update()
     {
@@ -65,6 +68,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         refreshAt = Time.time + .2f;
         selectingFile = ImmutableArray<string>.Empty;
         selectingFileI = 0;
+        _memory = null;
+        _memoryDownloadProgress = null;
+        try { _memoryDownloadTask?.Cancel(); } catch { }
+        _memoryDownloadTask = null;
 
         ui_inputSourcePath = ui.rootVisualElement.Q<TextField>("input-source-path");
         ui_ButtonSelect = ui.rootVisualElement.Q<Button>("button-select");
@@ -252,6 +259,34 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         bool isBottom = ui_scrollTerminal!.scrollOffset == ui_labelTerminal!.layout.max - ui_scrollTerminal.contentViewport.layout.size;
         _terminalBuilder.Clear();
 
+        static void AppendProgressBar(StringBuilder builder, string label, float progress)
+        {
+            const string SpinnerChars = "-\\|/";
+            char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
+
+            if (!float.IsFinite(progress) && progress != 1f)
+            {
+                const int progressBarWidth = 10;
+
+                int progressBarFilledWidth = math.clamp((int)(progress * progressBarWidth), 0, progressBarWidth);
+                int progressBarEmptyWidth = progressBarWidth - progressBarFilledWidth;
+
+                builder.Append(label);
+                builder.Append(" [");
+                builder.Append('#', progressBarFilledWidth);
+                builder.Append(' ', progressBarEmptyWidth);
+                builder.Append(']');
+                builder.AppendLine();
+            }
+            else
+            {
+                builder.Append(label);
+                builder.Append(' ');
+                builder.Append(spinner);
+                builder.AppendLine();
+            }
+        }
+
         if (!selectingFile.IsEmpty)
         {
             _terminal = null;
@@ -397,6 +432,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 switch (processor.Signal)
                                 {
                                     case Signal.None:
+                                        _memory = null;
+                                        _memoryDownloadProgress = null;
+                                        try { _memoryDownloadTask?.Cancel(); } catch { }
+                                        _memoryDownloadTask = null;
                                         _terminalBuilder.Append(processor.StdOutBuffer.ToString());
                                         if (processor.IsKeyRequested)
                                         {
@@ -428,17 +467,47 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                         }
                                         break;
                                     case Signal.UserCrash:
-                                        // RuntimeException exception = new(
-                                        //     HeapUtils.GetString(new ReadOnlySpan<byte>(&processor.Memory, Processor.TotalMemorySize), processor.Crash) ?? "null",
-                                        //     new RuntimeContext(
-                                        //         processor.Registers,
-                                        //         new ReadOnlySpan<byte>(&processor.Memory, 1024).ToImmutableArray(),
-                                        //         source.Code!.Value.ToImmutableArray(),
-                                        //         ProcessorSystemServer.BytecodeInterpreterSettings.StackStart
-                                        //     ),
-                                        //     source.DebugInformation);
-                                        // terminalBuilder.AppendLine(exception.ToString(false));
                                         _terminalBuilder.AppendLine("<color=red>Crashed</color>");
+                                        if (_memory is null)
+                                        {
+                                            _memoryDownloadProgress ??= new ProgressRecord<(int, int)>(null);
+
+                                            if (_memoryDownloadTask == null)
+                                            {
+                                                GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
+                                                // Debug.Log($"Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
+                                                _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}_{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
+                                            }
+
+                                            var awaiter = _memoryDownloadTask.GetAwaiter();
+                                            if (awaiter.IsCompleted)
+                                            {
+                                                // Debug.Log("Memory loaded");
+                                                RemoteFile result = awaiter.GetResult();
+                                                switch (result.Kind)
+                                                {
+                                                    case FileResponseStatus.NotFound:
+                                                        _terminalBuilder.AppendLine("<color=red>Failed to download the memory</color>");
+                                                        break;
+                                                    default:
+                                                        _terminalBuilder.AppendLine("Memory downloaded");
+                                                        _memory = result.File.Data;
+                                                        break;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                AppendProgressBar(_terminalBuilder, "Loading", (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            string? message = HeapUtils.GetString(_memory, processor.Crash);
+                                            _terminalBuilder.Append("<color=red>");
+                                            _terminalBuilder.Append(message);
+                                            _terminalBuilder.Append("</color>");
+                                            _terminalBuilder.AppendLine();
+                                        }
                                         break;
                                     case Signal.StackOverflow:
                                         _terminalBuilder.AppendLine("<color=red>Stack overflow</color>");
@@ -513,6 +582,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         selectingFile = ImmutableArray<string>.Empty;
         selectingFileI = 0;
         _terminal = null;
+        _memory = null;
+        _memoryDownloadProgress = null;
+        try { _memoryDownloadTask?.Cancel(); } catch { }
+        _memoryDownloadTask = null;
 
         if (ui != null &&
             ui.rootVisualElement != null)

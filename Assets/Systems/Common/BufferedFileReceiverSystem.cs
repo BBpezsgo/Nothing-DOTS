@@ -27,6 +27,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             .WithEntityAccess())
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             bool added = false;
             BufferedReceivingFile fileHeader = new(
@@ -46,14 +47,14 @@ partial struct BufferedFileReceiverSystem : ISystem
 
                 receivingFiles[i] = fileHeader;
                 added = true;
-                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" (again)");
+                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" from {fileHeader.Source} (again)");
 
                 break;
             }
 
             if (!added)
             {
-                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\"");
+                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" from {fileHeader.Source}");
                 receivingFiles.Add(fileHeader);
             }
 
@@ -65,6 +66,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             .WithEntityAccess())
         {
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             bool fileFound = false;
             for (int i = 0; i < receivingFiles.Length; i++)
