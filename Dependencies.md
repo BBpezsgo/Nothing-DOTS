@@ -15,3 +15,4 @@
 # Assets used
 
 - Gridbox prototype materials [![Unity Asset Store](https://img.shields.io/badge/Unity%20Asset%20Store-100000?style=flat&logo=unity&logoColor=white)](https://assetstore.unity.com/packages/2d/textures-materials/gridbox-prototype-materials-129127)
+- AOS Fog of War [![Unity Asset Store](https://img.shields.io/badge/Unity%20Asset%20Store-100000?style=flat&logo=unity&logoColor=white)](https://assetstore.unity.com/packages/vfx/shaders/fullscreen-camera-effects/aos-fog-of-war-249249)
