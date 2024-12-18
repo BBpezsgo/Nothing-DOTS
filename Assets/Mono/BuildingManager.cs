@@ -148,9 +148,21 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             }
         }
 
-        if (Mouse.current.rightButton.isPressed && !UI.IsMouseHandled && (IsBuilding || BuildingUI.gameObject.activeSelf))
+        if (Mouse.current.rightButton.wasReleasedThisFrame &&
+            !UI.IsMouseHandled &&
+            (IsBuilding || BuildingUI.gameObject.activeSelf) &&
+            !CameraControl.Instance.IsDragging)
         {
-            Hide();
+            if (SelectedBuilding.Prefab != Entity.Null)
+            {
+                SelectedBuilding = default;
+                if (BuildingHologram != null)
+                { BuildingHologram.SetActive(false); }
+            }
+            else
+            {
+                Hide();
+            }
             return;
         }
 

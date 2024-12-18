@@ -5,7 +5,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class CameraControl : MonoBehaviour
+public class CameraControl : Singleton<CameraControl>
 {
     [NotNull] CameraInput? cameraActions = default;
     [NotNull] InputAction? movement = default;
@@ -36,14 +36,29 @@ public class CameraControl : MonoBehaviour
     [SerializeField] float edgeTolerance = 0.05f;
     [SerializeField] bool useScreenEdge = true;
 
+    public bool IsDragging
+    {
+        get
+        {
+            if (!Mouse.current.rightButton.isPressed &&
+                !Mouse.current.rightButton.wasReleasedThisFrame) return false;
+            if (UI.IsMouseHandled) return false;
+            return (
+                Mouse.current.position.ReadValue() - startDragScreen
+            ).SqrMagnitude() > 5f;
+        }
+    }
+
     Vector3 velocity;
     float zoomHeight;
     Vector3 horizontalVelocity;
     Vector3 lastPosition;
-    Vector3 startDrag;
+    Vector3 startDragWorld;
+    Vector2 startDragScreen;
 
-    void Awake()
+    protected override void Awake()
     {
+        base.Awake();
         cameraActions = new CameraInput();
         cameraTransform = GetComponentInChildren<Camera>().transform;
     }
@@ -75,7 +90,8 @@ public class CameraControl : MonoBehaviour
         if (UIManager.Instance.AnyUIVisible)
         {
             lastPosition = transform.position;
-            startDrag = default;
+            startDragWorld = default;
+            startDragScreen = default;
             return;
         }
 
@@ -215,7 +231,8 @@ public class CameraControl : MonoBehaviour
     {
         if (!Mouse.current.rightButton.isPressed)
         {
-            startDrag = default;
+            startDragWorld = default;
+            startDragScreen = default;
             return;
         }
 
@@ -229,13 +246,14 @@ public class CameraControl : MonoBehaviour
 
         if (plane.Raycast(ray, out float distance) && distance < 300f)
         {
-            if (startDrag == default)
+            if (startDragWorld == default)
             {
-                startDrag = ray.GetPoint(distance);
+                startDragWorld = ray.GetPoint(distance);
+                startDragScreen = Mouse.current.position.ReadValue();
             }
             else
             {
-                velocity += (startDrag - ray.GetPoint(distance)) * 0.1f;
+                velocity += (startDragWorld - ray.GetPoint(distance)) * 0.1f;
             }
         }
     }
