@@ -31,6 +31,9 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
     [SerializeField, NotNull] VisualTreeAsset? BuildingButton = default;
     [SerializeField, NotNull] UIDocument? BuildingUI = default;
 
+    float refreshAt = default;
+    float syncAt = default;
+
     void OnKeyEsc()
     {
         SelectedBuilding = default;
@@ -44,7 +47,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         }
     }
 
-    void ListBuildings()
+    void RefreshUI()
     {
         VisualElement container = BuildingUI.rootVisualElement.Q<VisualElement>("unity-content-container");
         container.Clear();
@@ -57,29 +60,26 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             return;
         }
 
-        DynamicBuffer<BufferedBuilding> buildings = entityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
-
-        for (int i = 0; i < buildings.Length; i++)
+        container.SyncList(BuildingsSystemClient.GetInstance(entityManager.WorldUnmanaged).Buildings, BuildingButton, (item, element, recycled) =>
         {
-            TemplateContainer newElement = BuildingButton.Instantiate();
+            element.userData = item.Name;
 
-            Button button = newElement.Q<Button>();
-            button.name = $"btn-{i}";
-            button.clickable.clickedWithEventInfo += Clickable_clickedWithEventInfo;
+            Button button = element.Q<Button>();
+            button.text = item.Name.ToString();
+            if (!recycled) button.clicked += () =>
+            {
+                SelectBuilding((Unity.Collections.FixedString32Bytes)element.userData);
+                button.Blur();
+            };
 
-            newElement.Q<VisualElement>("image").style.display = new StyleEnum<DisplayStyle>(DisplayStyle.None);
-            button.text = $"{buildings[i].Name}";
-
-            container.Add(newElement);
-        }
+            element.Q<VisualElement>("image").style.display = new StyleEnum<DisplayStyle>(DisplayStyle.None);
+        });
     }
 
-    void Clickable_clickedWithEventInfo(EventBase e)
+    void SelectBuilding(Unity.Collections.FixedString32Bytes buildingName)
     {
-        if (e.target is not Button button) return;
-        int i = int.Parse(button.name.Split('-')[1]);
-
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+
         using EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
@@ -89,18 +89,32 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
         DynamicBuffer<BufferedBuilding> buildings = entityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
 
-        BufferedBuilding building = buildings[i];
+        BufferedBuilding building = default;
+
+        for (int i = 0; i < buildings.Length; i++)
+        {
+            if (buildings[i].Name != buildingName) continue;
+            building = buildings[i];
+            break;
+        }
+
+        if (building.Prefab == Entity.Null)
+        {
+            Debug.LogWarning($"Building \"{buildingName}\" not found in the database");
+            return;
+        }
+
         SelectedBuilding = building;
         if (BuildingHologram != null)
         { ApplyHologram(BuildingHologram, SelectedBuilding); }
-
-        button.Blur();
     }
 
     void Show()
     {
         BuildingUI.gameObject.SetActive(true);
-        ListBuildings();
+        RefreshUI();
+
+        syncAt = 0f;
     }
 
     void Hide()
@@ -140,7 +154,21 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             return;
         }
 
-        if (SelectedBuilding.Prefab == default)
+        if (BuildingUI == null || !BuildingUI.gameObject.activeSelf) return;
+
+        if (Time.time >= refreshAt)
+        {
+            RefreshUI();
+            refreshAt = Time.time + 1f;
+        }
+
+        if (Time.time >= syncAt)
+        {
+            syncAt = Time.time + 5f;
+            BuildingsSystemClient.Refresh(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
+        }
+
+        if (SelectedBuilding.Prefab == Entity.Null)
         {
             if (BuildingHologram != null)
             { BuildingHologram.SetActive(false); }

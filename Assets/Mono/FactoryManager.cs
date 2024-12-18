@@ -19,6 +19,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
     Entity selectedFactoryEntity = Entity.Null;
     Factory selectedFactory = default;
     float refreshAt = default;
+    float syncAt = default;
 
     void Update()
     {
@@ -43,6 +44,12 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
             return;
         }
 
+        if (Time.time >= syncAt)
+        {
+            syncAt = Time.time + 5f;
+            UnitsSystemClient.Refresh(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
+        }
+
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         selectedFactory = entityManager.GetComponentData<Factory>(selectedFactoryEntity);
 
@@ -61,6 +68,8 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         ui.gameObject.SetActive(true);
         selectedFactoryEntity = factoryEntity;
         RefreshUI(factoryEntity);
+
+        syncAt = 0f;
     }
 
     public void RefreshUI(Entity factoryEntity)
@@ -82,16 +91,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
             element.Q<Label>("label-unit-name").text = item.Name.ToString();
         });
 
-        using EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
-        if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity buildingDatabase))
-        {
-            Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
-            return;
-        }
-
-        DynamicBuffer<BufferedUnit> units = entityManager.GetBuffer<BufferedUnit>(buildingDatabase, true);
-
-        avaliableList.SyncList(units, UI_AvaliableItem, (item, element, recycled) =>
+        avaliableList.SyncList(UnitsSystemClient.GetInstance(entityManager.WorldUnmanaged).Units, UI_AvaliableItem, (item, element, recycled) =>
         {
             element.userData = item.Name.ToString();
             element.Q<Label>("label-unit-name").text = item.Name.ToString();

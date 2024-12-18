@@ -52,7 +52,6 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
         {
             avaliableResearchesSyncAt = Time.time + 5f;
             ResearchSystemClient.Refresh(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
-            refreshAt = Math.Min(refreshAt, Time.time + 0.1f);
         }
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;

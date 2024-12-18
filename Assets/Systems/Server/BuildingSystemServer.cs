@@ -6,7 +6,7 @@ using Unity.Transforms;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-public partial struct BuildingSystem : ISystem
+public partial struct BuildingSystemServer : ISystem
 {
     public static Entity PlaceBuilding(
         EntityCommandBuffer commandBuffer,
@@ -49,21 +49,19 @@ public partial struct BuildingSystem : ISystem
             if (requestPlayer.Entity == Entity.Null)
             {
                 Debug.LogError(string.Format("Failed to place building: requested by {0} but aint have a team", networkId.ValueRO));
-                commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
             DynamicBuffer<BufferedAcquiredResearch> acquiredResearches = SystemAPI.GetBuffer<BufferedAcquiredResearch>(requestPlayer.Entity);
-
-            Entity buildingDatabaseEntity = SystemAPI.GetSingletonEntity<BuildingDatabase>();
-            DynamicBuffer<BufferedBuilding> buildingDatabase = SystemAPI.GetBuffer<BufferedBuilding>(buildingDatabaseEntity);
+            DynamicBuffer<BufferedBuilding> buildings = SystemAPI.GetBuffer<BufferedBuilding>(SystemAPI.GetSingletonEntity<BuildingDatabase>());
 
             BufferedBuilding building = default;
-            for (int i = 0; i < buildingDatabase.Length; i++)
+
+            for (int i = 0; i < buildings.Length; i++)
             {
-                if (buildingDatabase[i].Name == command.ValueRO.BuildingName)
+                if (buildings[i].Name == command.ValueRO.BuildingName)
                 {
-                    building = buildingDatabase[i];
+                    building = buildings[i];
                     break;
                 }
             }
@@ -71,7 +69,6 @@ public partial struct BuildingSystem : ISystem
             if (building.Prefab == Entity.Null)
             {
                 Debug.LogWarning($"Building \"{command.ValueRO.BuildingName}\" not found in the database");
-                commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
@@ -88,12 +85,11 @@ public partial struct BuildingSystem : ISystem
                 if (!can)
                 {
                     Debug.LogWarning($"Can't place building \"{building.Name}\": not researched");
-                    commandBuffer.DestroyEntity(entity);
                     continue;
                 }
             }
 
-            Entity newEntity = BuildingSystem.PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
+            Entity newEntity = BuildingSystemServer.PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
 
             commandBuffer.SetComponent<UnitTeam>(newEntity, new()
             {
@@ -103,8 +99,6 @@ public partial struct BuildingSystem : ISystem
             {
                 NetworkId = networkId.ValueRO.Value,
             });
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (placeholder, transform, owner, unitTeam, entity) in
@@ -126,6 +120,60 @@ public partial struct BuildingSystem : ISystem
 
                 commandBuffer.DestroyEntity(entity);
                 continue;
+            }
+        }
+
+        foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<BuildingsRequestRpc>>()
+            .WithEntityAccess())
+        {
+            commandBuffer.DestroyEntity(entity);
+            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+
+            Entity requestPlayer = default;
+
+            foreach (var (player, _entity) in
+                SystemAPI.Query<RefRO<Player>>()
+                .WithEntityAccess())
+            {
+                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                requestPlayer = _entity;
+                break;
+            }
+
+            if (requestPlayer == Entity.Null)
+            {
+                Debug.LogError(string.Format("Player with network id {0} aint have a team", networkId));
+                continue;
+            }
+
+            DynamicBuffer<BufferedAcquiredResearch> acquiredResearches = SystemAPI.GetBuffer<BufferedAcquiredResearch>(requestPlayer);
+            DynamicBuffer<BufferedBuilding> buildings = SystemAPI.GetBuffer<BufferedBuilding>(SystemAPI.GetSingletonEntity<BuildingDatabase>());
+
+            foreach (BufferedBuilding building in buildings)
+            {
+                if (!building.RequiredResearch.IsEmpty)
+                {
+                    bool can = false;
+                    foreach (BufferedAcquiredResearch research in acquiredResearches)
+                    {
+                        if (research.Name != building.RequiredResearch) continue;
+                        can = true;
+                        break;
+                    }
+
+                    if (!can) continue;
+                }
+
+                Entity response = commandBuffer.CreateEntity();
+                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
+                {
+                    TargetConnection = request.ValueRO.SourceConnection,
+                });
+                commandBuffer.AddComponent<BuildingsResponseRpc>(response, new()
+                {
+                    Name = building.Name,
+                });
             }
         }
     }
