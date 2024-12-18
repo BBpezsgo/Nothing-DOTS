@@ -5,5 +5,5 @@ using Unity.Entities;
 [BurstCompile]
 public struct BufferedAcquiredResearch : IBufferElementData
 {
-    public FixedString64Bytes Name;
+    public required FixedString64Bytes Name;
 }

@@ -31,15 +31,16 @@ partial struct BufferedFileReceiverSystem : ISystem
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             bool added = false;
-            BufferedReceivingFile fileHeader = new(
-                command.ValueRO.Kind,
-                ep,
-                command.ValueRO.TransactionId,
-                command.ValueRO.FileName,
-                command.ValueRO.TotalLength,
-                SystemAPI.Time.ElapsedTime,
-                command.ValueRO.Version
-            );
+            BufferedReceivingFile fileHeader = new()
+            {
+                Kind = command.ValueRO.Status,
+                Source = ep,
+                TransactionId = command.ValueRO.TransactionId,
+                FileName = command.ValueRO.FileName,
+                TotalLength = command.ValueRO.TotalLength,
+                LastRedeivedAt = SystemAPI.Time.ElapsedTime,
+                Version = command.ValueRO.Version,
+            };
 
             for (int i = 0; i < receivingFiles.Length; i++)
             {
@@ -91,12 +92,13 @@ partial struct BufferedFileReceiverSystem : ISystem
             }
 
             bool added = false;
-            BufferedReceivingFileChunk fileChunk = new(
-                ep,
-                command.ValueRO.TransactionId,
-                command.ValueRO.ChunkIndex,
-                command.ValueRO.Data
-            );
+            BufferedReceivingFileChunk fileChunk = new()
+            {
+                Source = ep,
+                TransactionId = command.ValueRO.TransactionId,
+                ChunkIndex = command.ValueRO.ChunkIndex,
+                Data = command.ValueRO.Data,
+            };
 
             for (int i = 0; i < fileChunks.Length; i++)
             {

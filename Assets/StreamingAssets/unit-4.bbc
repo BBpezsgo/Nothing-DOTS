@@ -20,9 +20,10 @@ struct CommandMoveTo
     [Context("position")] Vector2 position;
 }
 
-const int MaxPacketLength = 9 + 1;
-const u8 REQUEST_HEADER = 0b_11110000;
-const u8 RESPONSE_HEADER = 0b_01111000;
+const int MaxPacketLength   = 9 + 1;
+const u8 REQUEST_HEADER     = 0b_11110000;
+const u8 RESPONSE_HEADER    = 0b_01111000;
+const u8 ENEMY_HEADER       = 0b_00111100;
 
 struct VerificationRequestPacket
 {
@@ -31,6 +32,12 @@ struct VerificationRequestPacket
 }
 
 struct VerificationResponsePacket
+{
+    byte Header;
+    Vector2 Position;
+}
+
+struct EnemyNotificationPacket
 {
     byte Header;
     Vector2 Position;
@@ -64,12 +71,11 @@ void Receive()
 
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
             responsePacket.Header = (u8)RESPONSE_HEADER;
-            responsePacket.Position = packet.Position;
 
             if (DistanceSqr(packet.Position, Mapped.Position) < DistanceThresholdSq)
             {
+                responsePacket.Position = Mapped.Position;
                 debug(packet.Position, CYAN);
-
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
             }
             else
@@ -79,6 +85,7 @@ void Receive()
                     f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
+                        responsePacket.Position = (&allies).Raw()[i].Position;
                         send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
                         return;
                     }
@@ -90,15 +97,25 @@ void Receive()
         {
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
 
-            Vector2 pos = packet.Position;
-            ToLocal(&pos);
             Unit unit;
-            unit.Position = pos;
+            unit.Position = packet.Position;
             unit.Recorded = time();
             unit.Expires = time() + 10f;
             unit.VerificationSentAt = time();
             RemoveUnitAt(&enemies, unit.Position);
             UpdateUnit(&allies, unit);
+        }
+        else if (v[0] == (u8)ENEMY_HEADER &&
+                 receivedLength == sizeof(EnemyNotificationPacket))
+        {
+            EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
+
+            Unit unit;
+            unit.Position = packet.Position;
+            unit.Recorded = 0f;
+            unit.Expires = time() + 5f;
+            unit.VerificationSentAt = time();
+            UpdateUnit(&enemies, unit);
         }
     }
 }
@@ -120,6 +137,7 @@ void UpdateUnit(List<Unit>* units, Unit unit)
     {
         if (units.Length() >= 4)
         {
+            PrintLine("Too many units");
             units.Raw()[0] = unit;
         }
         else
@@ -162,6 +180,7 @@ void Radar()
         point.y = Sin(Mapped.RadarDirection);
         point.x *= radarDistance;
         point.y *= radarDistance;
+        ToGlobal(&point);
 
         Unit enemy;
         enemy.Recorded = time();
@@ -188,8 +207,6 @@ void TrySendVerificationRequest(Unit* unit)
 void SendVerificationRequest(Unit* unit)
 {
     Vector2 point = unit.Position;
-
-    ToGlobal(&point);
 
     VerificationRequestPacket packet = new VerificationRequestPacket;
     packet.Header = (u8)REQUEST_HEADER;
@@ -239,6 +256,7 @@ while (1)
         {
             TrySendVerificationRequest(&(&enemies).Raw()[i]);
             Vector2 p = (&enemies).Raw()[i].Position;
+            ToLocal(&p);
             if (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
                 ldebug(p, RED);
@@ -267,7 +285,7 @@ while (1)
         else
         {
             Vector2 p = (&allies).Raw()[i].Position;
-            ldebug(p, GREEN);
+            debug(p, GREEN);
         }
     }
 

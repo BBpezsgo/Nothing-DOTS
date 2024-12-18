@@ -11,7 +11,7 @@ public enum FileResponseStatus
 [BurstCompile]
 public struct FileHeaderResponseRpc : IRpcCommand
 {
-    public required FileResponseStatus Kind;
+    public required FileResponseStatus Status;
     public required int TransactionId;
     public required FixedString64Bytes FileName;
     public required int TotalLength;

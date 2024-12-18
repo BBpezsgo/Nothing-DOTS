@@ -5,12 +5,6 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct BufferedSpawn : IBufferElementData
 {
-    public float3 Position;
-    public bool IsOccupied;
-
-    public BufferedSpawn(float3 position, bool isOccupied)
-    {
-        Position = position;
-        IsOccupied = isOccupied;
-    }
+    public required float3 Position;
+    public required bool IsOccupied;
 }

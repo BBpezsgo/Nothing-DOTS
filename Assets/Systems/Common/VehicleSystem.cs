@@ -14,7 +14,7 @@ public partial struct VehicleSystem : ISystem
         float deltaTime = SystemAPI.Time.DeltaTime;
 
         foreach (var (transform, vehicle) in
-                    SystemAPI.Query<RefRW<LocalTransform>, RefRW<Vehicle>>())
+            SystemAPI.Query<RefRW<LocalTransform>, RefRW<Vehicle>>())
         {
             vehicle.ValueRW.Speed = math.lerp(vehicle.ValueRO.Speed, vehicle.ValueRO.Input.y * Vehicle.MaxSpeed, deltaTime);
             if (math.abs(vehicle.ValueRO.Speed) <= 0.001f && math.abs(vehicle.ValueRO.Input.x) <= 0.001f) continue;

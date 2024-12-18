@@ -5,26 +5,10 @@ using Unity.Entities;
 [BurstCompile]
 public struct BufferedSendingFile : IBufferElementData
 {
-    public NetcodeEndPoint Destination;
-    public int TransactionId;
-    public FixedString64Bytes FileName;
-    public bool AutoSendEverything;
-    public double LastSentAt;
-    public int TotalLength;
-
-    public BufferedSendingFile(
-        NetcodeEndPoint destination,
-        int transactionId,
-        FixedString64Bytes fileName,
-        bool autoSendEverything,
-        double lastSentAt,
-        int totalLength)
-    {
-        Destination = destination;
-        TransactionId = transactionId;
-        FileName = fileName;
-        AutoSendEverything = autoSendEverything;
-        LastSentAt = lastSentAt;
-        TotalLength = totalLength;
-    }
+    public required NetcodeEndPoint Destination;
+    public required int TransactionId;
+    public required FixedString64Bytes FileName;
+    public required bool AutoSendEverything;
+    public required double LastSentAt;
+    public required int TotalLength;
 }

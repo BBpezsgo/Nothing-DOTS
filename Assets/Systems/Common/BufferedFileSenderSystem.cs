@@ -37,7 +37,7 @@ partial struct BufferedFileSenderSystem : ISystem
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
                 commandBuffer.AddComponent(responseRpcEntity, new FileHeaderResponseRpc()
                 {
-                    Kind = FileResponseStatus.NotFound,
+                    Status = FileResponseStatus.NotFound,
                     FileName = command.ValueRO.FileName,
                     TransactionId = default,
                     TotalLength = default,
@@ -54,24 +54,25 @@ partial struct BufferedFileSenderSystem : ISystem
                 int totalLength = localFile.Value.Data.Length;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderResponseRpc()
+                commandBuffer.AddComponent<FileHeaderResponseRpc>(responseRpcEntity, new()
                 {
-                    Kind = FileResponseStatus.OK,
+                    Status = FileResponseStatus.OK,
                     FileName = command.ValueRO.FileName,
                     TransactionId = transactionId,
                     TotalLength = totalLength,
                     Version = localFile.Value.Version,
                 });
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
+                commandBuffer.AddComponent<SendRpcCommandRequest>(responseRpcEntity);
 
-                sendingFiles.Add(new BufferedSendingFile(
-                    ep,
-                    transactionId,
-                    command.ValueRO.FileName,
-                    true,
-                    SystemAPI.Time.ElapsedTime,
-                    totalLength
-                ));
+                sendingFiles.Add(new()
+                {
+                    Destination = ep,
+                    TransactionId = transactionId,
+                    FileName = command.ValueRO.FileName,
+                    AutoSendEverything = true,
+                    LastSentAt = SystemAPI.Time.ElapsedTime,
+                    TotalLength = totalLength,
+                });
                 if (DebugLog) Debug.Log($"Sending file header \"{command.ValueRO.FileName}\": {{ id: {command.ValueRO.FileName.GetHashCode()} length: {totalLength}b }}");
             }
         }
@@ -179,11 +180,12 @@ partial struct BufferedFileSenderSystem : ISystem
                 }
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
 
-                sentChunks.Add(new BufferedSentFileChunk(
-                    sendingFiles[i].Destination,
-                    sendingFiles[i].TransactionId,
-                    j
-                ));
+                sentChunks.Add(new()
+                {
+                    Destination = sendingFiles[i].Destination,
+                    TransactionId = sendingFiles[i].TransactionId,
+                    ChunkIndex = j,
+                });
 
                 if (DebugLog) Debug.Log($"Sending chunk {j} for file {sendingFiles[i].FileName}");
 

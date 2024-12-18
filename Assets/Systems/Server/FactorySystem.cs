@@ -97,9 +97,9 @@ public partial struct FactorySystem : ISystem
             }
         }
 
-        foreach ((RefRW<Factory> factory, RefRO<LocalToWorld> localToWorld, RefRO<UnitTeam> unitTeam, Entity entity) in
-                    SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>, RefRO<UnitTeam>>()
-                    .WithEntityAccess())
+        foreach (var (factory, localToWorld, unitTeam, entity) in
+                SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>, RefRO<UnitTeam>>()
+                .WithEntityAccess())
         {
             DynamicBuffer<BufferedProducingUnit> unitQueue = SystemAPI.GetBuffer<BufferedProducingUnit>(entity);
 

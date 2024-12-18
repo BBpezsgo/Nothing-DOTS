@@ -35,9 +35,8 @@ public partial struct UnitCommandReceiver : ISystem
                 continue;
             }
 
-            foreach (var (ghostInstance, processor, team, commandDefinitions, ghostEntity) in
-                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, RefRO<UnitTeam>, DynamicBuffer<BufferedUnitCommandDefinition>>()
-                .WithEntityAccess())
+            foreach (var (ghostInstance, processor, team, commandDefinitions) in
+                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, RefRO<UnitTeam>, DynamicBuffer<BufferedUnitCommandDefinition>>())
             {
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;

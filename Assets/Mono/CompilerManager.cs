@@ -280,12 +280,12 @@ public class CompilerManager : Singleton<CompilerManager>
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerManager)}]: {item}");
 
             Entity request = commandBuffer.CreateEntity();
-            commandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
+            commandBuffer.AddComponent<CompilationAnalysticsRpc>(request, new()
             {
                 Level = item.Level,
                 Message = item.Message,
             });
-            commandBuffer.AddComponent(request, new SendRpcCommandRequest()
+            commandBuffer.AddComponent<SendRpcCommandRequest>(request, new()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });

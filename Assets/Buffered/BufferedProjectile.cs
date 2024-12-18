@@ -2,12 +2,9 @@ using Unity.Burst;
 using Unity.Entities;
 
 [BurstCompile]
-public readonly struct BufferedProjectile : IBufferElementData
+public struct BufferedProjectile : IBufferElementData
 {
-    public readonly Entity Prefab;
-
-    public BufferedProjectile(Entity prefab)
-    {
-        Prefab = prefab;
-    }
+    public required Entity Prefab;
+    public required float Damage;
+    public required float Speed;
 }

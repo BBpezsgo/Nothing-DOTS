@@ -87,7 +87,11 @@ unsafe partial struct TransmissionSystem : ISystem
                         ref var transmissions = ref other.ValueRW.IncomingTransmissions;
 
                         if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
-                        transmissions.Add(new BufferedUnitTransmission(transform.ValueRO.Position, transmission.Data));
+                        transmissions.Add(new()
+                        {
+                            Source = transform.ValueRO.Position,
+                            Data = transmission.Data,
+                        });
                     }
                 }
             }

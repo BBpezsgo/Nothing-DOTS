@@ -9,21 +9,12 @@ public struct BufferedUnitTransmissionOutgoing : IBufferElementData
     /// <summary>
     /// Position in world space
     /// </summary>
-    public float3 Source;
+    public required float3 Source;
     /// <summary>
     /// Direction in world space
     /// </summary>
-    public float3 Direction;
-    public float Angle;
-    public float CosAngle;
-    public FixedList32Bytes<byte> Data;
-
-    public BufferedUnitTransmissionOutgoing(float3 source, float3 direction, FixedList32Bytes<byte> data, float cosAngle, float angle)
-    {
-        Source = source;
-        Direction = direction;
-        Data = data;
-        CosAngle = cosAngle;
-        Angle = angle;
-    }
+    public required float3 Direction;
+    public required float Angle;
+    public required float CosAngle;
+    public required FixedList32Bytes<byte> Data;
 }

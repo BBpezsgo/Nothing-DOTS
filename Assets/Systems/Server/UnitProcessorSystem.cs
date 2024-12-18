@@ -36,9 +36,8 @@ partial struct UnitProcessorSystem : ISystem
     [BurstCompile]
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
-        foreach (var (processor, unit, vehicle, transform, entity) in
-                    SystemAPI.Query<RefRW<Processor>, RefRW<Unit>, RefRW<Vehicle>, RefRW<LocalToWorld>>()
-                    .WithEntityAccess())
+        foreach (var (processor, unit, vehicle, transform) in
+            SystemAPI.Query<RefRW<Processor>, RefRW<Unit>, RefRW<Vehicle>, RefRW<LocalToWorld>>())
         {
             MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
 

@@ -337,7 +337,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Projectiles:
-  - {fileID: 2786101604496490284, guid: 9a9b93087683217029333970b60d618c, type: 3}
+  - Prefab: {fileID: 2786101604496490284, guid: 9a9b93087683217029333970b60d618c, type: 3}
+    Damage: 5
+    Speed: 20
 --- !u!4 &1052071672
 Transform:
   m_ObjectHideFlags: 0

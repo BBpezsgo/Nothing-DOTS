@@ -12,7 +12,7 @@ public partial struct BuilderSystem : ISystem
         var map = QuadrantSystem.GetMap(ref state);
 
         foreach (var (turret, localToWorld) in
-                    SystemAPI.Query<RefRW<BuilderTurret>, RefRO<LocalToWorld>>())
+            SystemAPI.Query<RefRW<BuilderTurret>, RefRO<LocalToWorld>>())
         {
             if (!turret.ValueRO.ShootRequested) continue;
             turret.ValueRW.ShootRequested = false;

@@ -241,7 +241,14 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         if (scope->Processor.ValueRW.OutgoingTransmissions.Length >= scope->Processor.ValueRW.OutgoingTransmissions.Capacity)
         { scope->Processor.ValueRW.OutgoingTransmissions.RemoveAt(0); }
-        scope->Processor.ValueRW.OutgoingTransmissions.Add(new BufferedUnitTransmissionOutgoing(scope->WorldTransform.ValueRO.Position, direction, data, cosAngle, angle));
+        scope->Processor.ValueRW.OutgoingTransmissions.Add(new()
+        {
+            Source = scope->WorldTransform.ValueRO.Position,
+            Direction = direction,
+            Data = data,
+            CosAngle = cosAngle,
+            Angle = angle,
+        });
     }
 
     [BurstCompile]

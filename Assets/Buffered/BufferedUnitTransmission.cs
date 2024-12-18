@@ -9,12 +9,6 @@ public struct BufferedUnitTransmission : IBufferElementData
     /// <summary>
     /// Position in world space
     /// </summary>
-    public float3 Source;
-    public FixedList32Bytes<byte> Data;
-
-    public BufferedUnitTransmission(float3 source, FixedList32Bytes<byte> data)
-    {
-        Source = source;
-        Data = data;
-    }
+    public required float3 Source;
+    public required FixedList32Bytes<byte> Data;
 }

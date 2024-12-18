@@ -48,7 +48,11 @@ partial struct ProjectileSystemServer : ISystem
 
             if (damageQ.TryGetBuffer(hit.Entity.Entity, out DynamicBuffer<BufferedDamage> damage))
             {
-                damage.Add(new BufferedDamage(1f, math.normalize(projectile.ValueRO.Velocity)));
+                damage.Add(new()
+                {
+                    Amount = projectile.ValueRO.Damage,
+                    Direction = math.normalize(projectile.ValueRO.Velocity),
+                });
                 commandBuffer.DestroyEntity(entity);
                 continue;
             }

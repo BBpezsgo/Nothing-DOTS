@@ -12,6 +12,7 @@ public class CoreComputerAuthoring : MonoBehaviour
             AddComponent<SelectableUnit>(entity);
             AddComponent<EntityWithInfoUI>(entity);
             AddComponent<UnitTeam>(entity);
+            AddComponent<CoreComputer>(entity);
         }
     }
 }

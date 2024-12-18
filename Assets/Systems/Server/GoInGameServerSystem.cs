@@ -20,8 +20,9 @@ public partial struct GoInServerClientSystem : ISystem
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<GoInGameRpc>>()
+        foreach (var (request, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>>()
+            .WithAll<GoInGameRpc>()
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);

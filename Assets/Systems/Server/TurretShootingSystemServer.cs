@@ -21,17 +21,11 @@ public partial struct TurretShootingSystemServer : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (turret, localToWorld) in
-                    SystemAPI.Query<RefRW<Turret>, RefRO<LocalToWorld>>())
+            SystemAPI.Query<RefRW<Turret>, RefRO<LocalToWorld>>())
         {
             if (!turret.ValueRO.ShootRequested) continue;
 
             turret.ValueRW.ShootRequested = false;
-            Entity instance = commandBuffer.Instantiate(turret.ValueRO.ProjectilePrefab);
-            commandBuffer.SetComponent(instance, LocalTransform.FromPosition(SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position));
-            commandBuffer.SetComponent(instance, new Projectile
-            {
-                Velocity = math.normalize(localToWorld.ValueRO.Up) * Projectile.Speed,
-            });
 
             int projectileIndex = -1;
             for (int i = 0; i < projectiles.Length; i++)
@@ -43,11 +37,23 @@ public partial struct TurretShootingSystemServer : ISystem
                 }
             }
 
+            if (projectileIndex == -1) continue;
+
+            float3 velocity = math.normalize(localToWorld.ValueRO.Up) * projectiles[projectileIndex].Speed;
+
+            Entity instance = commandBuffer.Instantiate(turret.ValueRO.ProjectilePrefab);
+            commandBuffer.SetComponent(instance, LocalTransform.FromPosition(SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position));
+            commandBuffer.SetComponent<Projectile>(instance, new()
+            {
+                Velocity = velocity,
+                Damage = projectiles[projectileIndex].Damage,
+            });
+
             Entity request = commandBuffer.CreateEntity();
             commandBuffer.AddComponent(request, new ShootRpc()
             {
                 Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
-                Velocity = math.normalize(localToWorld.ValueRO.Up) * Projectile.Speed,
+                Velocity = velocity,
                 ProjectileIndex = projectileIndex,
             });
             commandBuffer.AddComponent<SendRpcCommandRequest>(request);

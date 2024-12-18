@@ -5,5 +5,5 @@ using Unity.NetCode;
 [BurstCompile]
 public struct UnitsResponseRpc : IRpcCommand
 {
-    public FixedString32Bytes Name;
+    public required FixedString32Bytes Name;
 }

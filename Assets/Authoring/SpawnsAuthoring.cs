@@ -34,7 +34,11 @@ public class SpawnsAuthoring : MonoBehaviour
             DynamicBuffer<BufferedSpawn> buffer = AddBuffer<BufferedSpawn>(entity);
             foreach (Vector3 spawn in authoring.Spawns)
             {
-                buffer.Add(new BufferedSpawn(spawn, false));
+                buffer.Add(new()
+                {
+                    Position = spawn,
+                    IsOccupied = false,
+                });
             }
         }
     }

@@ -297,6 +297,13 @@ public class SelectionManager : Singleton<SelectionManager>
                 .Setup(TerminalManager.Instance, selectableHit);
             return;
         }
+
+        if (entityManager.HasComponent<CoreComputer>(selectableHit))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, selectableHit);
+            return;
+        }
     }
 
     void ShowUnitCommandsUI()

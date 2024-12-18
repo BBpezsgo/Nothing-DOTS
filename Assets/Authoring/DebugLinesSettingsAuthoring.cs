@@ -12,9 +12,10 @@ public class DebugLinesSettingsAuthoring : MonoBehaviour
         public override void Bake(DebugLinesSettingsAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponentObject<DebugLinesSettings>(entity, new(
-                authoring.Materials
-            ));
+            AddComponentObject<DebugLinesSettings>(entity, new()
+            {
+                Materials = authoring.Materials,
+            });
         }
     }
 }

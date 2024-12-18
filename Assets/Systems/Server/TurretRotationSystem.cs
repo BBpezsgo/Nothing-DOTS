@@ -12,8 +12,8 @@ public partial struct TurretRotationSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        foreach ((RefRW<LocalTransform> transform, RefRO<Turret> turret) in
-                    SystemAPI.Query<RefRW<LocalTransform>, RefRO<Turret>>())
+        foreach (var (transform, turret) in
+            SystemAPI.Query<RefRW<LocalTransform>, RefRO<Turret>>())
         {
             const float speed = math.PI;
             transform.ValueRO.Rotation.ToEuler(out float3 euler);
@@ -25,8 +25,8 @@ public partial struct TurretRotationSystem : ISystem
             transform.ValueRW.Rotation = quaternion.EulerXYZ(x, y, 0);
         }
 
-        foreach ((RefRW<LocalTransform> transform, RefRO<BuilderTurret> turret) in
-                    SystemAPI.Query<RefRW<LocalTransform>, RefRO<BuilderTurret>>())
+        foreach (var (transform, turret) in
+            SystemAPI.Query<RefRW<LocalTransform>, RefRO<BuilderTurret>>())
         {
             const float speed = math.PI;
             transform.ValueRO.Rotation.ToEuler(out float3 euler);
