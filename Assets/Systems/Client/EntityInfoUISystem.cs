@@ -13,7 +13,7 @@ public partial struct EntityInfoUISystem : ISystem
 
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer entityCommandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (transform, _, entity) in
             SystemAPI.Query<RefRO<LocalTransform>, RefRO<EntityWithInfoUI>>()
@@ -26,7 +26,7 @@ public partial struct EntityInfoUISystem : ISystem
             Unity.Mathematics.float3 spawnPosition = transform.ValueRO.Position;
             GameObject newUi = Object.Instantiate(uiPrefab, spawnPosition, Quaternion.identity, Object.FindAnyObjectByType<Canvas>(FindObjectsInactive.Exclude).transform);
 
-            entityCommandBuffer.AddComponent<EntityInfoUIReference>(entity, new()
+            commandBuffer.AddComponent<EntityInfoUIReference>(entity, new()
             {
                 Value = newUi.GetComponent<EntityInfoUI>(),
             });
@@ -66,7 +66,7 @@ public partial struct EntityInfoUISystem : ISystem
             using Unity.Profiling.ProfilerMarker.AutoScope _ = __destroyUI.Auto();
 
             Object.Destroy(uiRef.Value.gameObject);
-            entityCommandBuffer.RemoveComponent<EntityInfoUIReference>(entity);
+            commandBuffer.RemoveComponent<EntityInfoUIReference>(entity);
         }
     }
 }

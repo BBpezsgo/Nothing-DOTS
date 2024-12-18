@@ -20,7 +20,7 @@ partial struct ProjectileSystemClient : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer entityCommandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         damageQ.Update(ref state);
         var map = QuadrantSystem.GetMap(ref state);
@@ -36,7 +36,7 @@ partial struct ProjectileSystemClient : ISystem
 
             if (transform.ValueRO.Position.y < 0f)
             {
-                entityCommandBuffer.DestroyEntity(entity);
+                commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
@@ -47,7 +47,7 @@ partial struct ProjectileSystemClient : ISystem
 
             if (damageQ.TryGetBuffer(hit.Entity.Entity, out var damage))
             {
-                entityCommandBuffer.DestroyEntity(entity);
+                commandBuffer.DestroyEntity(entity);
                 continue;
             }
         }

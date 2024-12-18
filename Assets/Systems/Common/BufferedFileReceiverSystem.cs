@@ -26,6 +26,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderResponseRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
@@ -57,14 +58,13 @@ partial struct BufferedFileReceiverSystem : ISystem
                 if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" from {fileHeader.Source}");
                 receivingFiles.Add(fileHeader);
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileChunkResponseRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
@@ -86,7 +86,6 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             if (!fileFound)
             {
-                commandBuffer.DestroyEntity(entity);
                 Debug.LogWarning("Unexpected file chunk");
                 continue;
             }
@@ -116,8 +115,6 @@ partial struct BufferedFileReceiverSystem : ISystem
                 fileChunks.Add(fileChunk);
                 if (DebugLog) Debug.Log($"Received chunk {fileChunk.ChunkIndex}");
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         int requested = 0;

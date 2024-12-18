@@ -334,8 +334,12 @@ public unsafe partial struct CollisionSystem : ISystem
                 {
                     QuadrantEntity* b = &quadrant.GetUnsafePtr()[j];
 
-                    if ((a->Collider.IsStatic || a->LastPosition.Equals(a->Position)) &&
+                    if (a->Collider.IsStatic &&
                         b->Collider.IsStatic)
+                    { continue; }
+
+                    if (a->LastPosition.Equals(a->Position) &&
+                        b->LastPosition.Equals(b->Position))
                     { continue; }
 
                     a->LastPosition = a->Position;

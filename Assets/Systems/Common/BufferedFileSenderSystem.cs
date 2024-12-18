@@ -27,6 +27,7 @@ partial struct BufferedFileSenderSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileHeaderRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
@@ -45,7 +46,6 @@ partial struct BufferedFileSenderSystem : ISystem
                 commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
 
                 if (DebugLog) Debug.LogError($"File \"{command.ValueRO.FileName}\" does not exists");
-                commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
@@ -74,14 +74,13 @@ partial struct BufferedFileSenderSystem : ISystem
                 ));
                 if (DebugLog) Debug.Log($"Sending file header \"{command.ValueRO.FileName}\": {{ id: {command.ValueRO.FileName.GetHashCode()} length: {totalLength}b }}");
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FileChunkRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
@@ -116,14 +115,13 @@ partial struct BufferedFileSenderSystem : ISystem
             {
                 if (DebugLog) Debug.LogWarning($"Can't send requested chunk for file {command.ValueRO.TransactionId}: File does not exists");
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CloseFileRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
@@ -142,8 +140,6 @@ partial struct BufferedFileSenderSystem : ISystem
 
                 sendingFiles.RemoveAt(i);
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         int sent = 0;

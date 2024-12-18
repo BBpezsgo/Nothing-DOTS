@@ -20,6 +20,7 @@ public partial struct FacilitySystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FacilityQueueResearchRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);       
             RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
 
             Entity requestPlayer = default;
@@ -115,8 +116,6 @@ public partial struct FacilitySystem : ISystem
 
                 break;
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (facility, unitTeam, entity) in

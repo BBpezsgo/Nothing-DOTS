@@ -15,6 +15,7 @@ public partial struct ResearchSystemServer : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ResearchesRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
 
             Entity requestPlayer = default;
@@ -31,7 +32,6 @@ public partial struct ResearchSystemServer : ISystem
             if (requestPlayer == Entity.Null)
             {
                 Debug.LogError(string.Format("Player with network id {0} aint have a team", networkId));
-                commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
@@ -80,8 +80,6 @@ public partial struct ResearchSystemServer : ISystem
                     Name = _research.ValueRO.Name,
                 });
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
     }
 }

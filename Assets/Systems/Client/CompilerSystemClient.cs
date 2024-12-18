@@ -7,29 +7,30 @@ partial struct CompilerSystemClient : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer entityCommandBuffer = default;
+        EntityCommandBuffer commandBuffer = default;
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilerStatusRpc>>()
             .WithEntityAccess())
         {
+            if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+            commandBuffer.DestroyEntity(entity);
+
             // Debug.Log($"Received compilation status for {command.ValueRO.FileName}");
 
             CompilerManager.Instance.HandleRpc(command.ValueRO);
-
-            if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-            entityCommandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilationAnalysticsRpc>>()
             .WithEntityAccess())
         {
+            if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+            commandBuffer.DestroyEntity(entity);
+
             if (!CompilerManager.Instance.CompiledSources.TryGetValue(command.ValueRO.FileName, out CompiledSource source))
             {
                 // Debug.LogWarning($"Received analytics for unknown compiled source \"{command.ValueRO.FileName}\"");
-                if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-                entityCommandBuffer.DestroyEntity(entity);
                 continue;
             }
 
@@ -40,15 +41,12 @@ partial struct CompilerSystemClient : ISystem
                 command.ValueRO.FileName.ToUri(),
                 null
             ));
-
-            if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-            entityCommandBuffer.DestroyEntity(entity);
         }
 
-        if (entityCommandBuffer.IsCreated)
+        if (commandBuffer.IsCreated)
         {
-            entityCommandBuffer.Playback(state.EntityManager);
-            entityCommandBuffer.Dispose();
+            commandBuffer.Playback(state.EntityManager);
+            commandBuffer.Dispose();
         }
     }
 }

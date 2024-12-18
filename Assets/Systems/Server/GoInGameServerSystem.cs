@@ -24,8 +24,8 @@ public partial struct GoInServerClientSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<GoInGameRpc>>()
             .WithEntityAccess())
         {
-            commandBuffer.AddComponent<NetworkStreamInGame>(request.ValueRO.SourceConnection);
             commandBuffer.DestroyEntity(entity);
+            commandBuffer.AddComponent<NetworkStreamInGame>(request.ValueRO.SourceConnection);
         }
     }
 }

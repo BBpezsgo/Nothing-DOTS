@@ -17,6 +17,7 @@ public partial struct UnitCommandReceiver : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<UnitCommandRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             RefRO<NetworkId> requestConnection = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
 
             int sourceTeam = -1;
@@ -31,7 +32,6 @@ public partial struct UnitCommandReceiver : ISystem
             if (sourceTeam == -1)
             {
                 Debug.LogError("Invalid team");
-                commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
@@ -80,8 +80,6 @@ public partial struct UnitCommandReceiver : ISystem
 
                 break;
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
     }
 }

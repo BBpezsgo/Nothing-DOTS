@@ -33,6 +33,7 @@ public partial struct BuildingSystemServer : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<PlaceBuildingRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
 
             (Entity Entity, Player Player) requestPlayer = default;

@@ -19,6 +19,8 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ProcessorCommandRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
+
             foreach (var (ghostInstance, processor) in
                 SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
@@ -47,14 +49,14 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 break;
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SetProcessorSourceRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
+
             foreach (var (ghostInstance, processor) in
                 SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
@@ -85,8 +87,6 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 break;
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (processor, commandDefinitions, instructions) in

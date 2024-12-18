@@ -25,6 +25,7 @@ public partial struct FactorySystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<FactoryQueueUnitRequestRpc>>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
             RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
 
             Entity requestPlayer = default;
@@ -41,7 +42,6 @@ public partial struct FactorySystem : ISystem
             if (requestPlayer == Entity.Null)
             {
                 Debug.LogError(string.Format("Failed to queue unit: requested by {0} but aint have a team", networkId.ValueRO));
-                commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
@@ -82,7 +82,6 @@ public partial struct FactorySystem : ISystem
                     if (!can)
                     {
                         Debug.LogWarning($"Can't queue unit \"{unit.Name}\": not researched");
-                        commandBuffer.DestroyEntity(entity);
                         break;
                     }
                 }
@@ -96,8 +95,6 @@ public partial struct FactorySystem : ISystem
 
                 break;
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach ((RefRW<Factory> factory, RefRO<LocalToWorld> localToWorld, RefRO<UnitTeam> unitTeam, Entity entity) in

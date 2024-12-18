@@ -171,7 +171,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
     void FixedUpdate()
     {
-        EntityCommandBuffer entityCommandBuffer = default;
+        EntityCommandBuffer commandBuffer = default;
 
         foreach ((FileId file, CompiledSource source) in _compiledSources)
         {
@@ -193,16 +193,16 @@ public class CompilerManager : Singleton<CompilerManager>
                             else if (task.IsCanceled)
                             { Debug.LogError($"[{nameof(CompilerManager)}]: Compilation task cancelled"); }
                         });
-                    if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-                    SendCompilationStatus(source, entityCommandBuffer);
+                    if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                    SendCompilationStatus(source, commandBuffer);
                     break;
                 case CompilationStatus.Compiling:
                     break;
                 case CompilationStatus.Compiled:
                     source.Status = CompilationStatus.Done;
 
-                    if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-                    SendCompilationStatus(source, entityCommandBuffer);
+                    if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                    SendCompilationStatus(source, commandBuffer);
                     break;
                 case CompilationStatus.Done:
                     if (source.CompiledVersion < source.LatestVersion)
@@ -210,32 +210,32 @@ public class CompilerManager : Singleton<CompilerManager>
                         Debug.Log($"[{nameof(CompilerManager)}]: Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
                         source.Status = CompilationStatus.Secuedued;
                         source.CompileSecuedued = 1f;
-                        if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-                        SendCompilationStatus(source, entityCommandBuffer);
+                        if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                        SendCompilationStatus(source, commandBuffer);
                     }
                     break;
             }
             if (source.StatusChanged && source.LastStatusSync + 0.5f < Time.time)
             {
-                if (!entityCommandBuffer.IsCreated) entityCommandBuffer = new(Allocator.Temp);
-                SendCompilationStatus(source, entityCommandBuffer);
+                if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                SendCompilationStatus(source, commandBuffer);
             }
         }
 
-        if (entityCommandBuffer.IsCreated)
+        if (commandBuffer.IsCreated)
         {
-            entityCommandBuffer.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
-            entityCommandBuffer.Dispose();
+            commandBuffer.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
+            commandBuffer.Dispose();
         }
     }
 
-    public static void SendCompilationStatus(CompiledSource source, EntityCommandBuffer entityCommandBuffer)
+    public static void SendCompilationStatus(CompiledSource source, EntityCommandBuffer commandBuffer)
     {
         source.LastStatusSync = Time.time;
         source.StatusChanged = false;
         {
-            Entity request = entityCommandBuffer.CreateEntity();
-            entityCommandBuffer.AddComponent(request, new CompilerStatusRpc()
+            Entity request = commandBuffer.CreateEntity();
+            commandBuffer.AddComponent(request, new CompilerStatusRpc()
             {
                 FileName = source.SourceFile,
                 Status = source.Status,
@@ -244,7 +244,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 CompiledVersion = source.CompiledVersion,
                 LatestVersion = source.LatestVersion,
             });
-            entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
+            commandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
@@ -259,8 +259,8 @@ public class CompilerManager : Singleton<CompilerManager>
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
 
-            Entity request = entityCommandBuffer.CreateEntity();
-            entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
+            Entity request = commandBuffer.CreateEntity();
+            commandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
             {
                 FileName = file,
                 Position = item.Position.Range.ToMutable(),
@@ -268,7 +268,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 Level = item.Level,
                 Message = item.Message,
             });
-            entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
+            commandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
@@ -279,13 +279,13 @@ public class CompilerManager : Singleton<CompilerManager>
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerManager)}]: {item}");
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerManager)}]: {item}");
 
-            Entity request = entityCommandBuffer.CreateEntity();
-            entityCommandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
+            Entity request = commandBuffer.CreateEntity();
+            commandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
             {
                 Level = item.Level,
                 Message = item.Message,
             });
-            entityCommandBuffer.AddComponent(request, new SendRpcCommandRequest()
+            commandBuffer.AddComponent(request, new SendRpcCommandRequest()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
