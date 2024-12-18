@@ -92,6 +92,14 @@ unsafe partial struct ProcessorSystemServer : ISystem
             Registers->StackPointer -= size * BytecodeProcessor.StackDirection;
             return data;
         }
+
+        public void DoCrash(scoped ReadOnlySpan<char> message)
+        {
+            Push(message);
+            *Crash = Registers->StackPointer;
+            *Signal = LanguageCore.Runtime.Signal.UserCrash;
+            return;
+        }
     }
 
     static readonly Unity.Mathematics.Random _sharedRandom = Unity.Mathematics.Random.CreateFromIndex(420);
@@ -208,11 +216,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
 #endif
 
         FunctionScope* scope = (FunctionScope*)_scope;
-
-        scope->Push<char>("Eh");
-        *scope->Crash = scope->Registers->StackPointer;
-        *scope->Signal = Signal.UserCrash;
-        return;
 
         (int bufferPtr, int length, float directionAngle, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, float, float>(arguments);
         if (length <= 0 || length >= 30) throw new Exception("Passed buffer length must be in range [0,30] inclusive");
@@ -514,18 +517,12 @@ unsafe partial struct ProcessorSystemServer : ISystem
             {
                 if (debugLines[i].Value.Equals(lines[j].Value))
                 {
-                    lines[j] = lines[j] with
-                    {
-                        DieAt = debugLines[i].DieAt
-                    };
+                    lines[j] = debugLines[i];
                     goto next;
                 }
             }
-            goto add;
-        next:
-            continue;
-        add:
             lines.Add(debugLines[i]);
+        next:;
         }
         debugLines.Clear();
 

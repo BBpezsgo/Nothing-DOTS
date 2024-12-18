@@ -30,55 +30,53 @@ public partial class FogOfWarSystemClient : SystemBase
         _settings = SystemAPI.ManagedAPI.GetSingleton<FogOfWarSettings>();
         _levelData = new TileState[_settings.LevelDimensionX * _settings.LevelDimensionY];
         _shadowcaster = new Shadowcaster(_settings, _levelData);
-        var map = QuadrantSystem.GetMap(World.Unmanaged);
-
-        for (int x = 0; x < _settings.LevelDimensionX; x++)
-        {
-            for (int y = 0; y < _settings.LevelDimensionY; y++)
-            {
-                Collider collider = new(true, new AABBCollider()
-                {
-                    AABB = new AABB()
-                    {
-                        Center = default,
-                        Extents = new float3(
-                            (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f,
-                            _settings.UnitScale / 2.0f,
-                            (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f)
-                    },
-                });
-                var point = new float3(
-                    _settings.GetWorldX(x),
-                    _settings.LevelMidPoint.y,
-                    _settings.GetWorldY(y));
-                bool isObstacleHit = CollisionSystem.Intersect(map, collider, point,
-                    out _, out _);
-                // bool isObstacleHit = Physics.BoxCast(
-                //     new float3(
-                //         _settings.GetWorldX(x),
-                //         _settings.LevelMidPoint.y + _settings.RayStartHeight,
-                //         _settings.GetWorldY(y)),
-                //     new float3(
-                //         (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f,
-                //         _settings.UnitScale / 2.0f,
-                //         (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f),
-                //     (float3)Vector3.down,
-                //     Quaternion.identity,
-                //     _settings.RayMaxDistance,
-                //     _settings.ObstacleLayers,
-                //     (QueryTriggerInteraction)(2 - Convert.ToInt32(_settings.IgnoreTriggers)));
-
-                if (isObstacleHit)
-                {
-                    _levelData[y * _settings.LevelDimensionX + x] = TileState.Obstacle;
-                    CollisionSystem.Debug(collider, point, Color.red, 100f, false);
-                }
-                else
-                {
-                    CollisionSystem.Debug(collider, point, Color.green, 100f, false);
-                }
-            }
-        }
+        //var map = QuadrantSystem.GetMap(World.Unmanaged);
+        //for (int x = 0; x < _settings.LevelDimensionX; x++)
+        //{
+        //    for (int y = 0; y < _settings.LevelDimensionY; y++)
+        //    {
+        //        Collider collider = new(true, new AABBCollider()
+        //        {
+        //            AABB = new AABB()
+        //            {
+        //                Center = default,
+        //                Extents = new float3(
+        //                    (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f,
+        //                    _settings.UnitScale / 2.0f,
+        //                    (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f)
+        //            },
+        //        });
+        //        var point = new float3(
+        //            _settings.GetWorldX(x),
+        //            _settings.LevelMidPoint.y,
+        //            _settings.GetWorldY(y));
+        //        bool isObstacleHit = CollisionSystem.Intersect(map, collider, point,
+        //            out _, out _);
+        //        // bool isObstacleHit = Physics.BoxCast(
+        //        //     new float3(
+        //        //         _settings.GetWorldX(x),
+        //        //         _settings.LevelMidPoint.y + _settings.RayStartHeight,
+        //        //         _settings.GetWorldY(y)),
+        //        //     new float3(
+        //        //         (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f,
+        //        //         _settings.UnitScale / 2.0f,
+        //        //         (_settings.UnitScale - _settings.ScanSpacingPerUnit) / 2.0f),
+        //        //     (float3)Vector3.down,
+        //        //     Quaternion.identity,
+        //        //     _settings.RayMaxDistance,
+        //        //     _settings.ObstacleLayers,
+        //        //     (QueryTriggerInteraction)(2 - Convert.ToInt32(_settings.IgnoreTriggers)));
+        //        if (isObstacleHit)
+        //        {
+        //            _levelData[y * _settings.LevelDimensionX + x] = TileState.Obstacle;
+        //            CollisionSystem.Debug(collider, point, Color.red, 100f, false);
+        //        }
+        //        else
+        //        {
+        //            CollisionSystem.Debug(collider, point, Color.green, 100f, false);
+        //        }
+        //    }
+        //}
 
         InitializeFog();
     }

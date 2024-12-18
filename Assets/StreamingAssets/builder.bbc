@@ -111,12 +111,13 @@ while (1)
         currentBuildAt.y != 0f)
     {
         float d = DistanceSqr(Mapped.Position, currentBuildAt);
-        if (d < 10f * 10f)
+        if (d < 3f * 3f)
         {
             Vector2 currentBuildAtLocal = currentBuildAt;
             ToLocal(&currentBuildAtLocal);
             ShootAt(currentBuildAtLocal, &targetedPosition);
             StopMoving();
+            ldebug(currentBuildAtLocal, WHITE);
         }
         else
         {
