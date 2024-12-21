@@ -20,10 +20,11 @@ struct CommandMoveTo
     [Context("position")] Vector2 position;
 }
 
-const int MaxPacketLength   = 9 + 1;
-const u8 REQUEST_HEADER     = 0b_11110000;
-const u8 RESPONSE_HEADER    = 0b_01111000;
-const u8 ENEMY_HEADER       = 0b_00111100;
+const int MaxPacketLength = 13 + 1;
+const u8 REQUEST_HEADER           = 0b_11110000;
+const u8 RESPONSE_HEADER          = 0b_01111000;
+const u8 ENEMY_HEADER             = 0b_00111100;
+const u8 INDIRECT_RESPONSE_HEADER = 0b_00011110;
 
 struct VerificationRequestPacket
 {
@@ -35,6 +36,13 @@ struct VerificationResponsePacket
 {
     byte Header;
     Vector2 Position;
+}
+
+struct IndirectVerificationResponsePacket
+{
+    byte Header;
+    Vector2 Position;
+    float Expires;
 }
 
 struct EnemyNotificationPacket
@@ -85,8 +93,11 @@ void Receive()
                     f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
-                        responsePacket.Position = (&allies).Raw()[i].Position;
-                        send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
+                        IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
+                        indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
+                        indirectResponsePacket.Position = (&allies).Raw()[i].Position;
+                        indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
+                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), direction, 0.1f);
                         return;
                     }
                 }
@@ -116,6 +127,19 @@ void Receive()
             unit.Expires = time() + 5f;
             unit.VerificationSentAt = time();
             UpdateUnit(&enemies, unit);
+        }
+        else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
+                 receivedLength == sizeof(IndirectVerificationResponsePacket))
+        {
+            IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
+
+            Unit unit;
+            unit.Position = packet.Position;
+            unit.Recorded = time();
+            unit.Expires = packet.Expires;
+            unit.VerificationSentAt = time();
+            RemoveUnitAt(&enemies, unit.Position);
+            UpdateUnit(&allies, unit);
         }
     }
 }
@@ -184,7 +208,7 @@ void Radar()
 
         Unit enemy;
         enemy.Recorded = time();
-        enemy.Expires = time() + 8f;
+        enemy.Expires = time() + 12f;
         enemy.Position = point;
         SendVerificationRequest(&enemy);
         UpdateUnit(&enemies, enemy);
