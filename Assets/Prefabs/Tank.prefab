@@ -212,14 +212,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1927700433364110279}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.9, z: 0}
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 0, z: 0.9000003}
   m_LocalScale: {x: 0.3, y: 0.5, z: 0.3}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 7105177236876687201}
-  m_Father: {fileID: 248822936580845712}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_Children: []
+  m_Father: {fileID: 2454867878420430457}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!33 &2364017163518479416
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -301,14 +300,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2158981104949189332}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.5, z: 0.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 5212393885096661411}
+  - {fileID: 2454867878420430457}
   m_Father: {fileID: 4768826224155038352}
-  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &6263340595079560037
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -374,9 +373,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d28ede47d52acde3f86e5a9e76d9d5cf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Type: 0
-  CannonBallPrefab: {fileID: 2786101604496490284, guid: 9a9b93087683217029333970b60d618c, type: 3}
-  CannonBallSpawn: {fileID: 7105177236876687201}
+  Cannon: {fileID: 2454867878420430457}
+  ProjectilePrefab: {fileID: 2786101604496490284, guid: 9a9b93087683217029333970b60d618c, type: 3}
+  ShootPosition: {fileID: 7105177236876687201}
+  TurretRotationSpeed: 3
+  CannonRotationSpeed: 2
 --- !u!114 &8420912117842844535
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -590,11 +591,11 @@ Transform:
   m_GameObject: {fileID: 3090239875511047508}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.1, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 1.450001}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 5212393885096661411}
+  m_Father: {fileID: 2454867878420430457}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4051530584739018969
 GameObject:
@@ -878,6 +879,58 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4387523237411542620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfdaa6c06fe64fbda2b16e07a4ee0b25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ComponentOverrides:
+  - FullTypeName: Unity.Transforms.LocalTransform
+    EntityIndex: 0
+    PrefabType: -1
+    SendTypeOptimization: -1
+    VariantHash: 7796477309335575595
+--- !u!1 &5634612989332539434
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2454867878420430457}
+  - component: {fileID: 4056889475603900208}
+  m_Layer: 0
+  m_Name: Barrel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2454867878420430457
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5634612989332539434}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5212393885096661411}
+  - {fileID: 7105177236876687201}
+  m_Father: {fileID: 248822936580845712}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4056889475603900208
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5634612989332539434}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bfdaa6c06fe64fbda2b16e07a4ee0b25, type: 3}

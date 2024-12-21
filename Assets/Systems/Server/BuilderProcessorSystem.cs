@@ -67,12 +67,12 @@ partial struct BuilderProcessorSystem : ISystem
 
                 if (float.IsFinite(mapped->TurretTargetAngle))
                 {
-                    turret.ValueRW.TargetAngle = mapped->TurretTargetAngle + math.PIHALF;
+                    turret.ValueRW.TargetAngle = mapped->TurretTargetAngle;
                 }
 
                 turretTransform.ValueRO.Rotation.ToEuler(out float3 euler);
                 mapped->TurretCurrentRotation = euler.y;
-                mapped->TurretCurrentAngle = euler.x - math.PIHALF;
+                mapped->TurretCurrentAngle = euler.x;
             }
         }
     }

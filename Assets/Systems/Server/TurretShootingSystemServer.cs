@@ -20,10 +20,12 @@ public partial struct TurretShootingSystemServer : ISystem
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        foreach (var (turret, localToWorld) in
-            SystemAPI.Query<RefRW<Turret>, RefRO<LocalToWorld>>())
+        foreach (var turret in
+            SystemAPI.Query<RefRW<Turret>>())
         {
             if (!turret.ValueRO.ShootRequested) continue;
+
+            RefRO<LocalToWorld> shootPosition = SystemAPI.GetComponentRO<LocalToWorld>(turret.ValueRO.ShootPosition);
 
             turret.ValueRW.ShootRequested = false;
 
@@ -39,7 +41,7 @@ public partial struct TurretShootingSystemServer : ISystem
 
             if (projectileIndex == -1) continue;
 
-            float3 velocity = math.normalize(localToWorld.ValueRO.Up) * projectiles[projectileIndex].Speed;
+            float3 velocity = math.normalize(shootPosition.ValueRO.Forward) * projectiles[projectileIndex].Speed;
 
             Entity instance = commandBuffer.Instantiate(turret.ValueRO.ProjectilePrefab);
             commandBuffer.SetComponent(instance, LocalTransform.FromPosition(SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position));

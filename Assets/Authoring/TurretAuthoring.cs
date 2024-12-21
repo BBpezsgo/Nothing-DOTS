@@ -4,8 +4,12 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Turret")]
 public class TurretAuthoring : MonoBehaviour
 {
-    [SerializeField] GameObject? CannonBallPrefab = default;
-    [SerializeField] Transform? CannonBallSpawn = default;
+    [SerializeField] Transform? Cannon = default;
+    [SerializeField] GameObject? ProjectilePrefab = default;
+    [SerializeField] Transform? ShootPosition = default;
+
+    [SerializeField] float TurretRotationSpeed = default;
+    [SerializeField] float CannonRotationSpeed = default;
 
     class Baker : Baker<TurretAuthoring>
     {
@@ -14,14 +18,20 @@ public class TurretAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new Turret
             {
+                TurretRotationSpeed = authoring.TurretRotationSpeed,
+                CannonRotationSpeed = authoring.CannonRotationSpeed,
+                Cannon =
+                    authoring.Cannon == null
+                    ? Entity.Null
+                    : GetEntity(authoring.Cannon, TransformUsageFlags.Dynamic),
                 ProjectilePrefab =
-                    authoring.CannonBallPrefab == null
+                    authoring.ProjectilePrefab == null
                     ? Entity.Null
-                    : GetEntity(authoring.CannonBallPrefab, TransformUsageFlags.Dynamic),
+                    : GetEntity(authoring.ProjectilePrefab, TransformUsageFlags.Dynamic),
                 ShootPosition =
-                    authoring.CannonBallSpawn == null
+                    authoring.ShootPosition == null
                     ? Entity.Null
-                    : GetEntity(authoring.CannonBallSpawn, TransformUsageFlags.Dynamic)
+                    : GetEntity(authoring.ShootPosition, TransformUsageFlags.Dynamic)
             });
         }
     }
