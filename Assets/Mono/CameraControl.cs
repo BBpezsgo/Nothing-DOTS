@@ -125,7 +125,7 @@ public class CameraControl : Singleton<CameraControl>
         if (Keyboard.current.shiftKey.isPressed)
         { inputValue *= 2f; }
 
-        velocity += inputValue;
+        velocity += inputValue * (zoomHeight * 0.1f);
     }
 
     void GetKeyZoom()
@@ -153,8 +153,6 @@ public class CameraControl : Singleton<CameraControl>
 
     void UpdateBasePosition()
     {
-        velocity *= zoomHeight * 0.1f;
-
         if (velocity.sqrMagnitude > 0.001f)
         {
             speed = Mathf.Lerp(speed, maxSpeed, Time.deltaTime * acceleration);
@@ -162,6 +160,7 @@ public class CameraControl : Singleton<CameraControl>
         }
         else
         {
+            speed = Mathf.Lerp(speed, 0f, Time.deltaTime * damping);
             horizontalVelocity = Vector3.Lerp(horizontalVelocity, Vector3.zero, Time.deltaTime * damping);
             transform.position += horizontalVelocity * Time.deltaTime;
         }
@@ -224,7 +223,7 @@ public class CameraControl : Singleton<CameraControl>
 
         moveDirection.Normalize();
 
-        velocity += moveDirection;
+        velocity += moveDirection * (zoomHeight * 0.1f);
     }
 
     void DragCamera()
@@ -253,7 +252,7 @@ public class CameraControl : Singleton<CameraControl>
             }
             else
             {
-                velocity += (startDragWorld - ray.GetPoint(distance)) * 0.1f;
+                velocity += (startDragWorld - ray.GetPoint(distance));
             }
         }
     }

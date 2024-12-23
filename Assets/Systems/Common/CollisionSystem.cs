@@ -24,7 +24,14 @@ public unsafe partial struct CollisionSystem : ISystem
         switch (collider.Type)
         {
             case ColliderType.Sphere:
-                DebugEx.DrawSphere(offset, collider.Sphere.Radius, color, duration, depthTest);
+                if (collider.Sphere.Radius == 0f)
+                {
+                    DebugEx.DrawPoint(offset, 1f, color, duration, depthTest);
+                }
+                else
+                {
+                    DebugEx.DrawSphere(offset, collider.Sphere.Radius, color, duration, depthTest);
+                }
                 break;
             case ColliderType.AABB:
                 AABB aabb = collider.AABB.AABB;
@@ -338,11 +345,11 @@ public unsafe partial struct CollisionSystem : ISystem
                         b->Collider.IsStatic)
                     { continue; }
 
-                    if (a->LastPosition.Equals(a->Position) &&
-                        b->LastPosition.Equals(b->Position))
-                    { continue; }
+                    // if (a->LastPosition.Equals(a->Position) &&
+                    //     b->LastPosition.Equals(b->Position))
+                    // { continue; }
 
-                    a->LastPosition = a->Position;
+                    // a->LastPosition = a->Position;
 
                     if (!Intersect(
                         a->Collider, a->Position,
