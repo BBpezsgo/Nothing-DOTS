@@ -41,6 +41,8 @@ public class SetupManager : Singleton<SetupManager>
 
     public void Setup()
     {
+        Application.targetFrameRate = 60;
+
         World world = ConnectionManager.ServerOrDefaultWorld;
 
         using EntityQuery unitDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(UnitDatabase));

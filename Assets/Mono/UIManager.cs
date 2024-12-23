@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NaughtyAttributes;
@@ -44,20 +45,29 @@ public class UIManager : Singleton<UIManager>
     [SerializeField, NotNull] public UIDocument? Facility = default;
     [SerializeField, NotNull] public UIDocument? Pause = default;
 
-    public IEnumerable<UIDocument> UIs
-    {
-        get
-        {
-            yield return Unit;
-            yield return Factory;
-            yield return Facility;
-            yield return Pause;
-        }
-    }
+    ImmutableArray<UIDocument>? _uis = default;
+
+    public ImmutableArray<UIDocument> UIs => _uis.HasValue ? _uis.Value : (_uis = ImmutableArray.Create(
+        Unit,
+        Factory,
+        Facility,
+        Pause
+    )).Value;
 
     [NotNull] Dictionary<UIDocument, List<IUICleanup>>? OpenedUIs = default;
 
-    public bool AnyUIVisible => UIs.Any(v => v.gameObject.activeSelf);
+    public bool AnyUIVisible
+    {
+        get
+        {
+            ImmutableArray<UIDocument> uis = UIs;
+            for (int i = 0; i < uis.Length; i++)
+            {
+                if (uis[i].gameObject.activeSelf) return true;
+            }
+            return false;
+        }
+    }
 
     [Header("Debug")]
     [SerializeField, ReadOnly] bool _escPressed = false;
@@ -88,9 +98,9 @@ public class UIManager : Singleton<UIManager>
 
     public void CloseAllUI()
     {
-        foreach (UIDocument ui in UIs)
+        for (int i = 0; i < UIs.Length; i++)
         {
-            CloseUI(ui);
+            CloseUI(UIs[i]);
         }
     }
 

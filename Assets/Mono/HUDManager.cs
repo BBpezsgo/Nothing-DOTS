@@ -7,6 +7,7 @@ public class HUDManager : MonoBehaviour
     [SerializeField, NotNull] UIDocument? _ui = default;
 
     [NotNull] Label? _label = default;
+    float _refreshAt = default;
 
     void Start()
     {
@@ -15,6 +16,9 @@ public class HUDManager : MonoBehaviour
 
     void Update()
     {
+        float now = Time.time;
+        if (now < _refreshAt) return;
+        _refreshAt = now + 2f;
         if (!PlayerManager.TryGetLocalPlayer(out Player localPlayer)) return;
         _label.text = localPlayer.Resources.ToString();
     }
