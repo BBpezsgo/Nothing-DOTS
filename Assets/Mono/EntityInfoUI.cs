@@ -19,6 +19,9 @@ public class EntityInfoUI : MonoBehaviour
 
     [SerializeField, NotNull] public EntityInfoUIBar? HealthBar = default;
     [SerializeField, NotNull] public EntityInfoUIBar? BuildingProgress = default;
+    [SerializeField, NotNull] public EntityInfoUIBar? TransporterLoad = default;
+    [SerializeField, NotNull] public EntityInfoUIBar? TransporterProgress = default;
+    [SerializeField, NotNull] public EntityInfoUIBar? ExtractorProgress = default;
     [SerializeField, NotNull] public CanvasGroup? CanvasGroup = default;
     [SerializeField, NotNull] public Image? SelectionStatusIndicator = default;
     [SerializeField, NotNull] public Text? Label = default;
@@ -27,6 +30,9 @@ public class EntityInfoUI : MonoBehaviour
 
     [ReadOnly] public float HealthPercent = default;
     [ReadOnly] public float BuildingProgressPercent = default;
+    [ReadOnly] public float TransporterLoadPercent = default;
+    [ReadOnly] public float TransporterProgressPercent = default;
+    [ReadOnly] public float ExtractorProgressPercent = default;
     [ReadOnly] public float3 WorldPosition = default;
     [ReadOnly] public SelectionStatus SelectionStatus = default;
 

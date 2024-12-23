@@ -12,6 +12,10 @@ public class UnitDatabaseAuthoring : MonoBehaviour
     class Item
     {
         [SerializeField, NotNull] public GameObject? Prefab = default;
+        [Min(0f)]
+        [SerializeField] public float ProductionTime = default;
+        [Min(0f)]
+        [SerializeField] public float RequiredResources = default;
         [SerializeField] public ResearchAuthoring? RequiredResearch = default;
     }
 
@@ -28,7 +32,8 @@ public class UnitDatabaseAuthoring : MonoBehaviour
                 {
                     Prefab = GetEntity(item.Prefab, TransformUsageFlags.Dynamic),
                     Name = item.Prefab.name,
-                    ProductionTime = 1f,
+                    ProductionTime = item.ProductionTime,
+                    RequiredResources = item.RequiredResources,
                     RequiredResearch =
                         item.RequiredResearch != null
                         ? item.RequiredResearch.Name

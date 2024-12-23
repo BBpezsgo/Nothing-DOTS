@@ -191,6 +191,7 @@ GameObject:
   - component: {fileID: 7700811405986673745}
   - component: {fileID: 665021023702597438}
   - component: {fileID: 4463342946445164546}
+  - component: {fileID: 3121375182435341180}
   m_Layer: 6
   m_Name: Facility
   m_TagString: Untagged
@@ -316,7 +317,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51861ae5f12b232baa32ed1cb3b04781, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  IsStatic: 1
 --- !u!65 &2807356852153297446
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -391,3 +391,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f961445829caef1b6b78712000eea861, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &3121375182435341180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9140697471898167478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5dba12bcf39ab002bab0a28471c83cd8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  IsStatic: 1

@@ -19,7 +19,7 @@ public partial struct BuildingSystemServer : ISystem
         {
             BuildingPrefab = building.Prefab,
             CurrentProgress = 0f,
-            TotalProgress = building.TotalProgress,
+            TotalProgress = building.ConstructionTime,
         });
         return newEntity;
     }

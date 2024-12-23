@@ -5,6 +5,58 @@ using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
 using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
 
+const int MappedMemoryStart = 640;
+
+struct MappedMemory_Vehicle
+{
+    i8 InputForward;
+    i8 InputSteer;
+}
+export const MappedMemory_Vehicle* Vehicle = MappedMemoryStart + 0;
+*Vehicle = new MappedMemory_Vehicle;
+
+struct MappedMemory_CombatTurret
+{
+    u8 InputShoot;
+    f32 TurretTargetRotation;
+    f32 TurretTargetAngle;
+    f32 TurretCurrentRotation;
+    f32 TurretCurrentAngle;
+}
+export const MappedMemory_CombatTurret* CombatTurret = MappedMemoryStart + 2;
+*CombatTurret = new MappedMemory_CombatTurret;
+
+struct MappedMemory_Extractor
+{
+    u8 InputExtract;
+}
+export const MappedMemory_Extractor* Extractor = MappedMemoryStart + 2;
+*Extractor = new MappedMemory_Extractor;
+
+struct MappedMemory_Transporter
+{
+    u8 LoadDirection;
+    i32 CurrentLoad;
+}
+export const MappedMemory_Transporter* Transporter = MappedMemoryStart + 2;
+*Transporter = new MappedMemory_Transporter;
+
+struct MappedMemory_Radar
+{
+    f32 RadarDirection;
+    f32 RadarResponse;
+}
+export const MappedMemory_Radar* Radar = MappedMemoryStart + 19;
+*Radar = new MappedMemory_Radar;
+
+struct MappedMemory_GPS
+{
+    Vector2 Position;
+    Vector2 Forward;
+}
+export const MappedMemory_GPS* GPS = MappedMemoryStart + 27;
+*GPS = new MappedMemory_GPS;
+
 export void Print(Vector2 v)
 {
     Print(v.x);
@@ -17,23 +69,6 @@ export inline void PrintLine(Vector2 v)
     Print(v);
     PrintLine();
 }
-
-export struct MappedMemory
-{
-    i8 InputForward;
-    i8 InputSteer;
-    u8 InputShoot;
-    f32 TurretTargetRotation;
-    f32 TurretTargetAngle;
-    f32 TurretCurrentRotation;
-    f32 TurretCurrentAngle;
-    Vector2 Position;
-    Vector2 Forward;
-    f32 RadarDirection;
-    f32 RadarResponse;
-}
-
-export const MappedMemory* Mapped = 640;
 
 export void sleep(f32 sec)
 {
@@ -65,17 +100,17 @@ export const u8 WHITE = (u8)0b111;
 
 export f32 radar()
 {
-    Mapped.RadarResponse = 0f;
+    Radar.RadarResponse = 0f;
     _radar();
-    while (!(Mapped.RadarResponse as int))
+    while (!(Radar.RadarResponse as int))
     {
 
     }
-    if (Mapped.RadarResponse.IsNaN())
+    if (Radar.RadarResponse.IsNaN())
     {
-        Mapped.RadarResponse = 0f;
+        Radar.RadarResponse = 0f;
     }
-    return Mapped.RadarResponse;
+    return Radar.RadarResponse;
 }
 
 export void ToGlobal(byte2* point)

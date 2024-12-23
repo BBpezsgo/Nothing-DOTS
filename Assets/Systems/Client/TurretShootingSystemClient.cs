@@ -20,10 +20,13 @@ public partial struct TurretShootingSystemClient : ISystem
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ShootRpc>>()
+        foreach (var (command, entity) in
+            SystemAPI.Query<RefRO<ShootRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
+
             Entity projectilePrefab = projectiles[command.ValueRO.ProjectileIndex].Prefab;
 
             Entity instance = commandBuffer.Instantiate(projectilePrefab);
@@ -38,7 +41,6 @@ public partial struct TurretShootingSystemClient : ISystem
                 Velocity = command.ValueRO.Velocity,
                 Damage = projectiles[command.ValueRO.ProjectileIndex].Damage,
             });
-            commandBuffer.DestroyEntity(entity);
         }
     }
 }

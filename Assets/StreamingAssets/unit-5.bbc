@@ -8,8 +8,6 @@ using "turret.bbc";
 using "move.bbc";
 using "api.bbc";
 
-*Mapped = new MappedMemory;
-
 const f32 PI = 3.14159265359f;
 const f32 TAU = PI * 2f;
 const u8 true = (u8)1;
@@ -37,7 +35,7 @@ void Receive()
             p.y = v[2] as i8;
             ToFloat2(&p, &pos);
 
-            if (DistanceSqr(pos, Mapped.Position) < 2f * 2f)
+            if (DistanceSqr(pos, GPS.Position) < 2f * 2f)
             {
                 debug(pos, CYAN);
 
@@ -127,7 +125,7 @@ void AddUnitScore(List<Unit>* units, byte2 unit, int score)
     }
 }
 
-void Radar()
+void PerformRadar()
 {
     // PrintLine("Radar ...");
     f32 radarDistance = radar();
@@ -137,8 +135,8 @@ void Radar()
         prevRadarDistance = radarDistance;
 
         Vector2 point;
-        point.x = Cos(Mapped.RadarDirection);
-        point.y = Sin(Mapped.RadarDirection);
+        point.x = Cos(Radar.RadarDirection);
+        point.y = Sin(Radar.RadarDirection);
         point.x *= radarDistance;
         point.y *= radarDistance;
 
@@ -160,7 +158,7 @@ void Radar()
             v[0] = (u8)REQUEST_HEADER;
             v[1] = p.x as u8;
             v[2] = p.y as u8;
-            send(&v, 3, Mapped.RadarDirection, Asin(1.2f / radarDistance));
+            send(&v, 3, Radar.RadarDirection, Asin(1.2f / radarDistance));
 
             ldebug(point, BLUE);
 
@@ -171,7 +169,7 @@ void Radar()
     {
         prevRadarDistance = 0f;
     }
-    Mapped.RadarDirection = (Mapped.RadarDirection + 0.1f) % TAU;
+    Radar.RadarDirection = (Radar.RadarDirection + 0.1f) % TAU;
 }
 
 struct Unit
@@ -191,7 +189,7 @@ while (1)
 {
     Receive();
 
-    Radar();
+    PerformRadar();
 
     currentTarget = new Vector2;
 

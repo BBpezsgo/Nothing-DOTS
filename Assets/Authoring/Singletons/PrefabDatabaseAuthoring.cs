@@ -8,6 +8,7 @@ public class PrefabDatabaseAuthoring : MonoBehaviour
     [SerializeField, NotNull] GameObject? PlayerPrefab = default;
     [SerializeField, NotNull] GameObject? CoreComputerPrefab = default;
     [SerializeField, NotNull] GameObject? Builder = default;
+    [SerializeField, NotNull] GameObject? Resource = default;
 
     class Baker : Baker<PrefabDatabaseAuthoring>
     {
@@ -19,6 +20,7 @@ public class PrefabDatabaseAuthoring : MonoBehaviour
                 Player = GetEntity(authoring.PlayerPrefab, TransformUsageFlags.Dynamic),
                 CoreComputer = GetEntity(authoring.CoreComputerPrefab, TransformUsageFlags.Dynamic),
                 Builder = GetEntity(authoring.Builder, TransformUsageFlags.Dynamic),
+                Resource = GetEntity(authoring.Resource, TransformUsageFlags.Dynamic),
             });
         }
     }

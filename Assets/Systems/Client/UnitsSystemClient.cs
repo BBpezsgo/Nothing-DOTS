@@ -21,6 +21,7 @@ public partial struct UnitsSystemClient : ISystem
 
         foreach (var (command, entity) in
             SystemAPI.Query<RefRO<UnitsResponseRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);

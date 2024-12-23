@@ -2,12 +2,19 @@ using api;
 
 while (1)
 {
-    Print(" > ");
-    string at = ReadLine();
-    Print(" > ");
-    string bt = ReadLine();
-    int a = ParseInt(at);
-    int b = ParseInt(bt);
-    PrintLine(a + b);
+    byte[16] buffer = new byte[16];
+    int l = receive(&buffer as any*, 16 as i32, 0 as f32*);
+    for (int i = 0; i < l; i++)
+    {
+        Print((char)buffer[i]);
+    }
+    if (l)
+    {
+        PrintLine();
+    }
+
+    Print("Message > ");
+    temp string message = ReadLine();
+    send(message, message.Length(), 0f, 0f);
 }
 

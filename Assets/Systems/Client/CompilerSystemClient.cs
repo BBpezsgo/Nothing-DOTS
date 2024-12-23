@@ -9,8 +9,9 @@ partial struct CompilerSystemClient : ISystem
     {
         EntityCommandBuffer commandBuffer = default;
 
-        foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilerStatusRpc>>()
+        foreach (var (command, entity) in
+            SystemAPI.Query<RefRO<CompilerStatusRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
             if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
@@ -21,8 +22,9 @@ partial struct CompilerSystemClient : ISystem
             CompilerManager.Instance.HandleRpc(command.ValueRO);
         }
 
-        foreach (var (request, command, entity) in
-            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilationAnalysticsRpc>>()
+        foreach (var (command, entity) in
+            SystemAPI.Query<RefRO<CompilationAnalysticsRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
             if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);

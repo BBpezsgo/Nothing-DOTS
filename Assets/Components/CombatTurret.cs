@@ -1,7 +1,8 @@
 using Unity.Entities;
 
-public struct Turret : IComponentData
+public struct CombatTurret : IComponentData
 {
+    public Entity Turret;
     public Entity Cannon;
     public Entity ProjectilePrefab;
     public Entity ShootPosition;
@@ -10,7 +11,4 @@ public struct Turret : IComponentData
 
     public float TurretRotationSpeed;
     public float CannonRotationSpeed;
-
-    public float TargetRotation;
-    public float TargetAngle;
 }

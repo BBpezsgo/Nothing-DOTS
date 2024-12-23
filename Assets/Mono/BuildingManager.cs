@@ -213,7 +213,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         BuildingHologram.transform.position = position;
 
         var map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
-        Collider placeholderCollider = new(true, new AABBCollider() { AABB = new AABB() { Extents = new float3(1f, 1f, 1f) }, });
+        Collider placeholderCollider = new AABBCollider(true, new AABB() { Extents = new float3(1f, 1f, 1f) });
 
         IsValidPosition = !CollisionSystem.Intersect(
             map,

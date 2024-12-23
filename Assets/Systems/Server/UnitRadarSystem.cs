@@ -17,7 +17,8 @@ public partial struct UnitRadarSystem : ISystem
         var map = QuadrantSystem.GetMap(ref state);
 
         foreach (var (processor, localTransform, transform) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>, RefRO<LocalToWorld>>())
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>, RefRO<LocalToWorld>>()
+            .WithAll<Radar>())
         {
             float3 direction = processor.ValueRO.RadarRequest;
             if (direction.Equals(default)) continue;
@@ -29,7 +30,7 @@ public partial struct UnitRadarSystem : ISystem
             const float offset = 0f;
 
             float3 rayStart = transform.ValueRO.Position + (direction * offset);
-            float3 rayEnd = transform.ValueRO.Position + (direction * (Unit.RadarRadius - offset));
+            float3 rayEnd = transform.ValueRO.Position + (direction * (Radar.RadarRadius - offset));
 
             Ray ray = new(rayStart, rayEnd, Layers.BuildingOrUnit);
 
@@ -49,7 +50,7 @@ public partial struct UnitRadarSystem : ISystem
             DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 1f, Color.white, 1f, false);
 #endif
 
-            if (distance > Unit.RadarRadius) distance = float.NaN;
+            if (distance > Radar.RadarRadius) distance = float.NaN;
 
             processor.ValueRW.RadarResponse = distance;
         }

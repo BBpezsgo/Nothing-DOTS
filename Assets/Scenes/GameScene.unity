@@ -119,6 +119,71 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &192343619
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 192343620}
+  - component: {fileID: 192343621}
+  - component: {fileID: 192343622}
+  m_Layer: 0
+  m_Name: HUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 2147483647
+  m_IsActive: 1
+--- !u!4 &192343620
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 192343619}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1042564337}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &192343621
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 192343619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_PanelSettings: {fileID: 11400000, guid: f1dbea9b2dcea35ee9e788afec3d1fcd, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 9197481963319205126, guid: 81aa882fdb8ddf828a6245c2ce532cc6, type: 3}
+  m_SortingOrder: 0
+  m_WorldSpaceSizeMode: 1
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
+--- !u!114 &192343622
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 192343619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cafe340369f8a2c39884a61e15a541c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _ui: {fileID: 192343621}
 --- !u!1 &326294558
 GameObject:
   m_ObjectHideFlags: 0
@@ -878,7 +943,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxSpeed: 20
   speed: 0
-  acceleration: 10
+  acceleration: 15
   damping: 15
   stepSize: 2
   zoomDampening: 7.5
@@ -926,6 +991,7 @@ Transform:
   - {fileID: 1848802882}
   - {fileID: 1605264180}
   - {fileID: 387753433}
+  - {fileID: 192343620}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1042564338
@@ -1260,23 +1326,35 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   SpawnExactUnits: 1
   Units:
-  - Prefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
-    Spawn:
-      x: 2
-      y: 1
-    Script: unit-4.bbc
-    Team: 2
   - Prefab: {fileID: 2099412289264216910, guid: 2433642d39f17be6aa8ad8c596976581, type: 3}
     Spawn:
       x: 4
       y: 6
     Script: builder.bbc
     Team: 2
+  - Prefab: {fileID: 2099412289264216910, guid: 2433642d39f17be6aa8ad8c596976581, type: 3}
+    Spawn:
+      x: 2
+      y: 6
+    Script: builder.bbc
+    Team: 2
+  - Prefab: {fileID: 1994654560244389388, guid: 8cc3337a89423ebee8b83eac4f208105, type: 3}
+    Spawn:
+      x: 0
+      y: 6
+    Script: extractor.bbc
+    Team: 2
+  - Prefab: {fileID: 8196213229133260831, guid: b9ee901bbacbf08859e49b904b381b95, type: 3}
+    Spawn:
+      x: -2
+      y: 6
+    Script: transporter.bbc
+    Team: 2
   Team: 2
   GeneratedScript: unit-4.bbc
-  GeneratedCount: 4
-  Start: {x: -10, y: -10}
-  End: {x: 10, y: 10}
+  GeneratedCount: 0
+  Start: {x: -20, y: -20}
+  End: {x: 20, y: 20}
   RandomUnitPrefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
   RandomRotation: 1
   RandomPosition: 1

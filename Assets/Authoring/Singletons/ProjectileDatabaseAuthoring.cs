@@ -12,7 +12,9 @@ public class ProjectileDatabaseAuthoring : MonoBehaviour
     class Item
     {
         [SerializeField, NotNull] public GameObject? Prefab = default;
+        [Min(0f)]
         [SerializeField] public float Damage = default;
+        [Min(0f)]
         [SerializeField] public float Speed = default;
     }
 

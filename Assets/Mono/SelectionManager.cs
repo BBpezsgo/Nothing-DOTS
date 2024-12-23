@@ -304,6 +304,20 @@ public class SelectionManager : Singleton<SelectionManager>
                 .Setup(TerminalManager.Instance, selectableHit);
             return;
         }
+
+        if (entityManager.HasComponent<Transporter>(selectableHit))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, selectableHit);
+            return;
+        }
+
+        if (entityManager.HasComponent<Extractor>(selectableHit))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, selectableHit);
+            return;
+        }
     }
 
     void ShowUnitCommandsUI()
@@ -437,7 +451,7 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return false;
         UnitTeam unitTeam = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<UnitTeam>(unit);
-        Player localPlayer = PlayerManager.GetLocalPlayer();
+        if (!PlayerManager.TryGetLocalPlayer(out Player localPlayer)) return false;
         return unitTeam.Team == localPlayer.Team;
     }
 

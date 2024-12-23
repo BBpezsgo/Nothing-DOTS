@@ -97,12 +97,9 @@ public partial struct FactorySystem : ISystem
             }
         }
 
-        foreach (var (factory, localToWorld, unitTeam, entity) in
-                SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>, RefRO<UnitTeam>>()
-                .WithEntityAccess())
+        foreach (var (factory, localToWorld, unitTeam, unitQueue) in
+                SystemAPI.Query<RefRW<Factory>, RefRO<LocalToWorld>, RefRO<UnitTeam>, DynamicBuffer<BufferedProducingUnit>>())
         {
-            DynamicBuffer<BufferedProducingUnit> unitQueue = SystemAPI.GetBuffer<BufferedProducingUnit>(entity);
-
             if (factory.ValueRO.TotalProgress == default)
             {
                 if (unitQueue.Length > 0)

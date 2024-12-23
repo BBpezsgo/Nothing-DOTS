@@ -21,7 +21,7 @@ public partial struct TurretShootingSystemServer : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var turret in
-            SystemAPI.Query<RefRW<Turret>>())
+            SystemAPI.Query<RefRW<CombatTurret>>())
         {
             if (!turret.ValueRO.ShootRequested) continue;
 

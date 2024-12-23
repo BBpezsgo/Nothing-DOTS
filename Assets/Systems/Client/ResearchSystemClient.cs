@@ -21,8 +21,11 @@ public partial struct ResearchSystemClient : ISystem
 
         foreach (var (command, entity) in
             SystemAPI.Query<RefRO<ResearchesResponseRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
+
             bool alreadyAdded = false;
             for (int i = 0; i < AvaliableResearches.Length; i++)
             {
@@ -35,22 +38,21 @@ public partial struct ResearchSystemClient : ISystem
             {
                 AvaliableResearches.Add(command.ValueRO.Name);
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
 
         foreach (var (command, entity) in
             SystemAPI.Query<RefRO<ResearchDoneRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
+            commandBuffer.DestroyEntity(entity);
+            
             for (int i = 0; i < AvaliableResearches.Length; i++)
             {
                 if (AvaliableResearches[i] != command.ValueRO.Name) continue;
                 AvaliableResearches.RemoveAt(i);
                 break;
             }
-
-            commandBuffer.DestroyEntity(entity);
         }
     }
 

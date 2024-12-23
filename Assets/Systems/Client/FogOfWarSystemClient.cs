@@ -22,7 +22,6 @@ public partial class FogOfWarSystemClient : SystemBase
     protected override void OnCreate()
     {
         RequireForUpdate<FogOfWarSettings>();
-        RequireForUpdate<FogRevealer>();
     }
 
     protected override void OnStartRunning()

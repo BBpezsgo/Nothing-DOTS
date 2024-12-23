@@ -21,9 +21,11 @@ public partial struct BuildingsSystemClient : ISystem
 
         foreach (var (command, entity) in
             SystemAPI.Query<RefRO<BuildingsResponseRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
+
             DynamicBuffer<BufferedBuilding> units = SystemAPI.GetBuffer<BufferedBuilding>(SystemAPI.GetSingletonEntity<BuildingDatabase>());
 
             bool alreadyAdded = false;

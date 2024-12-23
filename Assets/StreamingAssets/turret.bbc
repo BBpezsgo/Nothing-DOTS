@@ -31,12 +31,12 @@ export u8 TargetAt(Vector2 target, Vector2* targetedPosition)
             f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
             if (targetAngle < 0f) { targetAngle += TAU; }
             if (targetAngle >= TAU) { targetAngle -= TAU; }
-            Mapped.TurretTargetRotation = targetAngle;
+            CombatTurret.TurretTargetRotation = targetAngle;
         }
 
         f32 targetDistance = Magnitude(target);
-        targetDistance -= Cos(Mapped.TurretCurrentAngle) * 2.5f;
-        f32 height = Sin(Mapped.TurretCurrentAngle) * 2.5f;
+        targetDistance -= Cos(CombatTurret.TurretCurrentAngle) * 2.5f;
+        f32 height = Sin(CombatTurret.TurretCurrentAngle) * 2.5f;
         f32 discriminant = (
             (PROJECTILE_V2 * PROJECTILE_V2) -
             (G * (G * targetDistance * targetDistance + ((10f + height) * -2f * PROJECTILE_V2)))
@@ -47,21 +47,21 @@ export u8 TargetAt(Vector2 target, Vector2* targetedPosition)
         }
         else if (1)
         {
-            Mapped.TurretTargetAngle = Atan(
+            CombatTurret.TurretTargetAngle = Atan(
                 (PROJECTILE_V2 + _Sqrt(discriminant)) /
                 (G * targetDistance)
             ) - (PI * 0.5f);
         }
         else
         {
-            Mapped.TurretTargetAngle = Atan(
+            CombatTurret.TurretTargetAngle = Atan(
                 (PROJECTILE_V2 - _Sqrt(discriminant)) /
                 (G * targetDistance)
             ) - (PI * 0.5f);
         }
     }
 
-    f32 diff = Abs(Mapped.TurretCurrentRotation - Mapped.TurretTargetRotation);
+    f32 diff = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
 
     if (diff < 0.1f || TAU - diff < 0.1f)
     {
@@ -90,13 +90,13 @@ export u8 TargetAtSimple(Vector2 target, Vector2* targetedPosition)
             f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
             if (targetAngle < 0f) { targetAngle += TAU; }
             if (targetAngle >= TAU) { targetAngle -= TAU; }
-            Mapped.TurretTargetRotation = targetAngle;
+            CombatTurret.TurretTargetRotation = targetAngle;
         }
 
-        Mapped.TurretTargetAngle = 0.00001f; // TODO: fix this
+        CombatTurret.TurretTargetAngle = 0.00001f; // TODO: fix this
     }
 
-    f32 diff = Abs(Mapped.TurretCurrentRotation - Mapped.TurretTargetRotation);
+    f32 diff = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
 
     if (diff < 0.1f || TAU - diff < 0.1f)
     {
@@ -108,10 +108,10 @@ export u8 TargetAtSimple(Vector2 target, Vector2* targetedPosition)
 
 export void ShootAt(Vector2 target, Vector2* targetedPosition)
 {
-    Mapped.InputShoot = TargetAt(target, targetedPosition);
+    CombatTurret.InputShoot = TargetAt(target, targetedPosition);
 }
 
 export void ShootAtSimple(Vector2 target, Vector2* targetedPosition)
 {
-    Mapped.InputShoot = TargetAtSimple(target, targetedPosition);
+    CombatTurret.InputShoot = TargetAtSimple(target, targetedPosition);
 }

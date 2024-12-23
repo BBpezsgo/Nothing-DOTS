@@ -13,7 +13,10 @@ public class BuildingDatabaseAuthoring : MonoBehaviour
     {
         [SerializeField, NotNull] public GameObject? Prefab = default;
         [SerializeField, NotNull] public GameObject? PlaceholderPrefab = default;
-        [SerializeField] public float TotalProgress = default;
+        [Min(0f)]
+        [SerializeField] public float ConstructionTime = default;
+        [Min(0f)]
+        [SerializeField] public float RequiredResources = default;
         [SerializeField] public ResearchAuthoring? RequiredResearch = default;
     }
 
@@ -31,7 +34,8 @@ public class BuildingDatabaseAuthoring : MonoBehaviour
                     Name = buildingAuthoring.Prefab.name,
                     Prefab = GetEntity(buildingAuthoring.Prefab, TransformUsageFlags.Dynamic),
                     PlaceholderPrefab = GetEntity(buildingAuthoring.PlaceholderPrefab, TransformUsageFlags.Dynamic),
-                    TotalProgress = buildingAuthoring.TotalProgress,
+                    ConstructionTime = buildingAuthoring.ConstructionTime,
+                    RequiredResources = buildingAuthoring.RequiredResources,
                     RequiredResearch =
                         buildingAuthoring.RequiredResearch != null
                         ? buildingAuthoring.RequiredResearch.Name

@@ -53,8 +53,6 @@ struct EnemyNotificationPacket
 
 const int MaxCommandDataSize = 8;
 
-*Mapped = new MappedMemory;
-
 const f32 PI = 3.14159265359f;
 const f32 TAU = PI * 2f;
 const u8 true = (u8)1;
@@ -80,9 +78,9 @@ void Receive()
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
             responsePacket.Header = (u8)RESPONSE_HEADER;
 
-            if (DistanceSqr(packet.Position, Mapped.Position) < DistanceThresholdSq)
+            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
             {
-                responsePacket.Position = Mapped.Position;
+                responsePacket.Position = GPS.Position;
                 debug(packet.Position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
             }
@@ -191,7 +189,7 @@ void RemoveUnitAt(List<Unit>* units, Vector2 unit)
     }
 }
 
-void Radar()
+void PerformRadar()
 {
     f32 radarDistance = radar();
     if (radarDistance > 0f &&
@@ -200,8 +198,8 @@ void Radar()
         prevRadarDistance = radarDistance;
 
         Vector2 point;
-        point.x = Cos(Mapped.RadarDirection);
-        point.y = Sin(Mapped.RadarDirection);
+        point.x = Cos(Radar.RadarDirection);
+        point.y = Sin(Radar.RadarDirection);
         point.x *= radarDistance;
         point.y *= radarDistance;
         ToGlobal(&point);
@@ -217,7 +215,7 @@ void Radar()
     {
         prevRadarDistance = 0f;
     }
-    Mapped.RadarDirection = (Mapped.RadarDirection + 0.1f) % TAU;
+    Radar.RadarDirection = (Radar.RadarDirection + 0.1f) % TAU;
 }
 
 void TrySendVerificationRequest(Unit* unit)
@@ -236,7 +234,7 @@ void SendVerificationRequest(Unit* unit)
     packet.Header = (u8)REQUEST_HEADER;
     packet.Position = point;
 
-    // send(&v, sizeof(VerificationRequestPacket), Mapped.RadarDirection, Asin(1.2f / radarDistance));
+    // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
     send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
 
     debug(point, BLUE);
@@ -265,7 +263,7 @@ while (1)
 {
     Receive();
 
-    Radar();
+    PerformRadar();
 
     currentTarget = new Vector2;
     shouldShoot = false;
@@ -346,8 +344,8 @@ while (1)
     }
     else if (time() - turretLastUseTime > 5f)
     {
-        Mapped.TurretTargetRotation = 0f;
-        Mapped.TurretTargetAngle = 0f;
+        CombatTurret.TurretTargetRotation = 0f;
+        CombatTurret.TurretTargetAngle = 0f;
     }
 
     if (currentDestination.x != 0f &&

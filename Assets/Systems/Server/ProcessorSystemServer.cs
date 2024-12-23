@@ -330,12 +330,12 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        UnitProcessorSystem.MappedMemory* mapped = (UnitProcessorSystem.MappedMemory*)((nint)scope->Memory + Processor.MappedMemoryStart);
+        MappedMemory* mapped = (MappedMemory*)((nint)scope->Memory + Processor.MappedMemoryStart);
 
         float3 direction;
-        direction.x = math.cos(mapped->RadarDirection);
+        direction.x = math.cos(mapped->Radar.RadarDirection);
         direction.y = 0f;
-        direction.z = math.sin(mapped->RadarDirection);
+        direction.z = math.sin(mapped->Radar.RadarDirection);
 
         scope->Processor.ValueRW.RadarResponse = 0f;
         scope->Processor.ValueRW.RadarRequest = direction;

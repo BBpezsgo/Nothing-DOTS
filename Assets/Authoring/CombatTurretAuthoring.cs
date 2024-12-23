@@ -1,9 +1,10 @@
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/Turret")]
-public class TurretAuthoring : MonoBehaviour
+[AddComponentMenu("Authoring/Combat Turret")]
+public class CombatTurretAuthoring : MonoBehaviour
 {
+    [SerializeField] Transform? Turret = default;
     [SerializeField] Transform? Cannon = default;
     [SerializeField] GameObject? ProjectilePrefab = default;
     [SerializeField] Transform? ShootPosition = default;
@@ -11,15 +12,19 @@ public class TurretAuthoring : MonoBehaviour
     [SerializeField] float TurretRotationSpeed = default;
     [SerializeField] float CannonRotationSpeed = default;
 
-    class Baker : Baker<TurretAuthoring>
+    class Baker : Baker<CombatTurretAuthoring>
     {
-        public override void Bake(TurretAuthoring authoring)
+        public override void Bake(CombatTurretAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new Turret
+            AddComponent(entity, new CombatTurret
             {
                 TurretRotationSpeed = authoring.TurretRotationSpeed,
                 CannonRotationSpeed = authoring.CannonRotationSpeed,
+                Turret =
+                    authoring.Turret == null
+                    ? Entity.Null
+                    : GetEntity(authoring.Turret, TransformUsageFlags.Dynamic),
                 Cannon =
                     authoring.Cannon == null
                     ? Entity.Null

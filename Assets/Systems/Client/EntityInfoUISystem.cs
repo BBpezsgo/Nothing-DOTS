@@ -15,9 +15,10 @@ public partial struct EntityInfoUISystem : ISystem
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        foreach (var (transform, _, entity) in
-            SystemAPI.Query<RefRO<LocalTransform>, RefRO<EntityWithInfoUI>>()
+        foreach (var (transform, entity) in
+            SystemAPI.Query<RefRO<LocalTransform>>()
             .WithNone<EntityInfoUIReference>()
+            .WithAll<EntityWithInfoUI>()
             .WithEntityAccess())
         {
             using Unity.Profiling.ProfilerMarker.AutoScope _ = __instantiateUI.Auto();
@@ -42,6 +43,19 @@ public partial struct EntityInfoUISystem : ISystem
             SystemAPI.Query<EntityInfoUIReference, RefRO<BuildingPlaceholder>>())
         {
             uiRef.Value.BuildingProgressPercent = buildingPlaceholder.ValueRO.CurrentProgress / buildingPlaceholder.ValueRO.TotalProgress;
+        }
+
+        foreach (var (uiRef, transporter) in
+            SystemAPI.Query<EntityInfoUIReference, RefRO<Transporter>>())
+        {
+            uiRef.Value.TransporterLoadPercent = (float)transporter.ValueRO.CurrentLoad / (float)Transporter.Capacity;
+            uiRef.Value.TransporterProgressPercent = transporter.ValueRO.LoadProgress;
+        }
+
+        foreach (var (uiRef, extractor) in
+            SystemAPI.Query<EntityInfoUIReference, RefRO<Extractor>>())
+        {
+            uiRef.Value.ExtractorProgressPercent = extractor.ValueRO.ExtractProgress;
         }
 
         foreach (var (uiRef, transform) in
