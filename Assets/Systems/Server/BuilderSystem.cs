@@ -1,3 +1,7 @@
+#if UNITY_EDITOR && EDITOR_DEBUG
+#define _DEBUG_LINES
+#endif
+
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Transforms;
@@ -11,26 +15,34 @@ public partial struct BuilderSystem : ISystem
     {
         var map = QuadrantSystem.GetMap(ref state);
 
-        foreach (var (turret, localToWorld) in
-            SystemAPI.Query<RefRW<BuilderTurret>, RefRO<LocalToWorld>>())
+        foreach (var turret in
+            SystemAPI.Query<RefRW<BuilderTurret>>())
         {
             if (!turret.ValueRO.ShootRequested) continue;
             turret.ValueRW.ShootRequested = false;
 
-            Ray ray = new(localToWorld.ValueRO.Position, localToWorld.ValueRO.Position + (localToWorld.ValueRO.Up * Builder.BuildRadius), Layers.BuildingPlaceholder, false);
+            RefRW<LocalToWorld> turretTransform = SystemAPI.GetComponentRW<LocalToWorld>(turret.ValueRO.Turret);
 
+            Ray ray = new(turretTransform.ValueRO.Position, turretTransform.ValueRO.Position + (turretTransform.ValueRO.Forward * Builder.BuildRadius), Layers.BuildingPlaceholder, false);
+
+#if DEBUG_LINES
             Debug.DrawLine(ray.Start, ray.End, Color.white, 0.2f, false);
+#endif
 
             if (!QuadrantRayCast.RayCast(map, ray, out Hit hit))
             { continue; }
 
+#if DEBUG_LINES
             DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 1f, Color.white, 0.2f, false);
+#endif
 
             if (SystemAPI.HasComponent<BuildingPlaceholder>(hit.Entity.Entity))
             {
                 RefRW<BuildingPlaceholder> building = SystemAPI.GetComponentRW<BuildingPlaceholder>(hit.Entity.Entity);
                 building.ValueRW.CurrentProgress += Builder.BuildSpeed * SystemAPI.Time.DeltaTime;
+#if DEBUG_LINES
                 DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 1f, Color.green, 0.2f, false);
+#endif
                 continue;
             }
         }
