@@ -18,7 +18,9 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
     Entity selectedFactoryEntity = Entity.Null;
     Factory selectedFactory = default;
+
     float refreshAt = default;
+    float refreshedBySyncAt = default;
     float syncAt = default;
 
     void Update()
@@ -31,8 +33,10 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
             return;
         }
 
-        if (Time.time >= refreshAt)
+        if (Time.time >= refreshAt ||
+            refreshedBySyncAt != UnitsSystemClient.LastSynced.Data)
         {
+            refreshedBySyncAt = UnitsSystemClient.LastSynced.Data;
             if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(selectedFactoryEntity))
             {
                 UIManager.Instance.CloseUI(this);
@@ -41,7 +45,6 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
             RefreshUI(selectedFactoryEntity);
             refreshAt = Time.time + 1f;
-            return;
         }
 
         if (Time.time >= syncAt)
@@ -78,7 +81,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
-        ScrollView avaliableList = ui.rootVisualElement.Q<ScrollView>("list-avaliable");
+        VisualElement avaliableList = ui.rootVisualElement.Q<VisualElement>("list-avaliable");
         ScrollView queueList = ui.rootVisualElement.Q<ScrollView>("list-queue");
 
         avaliableList.Clear();
@@ -94,8 +97,9 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         avaliableList.SyncList(UnitsSystemClient.GetInstance(entityManager.WorldUnmanaged).Units, UI_AvaliableItem, (item, element, recycled) =>
         {
             element.userData = item.Name.ToString();
-            element.Q<Label>("label-unit-name").text = item.Name.ToString();
-            if (!recycled) element.Q<Button>("button-queue").clicked += () => QueueUnit((string)element.userData);
+            element.Q<Label>("label-name").text = item.Name.ToString();
+            element.Q<Label>("label-resources").text = item.RequiredResources.ToString();
+            if (!recycled) element.Q<Button>().clicked += () => QueueUnit((string)element.userData);
         });
 
         ui.rootVisualElement.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;

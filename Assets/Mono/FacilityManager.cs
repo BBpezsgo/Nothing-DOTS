@@ -22,8 +22,10 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
     Entity selectedEntity = Entity.Null;
     Facility selected = default;
+
     float refreshAt = default;
-    float avaliableResearchesSyncAt = default;
+    float refreshedBySyncAt = default;
+    float syncAt = default;
 
     void Update()
     {
@@ -35,8 +37,10 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
             return;
         }
 
-        if (Time.time >= refreshAt)
+        if (Time.time >= refreshAt ||
+            refreshedBySyncAt != ResearchSystemClient.LastSynced.Data)
         {
+            refreshedBySyncAt = ResearchSystemClient.LastSynced.Data;
             if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(selectedEntity))
             {
                 UIManager.Instance.CloseUI(this);
@@ -45,12 +49,11 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
             RefreshUI(selectedEntity);
             refreshAt = Time.time + 1f;
-            return;
         }
 
-        if (Time.time >= avaliableResearchesSyncAt)
+        if (Time.time >= syncAt)
         {
-            avaliableResearchesSyncAt = Time.time + 5f;
+            syncAt = Time.time + 5f;
             ResearchSystemClient.Refresh(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
         }
 
@@ -69,7 +72,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
         gameObject.SetActive(true);
         this.ui = ui;
 
-        avaliableResearchesSyncAt = Math.Min(avaliableResearchesSyncAt, Time.time + 0.5f);
+        syncAt = Math.Min(syncAt, Time.time + 0.5f);
 
         ui.gameObject.SetActive(true);
         selectedEntity = entity;
@@ -194,7 +197,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
             break;
         }
 
-        avaliableResearchesSyncAt = Math.Min(avaliableResearchesSyncAt, Time.time + 0.5f);
+        syncAt = Math.Min(syncAt, Time.time + 0.5f);
     }
 
     public void Cleanup(UIDocument ui)

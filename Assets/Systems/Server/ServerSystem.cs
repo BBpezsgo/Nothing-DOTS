@@ -38,6 +38,8 @@ public partial struct ServerSystem : ISystem
                 ConnectionId = id.ValueRO.Value,
                 ConnectionState = PlayerConnectionState.Connected,
                 Team = -1,
+                IsCoreComputerSpawned = false,
+                Resources = 5,
             });
         }
 

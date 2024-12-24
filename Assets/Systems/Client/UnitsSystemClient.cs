@@ -9,6 +9,9 @@ public partial struct UnitsSystemClient : ISystem
 {
     public NativeList<BufferedUnit> Units;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006")] class _k { }
+    public static readonly SharedStatic<float> LastSynced = SharedStatic<float>.GetOrCreate<BuildingsSystemClient, _k>();
+
     void ISystem.OnCreate(ref SystemState state)
     {
         Units = new(Allocator.Persistent);
@@ -42,6 +45,7 @@ public partial struct UnitsSystemClient : ISystem
                 {
                     if (command.ValueRO.Name != units[i].Name) continue;
                     Units.Add(units[i]);
+                    LastSynced.Data = MonoTime.Now;
                     break;
                 }
             }

@@ -90,8 +90,21 @@ public partial struct BuildingSystemServer : ISystem
                 }
             }
 
-            Entity newEntity = BuildingSystemServer.PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
+            if (requestPlayer.Player.Resources < building.RequiredResources)
+            {
+                Debug.LogWarning($"Can't queue unit \"{building.Name}\": not enought resources ({requestPlayer.Player.Resources} < {building.RequiredResources})");
+                break;
+            }
 
+            foreach (var _player in
+                SystemAPI.Query<RefRW<Player>>())
+            {
+                if (_player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                _player.ValueRW.Resources -= building.RequiredResources;
+                break;
+            }
+
+            Entity newEntity = BuildingSystemServer.PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
             commandBuffer.SetComponent<UnitTeam>(newEntity, new()
             {
                 Team = requestPlayer.Player.Team,

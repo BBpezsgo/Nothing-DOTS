@@ -9,6 +9,9 @@ public partial struct BuildingsSystemClient : ISystem
 {
     public NativeList<BufferedBuilding> Buildings;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006")] class _k { }
+    public static readonly SharedStatic<float> LastSynced = SharedStatic<float>.GetOrCreate<BuildingsSystemClient, _k>();
+
     void ISystem.OnCreate(ref SystemState state)
     {
         Buildings = new(Allocator.Persistent);
@@ -26,7 +29,7 @@ public partial struct BuildingsSystemClient : ISystem
         {
             commandBuffer.DestroyEntity(entity);
 
-            DynamicBuffer<BufferedBuilding> units = SystemAPI.GetBuffer<BufferedBuilding>(SystemAPI.GetSingletonEntity<BuildingDatabase>());
+            DynamicBuffer<BufferedBuilding> buildings = SystemAPI.GetBuffer<BufferedBuilding>(SystemAPI.GetSingletonEntity<BuildingDatabase>());
 
             bool alreadyAdded = false;
             for (int i = 0; i < Buildings.Length; i++)
@@ -38,10 +41,11 @@ public partial struct BuildingsSystemClient : ISystem
 
             if (!alreadyAdded)
             {
-                for (int i = 0; i < units.Length; i++)
+                for (int i = 0; i < buildings.Length; i++)
                 {
-                    if (command.ValueRO.Name != units[i].Name) continue;
-                    Buildings.Add(units[i]);
+                    if (command.ValueRO.Name != buildings[i].Name) continue;
+                    Buildings.Add(buildings[i]);
+                    LastSynced.Data = MonoTime.Now;
                     break;
                 }
             }

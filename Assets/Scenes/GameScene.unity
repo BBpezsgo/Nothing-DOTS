@@ -1446,7 +1446,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 895ce29fedce62221a1111c984c798c7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  UI_AvaliableItem: {fileID: 9197481963319205126, guid: 61bffe86daabd84f18c62d5b7e06ae30, type: 3}
+  UI_AvaliableItem: {fileID: 9197481963319205126, guid: 0cee2b416811825979d15b44ebdb17cc, type: 3}
   UI_QueueItem: {fileID: 9197481963319205126, guid: c12c22a0d89d53b8e97b0986df61c283, type: 3}
   ui: {fileID: 0}
 --- !u!1 &1846551913

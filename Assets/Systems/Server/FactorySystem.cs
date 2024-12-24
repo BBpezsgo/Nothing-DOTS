@@ -28,24 +28,26 @@ public partial struct FactorySystem : ISystem
             commandBuffer.DestroyEntity(entity);
             RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
 
-            Entity requestPlayer = default;
+            Entity playerE = default;
+            Player player = default;
 
-            foreach (var (player, _entity) in
+            foreach (var (_player, _entity) in
                 SystemAPI.Query<RefRO<Player>>()
                 .WithEntityAccess())
             {
-                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
-                requestPlayer = _entity;
+                if (_player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                playerE = _entity;
+                player = _player.ValueRO;
                 break;
             }
 
-            if (requestPlayer == Entity.Null)
+            if (playerE == Entity.Null)
             {
                 Debug.LogError(string.Format("Failed to queue unit: requested by {0} but aint have a team", networkId.ValueRO));
                 continue;
             }
 
-            DynamicBuffer<BufferedAcquiredResearch> acquiredResearches = SystemAPI.GetBuffer<BufferedAcquiredResearch>(requestPlayer);
+            DynamicBuffer<BufferedAcquiredResearch> acquiredResearches = SystemAPI.GetBuffer<BufferedAcquiredResearch>(playerE);
 
             foreach (var (ghostInstance, ghostEntity) in
                 SystemAPI.Query<RefRO<GhostInstance>>()
@@ -84,6 +86,20 @@ public partial struct FactorySystem : ISystem
                         Debug.LogWarning($"Can't queue unit \"{unit.Name}\": not researched");
                         break;
                     }
+                }
+
+                if (player.Resources < unit.RequiredResources)
+                {
+                    Debug.LogWarning($"Can't queue unit \"{unit.Name}\": not enought resources ({player.Resources} < {unit.RequiredResources})");
+                    break;
+                }
+
+                foreach (var _player in
+                    SystemAPI.Query<RefRW<Player>>())
+                {
+                    if (_player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                    _player.ValueRW.Resources -= unit.RequiredResources;
+                    break;
                 }
 
                 SystemAPI.GetBuffer<BufferedProducingUnit>(ghostEntity).Add(new BufferedProducingUnit()

@@ -32,6 +32,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
     [SerializeField, NotNull] UIDocument? BuildingUI = default;
 
     float refreshAt = default;
+    float refreshedBySyncAt = default;
     float syncAt = default;
 
     void OnKeyEsc()
@@ -65,14 +66,14 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             element.userData = item.Name;
 
             Button button = element.Q<Button>();
-            button.text = item.Name.ToString();
             if (!recycled) button.clicked += () =>
             {
                 SelectBuilding((Unity.Collections.FixedString32Bytes)element.userData);
                 button.Blur();
             };
 
-            element.Q<VisualElement>("image").style.display = new StyleEnum<DisplayStyle>(DisplayStyle.None);
+            element.Q<Label>("label-name").text = item.Name.ToString();
+            element.Q<Label>("label-resources").text = item.RequiredResources.ToString();
         });
     }
 
@@ -168,8 +169,10 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
         if (BuildingUI == null || !BuildingUI.gameObject.activeSelf) return;
 
-        if (Time.time >= refreshAt)
+        if (Time.time >= refreshAt ||
+            refreshedBySyncAt != BuildingsSystemClient.LastSynced.Data)
         {
+            refreshedBySyncAt = BuildingsSystemClient.LastSynced.Data;
             RefreshUI();
             refreshAt = Time.time + 1f;
         }
