@@ -324,7 +324,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 if (!localFile.HasValue)
                 { return null; }
 
-                var task = new AwaitableCompletionSource<Stream?>();
+                AwaitableCompletionSource<Stream?> task = new();
                 task.SetResult(new MemoryStream(localFile.Value.Data));
                 return task.Awaitable;
             }
@@ -359,12 +359,19 @@ public class CompilerManager : Singleton<CompilerManager>
                 Awaitable<RemoteFile> task = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).RequestFile(fileId, progress);
                 task.GetAwaiter().OnCompleted(() =>
                 {
-                    MemoryStream data = new(task.GetAwaiter().GetResult().File.Data);
-                    result.SetResult(data);
-                    if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{fileId}\" downloaded ...");
-                    if (source.Status == CompilationStatus.Secuedued &&
-                        source.CompileSecuedued != 1f)
-                    { source.CompileSecuedued = 1f; }
+                    try
+                    {
+                        MemoryStream data = new(task.GetAwaiter().GetResult().File.Data);
+                        result.SetResult(data);
+                        if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{fileId}\" downloaded ...");
+                        if (source.Status == CompilationStatus.Secuedued &&
+                            source.CompileSecuedued != 1f)
+                        { source.CompileSecuedued = 1f; }
+                    }
+                    catch (Exception ex)
+                    {
+                        result.SetException(ex);
+                    }
                 });
                 return result.Awaitable;
             }

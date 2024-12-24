@@ -106,7 +106,6 @@ public partial class FileChunkManagerSystem : SystemBase
 
                 Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.Name}\" not found");
                 RemoteFiles.Remove(request.File);
-                request.Progress?.Report(default);
                 request.Task.SetException(new FileNotFoundException("Remote file not found", request.File.Name.ToString()));
                 if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                 CloseRemoteFile(commandBuffer, request.File);
