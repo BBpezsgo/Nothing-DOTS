@@ -1331,26 +1331,26 @@ MonoBehaviour:
       x: 4
       y: 6
     Script: builder.bbc
-    Team: 2
+    Team: 1
   - Prefab: {fileID: 2099412289264216910, guid: 2433642d39f17be6aa8ad8c596976581, type: 3}
     Spawn:
       x: 2
       y: 6
     Script: builder.bbc
-    Team: 2
+    Team: 1
   - Prefab: {fileID: 1994654560244389388, guid: 8cc3337a89423ebee8b83eac4f208105, type: 3}
     Spawn:
       x: 0
       y: 6
     Script: extractor.bbc
-    Team: 2
+    Team: 1
   - Prefab: {fileID: 8196213229133260831, guid: b9ee901bbacbf08859e49b904b381b95, type: 3}
     Spawn:
       x: -2
       y: 6
     Script: transporter.bbc
-    Team: 2
-  Team: 2
+    Team: 1
+  Team: 1
   GeneratedScript: unit-4.bbc
   GeneratedCount: 0
   Start: {x: -20, y: -20}

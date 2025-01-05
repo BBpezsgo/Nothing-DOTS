@@ -21,7 +21,9 @@ public partial struct EntityInfoUISystem : ISystem
             .WithAll<EntityWithInfoUI>()
             .WithEntityAccess())
         {
+#if UNITY_EDITOR && ENABLE_PROFILER
             using Unity.Profiling.ProfilerMarker.AutoScope _ = __instantiateUI.Auto();
+#endif
 
             GameObject uiPrefab = SystemAPI.ManagedAPI.GetSingleton<UIPrefabs>().EntityInfo;
             Unity.Mathematics.float3 spawnPosition = transform.ValueRO.Position;
@@ -77,7 +79,9 @@ public partial struct EntityInfoUISystem : ISystem
             .WithNone<EntityWithInfoUI>()
             .WithEntityAccess())
         {
+#if UNITY_EDITOR && ENABLE_PROFILER
             using Unity.Profiling.ProfilerMarker.AutoScope _ = __destroyUI.Auto();
+#endif
 
             Object.Destroy(uiRef.Value.gameObject);
             commandBuffer.RemoveComponent<EntityInfoUIReference>(entity);
