@@ -56,6 +56,7 @@ public partial struct PlayerSystemServer : ISystem
 
             if (exists)
             {
+                Debug.LogWarning("[Server] Already logged in");
                 Entity response = commandBuffer.CreateEntity();
                 commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
                 {
@@ -81,6 +82,8 @@ public partial struct PlayerSystemServer : ISystem
                     Resources = 5,
                     Guid = guid,
                 });
+
+                Debug.Log("[Server] Player created");
 
                 Entity response = commandBuffer.CreateEntity();
                 commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()

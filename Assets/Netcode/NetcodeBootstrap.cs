@@ -113,14 +113,6 @@ class NetcodeBootstrap : ClientServerBootstrap
         }
     }
 
-    public static void Stop()
-    {
-        ServerWorld?.Dispose();
-        ClientWorld?.Dispose();
-        ServerWorld = null;
-        ClientWorld = null;
-    }
-
     public override bool Initialize(string defaultWorldName)
     {
         AutoConnectPort = 0;

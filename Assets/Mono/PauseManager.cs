@@ -53,7 +53,8 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
     void OnButtonExit()
     {
-        ConnectionManager.StopServer();
+        ConnectionManager.DisconnectEveryone();
+        Application.Quit();
     }
 
     public void RefreshUI()

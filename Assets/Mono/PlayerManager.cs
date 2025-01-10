@@ -7,23 +7,23 @@ public class PlayerManager : MonoBehaviour
 {
     public static bool TryGetLocalPlayer(out Player player)
     {
+        player = default;
+        if (ConnectionManager.ClientOrDefaultWorld == null) return false;
+
         using EntityQuery playersQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(Player));
         using EntityQuery connectionsQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(NetworkId));
-        if (!connectionsQ.TryGetSingleton<NetworkId>(out NetworkId networkId))
-        {
-            player = default;
-            return false;
-        }
+        if (!connectionsQ.TryGetSingleton(out NetworkId networkId)) return false;
 
-        using NativeArray<Player> players = playersQ.ToComponentDataArray<Player>(Allocator.Temp);
+        NativeArray<Player> players = playersQ.ToComponentDataArray<Player>(Allocator.Temp);
         for (int i = 0; i < players.Length; i++)
         {
             if (players[i].ConnectionId != networkId.Value) continue;
             player = players[i];
+            players.Dispose();
             return true;
         }
 
-        player = default;
+        players.Dispose();
         return false;
     }
 

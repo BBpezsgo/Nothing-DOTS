@@ -160,7 +160,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         }
     }
 
-    public static void StopServer()
+    public static void DisconnectEveryone()
     {
         if (ServerWorld != null)
         {
@@ -178,14 +178,6 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
                     Reason = NetworkStreamDisconnectReason.ClosedByRemote,
                 });
             }
-
-            NetcodeBootstrap.Stop();
-        }
-
-        if (NetcodeBootstrap.LocalWorld == null)
-        {
-            World.DefaultGameObjectInjectionWorld = null!;
-            NetcodeBootstrap.LocalWorld = ClientServerBootstrap.CreateLocalWorld("Empty");
         }
     }
 }
