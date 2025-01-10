@@ -19,29 +19,27 @@ public partial class FileChunkManagerSystem : SystemBase
     [NotNull] Dictionary<FileId, RemoteFile>? RemoteFiles = new();
     [NotNull] List<FileRequest>? Requests = new();
     double NextCheckAt;
-    Entity DatabaseEntity;
 
     public static FileChunkManagerSystem GetInstance(World world)
         => world.GetExistingSystemManaged<FileChunkManagerSystem>();
+
+    protected override void OnCreate()
+    {
+        RequireForUpdate<BufferedFiles>();
+    }
 
     protected override void OnUpdate()
     {
         if (NextCheckAt > SystemAPI.Time.ElapsedTime) return;
         NextCheckAt = SystemAPI.Time.ElapsedTime + .2d;
 
-        if ((Requests.Count > 0 || DatabaseEntity == Entity.Null) &&
-            !SystemAPI.TryGetSingletonEntity<BufferedFiles>(out DatabaseEntity))
-        {
-            Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Buffered files singleton not found");
-            return;
-        }
-
         if (Requests.Count == 0) return;
 
         EntityCommandBuffer commandBuffer = default;
 
-        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(DatabaseEntity);
-        DynamicBuffer<BufferedReceivingFileChunk> fileChunks = World.EntityManager.GetBuffer<BufferedReceivingFileChunk>(DatabaseEntity);
+        Entity databaseEntity = SystemAPI.GetSingletonEntity<BufferedFiles>();
+        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(databaseEntity);
+        DynamicBuffer<BufferedReceivingFileChunk> fileChunks = World.EntityManager.GetBuffer<BufferedReceivingFileChunk>(databaseEntity);
 
         for (int i = Requests.Count - 1; i >= 0; i--)
         {
@@ -207,13 +205,8 @@ public partial class FileChunkManagerSystem : SystemBase
 
     public FileStatus GetRequestStatus(FileId fileId)
     {
-        if (DatabaseEntity == Entity.Null)
-        {
-            Debug.LogWarning($"[{nameof(FileChunkManagerSystem)}]: Failed to get {nameof(BufferedFiles)} entity singleton");
-            return FileStatus.Error;
-        }
-
-        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(DatabaseEntity, true);
+        Entity databaseEntity = SystemAPI.GetSingletonEntity<BufferedFiles>();
+        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(databaseEntity, true);
 
         for (int i = fileHeaders.Length - 1; i >= 0; i--)
         {

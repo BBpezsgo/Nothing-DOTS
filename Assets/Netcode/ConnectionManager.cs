@@ -14,7 +14,9 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
     public static World ClientOrDefaultWorld => NetcodeBootstrap.ClientWorld ?? World.DefaultGameObjectInjectionWorld;
     public static World ServerOrDefaultWorld => NetcodeBootstrap.ServerWorld ?? World.DefaultGameObjectInjectionWorld;
+#if UNITY_EDITOR && EDITOR_DEBUG
     [SerializeField] ushort DebugPort = default;
+#endif
     [SerializeField, NotNull] UIDocument? UI = default;
 
     void Start()
