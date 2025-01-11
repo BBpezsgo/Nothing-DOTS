@@ -113,7 +113,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         UI.gameObject.SetActive(false);
 
-        SetupManager.Instance.Setup();
+        // SetupManager.Instance.Setup();
     }
 
     public IEnumerator StartClientAsync(NetworkEndpoint endpoint)
