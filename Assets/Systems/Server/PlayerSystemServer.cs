@@ -1,4 +1,6 @@
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -70,7 +72,16 @@ public partial struct PlayerSystemServer : ISystem
             }
             else
             {
-                Guid guid = Guid.NewGuid();
+                Guid guid;
+                unsafe
+                {
+                    ReadOnlySpan<byte> bytes = stackalloc byte[16];
+                    byte* ptr = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(bytes));
+                    *(int*)(ptr + 0) = source.ValueRO.Value; // 4
+                    *(double*)(ptr + 4) = SystemAPI.Time.ElapsedTime; // 8
+                    *(uint*)(ptr + 12) = 0x69420; // 4
+                    guid = new Guid(bytes);
+                }
 
                 Entity newPlayer = commandBuffer.Instantiate(prefabs.Player);
                 commandBuffer.SetComponent<Player>(newPlayer, new()
