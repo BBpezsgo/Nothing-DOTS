@@ -1,32 +1,97 @@
-
-using System.Collections.Immutable;
+using System;
+using System.Runtime.CompilerServices;
+using Unity.Burst.CompilerServices;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
 public static partial class DebugEx
 {
 #if UNITY_EDITOR && EDITOR_DEBUG
-    /// <summary>
-    /// Square with edge of length 1
-    /// </summary>
-    static readonly ImmutableArray<float3> UnitSquare;
-    /// <summary>
-    /// Cube with edge of length 1
-    /// </summary>
-    static readonly ImmutableArray<float3> UnitCube;
-    static readonly ImmutableArray<float3> UnitSphere;
+    readonly struct UnitSquare
+    {
+        readonly float3 _0;
+        readonly float3 _1;
+        readonly float3 _2;
+        readonly float3 _3;
+
+        public float3 this[int i]
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => i switch
+            {
+                0 => _0,
+                1 => _1,
+                2 => _2,
+                3 => _3,
+                _ => throw new IndexOutOfRangeException(),
+            };
+        }
+
+        public UnitSquare(float3 _0, float3 _1, float3 _2, float3 _3)
+        {
+            this._0 = _0;
+            this._1 = _1;
+            this._2 = _2;
+            this._3 = _3;
+        }
+    }
+
+    readonly struct UnitCube
+    {
+        readonly float3 _0;
+        readonly float3 _1;
+        readonly float3 _2;
+        readonly float3 _3;
+        readonly float3 _4;
+        readonly float3 _5;
+        readonly float3 _6;
+        readonly float3 _7;
+
+        public float3 this[int i]
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => i switch
+            {
+                0 => _0,
+                1 => _1,
+                2 => _2,
+                3 => _3,
+                4 => _4,
+                5 => _5,
+                6 => _6,
+                7 => _7,
+                _ => throw new IndexOutOfRangeException(),
+            };
+        }
+
+        public UnitCube(float3 _0, float3 _1, float3 _2, float3 _3, float3 _4, float3 _5, float3 _6, float3 _7)
+        {
+            this._0 = _0;
+            this._1 = _1;
+            this._2 = _2;
+            this._3 = _3;
+            this._4 = _4;
+            this._5 = _5;
+            this._6 = _6;
+            this._7 = _7;
+        }
+    }
+
+    static readonly UnitSquare _unitSquare;
+    static readonly UnitCube _unitCube;
+    static readonly FixedList512Bytes<float3> _unitSphere;
 
     static DebugEx()
     {
-        UnitSquare = ImmutableArray.Create<float3>(
+        _unitSquare = new(
             new(-0.5f, 0.5f, 0.0f),
             new(0.5f, 0.5f, 0.0f),
             new(0.5f, -0.5f, 0.0f),
             new(-0.5f, -0.5f, 0.0f)
         );
 
-        System.ReadOnlySpan<float3> unitCube = stackalloc float3[]
-        {
+        _unitCube = new(
             new(-0.5f, 0.5f, -0.5f),
             new(0.5f, 0.5f, -0.5f),
             new(0.5f, -0.5f, -0.5f),
@@ -36,45 +101,46 @@ public static partial class DebugEx
             new(0.5f, 0.5f, 0.5f),
             new(0.5f, -0.5f, 0.5f),
             new(-0.5f, -0.5f, 0.5f)
-        };
-        UnitCube = ImmutableArray.Create(unitCube);
+        );
 
-        UnitSphere = ImmutableArray.Create(MakeUnitSphere(16));
+        // 3*4*4*3 = 504
+        MakeUnitSphere(14, ref _unitSphere);
     }
 
-    static float3[] MakeUnitSphere(int len)
+    /// <param name="len">
+    /// <b>Must be in range 3..14 inclusive!!!</b>
+    /// </param>
+    static void MakeUnitSphere([AssumeRange(3, 14)] int len, ref FixedList512Bytes<float3> result)
     {
-        Debug.Assert(len > 2f);
-        float3[] v = new float3[len * 3];
+        result.Length = len * 3;
         for (int i = 0; i < len; i++)
         {
             float f = i / (float)len;
             float c = math.cos(f * math.PI * 2f);
             float s = math.sin(f * math.PI * 2f);
-            v[(0 * len) + i] = new float3(c, s, 0f);
-            v[(1 * len) + i] = new float3(0f, c, s);
-            v[(2 * len) + i] = new float3(s, 0f, c);
+            result[(0 * len) + i] = new float3(c, s, 0f);
+            result[(1 * len) + i] = new float3(0f, c, s);
+            result[(2 * len) + i] = new float3(s, 0f, c);
         }
-        return v;
     }
 #endif
 
     public static void DrawSphere(float3 pos, float radius, Color color, float duration = 0f, bool depthTest = true)
     {
 #if UNITY_EDITOR && EDITOR_DEBUG
-        int len = UnitSphere.Length / 3;
+        int len = _unitSphere.Length / 3;
         for (int i = 0; i < len; i++)
         {
-            float3 sX = pos + (radius * UnitSphere[(0 * len) + i]);
-            float3 eX = pos + (radius * UnitSphere[(0 * len) + ((i + 1) % len)]);
+            float3 sX = pos + (radius * _unitSphere[(0 * len) + i]);
+            float3 eX = pos + (radius * _unitSphere[(0 * len) + ((i + 1) % len)]);
             Debug.DrawLine(sX, eX, color, duration);
 
-            float3 sY = pos + (radius * UnitSphere[(1 * len) + i]);
-            float3 eY = pos + (radius * UnitSphere[(1 * len) + ((i + 1) % len)]);
+            float3 sY = pos + (radius * _unitSphere[(1 * len) + i]);
+            float3 eY = pos + (radius * _unitSphere[(1 * len) + ((i + 1) % len)]);
             Debug.DrawLine(sY, eY, color, duration);
 
-            float3 sZ = pos + (radius * UnitSphere[(2 * len) + i]);
-            float3 eZ = pos + (radius * UnitSphere[(2 * len) + ((i + 1) % len)]);
+            float3 sZ = pos + (radius * _unitSphere[(2 * len) + i]);
+            float3 eZ = pos + (radius * _unitSphere[(2 * len) + ((i + 1) % len)]);
             Debug.DrawLine(sZ, eZ, color, duration);
         }
 #endif
@@ -94,20 +160,20 @@ public static partial class DebugEx
 #if UNITY_EDITOR && EDITOR_DEBUG
         for (int i = 0; i < 4; i++)
         {
-            float3 s = pos + (UnitCube[i] * size);
-            float3 e = pos + (UnitCube[(i + 1) % 4] * size);
+            float3 s = pos + (_unitCube[i] * size);
+            float3 e = pos + (_unitCube[(i + 1) % 4] * size);
             Debug.DrawLine(s, e, color, duration, depthTest);
         }
         for (int i = 0; i < 4; i++)
         {
-            float3 s = pos + (UnitCube[4 + i] * size);
-            float3 e = pos + (UnitCube[4 + ((i + 1) % 4)] * size);
+            float3 s = pos + (_unitCube[4 + i] * size);
+            float3 e = pos + (_unitCube[4 + ((i + 1) % 4)] * size);
             Debug.DrawLine(s, e, color, duration, depthTest);
         }
         for (int i = 0; i < 4; i++)
         {
-            float3 s = pos + (UnitCube[i] * size);
-            float3 e = pos + (UnitCube[i + 4] * size);
+            float3 s = pos + (_unitCube[i] * size);
+            float3 e = pos + (_unitCube[i + 4] * size);
             Debug.DrawLine(s, e, color, duration, depthTest);
         }
 #endif
