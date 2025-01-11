@@ -7,6 +7,7 @@ using Unity.NetCode;
 [BurstCompile]
 public struct CompilationAnalysticsRpc : IRpcCommand
 {
+    public FileId Source;
     public FileId FileName;
     public MutableRange<SinglePosition> Position;
     public MutableRange<int> AbsolutePosition;

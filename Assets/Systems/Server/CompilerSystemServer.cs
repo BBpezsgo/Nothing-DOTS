@@ -1,5 +1,3 @@
-#pragma warning disable CS0162 // Unreachable code detected
-
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
@@ -39,7 +37,7 @@ public class CompiledSource : IInspect<CompiledSource>
 
     public float Progress;
     public bool StatusChanged;
-    public float LastStatusSync;
+    public double LastStatusSync;
 
     public bool IsSuccess;
 
@@ -90,7 +88,7 @@ public class CompiledSource : IInspect<CompiledSource>
         rpc.FileName,
         rpc.CompiledVersion,
         rpc.LatestVersion,
-        CompilationStatus.None,
+        rpc.Status,
         default,
         rpc.Progress,
         rpc.IsSuccess,
@@ -116,24 +114,9 @@ public class CompiledSource : IInspect<CompiledSource>
 public class _Drawer1 : DictionaryDrawer<FileId, CompiledSource> { }
 #endif
 
-public class CompilerManager : Singleton<CompilerManager>
+public partial class CompilerSystemServer : SystemBase
 {
-    const bool EnableLogging = false;
-
-    [SerializeField, NotNull] SerializableDictionary<FileId, CompiledSource>? _compiledSources = default;
-
-    public IReadOnlyDictionary<FileId, CompiledSource> CompiledSources => _compiledSources;
-
-    public void AddEmpty(FileId file, long latestVersion)
-    {
-        _compiledSources.Add(file, CompiledSource.Empty(file, latestVersion));
-    }
-
-    public void HandleRpc(CompilerStatusRpc rpc)
-    {
-        if (World.DefaultGameObjectInjectionWorld.IsServer()) return;
-        _compiledSources[rpc.FileName] = CompiledSource.FromRpc(rpc);
-    }
+    static readonly bool EnableLogging = false;
 
     static readonly FrozenDictionary<int, string> ExternalFunctionNames = new Dictionary<int, string>()
     {
@@ -164,16 +147,13 @@ public class CompilerManager : Singleton<CompilerManager>
         { 51, "dequeue_command" },
     }.ToFrozenDictionary();
 
-    void Start()
-    {
-        _compiledSources = new();
-    }
+    [NotNull] public readonly SerializableDictionary<FileId, CompiledSource>? CompiledSources = new();
 
-    void FixedUpdate()
+    protected override void OnUpdate()
     {
         EntityCommandBuffer commandBuffer = default;
 
-        foreach ((FileId file, CompiledSource source) in _compiledSources)
+        foreach ((FileId file, CompiledSource source) in CompiledSources)
         {
             switch (source.Status)
             {
@@ -185,13 +165,13 @@ public class CompilerManager : Singleton<CompilerManager>
                     source.CompileSecuedued = default;
                     Task.Factory.StartNew(static (object state)
                         // TODO: recompiling
-                        => CompileSourceTask(((FileId, bool))state), (object)(file, false))
+                        => CompileSourceTask(((FileId, bool, CompiledSource))state), (object)(file, false, CompiledSources[file]))
                         .ContinueWith(task =>
                         {
                             if (task.IsFaulted)
                             { Debug.LogException(task.Exception); }
                             else if (task.IsCanceled)
-                            { Debug.LogError($"[{nameof(CompilerManager)}]: Compilation task cancelled"); }
+                            { Debug.LogError($"[{nameof(CompilerSystemServer)}]: Compilation task cancelled"); }
                         });
                     if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
                     SendCompilationStatus(source, commandBuffer);
@@ -207,7 +187,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 case CompilationStatus.Done:
                     if (source.CompiledVersion < source.LatestVersion)
                     {
-                        Debug.Log($"[{nameof(CompilerManager)}]: Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
+                        Debug.Log($"[{nameof(CompilerSystemServer)}]: Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
                         source.Status = CompilationStatus.Secuedued;
                         source.CompileSecuedued = 1f;
                         if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
@@ -215,7 +195,7 @@ public class CompilerManager : Singleton<CompilerManager>
                     }
                     break;
             }
-            if (source.StatusChanged && source.LastStatusSync + 0.5f < Time.time)
+            if (source.StatusChanged && source.LastStatusSync + 0.5d < SystemAPI.Time.ElapsedTime)
             {
                 if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
                 SendCompilationStatus(source, commandBuffer);
@@ -229,9 +209,9 @@ public class CompilerManager : Singleton<CompilerManager>
         }
     }
 
-    public static void SendCompilationStatus(CompiledSource source, EntityCommandBuffer commandBuffer)
+    void SendCompilationStatus(CompiledSource source, EntityCommandBuffer commandBuffer)
     {
-        source.LastStatusSync = Time.time;
+        source.LastStatusSync = SystemAPI.Time.ElapsedTime;
         source.StatusChanged = false;
         {
             Entity request = commandBuffer.CreateEntity();
@@ -248,13 +228,13 @@ public class CompilerManager : Singleton<CompilerManager>
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
-            if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
+            if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
         foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
-            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerManager)}]: {item}\r\n{item.GetArrows()}");
-            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerManager)}]: {item}\r\n{item.GetArrows()}");
+            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
+            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
 
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
@@ -262,6 +242,7 @@ public class CompilerManager : Singleton<CompilerManager>
             Entity request = commandBuffer.CreateEntity();
             commandBuffer.AddComponent(request, new CompilationAnalysticsRpc()
             {
+                Source = source.SourceFile,
                 FileName = file,
                 Position = item.Position.Range.ToMutable(),
                 AbsolutePosition = item.Position.AbsoluteRange.ToMutable(),
@@ -276,12 +257,13 @@ public class CompilerManager : Singleton<CompilerManager>
 
         foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
-            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerManager)}]: {item}");
-            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerManager)}]: {item}");
+            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}");
+            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}");
 
             Entity request = commandBuffer.CreateEntity();
             commandBuffer.AddComponent<CompilationAnalysticsRpc>(request, new()
             {
+                Source = source.SourceFile,
                 Level = item.Level,
                 Message = item.Message,
             });
@@ -292,16 +274,14 @@ public class CompilerManager : Singleton<CompilerManager>
         }
     }
 
-    public static unsafe void CompileSourceTask((FileId File, bool Force) args)
+    public static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSource source) args)
     {
-        (FileId file, bool force) = args;
+        (FileId file, bool force, CompiledSource source) = args;
 
         Uri sourceUri = file.ToUri();
-        if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Compilation started for \"{sourceUri}\" ...");
+        if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Compilation started for \"{sourceUri}\" ...");
 
         bool sourcesFromOtherConnectionsNeeded = false;
-
-        CompiledSource source = Instance.CompiledSources[file];
 
         source.IsSuccess = false;
         source.Diagnostics = new DiagnosticsCollection();
@@ -314,7 +294,7 @@ public class CompilerManager : Singleton<CompilerManager>
         {
             if (!uri.TryGetNetcode(out FileId fileId))
             {
-                Debug.LogError($"[{nameof(CompilerManager)}]: Uri \"{uri}\" aint a netcode uri");
+                Debug.LogError($"[{nameof(CompilerSystemServer)}]: Uri \"{uri}\" aint a netcode uri");
                 return null;
             }
 
@@ -340,7 +320,7 @@ public class CompilerManager : Singleton<CompilerManager>
 
             if (status == FileStatus.NotFound)
             {
-                Debug.LogError($"[{nameof(CompilerManager)}]: Remote file \"{uri}\" not found");
+                Debug.LogError($"[{nameof(CompilerSystemServer)}]: Remote file \"{uri}\" not found");
                 return null;
             }
 
@@ -352,7 +332,7 @@ public class CompilerManager : Singleton<CompilerManager>
                 source.StatusChanged = true;
             });
             progresses.Add(progress);
-            if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source needs file \"{fileId}\" ...");
+            if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source needs file \"{fileId}\" ...");
 
             {
                 AwaitableCompletionSource<Stream?> result = new();
@@ -363,7 +343,7 @@ public class CompilerManager : Singleton<CompilerManager>
                     {
                         MemoryStream data = new(task.GetAwaiter().GetResult().File.Data);
                         result.SetResult(data);
-                        if (EnableLogging) Debug.Log($"[{nameof(CompilerManager)}]: Source \"{fileId}\" downloaded ...");
+                        if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source \"{fileId}\" downloaded ...");
                         if (source.Status == CompilationStatus.Secuedued &&
                             source.CompileSecuedued != 1f)
                         { source.CompileSecuedued = 1f; }
@@ -522,5 +502,10 @@ public class CompilerManager : Singleton<CompilerManager>
             source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
             source.Progress = float.NaN;
         }
+    }
+
+    public void AddEmpty(FileId file, long latestVersion)
+    {
+        CompiledSources.Add(file, CompiledSource.Empty(file, latestVersion));
     }
 }

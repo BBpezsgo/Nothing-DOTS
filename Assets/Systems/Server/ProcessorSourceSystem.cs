@@ -14,6 +14,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        var compilerSystem = state.World.GetExistingSystemManaged<CompilerSystemServer>();
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ProcessorCommandRequestRpc>>()
@@ -68,7 +69,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, ep);
 
-                if (CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
+                if (compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
                 {
                     if (EnableLogging)
                     {
@@ -82,7 +83,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 else
                 {
                     if (EnableLogging) Debug.Log(string.Format("Creating new source file {0}", command.ValueRO.Source));
-                    CompilerManager.Instance.AddEmpty(processor.ValueRO.SourceFile, command.ValueRO.Version);
+                    compilerSystem.AddEmpty(processor.ValueRO.SourceFile, command.ValueRO.Version);
                 }
 
                 break;
@@ -98,10 +99,10 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 continue;
             }
 
-            if (!CompilerManager.Instance.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
+            if (!compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
             {
                 if (EnableLogging) Debug.Log(string.Format("Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
-                CompilerManager.Instance.AddEmpty(processor.ValueRO.SourceFile, default);
+                compilerSystem.AddEmpty(processor.ValueRO.SourceFile, default);
                 instructions.Clear();
                 continue;
             }

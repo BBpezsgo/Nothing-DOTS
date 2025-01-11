@@ -1,11 +1,14 @@
+using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
-partial struct CompilerSystemClient : ISystem
+partial class CompilerSystemClient : SystemBase
 {
-    void ISystem.OnUpdate(ref SystemState state)
+    [NotNull] public readonly SerializableDictionary<FileId, CompiledSource>? CompiledSources = new();
+
+    protected override void OnUpdate()
     {
         EntityCommandBuffer commandBuffer = default;
 
@@ -19,7 +22,7 @@ partial struct CompilerSystemClient : ISystem
 
             // Debug.Log($"Received compilation status for {command.ValueRO.FileName}");
 
-            CompilerManager.Instance.HandleRpc(command.ValueRO);
+            CompiledSources[command.ValueRO.FileName] = CompiledSource.FromRpc(command.ValueRO);
         }
 
         foreach (var (command, entity) in
@@ -30,9 +33,9 @@ partial struct CompilerSystemClient : ISystem
             if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
             commandBuffer.DestroyEntity(entity);
 
-            if (!CompilerManager.Instance.CompiledSources.TryGetValue(command.ValueRO.FileName, out CompiledSource source))
+            if (!CompiledSources.TryGetValue(command.ValueRO.Source, out CompiledSource source))
             {
-                // Debug.LogWarning($"Received analytics for unknown compiled source \"{command.ValueRO.FileName}\"");
+                Debug.LogWarning($"Received analytics for unknown compiled source \"{command.ValueRO.FileName}\"");
                 continue;
             }
 
@@ -47,7 +50,7 @@ partial struct CompilerSystemClient : ISystem
 
         if (commandBuffer.IsCreated)
         {
-            commandBuffer.Playback(state.EntityManager);
+            commandBuffer.Playback(EntityManager);
             commandBuffer.Dispose();
         }
     }

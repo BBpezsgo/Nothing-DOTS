@@ -334,14 +334,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         {
             EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
             Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
-            if (processor.SourceFile == default)
+            if (processor.SourceFile == default || !ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources.TryGetValue(processor.SourceFile, out CompiledSource? source))
             {
                 _terminal = null;
                 _terminalBuilder.AppendLine("<color=red>No source</color>");
             }
             else
             {
-                CompiledSource source = CompilerManager.Instance.CompiledSources[processor.SourceFile];
                 const string SpinnerChars = "-\\|/";
                 char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
 
