@@ -377,7 +377,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     }
                 }
 
-                if (!float.IsNaN(source.Progress) && source.Progress != 1f)
+                if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
                 {
                     const int progressBarWidth = 10;
 

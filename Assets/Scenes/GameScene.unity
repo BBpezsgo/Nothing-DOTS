@@ -130,7 +130,7 @@ GameObject:
   - component: {fileID: 192343620}
   - component: {fileID: 192343621}
   - component: {fileID: 192343622}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: HUD
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -194,7 +194,7 @@ GameObject:
   m_Component:
   - component: {fileID: 326294559}
   - component: {fileID: 326294560}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Network
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -435,7 +435,7 @@ GameObject:
   m_Component:
   - component: {fileID: 387110818}
   - component: {fileID: 387110817}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Building
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -486,7 +486,7 @@ GameObject:
   m_Component:
   - component: {fileID: 387753433}
   - component: {fileID: 387753434}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: UnitCommands
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -702,7 +702,7 @@ GameObject:
   m_Component:
   - component: {fileID: 444809115}
   - component: {fileID: 444809116}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Facility
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -854,7 +854,7 @@ GameObject:
   m_Component:
   - component: {fileID: 814073990}
   - component: {fileID: 814073991}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Factory
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1007,7 +1007,7 @@ GameObject:
   - component: {fileID: 1042564337}
   - component: {fileID: 1042564339}
   - component: {fileID: 1042564338}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: UI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1274,7 +1274,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1605264180}
   - component: {fileID: 1605264183}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1368,7 +1368,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89984eadfd7d09bb2850b5543089be3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SpawnExactUnits: 1
+  SpawnExactUnits: 0
   Units:
   - Prefab: {fileID: 2099412289264216910, guid: 2433642d39f17be6aa8ad8c596976581, type: 3}
     Spawn:
@@ -1396,7 +1396,7 @@ MonoBehaviour:
     Team: 1
   Team: 1
   GeneratedScript: unit-4.bbc
-  GeneratedCount: 0
+  GeneratedCount: 6
   Start: {x: -20, y: -20}
   End: {x: 20, y: 20}
   RandomUnitPrefab: {fileID: 2198220952844499968, guid: 95f9e0627990352efa94411860d0a894, type: 3}
@@ -1549,7 +1549,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1848802882}
   - component: {fileID: 1848802881}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Unit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1788,7 +1788,7 @@ GameObject:
   - component: {fileID: 2036511787}
   - component: {fileID: 2036511789}
   - component: {fileID: 2036511788}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: SelectionBox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1862,7 +1862,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2075893408}
   - component: {fileID: 2075893409}
-  m_Layer: 0
+  m_Layer: 5
   m_Name: Pause
   m_TagString: Untagged
   m_Icon: {fileID: 0}
