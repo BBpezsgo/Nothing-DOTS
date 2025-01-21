@@ -24,7 +24,7 @@ void SendResponse(f32 direction)
     v[1] = (u8)4;
     send(&v, 2, direction, 0.3f);
 
-    // Vector2 point;
+    // float2 point;
     // point.x = Sin(direction) * 10f;
     // point.y = Cos(direction) * 10f;
     // ldebug(point, CYAN);
@@ -37,7 +37,7 @@ void SendRequest(f32 direction)
     v[1] = (u8)2;
     send(&v, 2, direction, 0.7f);
 
-    Vector2 point;
+    float2 point;
     point.x = Sin(direction) * 10f;
     point.y = Cos(direction) * 10f;
     ldebug(point, BLUE);
@@ -54,7 +54,7 @@ void Receive()
         if (receivedLength != 2) { break; }
 
         // {
-        //     Vector2 point;
+        //     float2 point;
         //     point.x = Sin(receivedDirection) * 10f;
         //     point.y = Cos(receivedDirection) * 10f;
         //     ldebug(point, YELLOW);
@@ -80,7 +80,7 @@ void Receive()
                 {
                     Unit unit;
                     unit.Expires = time() + 5f;
-                    Vector2 point;
+                    float2 point;
                     point.x = Sin(receivedDirection) * requestSentToDistance;
                     point.y = Cos(receivedDirection) * requestSentToDistance;
                     ToByte2(&point, &unit.Position);
@@ -94,7 +94,7 @@ void Receive()
                 }
                 else
                 {
-                    Vector2 point;
+                    float2 point;
                     point.x = Sin(receivedDirection) * 10f;
                     point.y = Cos(receivedDirection) * 10f;
                     ldebug(point, YELLOW);
@@ -130,7 +130,7 @@ void RecordUnit(List<Unit>* units, Unit unit)
     }
 }
 
-i32 IsEnemy(Vector2 point)
+i32 IsEnemy(float2 point)
 {
     i32 isEnemy = (&allies).Length();
     int i = (&allies).Length();
@@ -138,7 +138,7 @@ i32 IsEnemy(Vector2 point)
     {
         i--;
         byte2 allyPosition_ = (&allies).Raw()[i].Position;
-        Vector2 allyPosition;
+        float2 allyPosition;
         ToFloat2(&allyPosition_, &allyPosition);
         f32 d = DistanceSqr(point, allyPosition);
         if (d < DISTANCE_THRESHOLD)
@@ -159,7 +159,7 @@ void PerformRadar()
 
         prevRadarDistance = radarDistance;
 
-        // Vector2 point;
+        // float2 point;
         // point.x = Sin(Radar.RadarDirection);
         // point.y = Cos(Radar.RadarDirection);
         // point.x *= radarDistance;
@@ -187,8 +187,8 @@ struct Unit
 }
 
 f32 prevRadarDistance = 0f;
-Vector2 targetedPosition = new Vector2;
-Vector2 currentTarget = new Vector2;
+float2 targetedPosition = new float2;
+float2 currentTarget = new float2;
 List<Unit> enemies = new List<Unit>(2);
 
 while (1)
@@ -201,7 +201,7 @@ while (1)
         {
             // PrintLine("Object didn't respond");
 
-            Vector2 point;
+            float2 point;
             point.x = Sin(requestSentToDirection);
             point.y = Cos(requestSentToDirection);
             point.x *= requestSentToDistance;
@@ -222,7 +222,7 @@ while (1)
 
     PerformRadar();
 
-    currentTarget = new Vector2;
+    currentTarget = new float2;
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
     {
@@ -232,7 +232,7 @@ while (1)
         }
         else
         {
-            Vector2 p1;
+            float2 p1;
             byte2 p2 = (&enemies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
             ldebug(p1, RED);

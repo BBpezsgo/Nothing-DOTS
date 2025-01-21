@@ -11,13 +11,13 @@ using "api.bbc";
 [UnitCommand(1, "Attack at")]
 struct CommandAttackAt
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 [UnitCommand(2, "Move to")]
 struct CommandMoveTo
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 const int MaxPacketLength = 13 + 1;
@@ -29,26 +29,26 @@ const u8 INDIRECT_RESPONSE_HEADER = 0b_00011110;
 struct VerificationRequestPacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 struct VerificationResponsePacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 struct IndirectVerificationResponsePacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
     float Expires;
 }
 
 struct EnemyNotificationPacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 const int MaxCommandDataSize = 8;
@@ -142,7 +142,7 @@ void Receive()
     }
 }
 
-int UnitIndexAt(List<Unit>* units, Vector2 position)
+int UnitIndexAt(List<Unit>* units, float2 position)
 {
     for (int i = 0; i < units.Length(); i++)
     {
@@ -175,7 +175,7 @@ void UpdateUnit(List<Unit>* units, Unit unit)
     }
 }
 
-void RemoveUnitAt(List<Unit>* units, Vector2 unit)
+void RemoveUnitAt(List<Unit>* units, float2 unit)
 {
     u8 isNotDone = true;
     for (int i = 0; isNotDone && i < units.Length(); i++)
@@ -197,7 +197,7 @@ void PerformRadar()
     {
         prevRadarDistance = radarDistance;
 
-        Vector2 point;
+        float2 point;
         point.x = Cos(Radar.RadarDirection);
         point.y = Sin(Radar.RadarDirection);
         point.x *= radarDistance;
@@ -228,7 +228,7 @@ void TrySendVerificationRequest(Unit* unit)
 
 void SendVerificationRequest(Unit* unit)
 {
-    Vector2 point = unit.Position;
+    float2 point = unit.Position;
 
     VerificationRequestPacket packet = new VerificationRequestPacket;
     packet.Header = (u8)REQUEST_HEADER;
@@ -244,18 +244,18 @@ void SendVerificationRequest(Unit* unit)
 
 struct Unit
 {
-    Vector2 Position;
+    float2 Position;
     f32 Recorded;
     f32 Expires;
     f32 VerificationSentAt;
 }
 
 f32 prevRadarDistance = 0f;
-Vector2 targetedPosition = new Vector2;
-Vector2 currentTarget = new Vector2;
+float2 targetedPosition = new float2;
+float2 currentTarget = new float2;
 List<Unit> enemies = new List<Unit>(4);
 List<Unit> allies = new List<Unit>(4);
-Vector2 currentDestination = new Vector2;
+float2 currentDestination = new float2;
 u8 shouldShoot = false;
 f32 turretLastUseTime = 0f;
 
@@ -265,7 +265,7 @@ while (1)
 
     PerformRadar();
 
-    currentTarget = new Vector2;
+    currentTarget = new float2;
     shouldShoot = false;
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
@@ -277,7 +277,7 @@ while (1)
         else
         {
             TrySendVerificationRequest(&(&enemies).Raw()[i]);
-            Vector2 p = (&enemies).Raw()[i].Position;
+            float2 p = (&enemies).Raw()[i].Position;
             ToLocal(&p);
             if (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
@@ -306,7 +306,7 @@ while (1)
         }
         else
         {
-            Vector2 p = (&allies).Raw()[i].Position;
+            float2 p = (&allies).Raw()[i].Position;
             debug(p, GREEN);
         }
     }
@@ -319,13 +319,13 @@ while (1)
     {
         CommandAttackAt* command = &_command as CommandAttackAt*;
         currentTarget = command.position;
-        currentDestination = new Vector2;
+        currentDestination = new float2;
         ToLocal(&currentTarget);
     }
     else if (commandId == 2)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
-        currentTarget = new Vector2;
+        currentTarget = new float2;
         currentDestination = command.position;
     }
 

@@ -11,13 +11,13 @@ using "api.bbc";
 [UnitCommand(1, "Build at")]
 struct CommandBuildAt
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 [UnitCommand(2, "Move to")]
 struct CommandMoveTo
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 const int MaxPacketLength = 9 + 1;
@@ -27,13 +27,13 @@ const u8 RESPONSE_HEADER = 0b_01111000;
 struct VerificationRequestPacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 struct VerificationResponsePacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 const int MaxCommandDataSize = 8;
@@ -74,9 +74,9 @@ void Receive()
     }
 }
 
-Vector2 currentDestination = new Vector2;
-Vector2 currentBuildAt = new Vector2;
-Vector2 targetedPosition = new Vector2;
+float2 currentDestination = new float2;
+float2 currentBuildAt = new float2;
+float2 targetedPosition = new float2;
 
 while (1)
 {
@@ -90,12 +90,12 @@ while (1)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
         currentBuildAt = command.position;
-        currentDestination = new Vector2;
+        currentDestination = new float2;
     }
     else if (commandId == 2)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
-        currentBuildAt = new Vector2;
+        currentBuildAt = new float2;
         currentDestination = command.position;
     }
 
@@ -113,7 +113,7 @@ while (1)
         {
             StopMoving();
 
-            Vector2 currentBuildAtLocal = currentBuildAt;
+            float2 currentBuildAtLocal = currentBuildAt;
             ToLocal(&currentBuildAtLocal);
             ShootAtSimple(currentBuildAtLocal, &targetedPosition);
             ldebug(currentBuildAtLocal, WHITE);

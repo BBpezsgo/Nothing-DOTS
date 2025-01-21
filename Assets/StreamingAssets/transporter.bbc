@@ -10,31 +10,31 @@ using "api.bbc";
 [UnitCommand(1, "In")]
 struct CommandIn
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 [UnitCommand(2, "Out")]
 struct CommandOut
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 [UnitCommand(3, "Move to")]
 struct CommandMoveTo
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 [UnitCommand(4, "Set Source")]
 struct CommandSetSource
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 [UnitCommand(5, "Set Destination")]
 struct CommandSetDestination
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 const int MaxPacketLength = 9 + 1;
@@ -44,13 +44,13 @@ const u8 RESPONSE_HEADER = 0b_01111000;
 struct VerificationRequestPacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 struct VerificationResponsePacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 const int MaxCommandDataSize = 8;
@@ -91,11 +91,11 @@ void Receive()
     }
 }
 
-Vector2 currentDestination = new Vector2;
+float2 currentDestination = new float2;
 u8 currentDirectionAtDestination = (u8)0;
 
-Vector2 _loadSource = new Vector2;
-Vector2 _loadDestination = new Vector2;
+float2 _loadSource = new float2;
+float2 _loadDestination = new float2;
 int _state = 0;
 
 while (1)

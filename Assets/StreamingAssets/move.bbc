@@ -13,15 +13,15 @@ export void StopMoving()
 
 export void MoveTo(f32 targetX, f32 targetY)
 {
-    Vector2 forward = GPS.Forward;
-    Vector2 position = GPS.Position;
+    float2 forward = GPS.Forward;
+    float2 position = GPS.Position;
 
-    Vector2 dirMove;
+    float2 dirMove;
     dirMove.x = targetX - position.x;
     dirMove.y = targetY - position.y;
     Normalise(&dirMove);
 
-    f32 d = Distance(position, new Vector2(targetX, targetY));
+    f32 d = Distance(position, new float2(targetX, targetY));
 
     f32 t1 = Cross(forward, dirMove);
     f32 t2 = Dot(forward, dirMove);

@@ -27,8 +27,8 @@ void PerformRadar()
     }
 }
 
-Vector2 targetedPosition = new Vector2;
-Vector2 currentTarget = new Vector2;
+float2 targetedPosition = new float2;
+float2 currentTarget = new float2;
 
 while (1)
 {

@@ -9,7 +9,7 @@ using "api.bbc";
 [UnitCommand(1, "Attack at")]
 struct CommandAttackAt
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 const int MaxPacketLength   = 9 + 1;
@@ -20,19 +20,19 @@ const u8 ENEMY_HEADER       = 0b_00111100;
 struct VerificationRequestPacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 struct VerificationResponsePacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 struct EnemyNotificationPacket
 {
     byte Header;
-    Vector2 Position;
+    float2 Position;
 }
 
 const int MaxCommandDataSize = 8;

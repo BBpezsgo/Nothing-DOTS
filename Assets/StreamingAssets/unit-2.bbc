@@ -11,13 +11,13 @@ using "api.bbc";
 [UnitCommand(1, "Attack at")]
 struct CommandAttackAt
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 [UnitCommand(2, "Move to")]
 struct CommandMoveTo
 {
-    [Context("position")] Vector2 position;
+    [Context("position")] float2 position;
 }
 
 const int MaxCommandDataSize = 8;
@@ -43,7 +43,7 @@ void Receive()
         if (v[0] == (u8)REQUEST_HEADER && receivedLength == 3)
         {
             byte2 p;
-            Vector2 pos;
+            float2 pos;
             p.x = v[1] as i8;
             p.y = v[2] as i8;
             ToFloat2(&p, &pos);
@@ -62,7 +62,7 @@ void Receive()
         }
         else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
         {
-            Vector2 pos;
+            float2 pos;
             byte2 p;
             p.x = v[1] as i8;
             p.y = v[2] as i8;
@@ -134,7 +134,7 @@ void PerformRadar()
     {
         prevRadarDistance = radarDistance;
 
-        Vector2 point;
+        float2 point;
         point.x = Sin(Radar.RadarDirection);
         point.y = Cos(Radar.RadarDirection);
         point.x *= radarDistance;
@@ -142,7 +142,7 @@ void PerformRadar()
 
         PrintLine("Identifying object ...");
 
-        Vector2 pointGlobal = point;
+        float2 pointGlobal = point;
         ToGlobal(&pointGlobal);
         byte2 p;
         ToByte2(&pointGlobal, &p);
@@ -176,9 +176,9 @@ struct Unit
 }
 
 f32 prevRadarDistance = 0f;
-Vector2 targetedPosition = new Vector2;
-Vector2 currentTarget = new Vector2;
-Vector2 currentDestination = new Vector2;
+float2 targetedPosition = new float2;
+float2 currentTarget = new float2;
+float2 currentDestination = new float2;
 List<Unit> enemies = new List<Unit>(4);
 
 while (1)
@@ -187,7 +187,7 @@ while (1)
 
     PerformRadar();
 
-    currentTarget = new Vector2;
+    currentTarget = new float2;
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
     {
@@ -197,7 +197,7 @@ while (1)
         }
         else if (time() >= (&enemies).Raw()[i].Recorded + 2f)
         {
-            Vector2 p1;
+            float2 p1;
             byte2 p2 = (&enemies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
             ldebug(p1, RED);
@@ -205,7 +205,7 @@ while (1)
         }
         else
         {
-            Vector2 p1;
+            float2 p1;
             byte2 p2 = (&enemies).Raw()[i].Position;
             ToFloat2(&p2, &p1);
         }
@@ -219,13 +219,13 @@ while (1)
     {
         CommandAttackAt* command = &_command as CommandAttackAt*;
         currentTarget = command.position;
-        currentDestination = new Vector2;
+        currentDestination = new float2;
         ToLocal(&currentTarget);
     }
     else if (commandId == 2)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
-        currentTarget = new Vector2;
+        currentTarget = new float2;
         currentDestination = command.position;
     }
 
