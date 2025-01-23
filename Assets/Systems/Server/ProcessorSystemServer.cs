@@ -349,19 +349,19 @@ unsafe partial struct ProcessorSystemServer : ISystem
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
 #endif
 
-        (float2 position, byte color) = ExternalFunctionGenerator.TakeParameters<float2, byte>(arguments);
+        (float3 position, byte color) = ExternalFunctionGenerator.TakeParameters<float3, byte>(arguments);
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
         scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
             scope->WorldTransform.ValueRO.Position,
-            new float3(position.x, 0.5f, position.y)
+            position
         ), color, MonoTime.Now + DebugLineDuration));
 
 #if DEBUG_LINES
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
-            new float3(position.x, 0.5f, position.y),
+            position,
             new Color(
                 (color & 0b100) != 0 ? 1f : 0f,
                 (color & 0b010) != 0 ? 1f : 0f,
@@ -379,22 +379,22 @@ unsafe partial struct ProcessorSystemServer : ISystem
         using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
 #endif
 
-        (float2 position, byte color) = ExternalFunctionGenerator.TakeParameters<float2, byte>(arguments);
+        (float3 position, byte color) = ExternalFunctionGenerator.TakeParameters<float3, byte>(arguments);
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
         RefRO<LocalTransform> transform = scope->LocalTransform;
-        float3 transformed = transform.ValueRO.TransformPoint(new float3(position.x, 0f, position.y));
+        float3 transformed = transform.ValueRO.TransformPoint(position);
 
         scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
             scope->WorldTransform.ValueRO.Position,
-            new float3(transformed.x, 0.5f, transformed.z)
+            transformed
         ), color, MonoTime.Now + DebugLineDuration));
 
 #if DEBUG_LINES
         Debug.DrawLine(
             scope->WorldTransform.ValueRO.Position,
-            new float3(transformed.x, 0.5f, transformed.z),
+            transformed,
             new Color(
                 (color & 0b100) != 0 ? 1f : 0f,
                 (color & 0b010) != 0 ? 1f : 0f,
@@ -417,10 +417,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
         Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-        float2 point = memory.Get<float2>(ptr);
+        float3 point = memory.Get<float3>(ptr);
         RefRO<LocalTransform> transform = scope->LocalTransform;
-        float3 transformed = transform.ValueRO.TransformPoint(new float3(point.x, 0f, point.y));
-        memory.Set(ptr, new float2(transformed.x, transformed.z));
+        float3 transformed = transform.ValueRO.TransformPoint(point);
+        memory.Set(ptr, transformed);
     }
 
     [BurstCompile]
@@ -436,10 +436,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
         Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-        float2 point = memory.Get<float2>(ptr);
+        float3 point = memory.Get<float3>(ptr);
         RefRO<LocalTransform> transform = scope->LocalTransform;
-        float3 transformed = transform.ValueRO.InverseTransformPoint(new float3(point.x, 0f, point.y));
-        memory.Set(ptr, new float2(transformed.x, transformed.z));
+        float3 transformed = transform.ValueRO.InverseTransformPoint(point);
+        memory.Set(ptr, transformed);
     }
 
     [BurstCompile]
@@ -495,8 +495,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_time).Value, 33, 0, ExternalFunctionGenerator.SizeOf<float>(), default);
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_random).Value, 34, 0, ExternalFunctionGenerator.SizeOf<int>(), default);
 
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug).Value, 41, ExternalFunctionGenerator.SizeOf<float2, byte>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug).Value, 42, ExternalFunctionGenerator.SizeOf<float2, byte>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug).Value, 41, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug).Value, 42, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default);
 
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_dequeue_command).Value, 51, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
 
