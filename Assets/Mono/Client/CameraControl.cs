@@ -40,11 +40,24 @@ public class CameraControl : Singleton<CameraControl>
     {
         get
         {
-            if (!Mouse.current.rightButton.isPressed &&
-                !Mouse.current.rightButton.wasReleasedThisFrame) return false;
+            if ((!Mouse.current.middleButton.isPressed || !Keyboard.current.shiftKey.isPressed) &&
+                !Mouse.current.middleButton.wasReleasedThisFrame) return false;
             if (UI.IsMouseHandled) return false;
             return (
                 Mouse.current.position.ReadValue() - startDragScreen
+            ).SqrMagnitude() > 5f;
+        }
+    }
+
+    public bool IsZooming
+    {
+        get
+        {
+            if ((!Mouse.current.middleButton.isPressed || !Keyboard.current.ctrlKey.isPressed) &&
+                !Mouse.current.middleButton.wasReleasedThisFrame) return false;
+            if (UI.IsMouseHandled) return false;
+            return (
+                Mouse.current.position.ReadValue() - startDragZoomScreen
             ).SqrMagnitude() > 5f;
         }
     }
@@ -55,6 +68,7 @@ public class CameraControl : Singleton<CameraControl>
     Vector3 lastPosition;
     Vector3 startDragWorld;
     Vector2 startDragScreen;
+    Vector2 startDragZoomScreen;
 
     protected override void Awake()
     {
@@ -97,6 +111,7 @@ public class CameraControl : Singleton<CameraControl>
 
         GetKeyboardMovement();
         GetKeyZoom();
+        ZoomCameraWithMouse();
         if (useScreenEdge)
         { CheckMouseAtScreenEdge(); }
         DragCamera();
@@ -170,9 +185,10 @@ public class CameraControl : Singleton<CameraControl>
 
     void RotateCamera(InputAction.CallbackContext inputValue)
     {
-        if (!Mouse.current.middleButton.isPressed ||
-            UI.IsMouseHandled ||
+        if (UI.IsMouseHandled ||
             UIManager.Instance.AnyUIVisible) return;
+
+        if (!Mouse.current.middleButton.isPressed || Keyboard.current.shiftKey.isPressed || Keyboard.current.ctrlKey.isPressed) return;
 
         float x = inputValue.ReadValue<Vector2>().x;
         float y = inputValue.ReadValue<Vector2>().y;
@@ -192,6 +208,34 @@ public class CameraControl : Singleton<CameraControl>
         if (Mathf.Abs(value) <= 0f) return;
 
         zoomHeight += value * stepSize;
+        zoomHeight = math.clamp(zoomHeight, minHeight, maxHeight);
+    }
+
+    void ZoomCameraWithMouse()
+    {
+        if (UI.IsMouseHandled) return;
+
+        if (!Mouse.current.middleButton.isPressed || !Keyboard.current.ctrlKey.isPressed)
+        {
+            startDragZoomScreen = default;
+            return;
+        }
+
+        Vector2 mousePosition = InputUtils.Mouse.ViewportPosition;
+
+        if (startDragZoomScreen == default)
+        {
+            startDragZoomScreen = mousePosition;
+            return;
+        }
+
+        float beginDistance = startDragZoomScreen.y;
+        float currentDistance = mousePosition.y;
+        float delta = beginDistance - currentDistance;
+
+        startDragZoomScreen = mousePosition;
+
+        zoomHeight *= Mathf.Pow(2, delta * 5f);
         zoomHeight = math.clamp(zoomHeight, minHeight, maxHeight);
     }
 
@@ -228,7 +272,7 @@ public class CameraControl : Singleton<CameraControl>
 
     void DragCamera()
     {
-        if (!Mouse.current.rightButton.isPressed)
+        if (!Mouse.current.middleButton.isPressed || !Keyboard.current.shiftKey.isPressed)
         {
             startDragWorld = default;
             startDragScreen = default;
@@ -252,7 +296,7 @@ public class CameraControl : Singleton<CameraControl>
             }
             else
             {
-                velocity += (startDragWorld - ray.GetPoint(distance));
+                velocity += startDragWorld - ray.GetPoint(distance);
             }
         }
     }
