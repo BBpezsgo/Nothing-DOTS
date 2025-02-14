@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial struct ResourceSystemClient : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)

@@ -16,6 +16,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     public static World ServerOrDefaultWorld => NetcodeBootstrap.ServerWorld ?? World.DefaultGameObjectInjectionWorld;
 #if UNITY_EDITOR && EDITOR_DEBUG
     [SerializeField] ushort DebugPort = default;
+    [SerializeField] bool AutoHost = false;
 #endif
     [SerializeField, NotNull] UIDocument? UI = default;
 
@@ -38,7 +39,10 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         };
 
 #if UNITY_EDITOR && EDITOR_DEBUG
-        StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
+        if (AutoHost)
+        {
+            StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
+        }
 #endif
     }
 
@@ -114,7 +118,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         UI.gameObject.SetActive(false);
 
 #if UNITY_EDITOR && EDITOR_DEBUG
-        SetupManager.Instance.Setup();
+        if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
 #endif
     }
 
