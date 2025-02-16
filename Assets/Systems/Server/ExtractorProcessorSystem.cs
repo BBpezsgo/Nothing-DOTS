@@ -6,7 +6,7 @@ using Unity.Burst;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-partial struct ExtractorProcessorSystem : ISystem
+public partial struct ExtractorProcessorSystem : ISystem
 {
     Random _random;
 

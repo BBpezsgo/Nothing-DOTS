@@ -1,12 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
 using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/World Labels")]
 public class WorldLabelsAuthoring : MonoBehaviour
 {
-    [SerializeField, Required, NotNull] GameObject? _prefab = default;
+    [SerializeField, NotNull] GameObject? _prefab = default;
 
     class Baker : Baker<WorldLabelsAuthoring>
     {

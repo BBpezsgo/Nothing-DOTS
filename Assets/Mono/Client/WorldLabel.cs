@@ -1,16 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
 using TMPro;
 using UnityEngine;
 
 public class WorldLabel : MonoBehaviour
 {
-    [SerializeField, Required, NotNull] public TextMeshProUGUI? TextMeshPro = default;
-
-    void Start()
-    {
-        this.GetRequiredComponent<TextMeshProUGUI>();
-    }
+    [SerializeField, NotNull] public TextMeshProUGUI? TextMeshPro = default;
 
     void Update()
     {

@@ -6,7 +6,7 @@ using Unity.Burst;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-partial struct VehicleProcessorSystem : ISystem
+public partial struct VehicleProcessorSystem : ISystem
 {
     [BurstCompile]
     unsafe void ISystem.OnUpdate(ref SystemState state)
