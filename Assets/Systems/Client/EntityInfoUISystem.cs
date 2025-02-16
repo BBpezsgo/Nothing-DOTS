@@ -4,16 +4,28 @@ using UnityEngine;
 
 // [UpdateAfter(typeof(TransformSystemGroup))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
-public partial struct EntityInfoUISystem : ISystem
+public partial class EntityInfoUISystem : SystemBase
 {
 #if UNITY_EDITOR && ENABLE_PROFILER
     static readonly Unity.Profiling.ProfilerMarker __instantiateUI = new($"{nameof(EntityInfoUISystem)}.InstantiateUI");
     static readonly Unity.Profiling.ProfilerMarker __destroyUI = new($"{nameof(EntityInfoUISystem)}.DestroyUI");
 #endif
 
-    void ISystem.OnUpdate(ref SystemState state)
+    Transform? _canvas;
+
+    protected override void OnUpdate()
     {
-        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+
+        if (_canvas == null)
+        {
+            foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (canvas.renderMode == RenderMode.WorldSpace) continue;
+                _canvas = canvas.transform;
+                break;
+            }
+        }
 
         foreach (var (transform, entity) in
             SystemAPI.Query<RefRO<LocalTransform>>()
@@ -27,7 +39,7 @@ public partial struct EntityInfoUISystem : ISystem
 
             GameObject uiPrefab = SystemAPI.ManagedAPI.GetSingleton<UIPrefabs>().EntityInfo;
             Unity.Mathematics.float3 spawnPosition = transform.ValueRO.Position;
-            GameObject newUi = Object.Instantiate(uiPrefab, spawnPosition, Quaternion.identity, Object.FindAnyObjectByType<Canvas>(FindObjectsInactive.Exclude).transform);
+            GameObject newUi = Object.Instantiate(uiPrefab, spawnPosition, Quaternion.identity, _canvas);
 
             commandBuffer.AddComponent<EntityInfoUIReference>(entity, new()
             {

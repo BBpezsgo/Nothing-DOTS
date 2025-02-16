@@ -50,6 +50,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required RefRO<LocalToWorld> WorldTransform;
         public required RefRO<LocalTransform> LocalTransform;
         public required NativeList<BufferedLine>.ParallelWriter DebugLines;
+        public required NativeList<BufferedWorldLabel>.ParallelWriter WorldLabels;
         public required int* Crash;
         public required Signal* Signal;
         public required Registers* Registers;
@@ -406,6 +407,54 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     [BurstCompile]
     [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+    static void _debug_label(nint _scope, nint arguments, nint returnValue)
+    {
+#if UNITY_PROFILER
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
+#endif
+
+        (float3 position, int textPtr) = ExternalFunctionGenerator.TakeParameters<float3, int>(arguments);
+
+        FunctionScope* scope = (FunctionScope*)_scope;
+
+        FixedString32Bytes text = new();
+        for (int i = textPtr; i < textPtr + 32; i += sizeof(char))
+        {
+            char c = *(char*)((byte*)scope->Memory + i);
+            if (c == '\0') break;
+            text.Append(c);
+        }
+
+        scope->WorldLabels.AddNoResize(new BufferedWorldLabel(position, 0b111, text, MonoTime.Now + DebugLineDuration));
+    }
+
+    [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+    static void _ldebug_label(nint _scope, nint arguments, nint returnValue)
+    {
+#if UNITY_PROFILER
+        using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
+#endif
+
+        (float3 position, int textPtr) = ExternalFunctionGenerator.TakeParameters<float3, int>(arguments);
+
+        FunctionScope* scope = (FunctionScope*)_scope;
+
+        FixedString32Bytes text = new();
+        for (int i = textPtr; i < textPtr + 32; i += sizeof(char))
+        {
+            char c = *(char*)((byte*)scope->Memory + i);
+            if (c == '\0') break;
+            text.Append(c);
+        }
+
+        float3 transformed = scope->LocalTransform.ValueRO.TransformPoint(position);
+
+        scope->WorldLabels.AddNoResize(new BufferedWorldLabel(transformed, 0b111, text, MonoTime.Now + DebugLineDuration));
+    }
+
+    [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _toglobal(nint _scope, nint arguments, nint returnValue)
     {
 #if UNITY_PROFILER
@@ -467,7 +516,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     #endregion
 
-    public const int ExternalFunctionCount = 20;
+    public const int ExternalFunctionCount = 22;
 
     [BurstCompile]
     public static void GenerateExternalFunctions(ExternalFunctionScopedSync* buffer)
@@ -498,6 +547,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug).Value, 41, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default);
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug).Value, 42, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default);
 
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug_label).Value, 43, ExternalFunctionGenerator.SizeOf<float3, int>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug_label).Value, 44, ExternalFunctionGenerator.SizeOf<float3, int>(), 0, default);
+
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_dequeue_command).Value, 51, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
 
         Unity.Assertions.Assert.AreEqual(i, ExternalFunctionCount);
@@ -505,13 +557,16 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     NativeList<BufferedLine> debugLines;
+    NativeList<BufferedWorldLabel> worldLabels;
 
     void ISystem.OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<DebugLines>();
+        state.RequireForUpdate<WorldLabels>();
         scopedExternalFunctions = new NativeArray<ExternalFunctionScopedSync>(ExternalFunctionCount, Allocator.Persistent);
         GenerateExternalFunctions((ExternalFunctionScopedSync*)scopedExternalFunctions.GetUnsafePtr());
         debugLines = new NativeList<BufferedLine>(256, Allocator.Persistent);
+        worldLabels = new NativeList<BufferedWorldLabel>(256, Allocator.Persistent);
     }
 
     [BurstCompile]
@@ -533,10 +588,27 @@ unsafe partial struct ProcessorSystemServer : ISystem
         }
         debugLines.Clear();
 
+        DynamicBuffer<BufferedWorldLabel> labels = SystemAPI.GetSingletonBuffer<BufferedWorldLabel>();
+        for (int i = 0; i < worldLabels.Length; i++)
+        {
+            for (int j = 0; j < labels.Length; j++)
+            {
+                if (worldLabels[i].Position.Equals(labels[j].Position))
+                {
+                    labels[j] = worldLabels[i];
+                    goto next;
+                }
+            }
+            labels.Add(worldLabels[i]);
+        next:;
+        }
+        worldLabels.Clear();
+
         new ProcessorJob()
         {
             scopedExternalFunctions = scopedExternalFunctions,
             debugLines = debugLines.AsParallelWriter(),
+            worldLabels = worldLabels.AsParallelWriter(),
         }.ScheduleParallel();
     }
 }
@@ -547,6 +619,7 @@ partial struct ProcessorJob : IJobEntity
 {
     [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     public NativeList<BufferedLine>.ParallelWriter debugLines;
+    public NativeList<BufferedWorldLabel>.ParallelWriter worldLabels;
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(
@@ -584,6 +657,7 @@ partial struct ProcessorJob : IJobEntity
             WorldTransform = worldTransform,
             LocalTransform = localTransform,
             DebugLines = debugLines,
+            WorldLabels = worldLabels,
             Crash = null,
             Registers = null,
             Signal = null,

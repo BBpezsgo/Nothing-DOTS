@@ -144,6 +144,9 @@ public partial class CompilerSystemServer : SystemBase
         { 41, "debug" },
         { 42, "ldebug" },
 
+        { 43, "debug_label" },
+        { 44, "ldebug_label" },
+
         { 51, "dequeue_command" },
     }.ToFrozenDictionary();
 

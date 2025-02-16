@@ -176,6 +176,19 @@ export inline void ldebug(float2 localPosition, u8 color)
     ldebug(new float3(localPosition.x, 0f, localPosition.y), color);
 }
 
+[External("debug_label")] export void debug_label(float3 position, string text);
+[External("ldebug_label")] export void ldebug_label(float3 localPosition, string text);
+
+export inline void debug_label(float2 position, string text)
+{
+    debug_label(new float3(position.x, 0f, position.y), text);
+}
+
+export inline void ldebug_label(float2 localPosition, string text)
+{
+    ldebug_label(new float3(localPosition.x, 0f, localPosition.y), text);
+}
+
 [External("dequeue_command")] export int dequeue_command(any* data);
 
 // export f32 Atan2(f32 x, f32 y) { return 0f; }
