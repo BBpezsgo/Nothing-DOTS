@@ -528,3 +528,11 @@ ProgressBar Label {
 .unity-tab__content-container {
     flex-grow: 1;
 }
+
+.server-message Label {
+    color: rgb(255, 255, 0);
+}
+
+.player-message Label {
+    color: rgb(255, 255, 255);
+}

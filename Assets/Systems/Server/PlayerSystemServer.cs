@@ -94,6 +94,7 @@ public partial struct PlayerSystemServer : ISystem
                     Guid = guid,
                 });
 
+                ChatSystemServer.SendChatMessage(commandBuffer, "Player connected");
                 Debug.Log("[Server] Player created");
 
                 Entity response = commandBuffer.CreateEntity();
@@ -132,6 +133,7 @@ public partial struct PlayerSystemServer : ISystem
                 {
                     player.ValueRW.ConnectionId = source.ValueRO.Value;
                     player.ValueRW.ConnectionState = PlayerConnectionState.Connected;
+                    ChatSystemServer.SendChatMessage(commandBuffer, "Player connected");
                 }
 
                 Entity response = commandBuffer.CreateEntity();
@@ -188,6 +190,7 @@ public partial struct PlayerSystemServer : ISystem
             {
                 player.ValueRW.ConnectionId = -1;
                 player.ValueRW.ConnectionState = PlayerConnectionState.Disconnected;
+                ChatSystemServer.SendChatMessage(commandBuffer, "Player disconnected");
             }
             else
             {
