@@ -46,17 +46,18 @@ public partial struct PlayerSystemServer : ISystem
 
             Debug.Log(string.Format("[Server] Received register request from client {0}", source.ValueRO.Value));
 
-            bool exists = false;
+            (bool, Player) exists = default;
+
             foreach (var player in
                 SystemAPI.Query<RefRO<Player>>())
             {
                 if (player.ValueRO.ConnectionId == source.ValueRO.Value)
                 {
-                    exists = true;
+                    exists = (true, player.ValueRO);
                 }
             }
 
-            if (exists)
+            if (exists.Item1)
             {
                 Debug.LogWarning("[Server] Already logged in");
                 Entity response = commandBuffer.CreateEntity();
@@ -67,6 +68,7 @@ public partial struct PlayerSystemServer : ISystem
                 commandBuffer.AddComponent<SessionResponseRpc>(response, new()
                 {
                     StatusCode = SessionStatusCode.AlreadyLoggedIn,
+                    Nickname = exists.Item2.Nickname,
                     Guid = default,
                 });
             }
@@ -92,10 +94,11 @@ public partial struct PlayerSystemServer : ISystem
                     IsCoreComputerSpawned = false,
                     Resources = 5,
                     Guid = guid,
+                    Nickname = command.ValueRO.Nickname,
                 });
 
-                ChatSystemServer.SendChatMessage(commandBuffer, "Player connected");
                 Debug.Log("[Server] Player created");
+                ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} connected", command.ValueRO.Nickname));
 
                 Entity response = commandBuffer.CreateEntity();
                 commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
@@ -106,6 +109,7 @@ public partial struct PlayerSystemServer : ISystem
                 {
                     StatusCode = SessionStatusCode.OK,
                     Guid = Marshal.As<Guid, FixedBytes16>(ref guid),
+                    Nickname = command.ValueRO.Nickname,
                 });
             }
         }
@@ -133,7 +137,7 @@ public partial struct PlayerSystemServer : ISystem
                 {
                     player.ValueRW.ConnectionId = source.ValueRO.Value;
                     player.ValueRW.ConnectionState = PlayerConnectionState.Connected;
-                    ChatSystemServer.SendChatMessage(commandBuffer, "Player connected");
+                    ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} reconnected", player.ValueRO.Nickname));
                 }
 
                 Entity response = commandBuffer.CreateEntity();
@@ -145,6 +149,7 @@ public partial struct PlayerSystemServer : ISystem
                 {
                     StatusCode = loggedIn ? SessionStatusCode.AlreadyLoggedIn : SessionStatusCode.OK,
                     Guid = guid,
+                    Nickname = player.ValueRO.Nickname,
                 });
                 break;
             }
@@ -160,6 +165,7 @@ public partial struct PlayerSystemServer : ISystem
                 {
                     StatusCode = SessionStatusCode.InvalidGuid,
                     Guid = guid,
+                    Nickname = default,
                 });
             }
         }
@@ -188,9 +194,11 @@ public partial struct PlayerSystemServer : ISystem
 
             if (!found)
             {
+                Debug.Log(string.Format("[Server] Client {0} disconnected", player.ValueRO.ConnectionId));
+                ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} disconnected", player.ValueRO.Nickname));
+
                 player.ValueRW.ConnectionId = -1;
                 player.ValueRW.ConnectionState = PlayerConnectionState.Disconnected;
-                ChatSystemServer.SendChatMessage(commandBuffer, "Player disconnected");
             }
             else
             {

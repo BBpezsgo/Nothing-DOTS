@@ -3,7 +3,9 @@
     <ui:VisualElement style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center;">
         <ui:GroupBox text="Network" class="panel">
             <ui:TextField name="input-host" value="127.0.0.1:7777" />
-            <ui:Label name="input-error" class="error" style="display: none;" />
+            <ui:Label name="input-error-host" class="error" style="display: none;" />
+            <ui:TextField name="input-nickname" value="Someone" max-length="16" />
+            <ui:Label name="input-error-nickname" class="error" style="display: none;" />
             <ui:Button text="Host" name="button-host" />
             <ui:Button text="Server" name="button-server" />
             <ui:Button text="Client" name="button-client" />

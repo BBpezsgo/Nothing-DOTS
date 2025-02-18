@@ -130,6 +130,8 @@ public class CameraControl : Singleton<CameraControl>
 
     void GetKeyboardMovement()
     {
+        if (UI.IsUIFocused) return;
+
         Vector3 inputValue = (
             movement.ReadValue<Vector2>().x * GetCameraRight() +
             movement.ReadValue<Vector2>().y * GetCameraForward());
@@ -145,6 +147,8 @@ public class CameraControl : Singleton<CameraControl>
 
     void GetKeyZoom()
     {
+        if (UI.IsUIFocused) return;
+
         float value = -keyZoom.ReadValue<Vector2>().y;
         if (Mathf.Abs(value) <= 0f) return;
 

@@ -1,5 +1,6 @@
 using System;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
@@ -17,6 +18,7 @@ public struct Player : IComponentData
     [GhostField] public PlayerConnectionState ConnectionState;
     [GhostField] public int Team;
     [GhostField] public float Resources;
+    [GhostField] public FixedString32Bytes Nickname;
     public bool IsCoreComputerSpawned;
     public Guid Guid;
 }

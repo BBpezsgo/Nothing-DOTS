@@ -9,9 +9,15 @@ public enum SessionStatusCode : byte
     InvalidGuid,
 }
 
+public static class SessionStatusCodeExtensions
+{
+    public static bool IsOk(this SessionStatusCode v) => v is SessionStatusCode.OK or SessionStatusCode.AlreadyLoggedIn;
+}
+
 [BurstCompile]
 public struct SessionResponseRpc : IRpcCommand
 {
     public required SessionStatusCode StatusCode;
     public required FixedBytes16 Guid;
+    public required FixedString32Bytes Nickname;
 }

@@ -15,6 +15,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     public static World ClientOrDefaultWorld => NetcodeBootstrap.ClientWorld ?? World.DefaultGameObjectInjectionWorld;
     public static World ServerOrDefaultWorld => NetcodeBootstrap.ServerWorld ?? World.DefaultGameObjectInjectionWorld;
 #if UNITY_EDITOR && EDITOR_DEBUG
+    [SerializeField] string DebugNickname = string.Empty;
     [SerializeField] ushort DebugPort = default;
     [SerializeField] bool AutoHost = false;
 #endif
@@ -24,41 +25,67 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     {
         UI.rootVisualElement.Q<Button>("button-host").clicked += () =>
         {
-            if (!HandleInput(out NetworkEndpoint endpoint)) return;
-            StartCoroutine(StartHostAsync(endpoint));
+            if (!HandleInput(out NetworkEndpoint endpoint, out var nickname)) return;
+            StartCoroutine(StartHostAsync(endpoint, nickname));
         };
         UI.rootVisualElement.Q<Button>("button-client").clicked += () =>
         {
-            if (!HandleInput(out NetworkEndpoint endpoint)) return;
-            StartCoroutine(StartClientAsync(endpoint));
+            if (!HandleInput(out NetworkEndpoint endpoint, out var nickname)) return;
+            StartCoroutine(StartClientAsync(endpoint, nickname));
         };
         UI.rootVisualElement.Q<Button>("button-server").clicked += () =>
         {
-            if (!HandleInput(out NetworkEndpoint endpoint)) return;
+            if (!HandleInput(out NetworkEndpoint endpoint, out _)) return;
             StartCoroutine(StartServerAsync(endpoint));
         };
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (AutoHost)
         {
-            StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
+            StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), DebugNickname));
         }
 #endif
     }
 
-    bool HandleInput([NotNullWhen(true)] out NetworkEndpoint endpoint)
+    bool HandleInput([NotNullWhen(true)] out NetworkEndpoint endpoint, out FixedString32Bytes nickname)
     {
-        string inputHost = UI.rootVisualElement.Q<TextField>("input-host").value;
-        Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error");
+        endpoint = default;
+        nickname = default;
+        bool ok = true;
+
+        Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error-host");
         inputErrorLabel.style.display = DisplayStyle.None;
-        if (!ParseInput(inputHost, out endpoint, out string? inputError))
+
+        string inputNickname = UI.rootVisualElement.Q<TextField>("input-nickname").value.Trim();
+
+        if (inputNickname.Length >= FixedString32Bytes.UTF8MaxLengthInBytes)
         {
-            inputErrorLabel.text = inputError;
+            inputErrorLabel.text = "Too long nickname";
             inputErrorLabel.style.display = DisplayStyle.Flex;
-            SetInputEnabled(true);
+            ok = false;
+        }
+        else if (string.IsNullOrEmpty(inputNickname))
+        {
+            inputErrorLabel.text = "Empty nickname";
+            inputErrorLabel.style.display = DisplayStyle.Flex;
+            ok = false;
+        }
+
+        string inputHost = UI.rootVisualElement.Q<TextField>("input-host").value;
+        if (!ParseInput(inputHost, out endpoint, out string? inputErrorHost))
+        {
+            inputErrorLabel.text = inputErrorHost;
+            inputErrorLabel.style.display = DisplayStyle.Flex;
+            ok = false;
+        }
+        if (ok)
+        {
+            return true;
+        }
+        else
+        {
             return false;
         }
-        return true;
     }
 
     bool ParseInput(
@@ -96,9 +123,10 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         UI.rootVisualElement.Q<Button>("button-client").SetEnabled(enabled);
         UI.rootVisualElement.Q<Button>("button-server").SetEnabled(enabled);
         UI.rootVisualElement.Q<TextField>("input-host").SetEnabled(enabled);
+        UI.rootVisualElement.Q<TextField>("input-nickname").SetEnabled(enabled);
     }
 
-    public IEnumerator StartHostAsync(NetworkEndpoint endpoint)
+    public IEnumerator StartHostAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname)
     {
         SetInputEnabled(false);
 
@@ -115,6 +143,10 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         yield return StartCoroutine(NetcodeBootstrap.CreateClient(endpoint));
 
+        Debug.Log($"Set nickname to {nickname}");
+        PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
+
+        SetInputEnabled(true);
         UI.gameObject.SetActive(false);
 
 #if UNITY_EDITOR && EDITOR_DEBUG
@@ -122,7 +154,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 #endif
     }
 
-    public IEnumerator StartClientAsync(NetworkEndpoint endpoint)
+    public IEnumerator StartClientAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname)
     {
         SetInputEnabled(false);
 
@@ -132,6 +164,10 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         World.DefaultGameObjectInjectionWorld ??= ClientWorld!;
 
+        Debug.Log($"Set nickname to {nickname}");
+        PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
+
+        SetInputEnabled(true);
         UI.gameObject.SetActive(false);
     }
 
@@ -145,6 +181,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
+        SetInputEnabled(true);
         UI.gameObject.SetActive(false);
     }
 

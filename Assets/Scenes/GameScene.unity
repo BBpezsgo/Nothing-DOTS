@@ -257,8 +257,7 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 991741176}
+  m_Children: []
   m_Father: {fileID: 1042564337}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1100,11 +1099,6 @@ MonoBehaviour:
   maxRotationSpeed: 0.2
   edgeTolerance: 0.05
   useScreenEdge: 0
---- !u!224 &991741176 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 919179586423965919, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-  m_PrefabInstance: {fileID: 242976528583324187}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1042564336
 GameObject:
   m_ObjectHideFlags: 0
@@ -1439,6 +1433,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67aa8a6a85ff402269afd1af31535113, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DebugNickname: Someone
   DebugPort: 4324
   AutoHost: 1
   UI: {fileID: 326294560}

@@ -11,6 +11,13 @@ public partial struct PlayerSystemClient : ISystem
     bool _requestSent;
     SessionStatusCode _sessionStatus;
     Guid _guid;
+    FixedString32Bytes _nickname;
+
+    public static ref PlayerSystemClient GetInstance(in WorldUnmanaged world)
+    {
+        SystemHandle handle = world.GetExistingUnmanagedSystem<PlayerSystemClient>();
+        return ref world.GetUnsafeSystemRef<PlayerSystemClient>(handle);
+    }
 
     void ISystem.OnCreate(ref SystemState state)
     {
@@ -34,12 +41,17 @@ public partial struct PlayerSystemClient : ISystem
             _sessionStatus = command.ValueRO.StatusCode;
             _guid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
 
-            Debug.Log(string.Format("[Client] Session status: {0}\n  guid: {1}", _sessionStatus, _guid));
+            if (command.ValueRO.StatusCode.IsOk())
+            {
+                _nickname = command.ValueRO.Nickname;
+            }
+
+            Debug.Log(string.Format("[Client] Session status: {0}\n  guid: {1}\n  nickname: {2}", _sessionStatus, _guid, _nickname));
         }
 
         if (connection.CurrentState != ConnectionState.State.Connected) return;
 
-        if (!TryGetLocalPlayer(ref state, out Player player))
+        if (!TryGetLocalPlayer(ref state, out _))
         {
             if (!_requestSent)
             {
@@ -51,7 +63,7 @@ public partial struct PlayerSystemClient : ISystem
 
                     commandBuffer.AddComponent<SessionRegisterRequestRpc>(response, new()
                     {
-
+                        Nickname = _nickname,
                     });
                 }
                 else
@@ -60,7 +72,7 @@ public partial struct PlayerSystemClient : ISystem
 
                     commandBuffer.AddComponent<SessionLoginRequestRpc>(response, new()
                     {
-                        Guid = Marshal.As<Guid, FixedBytes16>(_guid)
+                        Guid = Marshal.As<Guid, FixedBytes16>(_guid),
                     });
                 }
 
@@ -113,5 +125,10 @@ public partial struct PlayerSystemClient : ISystem
 
         player = default;
         return false;
+    }
+
+    public void SetNickname(FixedString32Bytes nickname)
+    {
+        _nickname = nickname;
     }
 }

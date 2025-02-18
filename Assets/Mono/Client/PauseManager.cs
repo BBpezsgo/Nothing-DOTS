@@ -74,7 +74,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
             Player player = players[i];
             if (player.ConnectionState == PlayerConnectionState.Disconnected) continue;
             TemplateContainer newItem = UI_ConnectionItem.Instantiate();
-            newItem.Q<Label>().text = player.ConnectionId.ToString();
+            newItem.Q<Label>().text = $"{player.Nickname} ({player.Team}) ({player.ConnectionId})";
             newItem.Q<Button>("button-kick").clicked += () =>
             {
                 ConnectionManager.KickClient(player.ConnectionId);
