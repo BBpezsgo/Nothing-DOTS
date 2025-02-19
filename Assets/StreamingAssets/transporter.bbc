@@ -128,11 +128,13 @@ while (1)
     {
         CommandSetSource* command = &_command as CommandSetSource*;
         _loadSource = command.position;
+        currentDestination = new float2;
     }
     else if (commandId == 5)
     {
         CommandSetDestination* command = &_command as CommandSetDestination*;
         _loadDestination = command.position;
+        currentDestination = new float2;
     }
 
     if (currentDestination.x != 0f &&

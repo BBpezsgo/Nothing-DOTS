@@ -187,7 +187,6 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
                 ResearchTime = research.ResearchTime,
             });
         }
-        refreshAt = Time.time + .1f;
 
         NativeList<FixedString64Bytes> avaliableResearches = ResearchSystemClient.GetInstance(entityManager.WorldUnmanaged).AvaliableResearches;
         for (int i = 0; i < avaliableResearches.Length; i++)
@@ -197,6 +196,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
             break;
         }
 
+        refreshAt = 0f;
         syncAt = Math.Min(syncAt, Time.time + 0.5f);
     }
 

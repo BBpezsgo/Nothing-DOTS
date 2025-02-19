@@ -1434,7 +1434,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   DebugNickname: Someone
-  DebugPort: 4324
+  DebugPort: 0
   AutoHost: 1
   UI: {fileID: 326294560}
 --- !u!1 &1605264179
