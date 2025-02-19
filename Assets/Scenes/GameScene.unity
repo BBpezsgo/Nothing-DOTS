@@ -2032,59 +2032,6 @@ MonoBehaviour:
   m_WorldSpaceSizeMode: 1
   m_WorldSpaceWidth: 1920
   m_WorldSpaceHeight: 1080
---- !u!1001 &242976528583324187
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 317339774}
-    m_Modifications:
-    - target: {fileID: 919179586423965919, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919179586423965919, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919179586423965919, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_AnchoredPosition.x
-      value: -154.55
-      objectReference: {fileID: 0}
-    - target: {fileID: 919179586423965919, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: 6.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 919179586423965919, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919179586423965919, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919179586423965919, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1189970674577687417, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_fontSizeBase
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1189970674577687417, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_ActiveFontFeatures.Array.size
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1532100098008992319, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
-      propertyPath: m_Name
-      value: WorldLabel
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: c671469ab3b638e1da7c8386127f76a1, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
