@@ -1240,34 +1240,6 @@ PrefabInstance:
       value: DebugLines
       objectReference: {fileID: 0}
     - target: {fileID: 7049668941679087302, guid: 2065f6b6a90242fcfbd7ff0c1c1cc4a1, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7049668941679087302, guid: 2065f6b6a90242fcfbd7ff0c1c1cc4a1, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7049668941679087302, guid: 2065f6b6a90242fcfbd7ff0c1c1cc4a1, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7049668941679087302, guid: 2065f6b6a90242fcfbd7ff0c1c1cc4a1, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7049668941679087302, guid: 2065f6b6a90242fcfbd7ff0c1c1cc4a1, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7049668941679087302, guid: 2065f6b6a90242fcfbd7ff0c1c1cc4a1, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7049668941679087302, guid: 2065f6b6a90242fcfbd7ff0c1c1cc4a1, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7049668941679087302, guid: 2065f6b6a90242fcfbd7ff0c1c1cc4a1, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
@@ -1296,6 +1268,7 @@ SceneRoots:
   - {fileID: 946123366}
   - {fileID: 550302904}
   - {fileID: 5394412542922302525}
+  - {fileID: 1797812549}
   - {fileID: 1342948022}
   - {fileID: 1673806253}
   - {fileID: 1732756523}
