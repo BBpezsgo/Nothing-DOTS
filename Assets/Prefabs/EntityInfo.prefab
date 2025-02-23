@@ -314,9 +314,9 @@ GameObject:
   - component: {fileID: 5987886432702328712}
   - component: {fileID: 6379206448439529779}
   - component: {fileID: 3828749623111196312}
-  - component: {fileID: -602314827018649831}
+  - component: {fileID: 8057528053309521340}
   m_Layer: 5
-  m_Name: Entity Info
+  m_Name: EntityInfo
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -364,7 +364,7 @@ CanvasGroup:
   m_Interactable: 0
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0
---- !u!114 &-602314827018649831
+--- !u!114 &8057528053309521340
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -373,7 +373,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2911045480595716485}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2aaa1857f03de6b4d8dbeaec712a2e9a, type: 3}
+  m_Script: {fileID: 11500000, guid: 99c2fa90d0db4414fa47f9a675eb9efd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   HealthBar:

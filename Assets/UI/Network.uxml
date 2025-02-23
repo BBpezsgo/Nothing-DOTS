@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" editor-extension-mode="False">
-    <Style src="project://database/Assets/UI/Style.uss?fileID=7433441132597879392&amp;guid=c19d5e621447bb3f490fbf7f9a8dc896&amp;type=3#Style" />
+    <Style src="project://database/Assets/UI/Style.uss" />
     <ui:VisualElement style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center;">
         <ui:GroupBox text="Network" class="panel">
             <ui:TextField name="input-host" value="127.0.0.1:7777" />

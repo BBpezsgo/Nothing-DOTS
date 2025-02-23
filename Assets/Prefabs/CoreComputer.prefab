@@ -64,7 +64,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: a836608d25dcddf48af23b962ff97ea2, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -150,7 +150,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: a836608d25dcddf48af23b962ff97ea2, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -236,7 +236,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: a836608d25dcddf48af23b962ff97ea2, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -268,16 +268,16 @@ GameObject:
   m_Component:
   - component: {fileID: 4770874833462928503}
   - component: {fileID: 6922726114561343363}
-  - component: {fileID: 8759358937750644433}
-  - component: {fileID: 797472274129671560}
   - component: {fileID: 7188189288283231509}
   - component: {fileID: 3492001475113358276}
-  - component: {fileID: 2672928419286724958}
-  - component: {fileID: 325780384830550996}
-  - component: {fileID: 3493384266593813292}
-  - component: {fileID: 4415455841400822177}
+  - component: {fileID: 7091838215443267308}
+  - component: {fileID: 1671370470239152067}
+  - component: {fileID: 6146905410944827582}
+  - component: {fileID: 2214842287112033513}
+  - component: {fileID: 999756694363969952}
+  - component: {fileID: 256273883768632085}
   m_Layer: 6
-  m_Name: Core Computer
+  m_Name: CoreComputer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -323,31 +323,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3, y: 3, z: 3.1}
   m_Center: {x: -0.20000005, y: 1.5, z: 0.25}
---- !u!114 &8759358937750644433
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4988928766331271095}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 51861ae5f12b232baa32ed1cb3b04781, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &797472274129671560
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4988928766331271095}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 01d794340c860793cb1717397ace9510, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  MaxHealth: 10
 --- !u!114 &7188189288283231509
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -374,9 +349,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DefaultGhostMode: 1
   SupportedGhostModes: 3
-  OptimizationMode: 0
+  OptimizationMode: 1
   Importance: 1
-  prefabId: f6ee76fdd5ec4b8c7a569a1cfc47dce2
+  prefabId: 0691a3b3c438f1b17982bff2e95e5d91
   HasOwner: 1
   SupportAutoCommandTarget: 1
   TrackInterpolationDelay: 0
@@ -384,7 +359,7 @@ MonoBehaviour:
   UsePreSerialization: 0
   RollbackPredictedSpawnedGhostState: 0
   RollbackPredictionOnStructuralChanges: 1
---- !u!114 &2672928419286724958
+--- !u!114 &7091838215443267308
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -393,14 +368,39 @@ MonoBehaviour:
   m_GameObject: {fileID: 4988928766331271095}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f95f5af16320ceb9799a42705a699acf, type: 3}
+  m_Script: {fileID: 11500000, guid: 7845019152c2d4c0480246bf83a8a8ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1671370470239152067
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4988928766331271095}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33b630a83bba518bbbb058fdc5cebd88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  MaxHealth: 10
+--- !u!114 &6146905410944827582
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4988928766331271095}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fe9faf46ca8a62068ad2e7ff17dd3d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   StatusLED: {fileID: 0}
   NetworkReceiveLED: {fileID: 0}
   NetworkSendLED: {fileID: 0}
   RadarLED: {fileID: 0}
---- !u!114 &325780384830550996
+--- !u!114 &2214842287112033513
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -409,10 +409,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 4988928766331271095}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d85a252348f7ff0fa68ba386787fbae, type: 3}
+  m_Script: {fileID: 11500000, guid: b01c82cbeeca65670a88bf67dd7797b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &3493384266593813292
+--- !u!114 &999756694363969952
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -421,12 +421,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 4988928766331271095}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c33d37567c9524679e960cd8ed6721c, type: 3}
+  m_Script: {fileID: 11500000, guid: 24745a737996ce25e87025886b781707, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   SightRange: 5
   UpdateOnlyOnMove: 1
---- !u!114 &4415455841400822177
+--- !u!114 &256273883768632085
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -435,7 +435,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4988928766331271095}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5dba12bcf39ab002bab0a28471c83cd8, type: 3}
+  m_Script: {fileID: 11500000, guid: d241d68fa95706019b796a390569e4bd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   IsStatic: 1
@@ -503,7 +503,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: a836608d25dcddf48af23b962ff97ea2, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

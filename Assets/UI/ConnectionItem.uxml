@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" editor-extension-mode="False">
-    <Style src="project://database/Assets/UI/Style.uss?fileID=7433441132597879392&amp;guid=c19d5e621447bb3f490fbf7f9a8dc896&amp;type=3#Style" />
+    <Style src="project://database/Assets/UI/Style.uss" />
     <ui:VisualElement class="panel" style="flex-grow: 1; flex-direction: row;">
         <ui:Label text="Client #1" style="margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; flex-grow: 1;" />
         <ui:Button text="Kick" enabled="false" name="button-kick" />
