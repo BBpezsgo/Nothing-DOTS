@@ -13,6 +13,7 @@ public partial struct ExtractorProcessorSystem : ISystem
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
+        state.RequireForUpdate<PrefabDatabase>();
         _random = Random.CreateFromIndex(420);
     }
 
