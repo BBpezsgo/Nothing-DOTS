@@ -49,8 +49,6 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
     bool HandleInput([NotNullWhen(true)] out NetworkEndpoint endpoint, out FixedString32Bytes nickname)
     {
-        endpoint = default;
-        nickname = default;
         bool ok = true;
 
         Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error-host");
@@ -70,6 +68,8 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
             inputErrorLabel.style.display = DisplayStyle.Flex;
             ok = false;
         }
+
+        nickname = inputNickname;
 
         string inputHost = UI.rootVisualElement.Q<TextField>("input-host").value;
         if (!ParseInput(inputHost, out endpoint, out string? inputErrorHost))

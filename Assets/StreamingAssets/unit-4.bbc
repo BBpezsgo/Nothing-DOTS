@@ -259,6 +259,8 @@ float2 currentDestination = new float2;
 u8 shouldShoot = false;
 f32 turretLastUseTime = 0f;
 
+PrintLine("Started ...");
+
 while (1)
 {
     Receive();

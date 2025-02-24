@@ -180,6 +180,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 78294157}
+  - component: {fileID: 78294158}
   m_Layer: 0
   m_Name: SetupManager
   m_TagString: Untagged
@@ -202,6 +203,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1001118307}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &78294158
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 78294156}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40cef477b954accd0ad7e900fc1e08d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SpawnExactUnits: 0
+  Units: []
+  Team: 1
+  GeneratedScript: unit-4.bbc
+  GeneratedCount: 5
+  Start: {x: -10, y: -10}
+  End: {x: 10, y: 10}
+  RandomUnitPrefab: {fileID: 2198220952844499968, guid: 96ae8eafcc6aa2ba89fcb75290eebf31,
+    type: 3}
+  RandomRotation: 1
+  RandomPosition: 1
 --- !u!1 &185226095
 GameObject:
   m_ObjectHideFlags: 0
@@ -719,6 +743,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 686ccd0fbc8b341e199ff744ffb0578e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DebugNickname: 
+  DebugPort: 0
+  AutoHost: 0
   UI: {fileID: 1516148612}
 --- !u!1 &1001118306
 GameObject:

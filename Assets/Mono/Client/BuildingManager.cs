@@ -129,7 +129,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.B))
+        if (Input.GetKeyDown(KeyCode.B) && !UI.IsUIFocused)
         {
             SelectedBuilding = default;
             if (BuildingHologram != null)

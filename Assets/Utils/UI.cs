@@ -70,7 +70,23 @@ public static class UIExtensions
 public static class UI
 {
     static ImmutableArray<UIDocument> _uiDocuments;
-    static ImmutableArray<UIDocument> UIDocuments => _uiDocuments.IsDefault ? (_uiDocuments = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToImmutableArray()) : _uiDocuments;
+    static float _uiDocumentsTime;
+
+    static ImmutableArray<UIDocument> UIDocuments
+    {
+        get
+        {
+            if (_uiDocuments.IsDefault || Time.time - _uiDocumentsTime > 10f)
+            {
+                _uiDocumentsTime = Time.time;
+                return _uiDocuments = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToImmutableArray();
+            }
+            else
+            {
+                return _uiDocuments;
+            }
+        }
+    }
 
     public static bool IsMouseHandled => IsUIFocused || IsPointerOverUI();
 

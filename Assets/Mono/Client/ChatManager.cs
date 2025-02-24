@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
@@ -36,14 +37,28 @@ public class ChatManager : Singleton<ChatManager>
     public void AppendChatMessageElement(int sender, string message)
     {
         var instance = _chatMessageTemplate.Instantiate();
-        instance.Q<Label>("label-message").text = $"<{sender}>: {message}";
 
         if (sender == 0)
         {
+            instance.Q<Label>("label-message").text = $"{message}";
             instance.AddToClassList("server-message");
         }
         else
         {
+            EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+            using EntityQuery playersQ = entityManager.CreateEntityQuery(typeof(Player));
+            using NativeArray<Player> players = playersQ.ToComponentDataArray<Player>(Allocator.Temp);
+
+            string senderDisplayName = sender.ToString();
+
+            for (int i = 0; i < players.Length; i++)
+            {
+                if (players[i].ConnectionId != sender) continue;
+                senderDisplayName = players[i].Nickname.ToString();
+                break;
+            }
+
+            instance.Q<Label>("label-message").text = $"<{senderDisplayName}> {message}";
             instance.AddToClassList("player-message");
         }
 

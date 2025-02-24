@@ -61,9 +61,10 @@ export u8 TargetAt(float2 target, float2* targetedPosition)
         }
     }
 
-    f32 diff = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
+    f32 diff1 = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
+    f32 diff2 = Abs(CombatTurret.TurretCurrentAngle - CombatTurret.TurretTargetAngle);
 
-    if (diff < 0.1f || TAU - diff < 0.1f)
+    if ((diff1 < 0.1f || TAU - diff1 < 0.1f) && (diff2 < 0.01f || TAU - diff2 < 0.01f))
     {
         return (u8)1;
     }
