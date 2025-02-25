@@ -2,7 +2,6 @@ using Unity.Entities;
 using Unity.Transforms;
 using UnityEngine;
 
-// [UpdateAfter(typeof(TransformSystemGroup))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial class EntityInfoUISystem : SystemBase
 {

@@ -13,17 +13,36 @@ public class ChatManager : Singleton<ChatManager>
 
     [NotNull] TextField? _inputMessage = default;
     [NotNull] Button? _buttonSend = default;
-    [NotNull] VisualElement? _chatMessagesContainer = default;
+    [NotNull] VisualElement? _containerMessages = default;
+    [NotNull] VisualElement? _containerInput = default;
 
     void Start()
     {
         _inputMessage = _ui.rootVisualElement.Q<TextField>("input-message");
         _buttonSend = _ui.rootVisualElement.Q<Button>("button-send");
-        _chatMessagesContainer = _ui.rootVisualElement.Q<VisualElement>("container-messages");
+        _containerMessages = _ui.rootVisualElement.Q<VisualElement>("container-messages");
+        _containerInput = _ui.rootVisualElement.Q<VisualElement>("container-input");
 
         _buttonSend.clicked += OnButtonSend;
 
-        _chatMessagesContainer.Clear();
+        _containerMessages.Clear();
+        _containerInput.style.display = DisplayStyle.None;
+    }
+
+    void Update()
+    {
+        if (!UIManager.Instance.AnyUIVisible && Input.GetKeyDown(KeyCode.Return))
+        {
+            if (_containerInput.style.display == DisplayStyle.None)
+            {
+                _containerInput.style.display = DisplayStyle.Flex;
+                _inputMessage.Focus();
+            }
+            else
+            {
+                _containerInput.style.display = DisplayStyle.None;
+            }
+        }
     }
 
     void OnButtonSend()
@@ -62,7 +81,7 @@ public class ChatManager : Singleton<ChatManager>
             instance.AddToClassList("player-message");
         }
 
-        _chatMessagesContainer.Add(instance);
+        _containerMessages.Add(instance);
     }
 
     void SendChatMessage(string message)

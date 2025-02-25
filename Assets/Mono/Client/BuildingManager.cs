@@ -9,7 +9,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
-public class BuildingManager : PrivateSingleton<BuildingManager>
+public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUICleanup
 {
     BufferedBuilding SelectedBuilding = default;
     [SerializeField, NotNull] GameObject? BuildingHologramPrefab = default;
@@ -43,7 +43,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         if (BuildingUI.gameObject.activeSelf)
         {
             IsValidPosition = false;
-            Hide();
+            UIManager.Instance.CloseUI(this);
         }
     }
 
@@ -109,27 +109,9 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
         { ApplyHologram(BuildingHologram, SelectedBuilding); }
     }
 
-    void Show()
-    {
-        BuildingUI.gameObject.SetActive(true);
-        RefreshUI();
-
-        syncAt = 0f;
-    }
-
-    void Hide()
-    {
-        SelectedBuilding = default;
-
-        BuildingUI.gameObject.SetActive(false);
-
-        if (BuildingHologram != null)
-        { BuildingHologram.SetActive(false); }
-    }
-
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.B) && !UI.IsUIFocused)
+        if (Input.GetKeyDown(KeyCode.B) && (!UI.IsUIFocused || BuildingUI.gameObject.activeSelf))
         {
             SelectedBuilding = default;
             if (BuildingHologram != null)
@@ -137,15 +119,22 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
 
             if (BuildingUI.gameObject.activeSelf)
             {
-                IsValidPosition = false;
-                Hide();
+                UIManager.Instance.CloseUI(this);
                 return;
             }
             else if (!UIManager.Instance.AnyUIVisible)
             {
-                IsValidPosition = false;
-                Show();
+                UIManager.Instance.OpenUI(this.BuildingUI)
+                    .Setup(this);
             }
+        }
+
+        if (!BuildingUI.gameObject.activeSelf) return;
+
+        if (UIManager.Instance.GrapESC())
+        {
+            UIManager.Instance.CloseUI(this);
+            return;
         }
 
         if (Mouse.current.rightButton.wasReleasedThisFrame &&
@@ -161,7 +150,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             }
             else
             {
-                Hide();
+                UIManager.Instance.CloseUI(this);
             }
             return;
         }
@@ -264,7 +253,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
                 }, ConnectionManager.ClientOrDefaultWorld);
             }
 
-            Hide();
+            UIManager.Instance.CloseUI(this);
             return;
         }
     }
@@ -341,5 +330,20 @@ public class BuildingManager : PrivateSingleton<BuildingManager>
             newHologramChild.transform.SetParent(to.transform);
             CopyModel(prefabChild, newHologramChild);
         }
+    }
+
+    public void Setup(UIDocument ui)
+    {
+        ui.gameObject.SetActive(true);
+        RefreshUI();
+        syncAt = 0f;
+    }
+
+    public void Cleanup(UIDocument ui)
+    {
+        SelectedBuilding = default;
+        ui.gameObject.SetActive(false);
+        if (BuildingHologram != null)
+        { BuildingHologram.SetActive(false); }
     }
 }

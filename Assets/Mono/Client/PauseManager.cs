@@ -19,7 +19,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
     void Update()
     {
-        if (UIManager.Instance.GrapESC())
+        if ((!UIManager.Instance.AnyUIVisible || !(ui == null || !ui.gameObject.activeSelf)) && UIManager.Instance.GrapESC())
         {
             if (ui == null || !ui.gameObject.activeSelf)
             {

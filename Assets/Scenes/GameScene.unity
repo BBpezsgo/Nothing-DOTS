@@ -1113,6 +1113,7 @@ MonoBehaviour:
   Factory: {fileID: 209967864}
   Facility: {fileID: 687260567}
   Pause: {fileID: 1015712119}
+  Buildings: {fileID: 42151244}
   _escPressed: 0
   _escGrabbed: 0
 --- !u!1 &1324360064

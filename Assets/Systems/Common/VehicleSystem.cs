@@ -3,8 +3,6 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-// [UpdateInGroup(typeof(TransformSystemGroup))]
-// [UpdateBefore(typeof(LocalToWorldSystem))]
 [BurstCompile]
 public partial struct VehicleSystem : ISystem
 {

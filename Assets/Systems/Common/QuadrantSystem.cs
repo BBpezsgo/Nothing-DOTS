@@ -89,7 +89,6 @@ public readonly struct Hit
 }
 
 [BurstCompile]
-// [UpdateInGroup(typeof(TransformSystemGroup))]
 public partial struct QuadrantSystem : ISystem
 {
     const int QuadrantCellSize = 20;
