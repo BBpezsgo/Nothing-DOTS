@@ -98,8 +98,7 @@ public static class UI
 
             foreach (UIDocument uiDocument in UIDocuments)
             {
-                if (uiDocument.rootVisualElement == null) continue;
-                if (uiDocument.rootVisualElement.focusController.focusedElement == null) continue;
+                if (uiDocument?.rootVisualElement?.focusController?.focusedElement == null) continue;
 
                 return true;
             }

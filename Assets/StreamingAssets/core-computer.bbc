@@ -75,6 +75,9 @@ void Receive()
     }
 }
 
+UILabel _uiLabel = new UILabel();
+_uiLabel.SetText(temp "ah");
+
 while (1)
 {
     Receive();

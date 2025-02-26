@@ -148,6 +148,11 @@ public partial class CompilerSystemServer : SystemBase
         { 44, "ldebug_label" },
 
         { 51, "dequeue_command" },
+
+        { 61, "gui_create" },
+        { 62, "gui_destroy" },
+        { 63, "gui_set_text" },
+        { 64, "gui_set_pos" },
     }.ToFrozenDictionary();
 
     [NotNull] public readonly SerializableDictionary<FileId, CompiledSource>? CompiledSources = new();
@@ -234,7 +239,8 @@ public partial class CompilerSystemServer : SystemBase
             if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
-        foreach (Diagnostic item in source.Diagnostics.Diagnostics)
+        // .ToArray() because the collection can be modified somewhere idk
+        foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
@@ -258,7 +264,8 @@ public partial class CompilerSystemServer : SystemBase
             });
         }
 
-        foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext)
+        // .ToArray() because the collection can be modified somewhere idk
+        foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}");
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}");

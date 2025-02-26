@@ -211,3 +211,33 @@ export inline void ldebug_label(float2 localPosition, string text)
 // 
 // export void debug(float3 position, i32 color) { }
 // export void ldebug(float3 localPosition, i32 color) { }
+
+[External("gui_create")] export int gui_create(int type);
+[External("gui_destroy")] export void gui_destroy(int id);
+[External("gui_set_text")] export void gui_set_text(int id, string text);
+[External("gui_set_pos")] export void gui_set_pos(int id, int x, int y);
+
+export struct UILabel
+{
+    private int _id;
+
+    export UILabel()
+    {
+        this._id = gui_create(1);
+    }
+
+    export void Destroy()
+    {
+        gui_destroy(this._id);
+    }
+
+    export void SetText(string text)
+    {
+        gui_set_text(this._id, text);
+    }
+
+    export void SetPos(int x, int y)
+    {
+        gui_set_pos(this._id, x, y);
+    }
+}

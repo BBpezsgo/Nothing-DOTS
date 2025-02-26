@@ -51,9 +51,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required RefRO<LocalTransform> LocalTransform;
         public required NativeList<BufferedLine>.ParallelWriter DebugLines;
         public required NativeList<BufferedWorldLabel>.ParallelWriter WorldLabels;
+        public required NativeList<BufferedUIElement>.ParallelWriter UIElements;
         public required int* Crash;
         public required Signal* Signal;
         public required Registers* Registers;
+        public required RefRO<UnitTeam> Team;
 
         public void Push(scoped ReadOnlySpan<byte> data)
         {
@@ -94,12 +96,23 @@ unsafe partial struct ProcessorSystemServer : ISystem
             return data;
         }
 
-        public void DoCrash(scoped ReadOnlySpan<char> message)
+        public void DoCrash(in FixedString32Bytes message)
         {
-            Push(message);
+            Push(new ReadOnlySpan<char>(message.GetUnsafePtr(), message.Length));
             *Crash = Registers->StackPointer;
             *Signal = LanguageCore.Runtime.Signal.UserCrash;
             return;
+        }
+
+        public readonly void GetString(int pointer, out FixedString32Bytes @string)
+        {
+            @string = new();
+            for (int i = pointer; i < pointer + 32; i += sizeof(char))
+            {
+                char c = *(char*)((byte*)Memory + i);
+                if (c == '\0') break;
+                @string.Append(c);
+            }
         }
     }
 
@@ -516,7 +529,109 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     #endregion
 
-    public const int ExternalFunctionCount = 22;
+    [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+    static void _gui_create(nint _scope, nint arguments, nint returnValue)
+    {
+        int type = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+        FunctionScope* scope = (FunctionScope*)_scope;
+
+        if (type <= (int)BufferedUIElementType.MIN ||
+            type >= (int)BufferedUIElementType.MAX)
+        {
+            scope->DoCrash("Invalid UI type");
+            return;
+        }
+
+        int id = 1;
+        while (true)
+        {
+            bool exists = false;
+
+            for (int i = 0; i < scope->UIElements.ListData->Length; i++)
+            {
+                if ((*scope->UIElements.ListData)[i].Id == id)
+                {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (!exists) break;
+            id++;
+        }
+
+        returnValue.Set(id);
+
+        scope->UIElements.AddNoResize(new BufferedUIElement()
+        {
+            Type = (BufferedUIElementType)type,
+            Id = id,
+            Position = new int2(16, 16),
+            Size = new int2(128, 128),
+            Color = new float3(1f, 1f, 1f),
+            Text = new FixedString32Bytes(),
+        });
+    }
+
+    [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+    static void _gui_destroy(nint _scope, nint arguments, nint returnValue)
+    {
+        int id = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+        FunctionScope* scope = (FunctionScope*)_scope;
+
+        for (int i = 0; i < scope->UIElements.ListData->Length; i++)
+        {
+            if ((*scope->UIElements.ListData)[i].Id == id)
+            {
+                (*scope->UIElements.ListData)[i] = default;
+                break;
+            }
+        }
+    }
+
+    [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+    static void _gui_set_text(nint _scope, nint arguments, nint returnValue)
+    {
+        (int id, int stringPtr) = ExternalFunctionGenerator.TakeParameters<int, int>(arguments);
+        FunctionScope* scope = (FunctionScope*)_scope;
+
+        scope->GetString(stringPtr, out FixedString32Bytes @string);
+
+        for (int i = 0; i < scope->UIElements.ListData->Length; i++)
+        {
+            if ((*scope->UIElements.ListData)[i].Id == id)
+            {
+                (*scope->UIElements.ListData)[i] = (*scope->UIElements.ListData)[i] with
+                {
+                    Text = @string,
+                };
+            }
+        }
+    }
+
+    [BurstCompile]
+    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+    static void _gui_set_pos(nint _scope, nint arguments, nint returnValue)
+    {
+        (int id, int2 pos) = ExternalFunctionGenerator.TakeParameters<int, int2>(arguments);
+        FunctionScope* scope = (FunctionScope*)_scope;
+
+        for (int i = 0; i < scope->UIElements.ListData->Length; i++)
+        {
+            if ((*scope->UIElements.ListData)[i].Id == id)
+            {
+                (*scope->UIElements.ListData)[i] = (*scope->UIElements.ListData)[i] with
+                {
+                    Position = pos,
+                };
+            }
+        }
+    }
+
+    public const int ExternalFunctionCount = 26;
 
     [BurstCompile]
     public static void GenerateExternalFunctions(ExternalFunctionScopedSync* buffer)
@@ -552,12 +667,18 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_dequeue_command).Value, 51, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
 
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_create).Value, 61, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_destroy).Value, 62, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_set_text).Value, 63, ExternalFunctionGenerator.SizeOf<int, int>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_set_pos).Value, 64, ExternalFunctionGenerator.SizeOf<int, int2>(), 0, default);
+
         Unity.Assertions.Assert.AreEqual(i, ExternalFunctionCount);
     }
 
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     NativeList<BufferedLine> debugLines;
     NativeList<BufferedWorldLabel> worldLabels;
+    NativeList<BufferedUIElement> uiElements;
 
     void ISystem.OnCreate(ref SystemState state)
     {
@@ -567,6 +688,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         GenerateExternalFunctions((ExternalFunctionScopedSync*)scopedExternalFunctions.GetUnsafePtr());
         debugLines = new NativeList<BufferedLine>(256, Allocator.Persistent);
         worldLabels = new NativeList<BufferedWorldLabel>(256, Allocator.Persistent);
+        uiElements = new NativeList<BufferedUIElement>(256, Allocator.Persistent);
     }
 
     [BurstCompile]
@@ -604,26 +726,31 @@ unsafe partial struct ProcessorSystemServer : ISystem
         }
         worldLabels.Clear();
 
+        SystemAPI.GetSingletonBuffer<BufferedUIElement>().CopyFrom(uiElements.AsArray());
+
         new ProcessorJob()
         {
             scopedExternalFunctions = scopedExternalFunctions,
             debugLines = debugLines.AsParallelWriter(),
             worldLabels = worldLabels.AsParallelWriter(),
+            uiElements = uiElements.AsParallelWriter(),
         }.ScheduleParallel();
     }
 }
 
 [BurstCompile(CompileSynchronously = true)]
-[WithAll(typeof(Processor), typeof(LocalToWorld), typeof(LocalTransform))]
+[WithAll(typeof(Processor), typeof(UnitTeam), typeof(LocalToWorld), typeof(LocalTransform))]
 partial struct ProcessorJob : IJobEntity
 {
     [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     public NativeList<BufferedLine>.ParallelWriter debugLines;
     public NativeList<BufferedWorldLabel>.ParallelWriter worldLabels;
+    public NativeList<BufferedUIElement>.ParallelWriter uiElements;
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(
         RefRW<Processor> processor,
+        RefRO<UnitTeam> team,
         RefRO<LocalToWorld> worldTransform,
         RefRO<LocalTransform> localTransform,
         DynamicBuffer<BufferedInstruction> code,
@@ -648,9 +775,7 @@ partial struct ProcessorJob : IJobEntity
             scopedExternalFunctions[i] = this.scopedExternalFunctions[i];
         }
 
-        // Buffer.MemoryCopy(this.scopedExternalFunctions.GetUnsafeReadOnlyPtr(), scopedExternalFunctions, ProcessorSystemServer.ExternalFunctionCount * sizeof(ExternalFunctionScopedSync), ProcessorSystemServer.ExternalFunctionCount * sizeof(ExternalFunctionScopedSync));
-
-        ProcessorSystemServer.FunctionScope transmissionScope = new()
+        ProcessorSystemServer.FunctionScope scope = new()
         {
             Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
             Processor = processor,
@@ -658,12 +783,14 @@ partial struct ProcessorJob : IJobEntity
             LocalTransform = localTransform,
             DebugLines = debugLines,
             WorldLabels = worldLabels,
+            UIElements = uiElements,
+            Team = team,
             Crash = null,
             Registers = null,
             Signal = null,
         };
         for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
-        { scopedExternalFunctions[i].Scope = (nint)(void*)&transmissionScope; }
+        { scopedExternalFunctions[i].Scope = (nint)(void*)&scope; }
 
         ProcessorState processorState = new(
             ProcessorSystemServer.BytecodeInterpreterSettings,
@@ -679,9 +806,9 @@ partial struct ProcessorJob : IJobEntity
             Crash = processor.ValueRO.Crash,
         };
 
-        transmissionScope.Crash = &processorState.Crash;
-        transmissionScope.Signal = &processorState.Signal;
-        transmissionScope.Registers = &processorState.Registers;
+        scope.Crash = &processorState.Crash;
+        scope.Signal = &processorState.Signal;
+        scope.Registers = &processorState.Registers;
 
         for (int i = 0; i < ProcessorSystemServer.CyclesPerTick; i++)
         {
