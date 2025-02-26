@@ -439,9 +439,7 @@ public partial class CompilerSystemServer : SystemBase
                     BasePath = null,
                 },
                 PreprocessorVariables.Normal,
-                null,
                 source.Diagnostics,
-                null,
                 FileParser,
                 userDefinedAttributes: attributes
             );
