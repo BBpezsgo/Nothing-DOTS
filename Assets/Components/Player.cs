@@ -11,6 +11,13 @@ public enum PlayerConnectionState : byte
     Disconnected,
 }
 
+public enum GameOutcome
+{
+    None,
+    Won,
+    Lost,
+}
+
 [BurstCompile]
 public struct Player : IComponentData
 {
@@ -19,6 +26,7 @@ public struct Player : IComponentData
     [GhostField] public int Team;
     [GhostField] public float Resources;
     [GhostField] public FixedString32Bytes Nickname;
+    [GhostField] public GameOutcome Outcome;
     public bool IsCoreComputerSpawned;
     public Guid Guid;
 }
