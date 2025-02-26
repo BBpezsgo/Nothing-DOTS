@@ -234,7 +234,7 @@ public partial class CompilerSystemServer : SystemBase
             if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
-        foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
+        foreach (Diagnostic item in source.Diagnostics.Diagnostics)
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
@@ -258,7 +258,7 @@ public partial class CompilerSystemServer : SystemBase
             });
         }
 
-        foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
+        foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext)
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}");
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}");
