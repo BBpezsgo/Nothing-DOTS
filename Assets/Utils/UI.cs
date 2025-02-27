@@ -69,17 +69,17 @@ public static class UIExtensions
 
 public static class UI
 {
-    static ImmutableArray<UIDocument> _uiDocuments;
+    static ImmutableArray<UIDocument?> _uiDocuments;
     static float _uiDocumentsTime;
 
-    static ImmutableArray<UIDocument> UIDocuments
+    static ImmutableArray<UIDocument?> UIDocuments
     {
         get
         {
             if (_uiDocuments.IsDefault || Time.time - _uiDocumentsTime > 10f)
             {
                 _uiDocumentsTime = Time.time;
-                return _uiDocuments = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToImmutableArray();
+                return _uiDocuments = UnityEngine.Object.FindObjectsByType<UIDocument?>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToImmutableArray();
             }
             else
             {
@@ -96,9 +96,9 @@ public static class UI
         {
             if (GUIUtility.hotControl != 0) return true;
 
-            foreach (UIDocument uiDocument in UIDocuments)
+            foreach (UIDocument? uiDocument in UIDocuments)
             {
-                if (uiDocument?.rootVisualElement?.focusController?.focusedElement == null) continue;
+                if (uiDocument == null || uiDocument.rootVisualElement?.focusController?.focusedElement == null) continue;
 
                 return true;
             }
@@ -113,9 +113,9 @@ public static class UI
     public static bool IsPointerOverUI(Vector2 screenPos)
     {
         Vector2 pointerUiPos = new(screenPos.x, Screen.height - screenPos.y);
-        foreach (UIDocument uiDocument in UIDocuments)
+        foreach (UIDocument? uiDocument in UIDocuments)
         {
-            if (uiDocument.rootVisualElement == null) continue;
+            if (uiDocument == null || uiDocument.rootVisualElement?.panel == null) continue;
             _picked.Clear();
             uiDocument.rootVisualElement.panel.PickAll(pointerUiPos, _picked);
             foreach (VisualElement element in _picked)
