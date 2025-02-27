@@ -380,7 +380,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        scope->DebugLines.AddNoResize(new(
+        if (scope->DebugLines.ListData->Length + 1 < scope->DebugLines.ListData->Capacity) scope->DebugLines.AddNoResize(new(
             scope->Team.ValueRO.Team,
             new BufferedLine(new float3x2(
                 scope->WorldTransform.ValueRO.Position,
@@ -416,7 +416,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         RefRO<LocalTransform> transform = scope->LocalTransform;
         float3 transformed = transform.ValueRO.TransformPoint(position);
 
-        scope->DebugLines.AddNoResize(new(
+        if (scope->DebugLines.ListData->Length + 1 < scope->DebugLines.ListData->Capacity) scope->DebugLines.AddNoResize(new(
             scope->Team.ValueRO.Team,
             new BufferedLine(new float3x2(
                 scope->WorldTransform.ValueRO.Position,
@@ -457,7 +457,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
             text.Append(c);
         }
 
-        scope->WorldLabels.AddNoResize(new(
+        if (scope->WorldLabels.ListData->Length + 1 < scope->WorldLabels.ListData->Capacity) scope->WorldLabels.AddNoResize(new(
             scope->Team.ValueRO.Team,
             new BufferedWorldLabel(position, 0b111, text, MonoTime.Now + DebugLineDuration)
         ));
@@ -485,7 +485,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         float3 transformed = scope->LocalTransform.ValueRO.TransformPoint(position);
 
-        scope->WorldLabels.AddNoResize(new(
+        if (scope->WorldLabels.ListData->Length + 1 < scope->WorldLabels.ListData->Capacity) scope->WorldLabels.AddNoResize(new(
             scope->Team.ValueRO.Team,
             new BufferedWorldLabel(transformed, 0b111, text, MonoTime.Now + DebugLineDuration)
         ));

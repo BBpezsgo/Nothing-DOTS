@@ -16,17 +16,13 @@ public class GameOutcomeManager : MonoBehaviour
         if (now < _refreshAt) return;
         _refreshAt = now + 1f;
 
-        if (PlayerManager.TryGetLocalPlayer(out Player localPlayer))
+        if (!PlayerManager.TryGetLocalPlayer(out Player localPlayer)) return;
+
+        if (_ui.enabled = localPlayer.Outcome != GameOutcome.None && !UIManager.Instance.AnyUIVisible)
         {
-            if (localPlayer.Outcome != GameOutcome.None)
-            {
-                if (_ui.enabled = !UIManager.Instance.AnyUIVisible)
-                {
-                    _labelOutcome = _ui.rootVisualElement.Q<Label>("label-outcome");
-                    _labelOutcome.text = localPlayer.Outcome.ToString();
-                    _refreshAt = now + 0.1f;
-                }
-            }
+            _labelOutcome = _ui.rootVisualElement.Q<Label>("label-outcome");
+            _labelOutcome.text = localPlayer.Outcome.ToString();
+            _refreshAt = now + 0.1f;
         }
     }
 }

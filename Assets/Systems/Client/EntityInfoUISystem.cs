@@ -26,12 +26,14 @@ public partial class EntityInfoUISystem : SystemBase
             }
         }
 
-        foreach (var (transform, entity) in
-            SystemAPI.Query<RefRO<LocalTransform>>()
+        foreach (var (transform, selectable, entity) in
+            SystemAPI.Query<RefRO<LocalTransform>, RefRO<SelectableUnit>>()
             .WithNone<EntityInfoUIReference>()
             .WithAll<EntityWithInfoUI>()
             .WithEntityAccess())
         {
+            if (selectable.ValueRO.Status == SelectionStatus.None) continue;
+
 #if UNITY_EDITOR && ENABLE_PROFILER
             using Unity.Profiling.ProfilerMarker.AutoScope _ = __instantiateUI.Auto();
 #endif
@@ -44,6 +46,8 @@ public partial class EntityInfoUISystem : SystemBase
             {
                 Value = newUi.GetComponent<EntityInfoUI>(),
             });
+
+            break;
         }
 
         foreach (var (uiRef, damageable) in

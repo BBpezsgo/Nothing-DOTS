@@ -15,9 +15,12 @@ partial struct GameOutcomeSystemServer : ISystem
         _refreshAt = now + 1d;
 
         int nonlosers = 0;
+        int losers = 0;
         foreach (var player in
             SystemAPI.Query<RefRW<Player>>())
         {
+            if (player.ValueRO.ConnectionState == PlayerConnectionState.Server) continue;
+
             bool ok = false;
             foreach (var team in
                 SystemAPI.Query<RefRO<UnitTeam>>()
@@ -32,6 +35,7 @@ partial struct GameOutcomeSystemServer : ISystem
             if (!ok)
             {
                 player.ValueRW.Outcome = GameOutcome.Lost;
+                losers++;
             }
             else
             {
@@ -39,7 +43,7 @@ partial struct GameOutcomeSystemServer : ISystem
             }
         }
 
-        if (nonlosers == 1)
+        if (nonlosers == 1 && losers > 0)
         {
             foreach (var player in
                 SystemAPI.Query<RefRW<Player>>())
