@@ -392,7 +392,11 @@ public unsafe partial struct CollisionSystem : ISystem
                     }
                 }
 
-                localTransformQ.GetRefRW(a->Entity).ValueRW.Position += a->ResolvedOffset;
+                var transform = localTransformQ.GetRefRWOptional(a->Entity);
+                if (transform.IsValid)
+                {
+                    transform.ValueRW.Position += a->ResolvedOffset;
+                }
                 a->ResolvedOffset = default;
             }
         }
