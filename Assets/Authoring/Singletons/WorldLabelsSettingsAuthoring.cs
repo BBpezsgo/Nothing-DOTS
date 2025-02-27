@@ -2,21 +2,20 @@ using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/World Labels")]
-public class WorldLabelsAuthoring : MonoBehaviour
+[AddComponentMenu("Authoring/World Label Settings")]
+public class WorldLabelSettingsAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] GameObject? _prefab = default;
 
-    class Baker : Baker<WorldLabelsAuthoring>
+    class Baker : Baker<WorldLabelSettingsAuthoring>
     {
-        public override void Bake(WorldLabelsAuthoring authoring)
+        public override void Bake(WorldLabelSettingsAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponentObject<WorldLabels>(entity, new()
+            AddComponentObject<WorldLabelSettings>(entity, new()
             {
                 Prefab = authoring._prefab,
             });
-            AddBuffer<BufferedWorldLabel>(entity);
         }
     }
 }

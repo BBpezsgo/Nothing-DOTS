@@ -3,6 +3,11 @@ using Unity.Entities;
 
 public static class DynamicBufferExtensions
 {
+    public static void Set<T>(this DynamicBuffer<T> buffer, int index, in T value) where T : unmanaged
+    {
+        buffer.AsNativeArray().AsSpan()[index] = value;
+    }
+
     public static TSource FirstOrDefault<TSource, TClosure>(
         this DynamicBuffer<TSource> source,
         Func<TSource, TClosure, bool> predicate,

@@ -9,9 +9,9 @@ public class ProcessorGUIManager : MonoBehaviour
     void OnGUI()
     {
         if (ConnectionManager.ClientOrDefaultWorld == null) return;
+        if (!PlayerManager.TryGetLocalPlayer(ConnectionManager.ClientOrDefaultWorld.EntityManager, out Entity player)) return;
 
-        using EntityQuery uiElementsQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(UIElements), typeof(BufferedUIElement));
-        if (!uiElementsQ.TryGetSingletonBuffer(out DynamicBuffer<BufferedUIElement> uiElements, true)) return;
+        DynamicBuffer<BufferedUIElement> uiElements = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetBuffer<BufferedUIElement>(player, true);
 
         if (_1px == null)
         {

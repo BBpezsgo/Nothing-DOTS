@@ -9,7 +9,6 @@ public class DebugLinesAuthoring : MonoBehaviour
         public override void Bake(DebugLinesAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent<DebugLines>(entity);
             AddBuffer<BufferedLine>(entity);
         }
     }

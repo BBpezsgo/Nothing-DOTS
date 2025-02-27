@@ -9,7 +9,6 @@ public class UIElementsAuthoring : MonoBehaviour
         public override void Bake(UIElementsAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent<UIElements>(entity);
             AddBuffer<BufferedUIElement>(entity);
         }
     }

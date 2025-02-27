@@ -13,8 +13,21 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Profiling;
 using Unity.Transforms;
+
+struct OwnedData<T>
+{
+    public readonly int Owner;
+    public T Value;
+
+    public OwnedData(int owner, T value)
+    {
+        Owner = owner;
+        Value = value;
+    }
+}
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -49,9 +62,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required void* Memory;
         public required RefRO<LocalToWorld> WorldTransform;
         public required RefRO<LocalTransform> LocalTransform;
-        public required NativeList<BufferedLine>.ParallelWriter DebugLines;
-        public required NativeList<BufferedWorldLabel>.ParallelWriter WorldLabels;
-        public required NativeList<BufferedUIElement>.ParallelWriter UIElements;
+        public required NativeList<OwnedData<BufferedLine>>.ParallelWriter DebugLines;
+        public required NativeList<OwnedData<BufferedWorldLabel>>.ParallelWriter WorldLabels;
+        public required NativeList<OwnedData<BufferedUIElement>>.ParallelWriter UIElements;
         public required int* Crash;
         public required Signal* Signal;
         public required Registers* Registers;
@@ -367,10 +380,13 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
-            scope->WorldTransform.ValueRO.Position,
-            position
-        ), color, MonoTime.Now + DebugLineDuration));
+        scope->DebugLines.AddNoResize(new(
+            scope->Team.ValueRO.Team,
+            new BufferedLine(new float3x2(
+                scope->WorldTransform.ValueRO.Position,
+                position
+            ), color, MonoTime.Now + DebugLineDuration)
+        ));
 
 #if DEBUG_LINES
         Debug.DrawLine(
@@ -400,10 +416,13 @@ unsafe partial struct ProcessorSystemServer : ISystem
         RefRO<LocalTransform> transform = scope->LocalTransform;
         float3 transformed = transform.ValueRO.TransformPoint(position);
 
-        scope->DebugLines.AddNoResize(new BufferedLine(new float3x2(
-            scope->WorldTransform.ValueRO.Position,
-            transformed
-        ), color, MonoTime.Now + DebugLineDuration));
+        scope->DebugLines.AddNoResize(new(
+            scope->Team.ValueRO.Team,
+            new BufferedLine(new float3x2(
+                scope->WorldTransform.ValueRO.Position,
+                transformed
+            ), color, MonoTime.Now + DebugLineDuration)
+        ));
 
 #if DEBUG_LINES
         Debug.DrawLine(
@@ -438,7 +457,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
             text.Append(c);
         }
 
-        scope->WorldLabels.AddNoResize(new BufferedWorldLabel(position, 0b111, text, MonoTime.Now + DebugLineDuration));
+        scope->WorldLabels.AddNoResize(new(
+            scope->Team.ValueRO.Team,
+            new BufferedWorldLabel(position, 0b111, text, MonoTime.Now + DebugLineDuration)
+        ));
     }
 
     [BurstCompile]
@@ -463,7 +485,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         float3 transformed = scope->LocalTransform.ValueRO.TransformPoint(position);
 
-        scope->WorldLabels.AddNoResize(new BufferedWorldLabel(transformed, 0b111, text, MonoTime.Now + DebugLineDuration));
+        scope->WorldLabels.AddNoResize(new(
+            scope->Team.ValueRO.Team,
+            new BufferedWorldLabel(transformed, 0b111, text, MonoTime.Now + DebugLineDuration)
+        ));
     }
 
     [BurstCompile]
@@ -550,7 +575,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
             for (int i = 0; i < scope->UIElements.ListData->Length; i++)
             {
-                if ((*scope->UIElements.ListData)[i].Id == id)
+                if ((*scope->UIElements.ListData)[i].Value.Id == id)
                 {
                     exists = true;
                     break;
@@ -563,15 +588,18 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         returnValue.Set(id);
 
-        scope->UIElements.AddNoResize(new BufferedUIElement()
-        {
-            Type = (BufferedUIElementType)type,
-            Id = id,
-            Position = new int2(16, 16),
-            Size = new int2(128, 128),
-            Color = new float3(1f, 1f, 1f),
-            Text = new FixedString32Bytes(),
-        });
+        scope->UIElements.AddNoResize(new(
+            scope->Team.ValueRO.Team,
+            new BufferedUIElement()
+            {
+                Type = (BufferedUIElementType)type,
+                Id = id,
+                Position = new int2(16, 16),
+                Size = new int2(128, 128),
+                Color = new float3(1f, 1f, 1f),
+                Text = new FixedString32Bytes(),
+            }
+        ));
     }
 
     [BurstCompile]
@@ -583,7 +611,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         for (int i = 0; i < scope->UIElements.ListData->Length; i++)
         {
-            if ((*scope->UIElements.ListData)[i].Id == id)
+            if ((*scope->UIElements.ListData)[i].Value.Id == id)
             {
                 (*scope->UIElements.ListData)[i] = default;
                 break;
@@ -602,12 +630,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         for (int i = 0; i < scope->UIElements.ListData->Length; i++)
         {
-            if ((*scope->UIElements.ListData)[i].Id == id)
+            ref var item = ref (*scope->UIElements.ListData).Ptr[i];
+            if (item.Value.Id == id)
             {
-                (*scope->UIElements.ListData)[i] = (*scope->UIElements.ListData)[i] with
-                {
-                    Text = @string,
-                };
+                item.Value.Text = @string;
             }
         }
     }
@@ -621,12 +647,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         for (int i = 0; i < scope->UIElements.ListData->Length; i++)
         {
-            if ((*scope->UIElements.ListData)[i].Id == id)
+            ref var item = ref (*scope->UIElements.ListData).Ptr[i];
+            if (item.Value.Id == id)
             {
-                (*scope->UIElements.ListData)[i] = (*scope->UIElements.ListData)[i] with
-                {
-                    Position = pos,
-                };
+                item.Value.Position = pos;
             }
         }
     }
@@ -676,57 +700,69 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
-    NativeList<BufferedLine> debugLines;
-    NativeList<BufferedWorldLabel> worldLabels;
-    NativeList<BufferedUIElement> uiElements;
+    NativeList<OwnedData<BufferedLine>> debugLines;
+    NativeList<OwnedData<BufferedWorldLabel>> worldLabels;
+    NativeList<OwnedData<BufferedUIElement>> uiElements;
 
     void ISystem.OnCreate(ref SystemState state)
     {
-        state.RequireForUpdate<DebugLines>();
-        state.RequireForUpdate<WorldLabels>();
+        state.RequireForUpdate<WorldLabelSettings>();
         scopedExternalFunctions = new NativeArray<ExternalFunctionScopedSync>(ExternalFunctionCount, Allocator.Persistent);
         GenerateExternalFunctions((ExternalFunctionScopedSync*)scopedExternalFunctions.GetUnsafePtr());
-        debugLines = new NativeList<BufferedLine>(256, Allocator.Persistent);
-        worldLabels = new NativeList<BufferedWorldLabel>(256, Allocator.Persistent);
-        uiElements = new NativeList<BufferedUIElement>(256, Allocator.Persistent);
+        debugLines = new(256, Allocator.Persistent);
+        worldLabels = new(256, Allocator.Persistent);
+        uiElements = new(256, Allocator.Persistent);
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        DynamicBuffer<BufferedLine> lines = SystemAPI.GetSingletonBuffer<BufferedLine>();
-        for (int i = 0; i < debugLines.Length; i++)
+        foreach (var (player, lines, labels, _uiElements) in
+            SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>, DynamicBuffer<BufferedWorldLabel>, DynamicBuffer<BufferedUIElement>>())
         {
-            for (int j = 0; j < lines.Length; j++)
+            for (int i = 0; i < debugLines.Length; i++)
             {
-                if (debugLines[i].Value.Equals(lines[j].Value))
+                if (debugLines[i].Owner != player.ValueRO.Team) continue;
+
+                for (int j = 0; j < lines.Length; j++)
                 {
-                    lines[j] = debugLines[i];
-                    goto next;
+                    if (debugLines[i].Value.Value.Equals(lines[j].Value))
+                    {
+                        lines.Set(j, debugLines[i].Value);
+                        goto next;
+                    }
                 }
+                lines.Add(debugLines[i].Value);
+            next:;
             }
-            lines.Add(debugLines[i]);
-        next:;
+
+            for (int i = 0; i < worldLabels.Length; i++)
+            {
+                if (worldLabels[i].Owner != player.ValueRO.Team) continue;
+
+                for (int j = 0; j < labels.Length; j++)
+                {
+                    if (worldLabels[i].Value.Position.Equals(labels[j].Position))
+                    {
+                        labels.Set(j, worldLabels[i].Value);
+                        goto next;
+                    }
+                }
+                labels.Add(worldLabels[i].Value);
+            next:;
+            }
+
+            _uiElements.Clear();
+
+            for (int i = 0; i < uiElements.Length; i++)
+            {
+                if (uiElements[i].Owner != player.ValueRO.Team) continue;
+                _uiElements.Add(uiElements[i].Value);
+            }
         }
+
         debugLines.Clear();
-
-        DynamicBuffer<BufferedWorldLabel> labels = SystemAPI.GetSingletonBuffer<BufferedWorldLabel>();
-        for (int i = 0; i < worldLabels.Length; i++)
-        {
-            for (int j = 0; j < labels.Length; j++)
-            {
-                if (worldLabels[i].Position.Equals(labels[j].Position))
-                {
-                    labels[j] = worldLabels[i];
-                    goto next;
-                }
-            }
-            labels.Add(worldLabels[i]);
-        next:;
-        }
         worldLabels.Clear();
-
-        SystemAPI.GetSingletonBuffer<BufferedUIElement>().CopyFrom(uiElements.AsArray());
 
         new ProcessorJob()
         {
@@ -743,9 +779,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
 partial struct ProcessorJob : IJobEntity
 {
     [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
-    public NativeList<BufferedLine>.ParallelWriter debugLines;
-    public NativeList<BufferedWorldLabel>.ParallelWriter worldLabels;
-    public NativeList<BufferedUIElement>.ParallelWriter uiElements;
+    public NativeList<OwnedData<BufferedLine>>.ParallelWriter debugLines;
+    public NativeList<OwnedData<BufferedWorldLabel>>.ParallelWriter worldLabels;
+    public NativeList<OwnedData<BufferedUIElement>>.ParallelWriter uiElements;
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(

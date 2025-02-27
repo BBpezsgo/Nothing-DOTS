@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
+using Unity.NetCode;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial class DebugLinesClientSystem : SystemBase
@@ -8,7 +9,6 @@ public partial class DebugLinesClientSystem : SystemBase
 
     protected override void OnCreate()
     {
-        RequireForUpdate<DebugLines>();
         RequireForUpdate<DebugLinesSettings>();
     }
 
@@ -24,17 +24,24 @@ public partial class DebugLinesClientSystem : SystemBase
 
     protected override void OnUpdate()
     {
-        DynamicBuffer<BufferedLine> lines = SystemAPI.GetSingletonBuffer<BufferedLine>(true);
+        if (!SystemAPI.TryGetSingleton(out NetworkId networkId)) return;
 
-        for (int i = 0; i < _batches.Length; i++)
+        foreach (var (player, lines) in
+            SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>>())
         {
-            _batches[i].Dependency.Complete();
-            _batches[i].buffer.Clear();
-        }
+            if (player.ValueRO.ConnectionId != networkId.Value) continue;
 
-        for (int i = 0; i < lines.Length; i++)
-        {
-            _batches[lines[i].Color - 1].buffer.Add(lines[i].Value);
+            for (int i = 0; i < _batches.Length; i++)
+            {
+                _batches[i].Dependency.Complete();
+                _batches[i].buffer.Clear();
+            }
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                _batches[lines[i].Color - 1].buffer.Add(lines[i].Value);
+            }
+            break;
         }
     }
 }
