@@ -1,8 +1,3 @@
-using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
 using "api.bbc";
 
 export void StopMoving()

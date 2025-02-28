@@ -1,16 +1,6 @@
-using "~/Projects/BBLang/Core/StandardLibrary/Primitives.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.Math.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.Vectors.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.Console.bbc";
-using "~/Projects/BBLang/Core/StandardLibrary/System.Memory.bbc";
 using "turret.bbc";
 using "api.bbc";
 
-const f32 PI = 3.14159265359f;
-const f32 TAU = PI * 2f;
-const u8 true = (u8)1;
-const u8 false = (u8)0;
 const f32 DISTANCE_THRESHOLD = 50f;
 
 f32 requestSentAt = 0f;
