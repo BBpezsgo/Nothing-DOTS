@@ -862,7 +862,7 @@ partial struct ProcessorJob : IJobEntity
                             Debug.LogError("Stack Overflow");
                             break;
                         case Signal.Halt:
-                            Debug.LogError("Halted");
+                            // Debug.LogError("Halted");
                             break;
                         case Signal.UndefinedExternalFunction:
                             Debug.LogError("Undefined External Function");

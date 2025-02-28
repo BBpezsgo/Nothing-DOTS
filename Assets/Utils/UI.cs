@@ -65,6 +65,36 @@ public static class UIExtensions
             container.Remove(childrenElement[i]);
         }
     }
+
+    public static void SyncList<T>(
+        this VisualElement container,
+        IReadOnlyList<T> collection,
+        VisualTreeAsset itemAsset,
+        Action<T, VisualElement, bool> updater)
+    {
+        VisualElement[] childrenElement = container.Children().ToArray();
+        int i;
+
+        for (i = 0; i < collection.Count; i++)
+        {
+            if (i < childrenElement.Length)
+            {
+                VisualElement element = childrenElement[i];
+                updater.Invoke(collection[i], element, true);
+            }
+            else
+            {
+                VisualElement element = itemAsset.Instantiate();
+                container.Add(element);
+                updater.Invoke(collection[i], element, false);
+            }
+        }
+
+        for (; i < childrenElement.Length; i++)
+        {
+            container.Remove(childrenElement[i]);
+        }
+    }
 }
 
 public static class UI

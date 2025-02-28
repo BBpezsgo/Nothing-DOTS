@@ -443,7 +443,23 @@ ProgressBar > #unity-progress-bar > .unity-progress-bar__background > .unity-pro
 }
 
 ProgressBar.error > #unity-progress-bar > .unity-progress-bar__background > .unity-progress-bar__progress {
-    background-color: rgb(192, 21, 66);
+    background-color: rgb(153, 36, 46);
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+ProgressBar.warning > #unity-progress-bar > .unity-progress-bar__background > .unity-progress-bar__progress {
+    background-color: rgb(158, 128, 44);
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+ProgressBar.success > #unity-progress-bar > .unity-progress-bar__background > .unity-progress-bar__progress {
+    background-color: rgb(55, 129, 77);
     margin-left: 0;
     margin-right: 0;
     margin-top: 0;

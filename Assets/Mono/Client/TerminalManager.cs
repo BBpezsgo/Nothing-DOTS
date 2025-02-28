@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,24 +17,28 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     Entity selectedUnitEntity = Entity.Null;
     float refreshAt = default;
     ImmutableArray<string> selectingFile = ImmutableArray<string>.Empty;
-    int selectingFileI = 0;
 
     [Header("UI")]
-    [SerializeField, ReadOnly] Button? ui_ButtonSelect;
-    [SerializeField, ReadOnly] Button? ui_ButtonCompile;
-    [SerializeField, ReadOnly] Button? ui_ButtonHalt;
-    [SerializeField, ReadOnly] Button? ui_ButtonReset;
-    [SerializeField, ReadOnly] Button? ui_ButtonContinue;
-    [SerializeField, ReadOnly] Label? ui_labelTerminal;
-    [SerializeField, ReadOnly] ScrollView? ui_scrollTerminal;
-    [SerializeField, ReadOnly] TextField? ui_inputSourcePath;
+    [SerializeField, NotNull] VisualTreeAsset? FileItem = default;
     [SerializeField, ReadOnly] UIDocument? ui = default;
+
+    Button? ui_ButtonSelect;
+    Button? ui_ButtonCompile;
+    Button? ui_ButtonHalt;
+    Button? ui_ButtonReset;
+    Button? ui_ButtonContinue;
+    Label? ui_labelTerminal;
+    ScrollView? ui_scrollTerminal;
+    ScrollView? ui_scrollFiles;
+    TextField? ui_inputSourcePath;
+    ProgressBar? ui_progressCompilation;
 
     readonly StringBuilder _terminalBuilder = new();
     TerminalEmulator? _terminal;
     byte[]? _memory;
     ProgressRecord<(int, int)>? _memoryDownloadProgress;
     Awaitable<RemoteFile>? _memoryDownloadTask;
+    string? _scheduledSource;
 
     void Update()
     {
@@ -67,11 +72,11 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         selectedUnitEntity = unitEntity;
         refreshAt = Time.time + .2f;
         selectingFile = ImmutableArray<string>.Empty;
-        selectingFileI = 0;
         _memory = null;
         _memoryDownloadProgress = null;
-        try { _memoryDownloadTask?.Cancel(); } catch { }
+        // try { _memoryDownloadTask?.Cancel(); } catch { }
         _memoryDownloadTask = null;
+        _scheduledSource = null;
 
         ui_inputSourcePath = ui.rootVisualElement.Q<TextField>("input-source-path");
         ui_ButtonSelect = ui.rootVisualElement.Q<Button>("button-select");
@@ -81,6 +86,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonContinue = ui.rootVisualElement.Q<Button>("button-continue");
         ui_labelTerminal = ui.rootVisualElement.Q<Label>("label-terminal");
         ui_scrollTerminal = ui.rootVisualElement.Q<ScrollView>("scroll-terminal");
+        ui_scrollFiles = ui.rootVisualElement.Q<ScrollView>("scroll-files");
+        ui_progressCompilation = ui.rootVisualElement.Q<ProgressBar>("progress-compilation");
 
         {
             EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -88,7 +95,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             ui_inputSourcePath!.value = processor.SourceFile.Name.ToString();
         }
 
-        BlurTerminal();
+        EndFileSelection();
 
         if (!string.IsNullOrWhiteSpace(FileChunkManagerSystem.BasePath))
         {
@@ -99,8 +106,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     .Select(v => Path.GetRelativePath(FileChunkManagerSystem.BasePath, v))
                     .Where(v => !v.EndsWith(".meta"))
                     .ToImmutableArray();
-                selectingFileI = 0;
-                SelectTerminal();
+                BeginFileSelection();
             });
         }
         else
@@ -131,6 +137,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 Version = File.GetLastWriteTimeUtc(file).Ticks,
                 Entity = ghostInstance,
             });
+
+            _scheduledSource = ui_inputSourcePath.value;
         });
 
         ui_ButtonHalt.clickable = new Clickable(() =>
@@ -196,377 +204,336 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         RefreshUI(unitEntity);
     }
 
-    void SelectTerminal()
+    void BeginFileSelection()
     {
-        ui_inputSourcePath!.tabIndex = -1;
-        ui_ButtonCompile!.tabIndex = -1;
-        ui_ButtonHalt!.tabIndex = -1;
-        ui_ButtonReset!.tabIndex = -1;
-        ui_ButtonSelect!.tabIndex = -1;
-        ui_ButtonContinue!.tabIndex = -1;
-        ui_labelTerminal!.tabIndex = -1;
-        ui_scrollTerminal!.tabIndex = -1;
-
         ui_ButtonCompile!.SetEnabled(false);
         ui_ButtonHalt!.SetEnabled(false);
         ui_ButtonReset!.SetEnabled(false);
         ui_ButtonSelect!.SetEnabled(false);
         ui_ButtonContinue!.SetEnabled(false);
-        ui_scrollTerminal!.SetEnabled(false);
 
-        ui_inputSourcePath!.focusable = false;
-        ui_ButtonCompile!.focusable = false;
-        ui_ButtonHalt!.focusable = false;
-        ui_ButtonReset!.focusable = false;
-        ui_ButtonSelect!.focusable = false;
-        ui_ButtonContinue!.focusable = false;
-        ui_labelTerminal!.focusable = false;
-        ui_scrollTerminal!.focusable = false;
-
-        ui_labelTerminal!.Focus();
+        ui_scrollFiles!.style.display = DisplayStyle.Flex;
+        ui_scrollTerminal!.style.display = DisplayStyle.None;
     }
 
-    void BlurTerminal()
+    void EndFileSelection()
     {
-        ui_inputSourcePath!.tabIndex = 0;
-        ui_ButtonCompile!.tabIndex = 0;
-        ui_ButtonSelect!.tabIndex = 0;
-        ui_ButtonHalt!.tabIndex = 0;
-        ui_ButtonReset!.tabIndex = 0;
-        ui_ButtonContinue!.tabIndex = 0;
-        ui_labelTerminal!.tabIndex = 0;
-        ui_scrollTerminal!.tabIndex = 0;
-
         ui_ButtonCompile!.SetEnabled(true);
         ui_ButtonSelect!.SetEnabled(true);
         ui_ButtonHalt!.SetEnabled(true);
         ui_ButtonReset!.SetEnabled(true);
         ui_ButtonContinue!.SetEnabled(true);
-        ui_scrollTerminal!.SetEnabled(true);
 
-        ui_inputSourcePath!.focusable = true;
-        ui_ButtonCompile!.focusable = true;
-        ui_ButtonSelect!.focusable = true;
-        ui_ButtonHalt!.focusable = true;
-        ui_ButtonReset!.focusable = true;
-        ui_ButtonContinue!.focusable = true;
-        ui_labelTerminal!.focusable = true;
-        ui_scrollTerminal!.focusable = true;
+        ui_scrollFiles!.style.display = DisplayStyle.None;
+        ui_scrollTerminal!.style.display = DisplayStyle.Flex;
     }
+
+    static readonly string[] ProgressStatusClasses = new string[]
+    {
+        "error",
+        "warning",
+        "success",
+    };
 
     public unsafe void RefreshUI(Entity unitEntity)
     {
-        bool isBottom = ui_scrollTerminal!.scrollOffset == ui_labelTerminal!.layout.max - ui_scrollTerminal.contentViewport.layout.size;
-        _terminalBuilder.Clear();
-
-        static void AppendProgressBar(StringBuilder builder, string label, float progress)
-        {
-            const string SpinnerChars = "-\\|/";
-            char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
-
-            if (!float.IsFinite(progress) && progress != 1f)
-            {
-                const int progressBarWidth = 10;
-
-                int progressBarFilledWidth = math.clamp((int)(progress * progressBarWidth), 0, progressBarWidth);
-                int progressBarEmptyWidth = progressBarWidth - progressBarFilledWidth;
-
-                builder.Append(label);
-                builder.Append(" [");
-                builder.Append('#', progressBarFilledWidth);
-                builder.Append(' ', progressBarEmptyWidth);
-                builder.Append(']');
-                builder.AppendLine();
-            }
-            else
-            {
-                builder.Append(label);
-                builder.Append(' ');
-                builder.Append(spinner);
-                builder.AppendLine();
-            }
-        }
-
         if (!selectingFile.IsEmpty)
         {
+            ui_scrollFiles!.SyncList(selectingFile, FileItem, (file, element, recycled) =>
+            {
+                element.userData = file;
+                element.Q<Button>().text = file;
+                if (!recycled) element.Q<Button>().clicked += () =>
+                {
+                    ui_inputSourcePath!.value = (string)element.userData;
+                    selectingFile = ImmutableArray<string>.Empty;
+                    EndFileSelection();
+                };
+            });
+
             _terminal = null;
+
             if (Input.GetKeyDown(KeyCode.Q))
             {
                 selectingFile = ImmutableArray<string>.Empty;
-                BlurTerminal();
+                EndFileSelection();
+            }
+            return;
+        }
+
+        bool isBottom = ui_scrollTerminal!.scrollOffset == ui_labelTerminal!.layout.max - ui_scrollTerminal.contentViewport.layout.size;
+        _terminalBuilder.Clear();
+
+        void SetProgressStatus(string? status)
+        {
+            foreach (string item in ProgressStatusClasses)
+            {
+                ui_progressCompilation!.EnableInClassList(item, item == status);
+            }
+        }
+
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+        Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
+        if (processor.SourceFile == default || !ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources.TryGetValue(processor.SourceFile, out CompiledSource? source))
+        {
+            _terminal = null;
+            if (_scheduledSource != null)
+            {
+                ui_progressCompilation!.title = "Scheduled ...";
+                ui_progressCompilation!.value = 0f;
+                SetProgressStatus(null);
             }
             else
             {
-                if (Input.GetKeyDown(KeyCode.DownArrow) ||
-                    Input.GetKeyDown(KeyCode.S))
-                {
-                    selectingFileI++;
-                    if (selectingFileI >= selectingFile.Length) selectingFileI -= selectingFile.Length;
-                }
-
-                if (Input.GetKeyDown(KeyCode.UpArrow) ||
-                    Input.GetKeyDown(KeyCode.W))
-                {
-                    selectingFileI--;
-                    if (selectingFileI < 0) selectingFileI += selectingFile.Length;
-                }
-
-                if (Input.GetKeyDown(KeyCode.Return))
-                {
-                    ui_inputSourcePath!.value = selectingFile[selectingFileI];
-                    selectingFileI = 0;
-                    selectingFile = ImmutableArray<string>.Empty;
-                    BlurTerminal();
-                    return;
-                }
-
-                for (int i = 0; i < selectingFile.Length; i++)
-                {
-                    if (selectingFileI == i) _terminalBuilder.Append("> ");
-                    else _terminalBuilder.Append("  ");
-                    _terminalBuilder.Append(selectingFile[i]);
-                    _terminalBuilder.AppendLine();
-                }
-                ui_labelTerminal!.text = _terminalBuilder.ToString();
+                ui_progressCompilation!.title = "No source";
+                ui_progressCompilation!.value = 0f;
+                SetProgressStatus(null);
             }
         }
         else
         {
-            EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-            Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
-            if (processor.SourceFile == default || !ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources.TryGetValue(processor.SourceFile, out CompiledSource? source))
-            {
-                _terminal = null;
-                _terminalBuilder.AppendLine("<color=red>No source</color>");
-            }
-            else
-            {
-                const string SpinnerChars = "-\\|/";
-                char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
+            _scheduledSource = null;
+            const string SpinnerChars = "-\\|/";
+            char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
 
-                if (source.Status != CompilationStatus.Done || !source.IsSuccess)
+            if (source.Status != CompilationStatus.Done || !source.IsSuccess)
+            {
+                switch (source.Status)
                 {
-                    switch (source.Status)
+                    case CompilationStatus.None:
+                        break;
+                    case CompilationStatus.Secuedued:
+                        if (source.Status == CompilationStatus.Secuedued &&
+                            !float.IsNaN(source.Progress))
+                        {
+                            ui_progressCompilation!.title = "Compiling ...";
+                            ui_progressCompilation!.value = 0f;
+                            SetProgressStatus(null);
+                        }
+                        else
+                        {
+                            ui_progressCompilation!.title = "Secuedued ...";
+                            ui_progressCompilation!.value = 0f;
+                            SetProgressStatus(null);
+                        }
+                        break;
+                    case CompilationStatus.Compiling:
+                        ui_progressCompilation!.title = "Compiling ...";
+                        ui_progressCompilation!.value = 0f;
+                        SetProgressStatus(null);
+                        break;
+                    case CompilationStatus.Compiled:
+                        break;
+                    case CompilationStatus.Done:
+                        break;
+                }
+            }
+
+            if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
+            {
+                const int progressBarWidth = 10;
+
+                int progressBarFilledWidth = math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth);
+                int progressBarEmptyWidth = progressBarWidth - progressBarFilledWidth;
+
+                ui_progressCompilation!.title = "Uploading ...";
+                ui_progressCompilation!.value = source.Progress;
+                SetProgressStatus(null);
+            }
+
+            switch (source.Status)
+            {
+                case CompilationStatus.Secuedued:
                     {
-                        case CompilationStatus.None:
-                            break;
-                        case CompilationStatus.Secuedued:
-                            if (source.Status == CompilationStatus.Secuedued &&
-                                !float.IsNaN(source.Progress))
+                        _terminal = null;
+                        if (float.IsNaN(source.Progress))
+                        {
+                            if (source.CompileSecuedued == default)
                             {
-                                _terminalBuilder.Append("Compiling ");
-                                _terminalBuilder.Append(spinner);
-                                _terminalBuilder.AppendLine();
+                                ui_progressCompilation!.title = "Compilation in ? sec";
+                                SetProgressStatus(null);
                             }
                             else
                             {
-                                _terminalBuilder.Append("Secuedued ");
-                                _terminalBuilder.Append(spinner);
-                                _terminalBuilder.AppendLine();
+                                ui_progressCompilation!.title = $"Compilation in {math.max(0f, source.CompileSecuedued - MonoTime.Now):#.0} sec ";
+                                SetProgressStatus(null);
                             }
-                            break;
-                        case CompilationStatus.Compiling:
-                            _terminalBuilder.Append("Compiling ");
-                            _terminalBuilder.Append(spinner);
-                            _terminalBuilder.AppendLine();
-                            break;
-                        case CompilationStatus.Compiled:
-                            break;
-                        case CompilationStatus.Done:
-                            break;
+                        }
+                        break;
                     }
-                }
-
-                if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
-                {
-                    const int progressBarWidth = 10;
-
-                    int progressBarFilledWidth = math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth);
-                    int progressBarEmptyWidth = progressBarWidth - progressBarFilledWidth;
-
-                    _terminalBuilder.Append("Uploading [");
-                    _terminalBuilder.Append('#', progressBarFilledWidth);
-                    _terminalBuilder.Append(' ', progressBarEmptyWidth);
-                    _terminalBuilder.Append(']');
-                    _terminalBuilder.AppendLine();
-                }
-
-                switch (source.Status)
-                {
-                    case CompilationStatus.Secuedued:
+                case CompilationStatus.Compiling:
+                    {
+                        _terminal = null;
+                        break;
+                    }
+                case CompilationStatus.Compiled:
+                    {
+                        _terminal = null;
+                        ui_progressCompilation!.title = "Compiled";
+                        ui_progressCompilation!.value = 1f;
+                        SetProgressStatus(null);
+                        break;
+                    }
+                case CompilationStatus.Done:
+                    {
+                        if (source.IsSuccess)
                         {
-                            _terminal = null;
-                            if (float.IsNaN(source.Progress))
+                            ui_progressCompilation!.title = "Running";
+                            ui_progressCompilation!.value = 1f;
+                            SetProgressStatus("success");
+                            _terminal ??= new TerminalEmulator(ui_labelTerminal);
+                            _terminal.Update();
+                            switch (processor.Signal)
                             {
-                                if (source.CompileSecuedued == default)
-                                {
-                                    _terminalBuilder.AppendLine("Compilation in ? sec ");
-                                }
-                                else
-                                {
-                                    _terminalBuilder.AppendLine($"Compilation in {math.max(0f, source.CompileSecuedued - MonoTime.Now):#.0} sec ");
-                                }
-                                _terminalBuilder.Append(spinner);
-                                _terminalBuilder.AppendLine();
-                            }
-                            break;
-                        }
-                    case CompilationStatus.Compiling:
-                        {
-                            _terminal = null;
-                            break;
-                        }
-                    case CompilationStatus.Compiled:
-                        {
-                            _terminal = null;
-                            _terminalBuilder.AppendLine("Compiled");
-                            break;
-                        }
-                    case CompilationStatus.Done:
-                        {
-                            if (source.IsSuccess)
-                            {
-                                _terminal ??= new TerminalEmulator(ui_labelTerminal);
-                                _terminal.Update();
-                                switch (processor.Signal)
-                                {
-                                    case Signal.None:
-                                        _memory = null;
-                                        _memoryDownloadProgress = null;
-                                        try { _memoryDownloadTask?.Cancel(); } catch { }
-                                        _memoryDownloadTask = null;
-                                        _terminalBuilder.Append(processor.StdOutBuffer.ToString());
-                                        if (processor.IsKeyRequested)
+                                case Signal.None:
+                                    _memory = null;
+                                    _memoryDownloadProgress = null;
+                                    // try { _memoryDownloadTask?.Cancel(); } catch { }
+                                    _memoryDownloadTask = null;
+                                    _terminalBuilder.Append(processor.StdOutBuffer.ToString());
+                                    if (processor.IsKeyRequested)
+                                    {
+                                        char c = _terminal.RequestKey();
+                                        if (c != default)
                                         {
-                                            char c = _terminal.RequestKey();
-                                            if (c != default)
-                                            {
-                                                World world = ConnectionManager.ClientOrDefaultWorld;
+                                            World world = ConnectionManager.ClientOrDefaultWorld;
 
-                                                if (world.IsServer())
-                                                {
-                                                    Debug.LogError($"Not implemented");
-                                                }
-                                                else
-                                                {
-                                                    Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
-                                                    GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-                                                    world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
-                                                    {
-                                                        Entity = ghostInstance,
-                                                        Command = ProcessorCommand.Key,
-                                                        Data = unchecked((ushort)c),
-                                                    });
-                                                }
-                                            }
-                                            else if (Time.time % 1f < .5f)
+                                            if (world.IsServer())
                                             {
-                                                _terminalBuilder.Append("<mark=#ffffffff>_</mark>");
-                                            }
-                                        }
-                                        break;
-                                    case Signal.UserCrash:
-                                        _terminalBuilder.AppendLine("<color=red>Crashed</color>");
-                                        if (_memory is null)
-                                        {
-                                            _memoryDownloadProgress ??= new ProgressRecord<(int, int)>(null);
-
-                                            if (_memoryDownloadTask == null)
-                                            {
-                                                GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
-                                                // Debug.Log($"Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
-                                                _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}_{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
-                                            }
-
-                                            var awaiter = _memoryDownloadTask.GetAwaiter();
-                                            if (awaiter.IsCompleted)
-                                            {
-                                                // Debug.Log("Memory loaded");
-                                                RemoteFile result = awaiter.GetResult();
-                                                switch (result.Kind)
-                                                {
-                                                    case FileResponseStatus.NotFound:
-                                                        _terminalBuilder.AppendLine("<color=red>Failed to download the memory</color>");
-                                                        break;
-                                                    default:
-                                                        _terminalBuilder.AppendLine("Memory downloaded");
-                                                        _memory = result.File.Data;
-                                                        break;
-                                                }
+                                                Debug.LogError($"Not implemented");
                                             }
                                             else
                                             {
-                                                AppendProgressBar(_terminalBuilder, "Loading", (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2);
+                                                Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+                                                GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+                                                world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
+                                                {
+                                                    Entity = ghostInstance,
+                                                    Command = ProcessorCommand.Key,
+                                                    Data = unchecked((ushort)c),
+                                                });
+                                            }
+                                        }
+                                        else if (Time.time % 1f < .5f)
+                                        {
+                                            _terminalBuilder.Append("<mark=#ffffffff>_</mark>");
+                                        }
+                                    }
+                                    break;
+                                case Signal.UserCrash:
+                                    ui_progressCompilation!.title = "Crashed";
+                                    ui_progressCompilation!.value = 1f;
+                                    SetProgressStatus("error");
+                                    if (_memory is null)
+                                    {
+                                        _memoryDownloadProgress ??= new ProgressRecord<(int, int)>(null);
+
+                                        if (_memoryDownloadTask == null)
+                                        {
+                                            GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
+                                            // Debug.Log($"Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
+                                            _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld)
+                                                .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}_{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
+                                        }
+
+                                        var awaiter = _memoryDownloadTask.GetAwaiter();
+                                        if (awaiter.IsCompleted)
+                                        {
+                                            // Debug.Log("Memory loaded");
+                                            RemoteFile result = awaiter.GetResult();
+                                            switch (result.Kind)
+                                            {
+                                                case FileResponseStatus.NotFound:
+                                                    ui_progressCompilation!.title = "Crashed (no memory)";
+                                                    ui_progressCompilation!.value = 1f;
+                                                    break;
+                                                default:
+                                                    _memory = result.File.Data;
+                                                    break;
                                             }
                                         }
                                         else
                                         {
-                                            string? message = HeapUtils.GetString(_memory, processor.Crash);
-                                            _terminalBuilder.Append("<color=red>");
-                                            _terminalBuilder.Append(message);
-                                            _terminalBuilder.Append("</color>");
-                                            _terminalBuilder.AppendLine();
+                                            ui_progressCompilation!.title = "Crashed (loading memory)";
+                                            ui_progressCompilation!.value = (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2;
                                         }
-                                        break;
-                                    case Signal.StackOverflow:
-                                        _terminalBuilder.AppendLine("<color=red>Stack overflow</color>");
-                                        break;
-                                    case Signal.Halt:
-                                        _terminalBuilder.AppendLine("Halted");
-                                        break;
-                                    case Signal.UndefinedExternalFunction:
-                                        _terminalBuilder.AppendLine($"<color=red>Undefined external function {processor.Crash}</color>");
-                                        break;
-                                }
-                            }
-                            else
-                            {
-                                _terminal = null;
-                                _terminalBuilder.AppendLine("<color=red>Compile failed</color>");
-                                foreach (LanguageCore.Diagnostic item in source.Diagnostics.Diagnostics)
-                                {
-                                    if (item.Level is
-                                        LanguageCore.DiagnosticsLevel.Hint or
-                                        LanguageCore.DiagnosticsLevel.OptimizationNotice or
-                                        LanguageCore.DiagnosticsLevel.Information)
-                                    { continue; }
-
-                                    _terminalBuilder.AppendLine(item.ToString());
-                                    (string SourceCode, string Arrows)? arrows = item.GetArrows((uri) =>
-                                    {
-                                        if (!uri.TryGetNetcode(out FileId fileId)) return null;
-
-                                        if (FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).TryGetRemoteFile(fileId, out RemoteFile remoteFile))
-                                        {
-                                            return Encoding.UTF8.GetString(remoteFile.File.Data);
-                                        }
-
-                                        return null;
-                                    });
-                                    if (arrows.HasValue)
-                                    {
-                                        _terminalBuilder.AppendLine(arrows.Value.SourceCode);
-                                        _terminalBuilder.AppendLine(arrows.Value.Arrows);
                                     }
-                                }
-                                foreach (LanguageCore.DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext)
+                                    else
+                                    {
+                                        string? message = HeapUtils.GetString(_memory, processor.Crash);
+                                        _terminalBuilder.Append("<color=red>");
+                                        _terminalBuilder.Append(message);
+                                        _terminalBuilder.Append("</color>");
+                                        _terminalBuilder.AppendLine();
+                                    }
+                                    break;
+                                case Signal.StackOverflow:
+                                    ui_progressCompilation!.title = "Stack overflow";
+                                    ui_progressCompilation!.value = 1f;
+                                    SetProgressStatus("error");
+                                    break;
+                                case Signal.Halt:
+                                    ui_progressCompilation!.title = "Halted";
+                                    ui_progressCompilation!.value = 1f;
+                                    SetProgressStatus("warning");
+                                    break;
+                                case Signal.UndefinedExternalFunction:
+                                    ui_progressCompilation!.title = "Runtime Error";
+                                    ui_progressCompilation!.value = 1f;
+                                    SetProgressStatus("error");
+                                    _terminalBuilder.AppendLine($"<color=red>Undefined external function {processor.Crash}</color>");
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            ui_progressCompilation!.title = "Compile failed";
+                            SetProgressStatus("error");
+                            _terminal = null;
+                            // _terminalBuilder.AppendLine("<color=red>Compile failed</color>");
+                            foreach (LanguageCore.Diagnostic item in source.Diagnostics.Diagnostics)
+                            {
+                                if (item.Level is
+                                    LanguageCore.DiagnosticsLevel.Hint or
+                                    LanguageCore.DiagnosticsLevel.OptimizationNotice or
+                                    LanguageCore.DiagnosticsLevel.Information)
+                                { continue; }
+
+                                _terminalBuilder.AppendLine(item.ToString());
+                                (string SourceCode, string Arrows)? arrows = item.GetArrows((uri) =>
                                 {
-                                    _terminalBuilder.AppendLine(item.ToString());
+                                    if (!uri.TryGetNetcode(out FileId fileId)) return null;
+
+                                    if (FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).TryGetRemoteFile(fileId, out RemoteFile remoteFile))
+                                    {
+                                        return Encoding.UTF8.GetString(remoteFile.File.Data);
+                                    }
+
+                                    return null;
+                                });
+                                if (arrows.HasValue)
+                                {
+                                    _terminalBuilder.AppendLine(arrows.Value.SourceCode);
+                                    _terminalBuilder.AppendLine(arrows.Value.Arrows);
                                 }
                             }
-                            break;
+                            foreach (LanguageCore.DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext)
+                            {
+                                _terminalBuilder.AppendLine(item.ToString());
+                            }
                         }
-                    case CompilationStatus.None:
-                    default:
-                        {
-                            _terminal = null;
-                            _terminalBuilder.AppendLine("???");
-                            break;
-                        }
-                }
+                        break;
+                    }
+                case CompilationStatus.None:
+                default:
+                    {
+                        _terminal = null;
+                        _terminalBuilder.AppendLine("???");
+                        break;
+                    }
             }
-            ui_labelTerminal.text = _terminalBuilder.ToString();
         }
+        ui_labelTerminal.text = _terminalBuilder.ToString();
 
         if (isBottom)
         {
@@ -579,12 +546,12 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         selectedUnitEntity = Entity.Null;
         refreshAt = float.PositiveInfinity;
         selectingFile = ImmutableArray<string>.Empty;
-        selectingFileI = 0;
         _terminal = null;
         _memory = null;
         _memoryDownloadProgress = null;
-        try { _memoryDownloadTask?.Cancel(); } catch { }
+        // try { _memoryDownloadTask?.Cancel(); } catch { }
         _memoryDownloadTask = null;
+        _scheduledSource = null;
 
         if (ui != null &&
             ui.rootVisualElement != null)
@@ -595,7 +562,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             ui_ButtonReset!.clickable = null;
             ui_ButtonContinue!.clickable = null;
             ui_labelTerminal!.text = string.Empty;
-            BlurTerminal();
+            EndFileSelection();
         }
         gameObject.SetActive(false);
     }
