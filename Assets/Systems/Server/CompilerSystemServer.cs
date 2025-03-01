@@ -151,8 +151,7 @@ public partial class CompilerSystemServer : SystemBase
 
         { 61, "gui_create" },
         { 62, "gui_destroy" },
-        { 63, "gui_set_text" },
-        { 64, "gui_set_pos" },
+        { 63, "gui_update" },
     }.ToFrozenDictionary();
 
     [NotNull] public readonly SerializableDictionary<FileId, CompiledSource>? CompiledSources = new();

@@ -1,6 +1,6 @@
 using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
 
-const int MappedMemoryStart = 640;
+const int MappedMemoryStart = 1536;
 
 struct MappedMemory_Vehicle
 {
@@ -207,32 +207,125 @@ export inline void ldebug_label(float2 localPosition, string text)
 // export void debug(float3 position, i32 color) { }
 // export void ldebug(float3 localPosition, i32 color) { }
 
-[External("gui_create")] export int gui_create(int type);
-[External("gui_destroy")] export void gui_destroy(int id);
-[External("gui_set_text")] export void gui_set_text(int id, string text);
-[External("gui_set_pos")] export void gui_set_pos(int id, int x, int y);
+[External("gui_create")] void gui_create(any* ptr);
+[External("gui_update")] void gui_update(any* ptr);
+[External("gui_destroy")] void gui_destroy(int id);
+
+export u8 ColorTo255(float r, float g, float b)
+{
+    return (u8)(
+        ((u8)(r * 7) << 5) |
+        ((u8)(g * 7) << 2) |
+        ((u8)(b * 3))
+    );
+}
+
+export u8 ColorTo255(int r, int g, int b)
+{
+    return (u8)(
+        ((u8)(r * 7 / 255) << 5) |
+        ((u8)(g * 7 / 255) << 2) |
+        ((u8)(b * 3 / 255))
+    );
+}
 
 export struct UILabel
 {
+    private bool _dirty;
     private int _id;
+    private byte _type;
+    int X;
+    int Y;
+    int Width;
+    int Height;
+    float3 Color;
+    char[15] Text;
 
     export UILabel()
     {
-        this._id = gui_create(1);
+        this._type = 1;
+        this.X = 50;
+        this.Y = 50;
+        this.Width = 50;
+        this.Height = 50;
+        this.Text = "Hey";
+        gui_create(&this);
     }
 
-    export void Destroy()
+    export inline void Destroy()
     {
         gui_destroy(this._id);
     }
 
-    export void SetText(string text)
+    export inline void Update()
     {
-        gui_set_text(this._id, text);
+        gui_update(&this);
+    }
+}
+
+export struct UIImage
+{
+    private bool _dirty;
+    private int _id;
+    private byte _type;
+    int X;
+    int Y;
+    int Width;
+    int Height;
+    i16 ImageWidth;
+    i16 ImageHeight;
+    byte[510] Image;
+
+    export UIImage(i16 width, i16 height)
+    {
+        this._type = 2;
+        this.X = 50;
+        this.Y = 50;
+        this.Width = 50;
+        this.Height = 50;
+        this.ImageWidth = width;
+        this.ImageHeight = height;
+        // for (int y = 0; y < height; y++)
+        // {
+        //     for (int x = 0; x < width; x++)
+        //     {
+        //         this.Image[x + (y * width)] = (u8)(x + (y * width));
+        //     }
+        // }
+        gui_create(&this);
     }
 
-    export void SetPos(int x, int y)
+    export inline void Destroy()
     {
-        gui_set_pos(this._id, x, y);
+        gui_destroy(this._id);
     }
+
+    export void Set(int x, int y, int r, int g, int b)
+    {
+        if (x < 0) x = 0;
+        else if (x >= this.ImageWidth) x = (int)this.ImageWidth;
+        if (y < 0) y = 0;
+        else if (y >= this.ImageHeight) y = (int)this.ImageHeight;
+        this.Image[y * this.ImageWidth + x] = ColorTo255(r, g, b);
+    }
+
+    export void Set(int x, int y, u8 color)
+    {
+        if (x < 0) x = 0;
+        else if (x >= this.ImageWidth) x = (int)this.ImageWidth;
+        if (y < 0) y = 0;
+        else if (y >= this.ImageHeight) y = (int)this.ImageHeight;
+        this.Image[y * this.ImageWidth + x] = color;
+    }
+
+    export inline void Update()
+    {
+        gui_update(&this);
+    }
+
+    // export inline void Set(int2 pos, int r, int g, int b)   { this.Set(pos.x, pos.y, r, g, b); }
+    // export inline void Set(int2 pos, u8 color)              { this.Set(pos.x, pos.y, color); }
+
+    export inline void Set(float2 pos, int r, int g, int b) { this.Set((int)pos.x, (int)pos.y, r, g, b); }
+    export inline void Set(float2 pos, u8 color)            { this.Set((int)pos.x, (int)pos.y, color); }
 }

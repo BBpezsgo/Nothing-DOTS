@@ -33,9 +33,9 @@ public struct BlinkingLED
 
 public struct Processor : IComponentData
 {
-    public const int TotalMemorySize = 1024;
-    public const int StackSize = 512;
-    public const int HeapSize = 128;
+    public const int TotalMemorySize = 2048;
+    public const int HeapSize = 512;
+    public const int StackSize = 1024;
 
     public const int UserMemorySize = StackSize + HeapSize;
     public const int MappedMemoryStart = UserMemorySize;
@@ -45,7 +45,7 @@ public struct Processor : IComponentData
     public long CompiledSourceVersion;
 
     public Registers Registers;
-    public FixedBytes1024 Memory;
+    public FixedBytes2048 Memory;
     public FixedList128Bytes<BufferedUnitTransmission> IncomingTransmissions;
     public FixedList128Bytes<BufferedUnitTransmissionOutgoing> OutgoingTransmissions;
     public FixedList128Bytes<UnitCommandRequest> CommandQueue;

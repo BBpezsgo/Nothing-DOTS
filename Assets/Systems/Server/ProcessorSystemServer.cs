@@ -16,6 +16,45 @@ using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Profiling;
 using Unity.Transforms;
+using System.Runtime.InteropServices;
+
+public enum UserUIElementType : byte
+{
+    MIN,
+    Label,
+    Image,
+    MAX,
+}
+
+[BurstCompile]
+[StructLayout(LayoutKind.Explicit)]
+public struct UserUIElement
+{
+    [FieldOffset(0)] public bool IsDirty;
+    [FieldOffset(1)] public int Id;
+    [FieldOffset(5)] public UserUIElementType Type;
+    [FieldOffset(6)] public int2 Position;
+    [FieldOffset(14)] public int2 Size;
+    [FieldOffset(22)] public UserUIElementLabel Label;
+    [FieldOffset(22)] public UserUIElementImage Image;
+}
+
+[BurstCompile]
+[StructLayout(LayoutKind.Sequential)]
+public struct UserUIElementLabel
+{
+    public float3 Color;
+    public FixedBytes30 Text;
+}
+
+[BurstCompile]
+[StructLayout(LayoutKind.Sequential)]
+public struct UserUIElementImage
+{
+    public short Width;
+    public short Height;
+    public FixedBytes510 Image;
+}
 
 struct OwnedData<T>
 {
@@ -33,7 +72,7 @@ struct OwnedData<T>
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 unsafe partial struct ProcessorSystemServer : ISystem
 {
-    public const int CyclesPerTick = 128;
+    public const int CyclesPerTick = 256;
 
 #if UNITY_PROFILER
     static readonly ProfilerMarker _ProcessMarker = new("ProcessorSystemServer.Process");
@@ -64,7 +103,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required RefRO<LocalTransform> LocalTransform;
         public required NativeList<OwnedData<BufferedLine>>.ParallelWriter DebugLines;
         public required NativeList<OwnedData<BufferedWorldLabel>>.ParallelWriter WorldLabels;
-        public required NativeList<OwnedData<BufferedUIElement>>.ParallelWriter UIElements;
+        public required NativeList<OwnedData<UserUIElement>>.ParallelWriter UIElements;
         public required int* Crash;
         public required Signal* Signal;
         public required Registers* Registers;
@@ -558,15 +597,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
     static void _gui_create(nint _scope, nint arguments, nint returnValue)
     {
-        int type = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+        int _ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        if (type <= (int)BufferedUIElementType.MIN ||
-            type >= (int)BufferedUIElementType.MAX)
-        {
-            scope->DoCrash("Invalid UI type");
-            return;
-        }
+        UserUIElement* ptr = (UserUIElement*)((nint)scope->Memory + _ptr);
 
         int id = 1;
         while (true)
@@ -575,31 +609,61 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
             for (int i = 0; i < scope->UIElements.ListData->Length; i++)
             {
-                if ((*scope->UIElements.ListData)[i].Value.Id == id)
-                {
-                    exists = true;
-                    break;
-                }
+                if ((*scope->UIElements.ListData)[i].Value.Id != id) continue;
+                if ((*scope->UIElements.ListData)[i].Owner != scope->Team.ValueRO.Team) continue;
+                exists = true;
+                break;
             }
 
             if (!exists) break;
             id++;
         }
 
-        returnValue.Set(id);
-
-        scope->UIElements.AddNoResize(new(
-            scope->Team.ValueRO.Team,
-            new BufferedUIElement()
-            {
-                Type = (BufferedUIElementType)type,
-                Id = id,
-                Position = new int2(16, 16),
-                Size = new int2(128, 128),
-                Color = new float3(1f, 1f, 1f),
-                Text = new FixedString32Bytes(),
-            }
-        ));
+        switch (ptr->Type)
+        {
+            case UserUIElementType.Label:
+                char* text = (char*)&ptr->Label.Text;
+                scope->UIElements.AddNoResize(new(
+                    scope->Team.ValueRO.Team,
+                    *ptr = new UserUIElement()
+                    {
+                        IsDirty = true,
+                        Type = UserUIElementType.Label,
+                        Id = id,
+                        Position = ptr->Position,
+                        Size = ptr->Size,
+                        Label = new UserUIElementLabel()
+                        {
+                            Color = ptr->Label.Color,
+                            Text = ptr->Label.Text,
+                        },
+                    }
+                ));
+                break;
+            case UserUIElementType.Image:
+                scope->UIElements.AddNoResize(new(
+                    scope->Team.ValueRO.Team,
+                    *ptr = new UserUIElement()
+                    {
+                        IsDirty = true,
+                        Type = UserUIElementType.Image,
+                        Id = id,
+                        Position = ptr->Position,
+                        Size = ptr->Size,
+                        Image = new UserUIElementImage()
+                        {
+                            Width = ptr->Image.Width,
+                            Height = ptr->Image.Height,
+                            Image = ptr->Image.Image,
+                        },
+                    }
+                ));
+                break;
+            case UserUIElementType.MIN:
+            case UserUIElementType.MAX:
+            default:
+                break;
+        }
     }
 
     [BurstCompile]
@@ -611,51 +675,64 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         for (int i = 0; i < scope->UIElements.ListData->Length; i++)
         {
-            if ((*scope->UIElements.ListData)[i].Value.Id == id)
-            {
-                (*scope->UIElements.ListData)[i] = default;
-                break;
-            }
+            if ((*scope->UIElements.ListData)[i].Value.Id != id) continue;
+            if ((*scope->UIElements.ListData)[i].Owner != scope->Team.ValueRO.Team) continue;
+            (*scope->UIElements.ListData)[i] = default;
+            break;
         }
     }
 
     [BurstCompile]
     [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _gui_set_text(nint _scope, nint arguments, nint returnValue)
+    static void _gui_update(nint _scope, nint arguments, nint returnValue)
     {
-        (int id, int stringPtr) = ExternalFunctionGenerator.TakeParameters<int, int>(arguments);
+        int _ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
         FunctionScope* scope = (FunctionScope*)_scope;
 
-        scope->GetString(stringPtr, out FixedString32Bytes @string);
+        UserUIElement* ptr = (UserUIElement*)((nint)scope->Memory + _ptr);
 
         for (int i = 0; i < scope->UIElements.ListData->Length; i++)
         {
-            ref var item = ref (*scope->UIElements.ListData).Ptr[i];
-            if (item.Value.Id == id)
+            ref var uiElement = ref (*scope->UIElements.ListData).Ptr[i];
+            if (uiElement.Value.Id != ptr->Id) continue;
+            if (uiElement.Owner != scope->Team.ValueRO.Team) continue;
+            switch (ptr->Type)
             {
-                item.Value.Text = @string;
+                case UserUIElementType.Label:
+                    char* text = (char*)&ptr->Label.Text;
+                    uiElement = new OwnedData<UserUIElement>(
+                        scope->Team.ValueRO.Team,
+                        *ptr = new UserUIElement()
+                        {
+                            IsDirty = true,
+                            Type = UserUIElementType.Label,
+                            Id = ptr->Id,
+                            Position = ptr->Position,
+                            Size = ptr->Size,
+                            Label = ptr->Label,
+                        }
+                    );
+                    break;
+                case UserUIElementType.Image:
+                    uiElement = new OwnedData<UserUIElement>(
+                        scope->Team.ValueRO.Team,
+                        *ptr = new UserUIElement()
+                        {
+                            IsDirty = true,
+                            Type = UserUIElementType.Image,
+                            Id = ptr->Id,
+                            Position = ptr->Position,
+                            Size = ptr->Size,
+                            Image = ptr->Image,
+                        }
+                    );
+                    break;
             }
+            break;
         }
     }
 
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _gui_set_pos(nint _scope, nint arguments, nint returnValue)
-    {
-        (int id, int2 pos) = ExternalFunctionGenerator.TakeParameters<int, int2>(arguments);
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        for (int i = 0; i < scope->UIElements.ListData->Length; i++)
-        {
-            ref var item = ref (*scope->UIElements.ListData).Ptr[i];
-            if (item.Value.Id == id)
-            {
-                item.Value.Position = pos;
-            }
-        }
-    }
-
-    public const int ExternalFunctionCount = 26;
+    public const int ExternalFunctionCount = 25;
 
     [BurstCompile]
     public static void GenerateExternalFunctions(ExternalFunctionScopedSync* buffer)
@@ -691,10 +768,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_dequeue_command).Value, 51, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
 
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_create).Value, 61, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_create).Value, 61, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
         buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_destroy).Value, 62, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_set_text).Value, 63, ExternalFunctionGenerator.SizeOf<int, int>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_set_pos).Value, 64, ExternalFunctionGenerator.SizeOf<int, int2>(), 0, default);
+        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_update).Value, 63, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
 
         Unity.Assertions.Assert.AreEqual(i, ExternalFunctionCount);
     }
@@ -702,7 +778,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     NativeList<OwnedData<BufferedLine>> debugLines;
     NativeList<OwnedData<BufferedWorldLabel>> worldLabels;
-    NativeList<OwnedData<BufferedUIElement>> uiElements;
+    NativeList<OwnedData<UserUIElement>> uiElements;
 
     void ISystem.OnCreate(ref SystemState state)
     {
@@ -712,13 +788,18 @@ unsafe partial struct ProcessorSystemServer : ISystem
         debugLines = new(256, Allocator.Persistent);
         worldLabels = new(256, Allocator.Persistent);
         uiElements = new(256, Allocator.Persistent);
+
+        // SystemAPI.GetSingleton<RpcCollection>()
+        //     .RegisterRpc(ComponentType.ReadWrite<UIElementUpdateRpc>(), default(UIElementUpdateRpc).CompileExecute());
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        foreach (var (player, lines, labels, _uiElements) in
-            SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>, DynamicBuffer<BufferedWorldLabel>, DynamicBuffer<BufferedUIElement>>())
+        EntityCommandBuffer commandBuffer = default;
+
+        foreach (var (player, lines, labels) in
+            SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>, DynamicBuffer<BufferedWorldLabel>>())
         {
             for (int i = 0; i < debugLines.Length; i++)
             {
@@ -752,12 +833,55 @@ unsafe partial struct ProcessorSystemServer : ISystem
             next:;
             }
 
-            _uiElements.Clear();
-
             for (int i = 0; i < uiElements.Length; i++)
             {
                 if (uiElements[i].Owner != player.ValueRO.Team) continue;
-                _uiElements.Add(uiElements[i].Value);
+                if (!uiElements[i].Value.IsDirty && uiElements[i].Value.Id != 0) continue;
+
+                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+
+                Entity connection = Entity.Null;
+                foreach (var (_connection, _connectionEntity) in
+                    SystemAPI.Query<RefRO<NetworkId>>()
+                    .WithEntityAccess())
+                {
+                    if (_connection.ValueRO.Value != player.ValueRO.ConnectionId) continue;
+                    connection = _connectionEntity;
+                    break;
+                }
+
+                if (connection == Entity.Null) continue;
+
+                if (uiElements[i].Value.Id == 0)
+                {
+                    // Debug.Log(string.Format("{0} destroyed", uiElements[i]));
+
+                    Entity rpc = commandBuffer.CreateEntity();
+                    commandBuffer.AddComponent<SendRpcCommandRequest>(rpc, new()
+                    {
+                        TargetConnection = connection,
+                    });
+                    commandBuffer.AddComponent<UIElementDestroyRpc>(rpc, new()
+                    {
+                        Id = uiElements[i].Value.Id,
+                    });
+                    uiElements.RemoveAt(i--);
+                }
+                else
+                {
+                    // Debug.Log(string.Format("{0} updated, {1}", uiElements[i], uiElements[i].Value.Label.Text.AsString()));
+
+                    Entity rpc = commandBuffer.CreateEntity();
+                    commandBuffer.AddComponent<SendRpcCommandRequest>(rpc, new()
+                    {
+                        TargetConnection = connection,
+                    });
+                    commandBuffer.AddComponent<UIElementUpdateRpc>(rpc, new()
+                    {
+                        UIElement = uiElements[i].Value,
+                    });
+                    uiElements.AsArray().AsSpan()[i].Value.IsDirty = false;
+                }
             }
         }
 
@@ -781,7 +905,7 @@ partial struct ProcessorJob : IJobEntity
     [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     public NativeList<OwnedData<BufferedLine>>.ParallelWriter debugLines;
     public NativeList<OwnedData<BufferedWorldLabel>>.ParallelWriter worldLabels;
-    public NativeList<OwnedData<BufferedUIElement>>.ParallelWriter uiElements;
+    public NativeList<OwnedData<UserUIElement>>.ParallelWriter uiElements;
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(

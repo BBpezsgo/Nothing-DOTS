@@ -1,6 +1,8 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Rendering;
 
 [BurstCompile]
@@ -8,16 +10,20 @@ using Unity.Rendering;
 partial struct ProcessorSystemClient : ISystem
 {
     ComponentLookup<URPMaterialPropertyEmissionColor> _emissionColorQ;
+    public NativeList<UserUIElement> uiElements;
 
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
         _emissionColorQ = state.GetComponentLookup<URPMaterialPropertyEmissionColor>();
+        uiElements = new(256, Allocator.Persistent);
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
+        EntityCommandBuffer commandBuffer = default;
+
         _emissionColorQ.Update(ref state);
         float now = MonoTime.Now;
 
@@ -52,5 +58,45 @@ partial struct ProcessorSystemClient : ISystem
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
         }
+
+        foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<UIElementUpdateRpc>>()
+            .WithEntityAccess())
+        {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            commandBuffer.DestroyEntity(entity);
+
+            for (int i = 0; i < uiElements.Length; i++)
+            {
+                if (uiElements[i].Id != command.ValueRO.UIElement.Id) continue;
+                uiElements[i] = command.ValueRO.UIElement;
+                goto next;
+            }
+
+            uiElements.Add(command.ValueRO.UIElement);
+
+        next:;
+        }
+
+        foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<UIElementDestroyRpc>>()
+            .WithEntityAccess())
+        {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            commandBuffer.DestroyEntity(entity);
+
+            for (int i = 0; i < uiElements.Length; i++)
+            {
+                if (uiElements[i].Id != command.ValueRO.Id) continue;
+                uiElements.RemoveAt(i);
+                break;
+            }
+        }
+    }
+
+    public static ref ProcessorSystemClient GetInstance(in WorldUnmanaged world)
+    {
+        SystemHandle handle = world.GetExistingUnmanagedSystem<ProcessorSystemClient>();
+        return ref world.GetUnsafeSystemRef<ProcessorSystemClient>(handle);
     }
 }

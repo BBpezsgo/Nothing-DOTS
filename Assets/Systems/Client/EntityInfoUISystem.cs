@@ -20,7 +20,7 @@ public partial class EntityInfoUISystem : SystemBase
         {
             foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (canvas.renderMode == RenderMode.WorldSpace) continue;
+                if (canvas.name != "EntityInfoUICanvas") continue;
                 _canvas = canvas.transform;
                 break;
             }

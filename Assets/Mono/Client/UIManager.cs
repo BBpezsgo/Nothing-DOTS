@@ -48,7 +48,7 @@ public class UIManager : Singleton<UIManager>
 
     ImmutableArray<UIDocument>? _uis = default;
 
-    public ImmutableArray<UIDocument> UIs => _uis.HasValue ? _uis.Value : (_uis = ImmutableArray.Create(
+    public ImmutableArray<UIDocument> UIs => _uis ?? (_uis = ImmutableArray.Create(
         Unit,
         Factory,
         Facility,

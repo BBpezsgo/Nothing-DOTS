@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
 
@@ -48,5 +49,16 @@ public static class FixedStringExtensions
             if (error != FormatError.None) return error;
         }
         return FormatError.None;
+    }
+
+    public static unsafe FixedString32Bytes AsString(in this FixedBytes30 v)
+    {
+        FixedString32Bytes res = new();
+        char* ptr = (char*)Unsafe.AsPointer(ref Unsafe.AsRef(in v));
+        for (int i = 0; i < 15 && ptr[i] != 0; i++)
+        {
+            res.Append(ptr[i]);
+        }
+        return res;
     }
 }
