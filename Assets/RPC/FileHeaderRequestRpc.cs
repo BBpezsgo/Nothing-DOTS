@@ -6,4 +6,5 @@ using Unity.NetCode;
 public struct FileHeaderRequestRpc : IRpcCommand
 {
     public required FixedString64Bytes FileName;
+    public required long Version;
 }

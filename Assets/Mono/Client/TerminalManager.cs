@@ -134,7 +134,6 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             world.EntityManager.SetComponentData(entity, new SetProcessorSourceRequestRpc()
             {
                 Source = ui_inputSourcePath.value,
-                Version = File.GetLastWriteTimeUtc(file).Ticks,
                 Entity = ghostInstance,
             });
 

@@ -69,15 +69,13 @@ class NetcodeBootstrap : ClientServerBootstrap
         {
             if (prefabsQ.TryGetSingleton<PrefabDatabase>(out PrefabDatabase prefabs))
             {
-                using EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp); // endSimulationEntityCommandBufferSystemSingletonQ.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(ServerWorld.Unmanaged);
-                Entity newPlayer = commandBuffer.Instantiate(prefabs.Player);
-                commandBuffer.SetComponent<Player>(newPlayer, new()
+                Entity newPlayer = ServerWorld.EntityManager.Instantiate(prefabs.Player);
+                ServerWorld.EntityManager.SetComponentData<Player>(newPlayer, new()
                 {
                     ConnectionId = 0,
                     ConnectionState = PlayerConnectionState.Server,
                     Team = -1,
                 });
-                commandBuffer.Playback(ServerWorld.EntityManager);
             }
         }
     }

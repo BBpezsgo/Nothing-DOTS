@@ -76,13 +76,9 @@ public partial struct ResearchSystemClient : ISystem
         ref ResearchSystemClient system = ref GetInstance(world);
         system.AvaliableResearches.Clear();
 
-        EntityCommandBuffer commandBuffer = new(Allocator.Temp);
-
-        Entity request = commandBuffer.CreateEntity();
-        commandBuffer.AddComponent<SendRpcCommandRequest>(request);
-        commandBuffer.AddComponent<ResearchesRequestRpc>(request);
-        commandBuffer.Playback(world.EntityManager);
-        commandBuffer.Dispose();
+        Entity request = world.EntityManager.CreateEntity();
+        world.EntityManager.AddComponent<SendRpcCommandRequest>(request);
+        world.EntityManager.AddComponent<ResearchesRequestRpc>(request);
 
         Debug.Log("Request avaliable researches ...");
     }

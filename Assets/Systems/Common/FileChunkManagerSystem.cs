@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Entities.UniversalDelegates;
 using Unity.NetCode;
 using UnityEngine;
 
@@ -90,6 +91,8 @@ public partial class FileChunkManagerSystem : SystemBase
         shouldDelete = false;
         headerIndex = -1;
 
+        bool requestCached = true;
+
         for (int i = fileHeaders.Length - 1; i >= 0; i--)
         {
             BufferedReceivingFile header = fileHeaders[i];
@@ -102,7 +105,7 @@ public partial class FileChunkManagerSystem : SystemBase
             {
                 shouldDelete = true;
 
-                Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.Name}\" not found");
+                Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.ToUri()}\" not found");
                 RemoteFiles.Remove(request.File);
                 request.Task.SetException(new FileNotFoundException("Remote file not found", request.File.Name.ToString()));
                 if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
@@ -110,64 +113,84 @@ public partial class FileChunkManagerSystem : SystemBase
 
                 return;
             }
-
-            int totalLength = FileChunkManagerSystem.GetChunkLength(header.TotalLength);
-
-            FileChunk[] chunks = new FileChunk[totalLength];
-            bool[] received = new bool[totalLength];
-
-            for (int j = 0; j < fileChunks.Length; j++)
+            else if (header.Kind == FileResponseStatus.NotChanged)
             {
-                if (fileChunks[j].TransactionId != header.TransactionId) continue;
-                chunks[fileChunks[j].ChunkIndex] = fileChunks[j].Data;
-                received[fileChunks[j].ChunkIndex] = true;
+                if (RemoteFiles.TryGetValue(request.File, out RemoteFile remoteFile))
+                {
+                    shouldDelete = true;
+
+                    request.Task.SetResult(remoteFile);
+                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+                    CloseRemoteFile(commandBuffer, request.File);
+
+                    if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.ToUri()}\" was not changed");
+
+                    return;
+                }
+
+                Debug.LogWarning($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.ToUri()}\" was not changed but not found locally, requesting without cache ...");
+                requestCached = false;
             }
-
-            int receivedLength = received.Count(v => v);
-
-            request.Progress?.Report((receivedLength, totalLength));
-
-            if (receivedLength < totalLength)
-            { return; }
-
-            byte[] data = new byte[header.TotalLength];
-            for (int j = 0; j < chunks.Length; j++)
+            else if (header.Kind == FileResponseStatus.OK)
             {
-                int chunkSize = FileChunkManagerSystem.GetChunkSize(header.TotalLength, j);
-                Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[j]), chunkSize);
-                chunk.CopyTo(data.AsSpan(j * FileChunkResponseRpc.ChunkSize));
+                int totalLength = FileChunkManagerSystem.GetChunkLength(header.TotalLength);
+
+                FileChunk[] chunks = new FileChunk[totalLength];
+                bool[] received = new bool[totalLength];
+
+                for (int j = 0; j < fileChunks.Length; j++)
+                {
+                    if (fileChunks[j].TransactionId != header.TransactionId) continue;
+                    chunks[fileChunks[j].ChunkIndex] = fileChunks[j].Data;
+                    received[fileChunks[j].ChunkIndex] = true;
+                }
+
+                int receivedLength = received.Count(v => v);
+
+                request.Progress?.Report((receivedLength, totalLength));
+
+                if (receivedLength < totalLength)
+                { return; }
+
+                byte[] data = new byte[header.TotalLength];
+                for (int j = 0; j < chunks.Length; j++)
+                {
+                    int chunkSize = FileChunkManagerSystem.GetChunkSize(header.TotalLength, j);
+                    Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[j]), chunkSize);
+                    chunk.CopyTo(data.AsSpan(j * FileChunkResponseRpc.ChunkSize));
+                }
+
+                RemoteFile remoteFile = new(
+                    header.Kind,
+                    new FileData(data, header.Version),
+                    new FileId(header.FileName, header.Source)
+                );
+
+                shouldDelete = true;
+
+                RemoteFiles[request.File] = remoteFile;
+                request.Task.SetResult(remoteFile);
+                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+                CloseRemoteFile(commandBuffer, request.File);
+
+                return;
             }
-
-            RemoteFile remoteFile = new(
-                header.Kind,
-                new FileData(data, header.Version),
-                new FileId(header.FileName, header.Source)
-            );
-
-            shouldDelete = true;
-
-            RemoteFiles[request.File] = remoteFile;
-            request.Task.SetResult(remoteFile);
-            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
-            CloseRemoteFile(commandBuffer, request.File);
-
-            return;
         }
 
         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
 
-        if (EnableLogging) Debug.Log(string.Format("Requesting file header \"{0}\" from {1} ...", request.File.Name, request.File.Source));
         Entity rpcEntity = commandBuffer.CreateEntity();
         commandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
         {
             FileName = request.File.Name,
+            Version = requestCached && RemoteFiles.TryGetValue(request.File, out RemoteFile v) ? v.File.Version : 0,
         });
         Entity targetConnection = request.File.Source.GetEntity(World.EntityManager);
         commandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
         {
             TargetConnection = targetConnection,
         });
-        if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Sending request for file {request.File}"); ;
+        if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Sending request for file \"{request.File.ToUri()}\"");
     }
 
     void CloseRemoteFile(EntityCommandBuffer commandBuffer, FileId fileId)
@@ -206,7 +229,7 @@ public partial class FileChunkManagerSystem : SystemBase
     public FileStatus GetRequestStatus(FileId fileId)
     {
         Entity databaseEntity = SystemAPI.GetSingletonEntity<BufferedFiles>();
-        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(databaseEntity, true);
+        using NativeArray<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(databaseEntity, true).ToNativeArray(Allocator.TempJob);
 
         for (int i = fileHeaders.Length - 1; i >= 0; i--)
         {
@@ -238,7 +261,7 @@ public partial class FileChunkManagerSystem : SystemBase
 
     public static FileData? GetFileData(string fileName)
     {
-        if (EnableLogging) Debug.Log($"Loading file data \"{fileName}\"");
+        if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Loading file data \"{fileName}\"");
 
         if (string.IsNullOrWhiteSpace(fileName)) return null;
 
@@ -247,28 +270,28 @@ public partial class FileChunkManagerSystem : SystemBase
             ReadOnlySpan<char> _fileName = fileName;
             _fileName = _fileName[2..];
 
-            if (EnableLogging) Debug.Log($"Internal \"{_fileName.ToString()}\" ...");
+            if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Internal \"{_fileName.ToString()}\" ...");
             if (_fileName.Consume("/e/"))
             {
-                if (EnableLogging) Debug.Log($"Entity \"{_fileName.ToString()}\" ...");
+                if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Entity \"{_fileName.ToString()}\" ...");
 
-                if (EnableLogging) Debug.Log($"Ghost \"{_fileName.ToString()}\" ...");
+                if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Ghost \"{_fileName.ToString()}\" ...");
 
                 if (!_fileName.ConsumeInt(out int ghostId))
                 {
-                    Debug.LogError($"Can't get ghost id");
+                    Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Can't get ghost id");
                     return null;
                 }
 
                 if (!_fileName.Consume('_'))
                 {
-                    Debug.LogError($"Expected separator");
+                    Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Expected separator");
                     return null;
                 }
 
                 if (!_fileName.ConsumeUInt(out uint spawnTickValue))
                 {
-                    Debug.LogError($"Can't get ghost spawn tick");
+                    Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Can't get ghost spawn tick");
                     return null;
                 }
 
@@ -297,13 +320,13 @@ public partial class FileChunkManagerSystem : SystemBase
 
                 if (entity == Entity.Null)
                 {
-                    Debug.LogError($"Ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} }} not found");
+                    Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} }} not found");
                     return null;
                 }
 
                 if (_fileName.Consume("/m"))
                 {
-                    if (EnableLogging) Debug.Log($"Memory ...");
+                    if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Memory ...");
                     unsafe
                     {
                         Processor processor = World.DefaultGameObjectInjectionWorld.EntityManager.GetComponentData<Processor>(entity);

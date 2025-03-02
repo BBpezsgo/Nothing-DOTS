@@ -6,6 +6,5 @@ using Unity.NetCode;
 public struct SetProcessorSourceRequestRpc : IRpcCommand
 {
     public required FixedString64Bytes Source;
-    public required long Version;
     public required GhostInstance Entity;
 }

@@ -17,7 +17,7 @@ partial class CompilerSystemClient : SystemBase
             .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
-            if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
             // Debug.Log($"Received compilation status for {command.ValueRO.FileName}");
@@ -30,7 +30,7 @@ partial class CompilerSystemClient : SystemBase
             .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())
         {
-            if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
             if (!CompiledSources.TryGetValue(command.ValueRO.Source, out CompiledSource source))
@@ -46,12 +46,6 @@ partial class CompilerSystemClient : SystemBase
                 command.ValueRO.FileName.ToUri(),
                 null
             ));
-        }
-
-        if (commandBuffer.IsCreated)
-        {
-            commandBuffer.Playback(EntityManager);
-            commandBuffer.Dispose();
         }
     }
 }

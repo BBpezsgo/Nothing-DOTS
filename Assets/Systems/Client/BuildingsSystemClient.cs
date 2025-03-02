@@ -63,13 +63,9 @@ public partial struct BuildingsSystemClient : ISystem
         ref BuildingsSystemClient system = ref GetInstance(world);
         system.Buildings.Clear();
 
-        EntityCommandBuffer commandBuffer = new(Allocator.Temp);
-
-        Entity request = commandBuffer.CreateEntity();
-        commandBuffer.AddComponent<SendRpcCommandRequest>(request);
-        commandBuffer.AddComponent<BuildingsRequestRpc>(request);
-        commandBuffer.Playback(world.EntityManager);
-        commandBuffer.Dispose();
+        Entity request = world.EntityManager.CreateEntity();
+        world.EntityManager.AddComponent<SendRpcCommandRequest>(request);
+        world.EntityManager.AddComponent<BuildingsRequestRpc>(request);
 
         Debug.Log("Request avaliable buildings ...");
     }

@@ -7,7 +7,7 @@ using Unity.NetCode;
 partial struct BufferedFileReceiverSystem : ISystem
 {
     const bool DebugLog = false;
-    const int ChunkRequestsLimit = 10;
+    const int ChunkRequestsLimit = 1;
     const double ChunkRequestsCooldown = 1d;
 
     void ISystem.OnCreate(ref SystemState state)
@@ -88,6 +88,12 @@ partial struct BufferedFileReceiverSystem : ISystem
             if (!fileFound)
             {
                 Debug.LogWarning("Unexpected file chunk");
+                continue;
+            }
+
+            if (command.ValueRO.Status == FileChunkStatus.InvalidFile)
+            {
+                Debug.LogError("Failed to request file chunk: invalid file");
                 continue;
             }
 

@@ -63,13 +63,9 @@ public partial struct UnitsSystemClient : ISystem
         ref UnitsSystemClient system = ref GetInstance(world);
         system.Units.Clear();
 
-        EntityCommandBuffer commandBuffer = new(Allocator.Temp);
-
-        Entity request = commandBuffer.CreateEntity();
-        commandBuffer.AddComponent<SendRpcCommandRequest>(request);
-        commandBuffer.AddComponent<UnitsRequestRpc>(request);
-        commandBuffer.Playback(world.EntityManager);
-        commandBuffer.Dispose();
+        Entity request = world.EntityManager.CreateEntity();
+        world.EntityManager.AddComponent<SendRpcCommandRequest>(request);
+        world.EntityManager.AddComponent<UnitsRequestRpc>(request);
 
         Debug.Log("Request avaliable units ...");
     }

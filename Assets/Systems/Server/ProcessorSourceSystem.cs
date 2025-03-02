@@ -68,19 +68,13 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 if (compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
                 {
-                    if (EnableLogging)
-                    {
-                        if (source.LatestVersion == command.ValueRO.Version)
-                        { Debug.Log(string.Format("Source file {0} not changed", command.ValueRO.Source)); }
-                        else
-                        { Debug.Log(string.Format("Update source file {0} latest version ({1} -> {2})", command.ValueRO.Source, source.LatestVersion, command.ValueRO.Version)); }
-                    }
-                    source.LatestVersion = command.ValueRO.Version;
+                    if (EnableLogging) Debug.Log(string.Format("Update source file {0}", command.ValueRO.Source));
+                    source.LatestVersion++;
                 }
                 else
                 {
                     if (EnableLogging) Debug.Log(string.Format("Creating new source file {0}", command.ValueRO.Source));
-                    compilerSystem.AddEmpty(processor.ValueRO.SourceFile, command.ValueRO.Version);
+                    compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);
                 }
 
                 break;

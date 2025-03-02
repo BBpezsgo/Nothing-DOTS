@@ -109,53 +109,33 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required Registers* Registers;
         public required RefRO<UnitTeam> Team;
 
+        [BurstCompile]
         public void Push(scoped ReadOnlySpan<byte> data)
         {
             Registers->StackPointer += data.Length * BytecodeProcessor.StackDirection;
+
+            if (Registers->StackPointer >= global::Processor.UserMemorySize ||
+                Registers->StackPointer < global::Processor.HeapSize)
+            {
+                *Signal = LanguageCore.Runtime.Signal.StackOverflow;
+                return;
+            }
+
             ((nint)Memory).Set(Registers->StackPointer, data);
-
-            if (Registers->StackPointer >= global::Processor.UserMemorySize ||
-                Registers->StackPointer < global::Processor.HeapSize)
-            {
-                *Signal = LanguageCore.Runtime.Signal.StackOverflow;
-#if !UNITY
-            throw new RuntimeException("Stack overflow", GetContext(), default);
-#endif
-            }
         }
 
-        public unsafe void Push<T>(scoped ReadOnlySpan<T> data) where T : unmanaged
-        {
-            fixed (void* ptr = data)
-            {
-                Push(new ReadOnlySpan<byte>(ptr, data.Length * sizeof(T)));
-            }
-        }
-
-        public Span<byte> Pop(int size)
-        {
-            if (Registers->StackPointer >= global::Processor.UserMemorySize ||
-                Registers->StackPointer < global::Processor.HeapSize)
-            {
-                *Signal = LanguageCore.Runtime.Signal.StackOverflow;
-#if !UNITY
-            throw new RuntimeException("Stack overflow", GetContext(), default);
-#endif
-            }
-
-            Span<byte> data = new Span<byte>(Memory, global::Processor.UserMemorySize).Get(Registers->StackPointer, size);
-            Registers->StackPointer -= size * BytecodeProcessor.StackDirection;
-            return data;
-        }
-
+        [BurstCompile]
         public void DoCrash(in FixedString32Bytes message)
         {
-            Push(new ReadOnlySpan<char>(message.GetUnsafePtr(), message.Length));
+            char* ptr = stackalloc char[message.Length * sizeof(char)];
+            Unicode.Utf8ToUtf16(message.GetUnsafePtr(), message.Length, ptr, out int utf16Length, message.Length * sizeof(char));
+            Push(new Span<byte>(ptr, utf16Length * sizeof(char)));
+
             *Crash = Registers->StackPointer;
             *Signal = LanguageCore.Runtime.Signal.UserCrash;
-            return;
         }
 
+        [BurstCompile]
         public readonly void GetString(int pointer, out FixedString32Bytes @string)
         {
             @string = new();
@@ -990,6 +970,9 @@ partial struct ProcessorJob : IJobEntity
                             break;
                         case Signal.UndefinedExternalFunction:
                             Debug.LogError("Undefined External Function");
+                            break;
+                        case Signal.PointerOutOfRange:
+                            Debug.LogError("Pointer out of Range");
                             break;
                     }
                 }

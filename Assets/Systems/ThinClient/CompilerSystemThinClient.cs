@@ -13,7 +13,7 @@ partial struct CompilerSystemThinClient : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilerStatusRpc>>()
             .WithEntityAccess())
         {
-            if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             commandBuffer.DestroyEntity(entity);
         }
 
@@ -21,14 +21,8 @@ partial struct CompilerSystemThinClient : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<CompilationAnalysticsRpc>>()
             .WithEntityAccess())
         {
-            if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             commandBuffer.DestroyEntity(entity);
-        }
-
-        if (commandBuffer.IsCreated)
-        {
-            commandBuffer.Playback(state.EntityManager);
-            commandBuffer.Dispose();
         }
     }
 }

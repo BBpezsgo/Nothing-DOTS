@@ -6,6 +6,7 @@ public enum FileResponseStatus
 {
     OK,
     NotFound,
+    NotChanged,
 }
 
 [BurstCompile]

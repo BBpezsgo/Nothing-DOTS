@@ -180,7 +180,7 @@ public partial class CompilerSystemServer : SystemBase
                             else if (task.IsCanceled)
                             { Debug.LogError($"[{nameof(CompilerSystemServer)}]: Compilation task cancelled"); }
                         });
-                    if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                     SendCompilationStatus(source, commandBuffer);
                     break;
                 case CompilationStatus.Compiling:
@@ -188,7 +188,7 @@ public partial class CompilerSystemServer : SystemBase
                 case CompilationStatus.Compiled:
                     source.Status = CompilationStatus.Done;
 
-                    if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                     SendCompilationStatus(source, commandBuffer);
                     break;
                 case CompilationStatus.Done:
@@ -197,22 +197,16 @@ public partial class CompilerSystemServer : SystemBase
                         Debug.Log($"[{nameof(CompilerSystemServer)}]: Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
                         source.Status = CompilationStatus.Secuedued;
                         source.CompileSecuedued = 1f;
-                        if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                        if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                         SendCompilationStatus(source, commandBuffer);
                     }
                     break;
             }
             if (source.StatusChanged && source.LastStatusSync + 0.5d < SystemAPI.Time.ElapsedTime)
             {
-                if (!commandBuffer.IsCreated) commandBuffer = new(Allocator.Temp);
+                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                 SendCompilationStatus(source, commandBuffer);
             }
-        }
-
-        if (commandBuffer.IsCreated)
-        {
-            commandBuffer.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
-            commandBuffer.Dispose();
         }
     }
 
