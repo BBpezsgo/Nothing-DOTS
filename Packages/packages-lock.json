@@ -9,14 +9,8 @@
       },
       "hash": "2321374ba5e881425a1f55cfc26ef60befb8ce9e"
     },
-    "com.bb.bblang": {
-      "version": "file:/home/BB/Projects/BBLang/Unity",
-      "depth": 0,
-      "source": "local",
-      "dependencies": {}
-    },
-    "com.bb.math": {
-      "version": "file:/home/BB/Projects/Math/Unity",
+    "com.banszky.bblang": {
+      "version": "file:/home/BB/Projects/BBLang/Core/Unity",
       "depth": 0,
       "source": "local",
       "dependencies": {}

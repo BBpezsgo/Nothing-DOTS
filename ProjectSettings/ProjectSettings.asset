@@ -736,7 +736,7 @@ PlayerSettings:
     Lumin: 
     Nintendo Switch: 
     PS4: 
-    Standalone: UNITY;EDITOR_DEBUG
+    Standalone: UNITY;UNITY_BURST;EDITOR_DEBUG
     WebGL: 
     Windows Store Apps: 
     XboxOne: 

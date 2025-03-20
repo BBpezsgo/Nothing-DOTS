@@ -67,7 +67,7 @@ partial struct BufferedFileSenderSystem : ISystem
             }
 
             {
-                int transactionId = Maths.Random.Integer();
+                int transactionId = RandomManaged.Shared.Next();
                 int totalLength = localFile.Value.Data.Length;
 
                 Entity responseRpcEntity = commandBuffer.CreateEntity();

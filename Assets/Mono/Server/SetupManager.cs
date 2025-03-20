@@ -133,8 +133,8 @@ public class SetupManager : Singleton<SetupManager>
                         c = 0;
                     }
                     generated = new(
-                        Maths.Random.Float(Start.x, End.x),
-                        Maths.Random.Float(Start.y, End.y)
+                        RandomManaged.Shared.Float(Start.x, End.x),
+                        RandomManaged.Shared.Float(Start.y, End.y)
                     );
                     if (IsOccupied(generated)) continue;
                     spawned.Add(generated);
@@ -143,7 +143,7 @@ public class SetupManager : Singleton<SetupManager>
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
                             new float3(generated.x, 0.5f, generated.y),
-                            quaternion.EulerXYZ(0f, Maths.Random.Float(0f, math.TAU), 0f)
+                            quaternion.EulerXYZ(0f, RandomManaged.Shared.Float(0f, math.TAU), 0f)
                         ));
                     }
                     else
@@ -195,7 +195,7 @@ public class SetupManager : Singleton<SetupManager>
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
                             new float3(generated.x, 0.5f, generated.y),
-                            quaternion.EulerXYZ(0f, Maths.Random.Float(0f, math.TAU), 0f)
+                            quaternion.EulerXYZ(0f, RandomManaged.Shared.Float(0f, math.TAU), 0f)
                         ));
                     }
                     else

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -10,7 +11,6 @@ using LanguageCore.BBLang.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Parser;
 using LanguageCore.Runtime;
-using Maths;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -427,21 +427,28 @@ public partial class CompilerSystemServer : SystemBase
                 for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
                 {
                     ref readonly ExternalFunctionScopedSync externalFunction = ref scopedExternalFunctions[i];
-                    externalFunctions[i] = new ExternalFunctionSync(null!, externalFunction.Id, ExternalFunctionNames[externalFunction.Id], externalFunction.ParametersSize, externalFunction.ReturnValueSize);
+                    externalFunctions[i] = externalFunction.ToManaged(ExternalFunctionNames[externalFunction.Id]);
                 }
             }
 
-            compiled = Compiler.CompileFile(
+            compiled = StatementCompiler.CompileFile(
                 sourceUri,
-                externalFunctions,
                 new CompilerSettings()
                 {
                     BasePath = null,
+                    PreprocessorVariables = PreprocessorVariables.Normal,
+                    FileParser = FileParser,
+                    UserDefinedAttributes = attributes,
+                    ExternalFunctions = externalFunctions.ToImmutableArray(),
+                    DontOptimize = false,
+
+                    PointerSize = CodeGeneratorForMain.DefaultCompilerSettings.PointerSize,
+                    ArrayLengthType = CodeGeneratorForMain.DefaultCompilerSettings.ArrayLengthType,
+                    BooleanType = CodeGeneratorForMain.DefaultCompilerSettings.BooleanType,
+                    ExitCodeType = CodeGeneratorForMain.DefaultCompilerSettings.ExitCodeType,
+                    SizeofStatementType = CodeGeneratorForMain.DefaultCompilerSettings.SizeofStatementType,
                 },
-                PreprocessorVariables.Normal,
-                source.Diagnostics,
-                FileParser,
-                userDefinedAttributes: attributes
+                source.Diagnostics
             );
 
             generated = CodeGeneratorForMain.Generate(

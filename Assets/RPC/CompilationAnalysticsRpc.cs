@@ -1,5 +1,4 @@
 using LanguageCore;
-using Maths;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.NetCode;
@@ -9,8 +8,8 @@ public struct CompilationAnalysticsRpc : IRpcCommand
 {
     public FileId Source;
     public FileId FileName;
-    public MutableRange<SinglePosition> Position;
-    public MutableRange<int> AbsolutePosition;
+    public LanguageCore.MutableRange<SinglePosition> Position;
+    public LanguageCore.MutableRange<int> AbsolutePosition;
     public DiagnosticsLevel Level;
     public FixedString512Bytes Message;
 }
