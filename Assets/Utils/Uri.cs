@@ -28,9 +28,6 @@ public static class UriExtensions
         if (path.StartsWith("/~"))
         { path = path[1..]; }
 
-        if (path.StartsWith('/'))
-        { path = path[1..]; }
-
         fileId = new FileId(path, new NetcodeEndPoint(
             new Unity.NetCode.NetworkId()
             {

@@ -6,10 +6,10 @@ using UnityEngine;
 [BurstCompile]
 public struct FileId : IEquatable<FileId>, IInspect<FileId>
 {
-    public FixedString64Bytes Name;
+    public FixedString128Bytes Name;
     public NetcodeEndPoint Source;
 
-    public FileId(FixedString64Bytes name, NetcodeEndPoint source)
+    public FileId(FixedString128Bytes name, NetcodeEndPoint source)
     {
         Name = name;
         Source = source;

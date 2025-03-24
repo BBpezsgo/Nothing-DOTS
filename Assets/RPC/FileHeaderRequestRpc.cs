@@ -5,6 +5,6 @@ using Unity.NetCode;
 [BurstCompile]
 public struct FileHeaderRequestRpc : IRpcCommand
 {
-    public required FixedString64Bytes FileName;
+    public required FixedString128Bytes FileName;
     public required long Version;
 }

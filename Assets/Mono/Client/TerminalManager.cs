@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
+using LanguageCore;
 using LanguageCore.Runtime;
 using NaughtyAttributes;
 using Unity.Entities;
@@ -499,16 +500,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 { continue; }
 
                                 _terminalBuilder.AppendLine(item.ToString());
-                                (string SourceCode, string Arrows)? arrows = item.GetArrows((uri) =>
+                                (string SourceCode, string Arrows)? arrows = item.GetArrows(new ISourceProvider[]
                                 {
-                                    if (!uri.TryGetNetcode(out FileId fileId)) return null;
-
-                                    if (FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).TryGetRemoteFile(fileId, out RemoteFile remoteFile))
-                                    {
-                                        return Encoding.UTF8.GetString(remoteFile.File.Data);
-                                    }
-
-                                    return null;
+                                    new NetcodeSourceProviderOffline(),
                                 });
                                 if (arrows.HasValue)
                                 {

@@ -5,5 +5,5 @@ using Unity.NetCode;
 [BurstCompile]
 public struct CloseFileRpc : IRpcCommand
 {
-    public required FixedString64Bytes FileName;
+    public required FixedString128Bytes FileName;
 }

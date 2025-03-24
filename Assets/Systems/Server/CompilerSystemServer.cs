@@ -3,7 +3,6 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using LanguageCore;
@@ -293,73 +292,6 @@ public partial class CompilerSystemServer : SystemBase
 
         List<ProgressRecord<(int, int)>> progresses = new();
 
-        Awaitable<Stream?>? FileParser(Uri uri)
-        {
-            if (!uri.TryGetNetcode(out FileId fileId))
-            {
-                Debug.LogError($"[{nameof(CompilerSystemServer)}]: Uri \"{uri}\" aint a netcode uri");
-                return null;
-            }
-
-            if (fileId.Source.IsServer)
-            {
-                FileData? localFile = FileChunkManagerSystem.GetFileData(fileId.Name.ToString());
-                if (!localFile.HasValue)
-                { return null; }
-
-                AwaitableCompletionSource<Stream?> task = new();
-                task.SetResult(new MemoryStream(localFile.Value.Data));
-                return task.Awaitable;
-            }
-
-            // if (FileChunkManagerSystem.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
-            // {
-            //     var task = new AwaitableCompletionSource<Stream?>();
-            //     task.SetResult(new MemoryStream(remoteFile.File.Data));
-            //     return task.Awaitable;
-            // }
-
-            FileStatus status = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).GetRequestStatus(fileId);
-
-            if (status == FileStatus.NotFound)
-            {
-                Debug.LogError($"[{nameof(CompilerSystemServer)}]: Remote file \"{uri}\" not found");
-                return null;
-            }
-
-            ProgressRecord<(int, int)> progress = new(v =>
-            {
-                float total = progresses.Sum(v => v.Progress.Item2 == 0 ? 0f : (float)v.Progress.Item1 / (float)v.Progress.Item2);
-                source.Progress = total / (float)progresses.Count;
-                source.Diagnostics.Clear();
-                source.StatusChanged = true;
-            });
-            progresses.Add(progress);
-            if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source needs file \"{fileId}\" ...");
-
-            {
-                AwaitableCompletionSource<Stream?> result = new();
-                Awaitable<RemoteFile> task = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).RequestFile(fileId, progress);
-                task.GetAwaiter().OnCompleted(() =>
-                {
-                    try
-                    {
-                        MemoryStream data = new(task.GetAwaiter().GetResult().File.Data);
-                        result.SetResult(data);
-                        if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source \"{fileId}\" downloaded ...");
-                        if (source.Status == CompilationStatus.Secuedued &&
-                            source.CompileSecuedued != 1f)
-                        { source.CompileSecuedued = 1f; }
-                    }
-                    catch (Exception ex)
-                    {
-                        result.SetException(ex);
-                    }
-                });
-                return result.Awaitable;
-            }
-        }
-
         UserDefinedAttribute[] attributes = new UserDefinedAttribute[]
         {
             new("UnitCommand", new LiteralType[] { LiteralType.Integer, LiteralType.String }, CanUseOn.Struct, static (IHaveAttributes context, AttributeUsage attribute, [NotNullWhen(false)] out PossibleDiagnostic? error) =>
@@ -391,7 +323,7 @@ public partial class CompilerSystemServer : SystemBase
                 {
                     case "position":
                     {
-                        if (field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new(), null)) != sizeof(float2))
+                        if (field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new())) != sizeof(float2))
                         {
                             error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float2)} (a 2D float vector)");
                             return false;
@@ -432,21 +364,15 @@ public partial class CompilerSystemServer : SystemBase
             }
 
             compiled = StatementCompiler.CompileFile(
-                sourceUri,
-                new CompilerSettings()
+                sourceUri.ToString(),
+                new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
                 {
-                    BasePath = null,
-                    PreprocessorVariables = PreprocessorVariables.Normal,
-                    FileParser = FileParser,
                     UserDefinedAttributes = attributes,
                     ExternalFunctions = externalFunctions.ToImmutableArray(),
                     DontOptimize = false,
-
-                    PointerSize = CodeGeneratorForMain.DefaultCompilerSettings.PointerSize,
-                    ArrayLengthType = CodeGeneratorForMain.DefaultCompilerSettings.ArrayLengthType,
-                    BooleanType = CodeGeneratorForMain.DefaultCompilerSettings.BooleanType,
-                    ExitCodeType = CodeGeneratorForMain.DefaultCompilerSettings.ExitCodeType,
-                    SizeofStatementType = CodeGeneratorForMain.DefaultCompilerSettings.SizeofStatementType,
+                    SourceProviders = ImmutableArray.Create<ISourceProvider>(
+                        new NetcodeSourceProvider(source, progresses, EnableLogging)
+                    ),
                 },
                 source.Diagnostics
             );
