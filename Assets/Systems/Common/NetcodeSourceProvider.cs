@@ -44,7 +44,7 @@ class NetcodeSourceProvider : ISourceProviderAsync
 
         foreach (Uri uri in GetQuery(requestedFile, currentFile))
         {
-            Debug.Log($"Try load {uri} ...");
+            if (EnableLogging) Debug.Log($"Try load {uri} ...");
             lastUri = uri;
 
             if (!uri.TryGetNetcode(out FileId fileId))
@@ -53,7 +53,7 @@ class NetcodeSourceProvider : ISourceProviderAsync
                 return SourceProviderResultAsync.NextHandler();
             }
 
-            Debug.Log($"Try load netcode file {fileId.Name} ...");
+            if (EnableLogging) Debug.Log($"Try load netcode file {fileId.Name} ...");
 
             if (fileId.Source.IsServer)
             {
@@ -63,7 +63,7 @@ class NetcodeSourceProvider : ISourceProviderAsync
 
                 AwaitableCompletionSource<Stream> task = new();
                 task.SetResult(new MemoryStream(localFile.Value.Data));
-                Debug.Log($"Successfully loaded {uri}");
+                if (EnableLogging) Debug.Log($"Successfully loaded {uri}");
                 return SourceProviderResultAsync.Success(uri, task.Awaitable);
             }
 
@@ -111,7 +111,8 @@ class NetcodeSourceProvider : ISourceProviderAsync
                         result.SetException(ex);
                     }
                 });
-                Debug.Log($"Successfully loaded {uri}");
+
+                if (EnableLogging) Debug.Log($"Successfully loaded {uri}");
                 return SourceProviderResultAsync.Success(uri, result.Awaitable);
             }
 

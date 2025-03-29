@@ -41,9 +41,11 @@ public class CompiledSource : IInspect<CompiledSource>
     public bool IsSuccess;
 
     public NativeArray<Instruction>? Code;
+    public NativeArray<ExternalFunctionScopedSync>? GeneratedFunction;
     public CompiledDebugInformation DebugInformation;
     public DiagnosticsCollection Diagnostics;
     public CompilerResult Compiled;
+    public BBLangGeneratorResult Generated;
 
     CompiledSource(
         FileId sourceFile,
@@ -345,23 +347,47 @@ public partial class CompilerSystemServer : SystemBase
         CompilerResult compiled = CompilerResult.MakeEmpty(sourceUri);
         BBLangGeneratorResult generated = new()
         {
-            Code = System.Collections.Immutable.ImmutableArray<Instruction>.Empty,
+            Code = ImmutableArray<Instruction>.Empty,
             DebugInfo = null,
         };
         try
         {
-            IExternalFunction[] externalFunctions = new IExternalFunction[ProcessorSystemServer.ExternalFunctionCount];
-            unsafe
+            static float _time() => MonoTime.Now;
+            IExternalFunction[] externalFunctions = new IExternalFunction[]
             {
-                ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ProcessorSystemServer.ExternalFunctionCount];
-                ProcessorSystemServer.GenerateExternalFunctions(scopedExternalFunctions);
+                new ExternalFunctionStub(01, "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
+                new ExternalFunctionStub(02, "stdin", 0, ExternalFunctionGenerator.SizeOf<char>()),
 
-                for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
-                {
-                    ref readonly ExternalFunctionScopedSync externalFunction = ref scopedExternalFunctions[i];
-                    externalFunctions[i] = externalFunction.ToManaged(ExternalFunctionNames[externalFunction.Id]);
-                }
-            }
+                ExternalFunctionSync.Create<float, float>(11, "sqrt", MathF.Sqrt),
+                ExternalFunctionSync.Create<float, float, float>(12, "atan2", MathF.Atan2),
+                ExternalFunctionSync.Create<float, float>(13, "sin", MathF.Sin),
+                ExternalFunctionSync.Create<float, float>(14, "cos", MathF.Cos),
+                ExternalFunctionSync.Create<float, float>(15, "tan", MathF.Tan),
+                ExternalFunctionSync.Create<float, float>(16, "asin", MathF.Asin),
+                ExternalFunctionSync.Create<float, float>(17, "acos", MathF.Acos),
+                ExternalFunctionSync.Create<float, float>(18, "atan", MathF.Atan),
+
+                new ExternalFunctionStub(21, "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
+                new ExternalFunctionStub(22, "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+                new ExternalFunctionStub(23, "radar", 0, 0),
+
+                new ExternalFunctionStub(31, "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(32, "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                ExternalFunctionSync.Create(33, "time", _time),
+                new ExternalFunctionStub(34, "random", 0, ExternalFunctionGenerator.SizeOf<int>()),
+
+                new ExternalFunctionStub(41, "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+                new ExternalFunctionStub(42, "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+
+                new ExternalFunctionStub(43, "debug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
+                new ExternalFunctionStub(44, "ldebug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
+
+                new ExternalFunctionStub(51, "dequeue_command", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>()),
+
+                new ExternalFunctionStub(61, "gui_create", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(62, "gui_destroy", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(63, "gui_update", ExternalFunctionGenerator.SizeOf<int>(), 0),
+            };
 
             compiled = StatementCompiler.CompileFile(
                 sourceUri.ToString(),
@@ -382,6 +408,12 @@ public partial class CompilerSystemServer : SystemBase
                 new MainGeneratorSettings(MainGeneratorSettings.Default)
                 {
                     StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
+                    ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
+                    {
+                        AllowCrash = false,
+                        AllowHeap = false,
+                        AllowPointers = true,
+                    },
                 },
                 null,
                 source.Diagnostics
@@ -416,24 +448,30 @@ public partial class CompilerSystemServer : SystemBase
         {
             source.Status = CompilationStatus.Compiled;
             source.Compiled = compiled;
+            source.Generated = generated;
             source.CompileSecuedued = default;
             source.CompiledVersion = DateTime.UtcNow.Ticks;
             source.IsSuccess = false;
             source.DebugInformation = new CompiledDebugInformation(null);
             source.Code?.Dispose();
             source.Code = default;
+            source.GeneratedFunction?.Dispose();
+            source.GeneratedFunction = default;
             source.Progress = float.NaN;
         }
         else
         {
             source.Status = CompilationStatus.Compiled;
             source.Compiled = compiled;
+            source.Generated = generated;
             source.CompileSecuedued = default;
             source.CompiledVersion = DateTime.UtcNow.Ticks;
             source.IsSuccess = true;
             source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
             source.Code?.Dispose();
             source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
+            source.GeneratedFunction?.Dispose();
+            source.GeneratedFunction = new NativeArray<ExternalFunctionScopedSync>(generated.GeneratedUnmanagedFunctions.ToArray(), Allocator.Persistent);
             source.Progress = float.NaN;
         }
     }

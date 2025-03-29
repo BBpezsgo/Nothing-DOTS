@@ -112,7 +112,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         [BurstCompile]
         public void Push(scoped ReadOnlySpan<byte> data)
         {
-            Registers->StackPointer += data.Length * BytecodeProcessor.StackDirection;
+            Registers->StackPointer += data.Length * ProcessorState.StackDirection;
 
             if (Registers->StackPointer >= global::Processor.UserMemorySize ||
                 Registers->StackPointer < global::Processor.HeapSize)
@@ -894,6 +894,7 @@ partial struct ProcessorJob : IJobEntity
         RefRO<LocalToWorld> worldTransform,
         RefRO<LocalTransform> localTransform,
         DynamicBuffer<BufferedInstruction> code,
+        DynamicBuffer<BufferedGeneratedFunction> generatedFunctions,
         Entity entity)
     {
         if (processor.ValueRO.SourceFile == default)
@@ -906,13 +907,6 @@ partial struct ProcessorJob : IJobEntity
         {
             processor.ValueRW.StatusLED.Status = 0;
             return;
-        }
-
-        ExternalFunctionScopedSync* scopedExternalFunctions = stackalloc ExternalFunctionScopedSync[ProcessorSystemServer.ExternalFunctionCount];
-
-        for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
-        {
-            scopedExternalFunctions[i] = this.scopedExternalFunctions[i];
         }
 
         ProcessorSystemServer.FunctionScope scope = new()
@@ -929,17 +923,26 @@ partial struct ProcessorJob : IJobEntity
             Registers = null,
             Signal = null,
         };
+
+        NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions = new(ProcessorSystemServer.ExternalFunctionCount + generatedFunctions.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+
         for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
-        { scopedExternalFunctions[i].Scope = (nint)(void*)&scope; }
+        {
+            scopedExternalFunctions[i] = this.scopedExternalFunctions[i];
+            ((ExternalFunctionScopedSync*)scopedExternalFunctions.GetUnsafePtr())[i].Scope = (nint)(void*)&scope;
+        }
+
+        for (int i = ProcessorSystemServer.ExternalFunctionCount; i < scopedExternalFunctions.Length; i++)
+        {
+            scopedExternalFunctions[i] = generatedFunctions[i - ProcessorSystemServer.ExternalFunctionCount].V;
+        }
 
         ProcessorState processorState = new(
             ProcessorSystemServer.BytecodeInterpreterSettings,
             processor.ValueRW.Registers,
             new Span<byte>(Unsafe.AsPointer(ref processor.ValueRW.Memory), Processor.TotalMemorySize),
             new ReadOnlySpan<Instruction>(code.GetUnsafeReadOnlyPtr(), code.Length),
-            ReadOnlySpan<IExternalFunction>.Empty,
-            scopedExternalFunctions,
-            ProcessorSystemServer.ExternalFunctionCount
+            scopedExternalFunctions
         )
         {
             Signal = processor.ValueRO.Signal,
@@ -997,5 +1000,7 @@ partial struct ProcessorJob : IJobEntity
         processor.ValueRW.Signal = processorState.Signal;
         processor.ValueRW.Crash = processorState.Crash;
         processor.ValueRW.StatusLED.Status = processorState.Signal == Signal.None ? 1 : 2;
+
+        scopedExternalFunctions.Dispose();
     }
 }

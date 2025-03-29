@@ -81,8 +81,8 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             }
         }
 
-        foreach (var (processor, commandDefinitions, instructions) in
-                    SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>, DynamicBuffer<BufferedInstruction>>())
+        foreach (var (processor, commandDefinitions, instructions, generatedFunctions) in
+                    SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>, DynamicBuffer<BufferedInstruction>, DynamicBuffer<BufferedGeneratedFunction>>())
         {
             if (processor.ValueRO.SourceFile == default)
             {
@@ -142,6 +142,13 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                 NativeArray<BufferedInstruction> code = source.Code.Value.Reinterpret<BufferedInstruction>();
                 instructions.CopyFrom(code);
 
+                generatedFunctions.Clear();
+                if (source.GeneratedFunction.HasValue)
+                {
+                    NativeArray<BufferedGeneratedFunction> _generatedFunctions = source.GeneratedFunction.Value.Reinterpret<BufferedGeneratedFunction>();
+                    generatedFunctions.CopyFrom(_generatedFunctions);
+                }
+
                 continue;
             }
 
@@ -158,8 +165,6 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
         ProcessorState processorState_ = new(
             ProcessorSystemServer.BytecodeInterpreterSettings,
-            default,
-            default,
             default,
             default,
             default,

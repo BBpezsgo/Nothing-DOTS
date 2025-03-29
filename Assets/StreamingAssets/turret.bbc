@@ -4,6 +4,42 @@ const f32 G = 9.82f;
 const f32 PROJECTILE_V = 20f ;
 const f32 PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
 
+f32 CalculateAngle(f32 targetDistance, f32 height)
+{
+    f32 discriminant = (
+        (PROJECTILE_V2 * PROJECTILE_V2) -
+        (G * (G * targetDistance * targetDistance + ((10f + height) * -2f * PROJECTILE_V2)))
+    );
+
+    if (discriminant < 0f)
+    {
+        return -0.785398f;
+    }
+    else if (1)
+    {
+        return Atan(
+            (PROJECTILE_V2 + _Sqrt(discriminant)) /
+            (G * targetDistance)
+        ) - (PI * 0.5f);
+    }
+    else
+    {
+        return Atan(
+            (PROJECTILE_V2 - _Sqrt(discriminant)) /
+            (G * targetDistance)
+        ) - (PI * 0.5f);
+    }
+}
+
+f32 CalculateRotation(float2 target)
+{
+    float2 targetDirection = Normalised(target);
+    f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
+    if (targetAngle < 0f) { targetAngle += TAU; }
+    if (targetAngle >= TAU) { targetAngle -= TAU; }
+    return targetAngle;
+}
+
 export u8 TargetAt(float2 target, float2* targetedPosition)
 {
     if (target.x == 0f &&
@@ -18,39 +54,13 @@ export u8 TargetAt(float2 target, float2* targetedPosition)
         *targetedPosition = target;
         target.y -= 0.2f;
 
-        {
-            float2 targetDirection = Normalised(target);
-            f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
-            if (targetAngle < 0f) { targetAngle += TAU; }
-            if (targetAngle >= TAU) { targetAngle -= TAU; }
-            CombatTurret.TurretTargetRotation = targetAngle;
-        }
+        CombatTurret.TurretTargetRotation = CalculateRotation(target);
 
         f32 targetDistance = Magnitude(target);
         targetDistance -= Cos(CombatTurret.TurretCurrentAngle) * 2.5f;
         f32 height = Sin(CombatTurret.TurretCurrentAngle) * 2.5f;
-        f32 discriminant = (
-            (PROJECTILE_V2 * PROJECTILE_V2) -
-            (G * (G * targetDistance * targetDistance + ((10f + height) * -2f * PROJECTILE_V2)))
-        );
-        if (discriminant < 0f)
-        {
 
-        }
-        else if (1)
-        {
-            CombatTurret.TurretTargetAngle = Atan(
-                (PROJECTILE_V2 + _Sqrt(discriminant)) /
-                (G * targetDistance)
-            ) - (PI * 0.5f);
-        }
-        else
-        {
-            CombatTurret.TurretTargetAngle = Atan(
-                (PROJECTILE_V2 - _Sqrt(discriminant)) /
-                (G * targetDistance)
-            ) - (PI * 0.5f);
-        }
+        CombatTurret.TurretTargetAngle = CalculateAngle(targetDistance, height);
     }
 
     f32 diff1 = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
@@ -78,13 +88,7 @@ export u8 TargetAtSimple(float2 target, float2* targetedPosition)
         *targetedPosition = target;
         target.y -= 0.2f;
 
-        {
-            float2 targetDirection = Normalised(target);
-            f32 targetAngle = Atan2(targetDirection.x, targetDirection.y);
-            if (targetAngle < 0f) { targetAngle += TAU; }
-            if (targetAngle >= TAU) { targetAngle -= TAU; }
-            CombatTurret.TurretTargetRotation = targetAngle;
-        }
+        CombatTurret.TurretTargetRotation = CalculateRotation(target);
 
         CombatTurret.TurretTargetAngle = 0.00001f; // TODO: fix this
     }

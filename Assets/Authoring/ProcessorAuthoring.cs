@@ -38,6 +38,7 @@ public class ProcessorAuthoring : MonoBehaviour
                 ),
             });
             AddBuffer<BufferedInstruction>(entity);
+            AddBuffer<BufferedGeneratedFunction>(entity);
             AddBuffer<BufferedUnitCommandDefinition>(entity);
         }
     }
