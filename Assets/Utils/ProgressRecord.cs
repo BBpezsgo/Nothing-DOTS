@@ -1,6 +1,6 @@
 using System;
 
-class ProgressRecord<T> : IProgress<T>
+public class ProgressRecord<T> : IProgress<T>
 {
     public T? Progress { get; private set; }
     readonly Action<T>? _handler;

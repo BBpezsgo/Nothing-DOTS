@@ -6,7 +6,7 @@ using LanguageCore;
 using Unity.Entities;
 using UnityEngine;
 
-class NetcodeSourceProvider : ISourceProviderAsync
+class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 {
     readonly CompiledSource source;
     readonly List<ProgressRecord<(int, int)>> progresses;
@@ -44,7 +44,6 @@ class NetcodeSourceProvider : ISourceProviderAsync
 
         foreach (Uri uri in GetQuery(requestedFile, currentFile))
         {
-            if (EnableLogging) Debug.Log($"Try load {uri} ...");
             lastUri = uri;
 
             if (!uri.TryGetNetcode(out FileId fileId))
@@ -63,15 +62,15 @@ class NetcodeSourceProvider : ISourceProviderAsync
 
                 AwaitableCompletionSource<Stream> task = new();
                 task.SetResult(new MemoryStream(localFile.Value.Data));
-                if (EnableLogging) Debug.Log($"Successfully loaded {uri}");
+                if (EnableLogging) Debug.Log($"Successfully loaded {uri} from local files");
                 return SourceProviderResultAsync.Success(uri, task.Awaitable);
             }
 
-            // if (FileChunkManagerSystem.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
+            // if (FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).TryGetRemoteFile(fileId, out RemoteFile remoteFile))
             // {
-            //     var task = new AwaitableCompletionSource<Stream?>();
+            //     AwaitableCompletionSource<Stream> task = new();
             //     task.SetResult(new MemoryStream(remoteFile.File.Data));
-            //     return task.Awaitable;
+            //     return  SourceProviderResultAsync.Success(uri, task.Awaitable);
             // }
 
             FileStatus status = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).GetRequestStatus(fileId);
@@ -82,14 +81,17 @@ class NetcodeSourceProvider : ISourceProviderAsync
                 return SourceProviderResultAsync.NotFound(uri);
             }
 
-            ProgressRecord<(int, int)> progress = new(v =>
+            ProgressRecord<(int Current, int Total)> progress = new(v =>
             {
                 float total = progresses.Sum(v => v.Progress.Item2 == 0 ? 0f : (float)v.Progress.Item1 / (float)v.Progress.Item2);
                 source.Progress = total / (float)progresses.Count;
                 source.Diagnostics.Clear();
                 source.StatusChanged = true;
             });
+
+            source.SubFiles[fileId] = progress;
             progresses.Add(progress);
+
             if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source needs file \"{fileId}\" ...");
 
             {
@@ -102,9 +104,9 @@ class NetcodeSourceProvider : ISourceProviderAsync
                         MemoryStream data = new(task.GetAwaiter().GetResult().File.Data);
                         result.SetResult(data);
                         if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source \"{fileId}\" downloaded ...");
-                        if (source.Status == CompilationStatus.Secuedued &&
-                            source.CompileSecuedued != 1f)
-                        { source.CompileSecuedued = 1f; }
+                        // if (source.Status == CompilationStatus.Secuedued &&
+                        //     source.CompileSecuedued != 1f)
+                        // { source.CompileSecuedued = 1f; }
                     }
                     catch (Exception ex)
                     {

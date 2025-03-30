@@ -46,6 +46,7 @@ public class CompiledSource : IInspect<CompiledSource>
     public DiagnosticsCollection Diagnostics;
     public CompilerResult Compiled;
     public BBLangGeneratorResult Generated;
+    public Dictionary<FileId, ProgressRecord<(int Current, int Total)>> SubFiles;
 
     CompiledSource(
         FileId sourceFile,
@@ -70,6 +71,7 @@ public class CompiledSource : IInspect<CompiledSource>
         Diagnostics = diagnostics;
         Status = status;
         Compiled = CompilerResult.MakeEmpty(sourceFile.ToUri());
+        SubFiles = new();
     }
 
     public static CompiledSource Empty(FileId sourceFile, long latestVersion) => new(
@@ -231,6 +233,22 @@ public partial class CompilerSystemServer : SystemBase
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
             if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
+        }
+
+        foreach (var subfile in source.SubFiles)
+        {
+            Entity request = commandBuffer.CreateEntity();
+            commandBuffer.AddComponent(request, new CompilerSubstatusRpc()
+            {
+                FileName = source.SourceFile,
+                SubFileName = subfile.Key,
+                CurrentProgress = subfile.Value.Progress.Current,
+                TotalProgress = subfile.Value.Progress.Total,
+            });
+            commandBuffer.AddComponent(request, new SendRpcCommandRequest()
+            {
+                TargetConnection = source.SourceFile.Source.GetEntity(),
+            });
         }
 
         // .ToArray() because the collection can be modified somewhere idk

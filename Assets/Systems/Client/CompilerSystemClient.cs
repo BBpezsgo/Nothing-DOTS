@@ -26,6 +26,21 @@ partial class CompilerSystemClient : SystemBase
         }
 
         foreach (var (command, entity) in
+            SystemAPI.Query<RefRO<CompilerSubstatusRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
+            .WithEntityAccess())
+        {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+            commandBuffer.DestroyEntity(entity);
+
+            if (CompiledSources.TryGetValue(command.ValueRO.FileName, out var compiledSource))
+            {
+                compiledSource.SubFiles.TryAdd(command.ValueRO.SubFileName, new ProgressRecord<(int Current, int Total)>(null));
+                compiledSource.SubFiles[command.ValueRO.SubFileName].Report((command.ValueRO.CurrentProgress, command.ValueRO.TotalProgress));
+            }
+        }
+
+        foreach (var (command, entity) in
             SystemAPI.Query<RefRO<CompilationAnalysticsRpc>>()
             .WithAll<ReceiveRpcCommandRequest>()
             .WithEntityAccess())

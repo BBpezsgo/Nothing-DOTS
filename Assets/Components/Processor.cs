@@ -53,8 +53,8 @@ public struct Processor : IComponentData
     [GhostField] public Signal Signal;
     public bool SignalNotified;
 
-    [GhostField] public bool IsKeyRequested;
-    public char InputKey;
+    public bool IsKeyRequested;
+    public FixedList128Bytes<char> InputKey;
 
     /// <summary>
     /// Direction in local space

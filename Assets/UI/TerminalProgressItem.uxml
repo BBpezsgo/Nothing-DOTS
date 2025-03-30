@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:VisualElement style="flex-grow: 1;">
+        <ui:ProgressBar value="0" title="Uploading ..." high-value="1" style="margin-top: 2px; margin-bottom: 2px;" />
+    </ui:VisualElement>
+</ui:UXML>

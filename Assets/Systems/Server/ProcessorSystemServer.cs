@@ -250,7 +250,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
 #endif
 
         ((FunctionScope*)_scope)->Processor.ValueRW.IsKeyRequested = true;
-        ((FunctionScope*)_scope)->Processor.ValueRW.InputKey = default;
     }
 
     [BurstCompile]
@@ -985,9 +984,9 @@ partial struct ProcessorJob : IJobEntity
 
             if (processor.ValueRO.IsKeyRequested)
             {
-                if (processor.ValueRO.InputKey == default) break;
-                char key = processor.ValueRW.InputKey;
-                processor.ValueRW.InputKey = default;
+                if (processor.ValueRO.InputKey.Length == 0) break;
+                char key = processor.ValueRW.InputKey[0];
+                processor.ValueRW.InputKey.RemoveAt(0);
                 processor.ValueRW.IsKeyRequested = false;
                 processorState.Pop(2);
                 processorState.Push(key.AsBytes());

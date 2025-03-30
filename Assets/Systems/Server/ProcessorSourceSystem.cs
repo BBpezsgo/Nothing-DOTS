@@ -41,7 +41,12 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                         processor.ValueRW.Crash = 0;
                         break;
                     case ProcessorCommand.Key:
-                        processor.ValueRW.InputKey = unchecked((char)command.ValueRO.Data);
+                        if (processor.ValueRW.InputKey.Length >= processor.ValueRW.InputKey.Capacity)
+                        {
+                            Debug.LogWarning("Couldn't append the key to the stdin stream");
+                            break;
+                        }
+                        processor.ValueRW.InputKey.Add(unchecked((char)command.ValueRO.Data));
                         break;
                 }
 
