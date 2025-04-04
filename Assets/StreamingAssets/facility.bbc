@@ -1,0 +1,43 @@
+using "api.bbc";
+
+char[32] hashPtr = new char[32];
+
+[UnitCommand(1, "Extract From USB")]
+struct ExtractUSB
+{
+    [Context("position")] float2 position;
+}
+
+const int MaxCommandDataSize = 8;
+
+while (1)
+{
+    byte[MaxCommandDataSize] _command;
+
+    int commandId = dequeue_command(&_command);
+
+    if (Facility.Status == 0)
+    {
+        if (commandId == 1)
+        {
+            while (!Pendrive.IsPlugged)
+            {
+                _pendrive_plug();
+            }
+            _pendrive_read(0, &hashPtr, 32);
+            Facility.HashLocation = &hashPtr;
+            while (Pendrive.IsPlugged)
+            {
+                _pendrive_unplug();
+            }
+        }
+        else
+        {
+            Facility.HashLocation = 0 as string;
+        }
+    }
+    else
+    {
+        Facility.HashLocation = &hashPtr;
+    }
+}

@@ -6,10 +6,11 @@ struct CommandAttackAt
     [Context("position")] float2 position;
 }
 
-const int MaxPacketLength   = 9 + 1;
-const u8 REQUEST_HEADER     = 0b_11110000;
-const u8 RESPONSE_HEADER    = 0b_01111000;
-const u8 ENEMY_HEADER       = 0b_00111100;
+const int MaxPacketLength         = 13 + 1;
+const u8 REQUEST_HEADER           = 0b_11110000;
+const u8 RESPONSE_HEADER          = 0b_01111000;
+const u8 ENEMY_HEADER             = 0b_00111100;
+const u8 INDIRECT_RESPONSE_HEADER = 0b_00011110;
 
 struct VerificationRequestPacket
 {
@@ -21,6 +22,13 @@ struct VerificationResponsePacket
 {
     byte Header;
     float2 Position;
+}
+
+struct IndirectVerificationResponsePacket
+{
+    byte Header;
+    float2 Position;
+    float Expires;
 }
 
 struct EnemyNotificationPacket
@@ -61,23 +69,190 @@ void Receive()
                 debug(packet.Position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
             }
+            else
+            {
+                for (int i = 0; i < (&allies).Length(); i++)
+                {
+                    f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
+                    if (distanceSqr < DistanceThresholdSq)
+                    {
+                        IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
+                        indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
+                        indirectResponsePacket.Position = (&allies).Raw()[i].Position;
+                        indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
+                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), direction, 0.1f);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (v[0] == (u8)RESPONSE_HEADER &&
+                 receivedLength == sizeof(VerificationResponsePacket))
+        {
+            VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
+
+            Unit unit;
+            unit.Position = packet.Position;
+            unit.Recorded = time();
+            unit.Expires = time() + 10f;
+            unit.VerificationSentAt = time();
+            RemoveUnitAt(&enemies, unit.Position);
+            UpdateUnit(&allies, unit);
+        }
+        else if (v[0] == (u8)ENEMY_HEADER &&
+                 receivedLength == sizeof(EnemyNotificationPacket))
+        {
+            EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
+
+            Unit unit;
+            unit.Position = packet.Position;
+            unit.Recorded = 0f;
+            unit.Expires = time() + 5f;
+            unit.VerificationSentAt = time();
+            UpdateUnit(&enemies, unit);
+        }
+        else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
+                 receivedLength == sizeof(IndirectVerificationResponsePacket))
+        {
+            IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
+
+            Unit unit;
+            unit.Position = packet.Position;
+            unit.Recorded = time();
+            unit.Expires = packet.Expires;
+            unit.VerificationSentAt = time();
+            RemoveUnitAt(&enemies, unit.Position);
+            UpdateUnit(&allies, unit);
         }
     }
 }
 
-UILabel _uiLabel = new UILabel();
-_uiLabel.SetText(temp "ah");
+int UnitIndexAt(List<Unit>* units, float2 position)
+{
+    for (int i = 0; i < units.Length(); i++)
+    {
+        if (DistanceSqr(units.Raw()[i].Position, position) < DistanceThresholdSq)
+        { return i; }
+    }
+    return -1;
+}
 
-int __x = 0;
-int __y = 0;
+void UpdateUnit(List<Unit>* units, Unit unit)
+{
+    int existing = UnitIndexAt(units, unit.Position);
+    if (existing == -1)
+    {
+        if (units.Length() >= 4)
+        {
+            PrintLine("Too many units");
+            units.Raw()[0] = unit;
+        }
+        else
+        {
+            units.Add(unit);
+        }
+    }
+    else
+    {
+        unit.Position.x = (units.Raw()[existing].Position.x + unit.Position.x) * 0.5f;
+        unit.Position.y = (units.Raw()[existing].Position.y + unit.Position.y) * 0.5f;
+        units[existing] = unit;
+    }
+}
+
+void RemoveUnitAt(List<Unit>* units, float2 unit)
+{
+    u8 isNotDone = true;
+    for (int i = 0; isNotDone && i < units.Length(); i++)
+    {
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        if (distanceSqr < DistanceThresholdSq)
+        {
+            isNotDone = false;
+            units.Remove(i);
+        }
+    }
+}
+
+void TrySendVerificationRequest(Unit* unit)
+{
+    if (unit.VerificationSentAt + 1f < time())
+    {
+        SendVerificationRequest(unit);
+    }
+}
+
+void SendVerificationRequest(Unit* unit)
+{
+    float2 point = unit.Position;
+
+    VerificationRequestPacket packet = new VerificationRequestPacket;
+    packet.Header = (u8)REQUEST_HEADER;
+    packet.Position = point;
+
+    // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
+    send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
+
+    debug(point, BLUE);
+
+    unit.VerificationSentAt = time();
+}
+
+struct Unit
+{
+    float2 Position;
+    f32 Recorded;
+    f32 Expires;
+    f32 VerificationSentAt;
+}
+
+List<Unit> enemies = new List<Unit>(4);
+List<Unit> allies = new List<Unit>(4);
+
+UIImage _minimap = new UIImage((i16)22, (i16)22);
+const float MinimapScale = 1f;
+
+PrintLine("Started ...");
 
 while (1)
 {
-    __x++;
-    __y++;
-    _uiLabel.SetPos(__x, __y);
-
     Receive();
+
+    for (int i = (&enemies).Length() - 1; i >= 0; i--)
+    {
+        if (time() >= (&enemies).Raw()[i].Expires)
+        {
+            (&enemies).Remove(i);
+        }
+        else
+        {
+            TrySendVerificationRequest(&(&enemies).Raw()[i]);
+            float2 p = (&enemies).Raw()[i].Position;
+            ToLocal(&p);
+            if (time() >= (&enemies).Raw()[i].Recorded + 4f)
+            {
+                ldebug(p, RED);
+                (&_minimap).Set((p * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)0b_111_000_00);
+                PrintLine(p.x);
+            }
+        }
+    }
+
+    for (int i = (&allies).Length() - 1; i >= 0; i--)
+    {
+        if (time() >= (&allies).Raw()[i].Expires)
+        {
+            TrySendVerificationRequest(&(&allies).Raw()[i]);
+            (&allies).Remove(i);
+        }
+        else
+        {
+            float2 p = (&allies).Raw()[i].Position;
+            debug(p, GREEN);
+            ToLocal(&p);
+            (&_minimap).Set((p * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)0b_000_111_00);
+        }
+    }
 
     byte[MaxCommandDataSize] _command;
 
@@ -93,4 +268,6 @@ while (1)
         notificationPacket.Position = command.position;
         send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket), 0f, 0f);
     }
+
+    (&_minimap).Update();
 }

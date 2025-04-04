@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
@@ -53,6 +54,11 @@ public struct Processor : IComponentData
     [GhostField] public Signal Signal;
     public bool SignalNotified;
 
+    public bool PendrivePlugRequested;
+    public bool PendriveUnplugRequested;
+    public bool IsPendrivePlugged;
+    public Pendrive PluggedPendrive;
+
     public bool IsKeyRequested;
     public FixedList128Bytes<char> InputKey;
 
@@ -68,4 +74,6 @@ public struct Processor : IComponentData
     [GhostField] public BlinkingLED NetworkReceiveLED;
     [GhostField] public BlinkingLED NetworkSendLED;
     [GhostField] public BlinkingLED RadarLED;
+
+    public static unsafe nint GetMemoryPtr(ref Processor processor) => (nint)Unsafe.AsPointer(ref processor.Memory);
 }

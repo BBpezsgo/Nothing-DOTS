@@ -92,7 +92,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer.Player.Resources < building.RequiredResources)
             {
-                Debug.LogWarning($"Can't queue unit \"{building.Name}\": not enought resources ({requestPlayer.Player.Resources} < {building.RequiredResources})");
+                Debug.LogWarning($"Can't place building \"{building.Name}\": not enought resources ({requestPlayer.Player.Resources} < {building.RequiredResources})");
                 break;
             }
 

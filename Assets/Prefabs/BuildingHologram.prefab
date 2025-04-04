@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 341687988033790966}
   - component: {fileID: 842616279638223656}
   m_Layer: 0
-  m_Name: Building Hologram
+  m_Name: BuildingHologram
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

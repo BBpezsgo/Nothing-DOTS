@@ -58,7 +58,7 @@
     },
     "dotnet.defaultSolution": "Nothing-DOTS.sln",
     "files.autoSave": "off",
-    "vstuc.refreshOnSave": true,
+    "vstuc.refreshOnSave": false,
     "vstuc.displayBackgroundProcesses": true,
     "omnisharp.useModernNet": false,
     "material-icon-theme.folders.associations": {

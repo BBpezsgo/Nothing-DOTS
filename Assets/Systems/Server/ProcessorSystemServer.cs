@@ -17,6 +17,7 @@ using Unity.NetCode;
 using Unity.Profiling;
 using Unity.Transforms;
 using System.Runtime.InteropServices;
+using Unity.Entities.UniversalDelegates;
 
 public enum UserUIElementType : byte
 {
@@ -73,20 +74,6 @@ struct OwnedData<T>
 unsafe partial struct ProcessorSystemServer : ISystem
 {
     public const int CyclesPerTick = 256;
-
-#if UNITY_PROFILER
-    static readonly ProfilerMarker _ProcessMarker = new("ProcessorSystemServer.Process");
-    static readonly ProfilerMarker _ExternalMarker_stdout = new("ProcessorSystemServer.External.stdout");
-    static readonly ProfilerMarker _ExternalMarker_send = new("ProcessorSystemServer.External.send");
-    static readonly ProfilerMarker _ExternalMarker_receive = new("ProcessorSystemServer.External.receive");
-    static readonly ProfilerMarker _ExternalMarker_radar = new("ProcessorSystemServer.External.radar");
-    static readonly ProfilerMarker _ExternalMarker_debug = new("ProcessorSystemServer.External.debug");
-    static readonly ProfilerMarker _ExternalMarker_time = new("ProcessorSystemServer.External.time");
-    static readonly ProfilerMarker _ExternalMarker_math = new("ProcessorSystemServer.External.math");
-    static readonly ProfilerMarker _ExternalMarker_other = new("ProcessorSystemServer.External.other");
-#endif
-
-    const float DebugLineDuration = 0.5f;
 
     public static readonly BytecodeInterpreterSettings BytecodeInterpreterSettings = new()
     {
@@ -148,610 +135,45 @@ unsafe partial struct ProcessorSystemServer : ISystem
         }
     }
 
-    static readonly Unity.Mathematics.Random _sharedRandom = Unity.Mathematics.Random.CreateFromIndex(420);
-
-    #region Processor Math Accelerators
-
     [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _atan2(nint scope, nint arguments, nint returnValue)
+    public static void GenerateExternalFunctions(ref NativeList<ExternalFunctionScopedSync> buffer)
     {
-        (float a, float b) = ExternalFunctionGenerator.TakeParameters<float, float>(arguments);
-        float r = math.atan2(a, b);
-        r.AsBytes().CopyTo(returnValue);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _sin(nint scope, nint arguments, nint returnValue)
-    {
-        float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
-        float r = math.sin(a);
-        r.AsBytes().CopyTo(returnValue);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _cos(nint scope, nint arguments, nint returnValue)
-    {
-        float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
-        float r = math.cos(a);
-        r.AsBytes().CopyTo(returnValue);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _tan(nint scope, nint arguments, nint returnValue)
-    {
-        float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
-        float r = math.tan(a);
-        r.AsBytes().CopyTo(returnValue);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _asin(nint scope, nint arguments, nint returnValue)
-    {
-        float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
-        float r = math.asin(a);
-        r.AsBytes().CopyTo(returnValue);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _acos(nint scope, nint arguments, nint returnValue)
-    {
-        float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
-        float r = math.acos(a);
-        r.AsBytes().CopyTo(returnValue);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _atan(nint scope, nint arguments, nint returnValue)
-    {
-        float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
-        float r = math.atan(a);
-        r.AsBytes().CopyTo(returnValue);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _sqrt(nint scope, nint arguments, nint returnValue)
-    {
-        float a = ExternalFunctionGenerator.TakeParameters<float>(arguments);
-        float r = math.sqrt(a);
-        r.AsBytes().CopyTo(returnValue);
-    }
-
-    #endregion
-
-    #region Processor Unit Functions
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _stdout(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_stdout.Auto();
-#endif
-
-        char output = arguments.To<char>();
-        if (output == '\r') return;
-        ((FunctionScope*)_scope)->Processor.ValueRW.StdOutBuffer.AppendShift(output);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _stdin(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        // using ProfilerMarker.AutoScope marker = _ExternalMarker_stdout.Auto();
-#endif
-
-        ((FunctionScope*)_scope)->Processor.ValueRW.IsKeyRequested = true;
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _send(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_send.Auto();
-#endif
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        (int bufferPtr, int length, float directionAngle, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, float, float>(arguments);
-        if (length <= 0 || length >= 30) throw new Exception("Passed buffer length must be in range [0,30] inclusive");
-        if (bufferPtr == 0) throw new Exception($"Passed buffer pointer is null");
-        if (bufferPtr < 0 || bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Passed buffer pointer is invalid");
-
-        float3 direction;
-        if (angle != 0f)
-        {
-            direction.x = math.cos(directionAngle);
-            direction.y = 0f;
-            direction.z = math.sin(directionAngle);
-            direction = scope->LocalTransform.ValueRO.TransformDirection(direction);
-        }
-        else
-        {
-            direction = default;
-        }
-        float cosAngle = math.abs(math.cos(angle));
-
-        FixedList32Bytes<byte> data = new();
-        data.AddRange((byte*)((nint)scope->Memory + bufferPtr), length);
-
-        if (scope->Processor.ValueRW.OutgoingTransmissions.Length >= scope->Processor.ValueRW.OutgoingTransmissions.Capacity)
-        { scope->Processor.ValueRW.OutgoingTransmissions.RemoveAt(0); }
-        scope->Processor.ValueRW.OutgoingTransmissions.Add(new()
-        {
-            Source = scope->WorldTransform.ValueRO.Position,
-            Direction = direction,
-            Data = data,
-            CosAngle = cosAngle,
-            Angle = angle,
-        });
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _receive(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_receive.Auto();
-#endif
-
-        returnValue.Set(0);
-
-        (int bufferPtr, int length, int directionPtr) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
-        if (bufferPtr == 0 || length <= 0) return;
-        if (bufferPtr < 0 || bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Passed buffer pointer is invalid");
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        ref FixedList128Bytes<BufferedUnitTransmission> received = ref scope->Processor.ValueRW.IncomingTransmissions; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
-        if (received.Length == 0) return;
-
-        BufferedUnitTransmission first = received[0];
-
-        int copyLength = math.min(first.Data.Length, length);
-
-        Buffer.MemoryCopy(((byte*)&first.Data) + 2, (byte*)scope->Memory + bufferPtr, copyLength, copyLength);
-
-        if (directionPtr > 0)
-        {
-            float3 transformed = scope->LocalTransform.ValueRO.InverseTransformPoint(first.Source);
-            transformed = math.normalize(transformed);
-            Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-            memory.Set(directionPtr, math.atan2(transformed.z, transformed.x));
-        }
-
-        if (copyLength >= first.Data.Length)
-        {
-            received.RemoveAt(0);
-        }
-        else
-        {
-            first.Data.RemoveRange(0, copyLength);
-            received[0] = first;
-        }
-
-        returnValue.Set(copyLength);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _dequeue_command(nint _scope, nint arguments, nint returnValue)
-    {
-        returnValue.Set(0);
-
-        int dataPtr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-        if (dataPtr == 0) return;
-        if (dataPtr < 0 || dataPtr >= Processor.UserMemorySize) throw new Exception($"Passed data pointer is invalid");
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        ref FixedList128Bytes<UnitCommandRequest> queue = ref scope->Processor.ValueRW.CommandQueue; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
-        if (queue.Length == 0) return;
-
-        UnitCommandRequest first = queue[0];
-        queue.RemoveAt(0);
-
-        Buffer.MemoryCopy(&first.Data, (byte*)scope->Memory + dataPtr, first.DataLength, first.DataLength);
-
-        returnValue.Set(first.Id);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _radar(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_radar.Auto();
-#endif
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        MappedMemory* mapped = (MappedMemory*)((nint)scope->Memory + Processor.MappedMemoryStart);
-
-        float3 direction;
-        direction.x = math.cos(mapped->Radar.RadarDirection);
-        direction.y = 0f;
-        direction.z = math.sin(mapped->Radar.RadarDirection);
-
-        scope->Processor.ValueRW.RadarResponse = 0f;
-        scope->Processor.ValueRW.RadarRequest = direction;
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _debug(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
-#endif
-
-        (float3 position, byte color) = ExternalFunctionGenerator.TakeParameters<float3, byte>(arguments);
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        if (scope->DebugLines.ListData->Length + 1 < scope->DebugLines.ListData->Capacity) scope->DebugLines.AddNoResize(new(
-            scope->Team.ValueRO.Team,
-            new BufferedLine(new float3x2(
-                scope->WorldTransform.ValueRO.Position,
-                position
-            ), color, MonoTime.Now + DebugLineDuration)
-        ));
-
-#if DEBUG_LINES
-        Debug.DrawLine(
-            scope->WorldTransform.ValueRO.Position,
-            position,
-            new Color(
-                (color & 0b100) != 0 ? 1f : 0f,
-                (color & 0b010) != 0 ? 1f : 0f,
-                (color & 0b001) != 0 ? 1f : 0f
-            ),
-            DebugLineDuration);
-#endif
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _ldebug(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
-#endif
-
-        (float3 position, byte color) = ExternalFunctionGenerator.TakeParameters<float3, byte>(arguments);
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        RefRO<LocalTransform> transform = scope->LocalTransform;
-        float3 transformed = transform.ValueRO.TransformPoint(position);
-
-        if (scope->DebugLines.ListData->Length + 1 < scope->DebugLines.ListData->Capacity) scope->DebugLines.AddNoResize(new(
-            scope->Team.ValueRO.Team,
-            new BufferedLine(new float3x2(
-                scope->WorldTransform.ValueRO.Position,
-                transformed
-            ), color, MonoTime.Now + DebugLineDuration)
-        ));
-
-#if DEBUG_LINES
-        Debug.DrawLine(
-            scope->WorldTransform.ValueRO.Position,
-            transformed,
-            new Color(
-                (color & 0b100) != 0 ? 1f : 0f,
-                (color & 0b010) != 0 ? 1f : 0f,
-                (color & 0b001) != 0 ? 1f : 0f
-            ),
-            DebugLineDuration);
-#endif
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _debug_label(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
-#endif
-
-        (float3 position, int textPtr) = ExternalFunctionGenerator.TakeParameters<float3, int>(arguments);
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        FixedString32Bytes text = new();
-        for (int i = textPtr; i < textPtr + 32; i += sizeof(char))
-        {
-            char c = *(char*)((byte*)scope->Memory + i);
-            if (c == '\0') break;
-            text.Append(c);
-        }
-
-        if (scope->WorldLabels.ListData->Length + 1 < scope->WorldLabels.ListData->Capacity) scope->WorldLabels.AddNoResize(new(
-            scope->Team.ValueRO.Team,
-            new BufferedWorldLabel(position, 0b111, text, MonoTime.Now + DebugLineDuration)
-        ));
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _ldebug_label(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_debug.Auto();
-#endif
-
-        (float3 position, int textPtr) = ExternalFunctionGenerator.TakeParameters<float3, int>(arguments);
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        FixedString32Bytes text = new();
-        for (int i = textPtr; i < textPtr + 32; i += sizeof(char))
-        {
-            char c = *(char*)((byte*)scope->Memory + i);
-            if (c == '\0') break;
-            text.Append(c);
-        }
-
-        float3 transformed = scope->LocalTransform.ValueRO.TransformPoint(position);
-
-        if (scope->WorldLabels.ListData->Length + 1 < scope->WorldLabels.ListData->Capacity) scope->WorldLabels.AddNoResize(new(
-            scope->Team.ValueRO.Team,
-            new BufferedWorldLabel(transformed, 0b111, text, MonoTime.Now + DebugLineDuration)
-        ));
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _toglobal(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
-#endif
-
-        int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-        if (ptr <= 0 || ptr <= 0) return;
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-        Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-        float3 point = memory.Get<float3>(ptr);
-        RefRO<LocalTransform> transform = scope->LocalTransform;
-        float3 transformed = transform.ValueRO.TransformPoint(point);
-        memory.Set(ptr, transformed);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _tolocal(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
-#endif
-
-        int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-        if (ptr <= 0 || ptr <= 0) return;
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-        Span<byte> memory = new(scope->Memory, Processor.UserMemorySize);
-        float3 point = memory.Get<float3>(ptr);
-        RefRO<LocalTransform> transform = scope->LocalTransform;
-        float3 transformed = transform.ValueRO.InverseTransformPoint(point);
-        memory.Set(ptr, transformed);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _time(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_time.Auto();
-#endif
-
-        FunctionScope* scope = (FunctionScope*)_scope;
-        returnValue.Set(MonoTime.Now);
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _random(nint _scope, nint arguments, nint returnValue)
-    {
-#if UNITY_PROFILER
-        using ProfilerMarker.AutoScope marker = _ExternalMarker_other.Auto();
-#endif
-
-        returnValue.Set(_sharedRandom.NextInt());
-    }
-
-    #endregion
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _gui_create(nint _scope, nint arguments, nint returnValue)
-    {
-        int _ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        UserUIElement* ptr = (UserUIElement*)((nint)scope->Memory + _ptr);
-
-        int id = 1;
-        while (true)
-        {
-            bool exists = false;
-
-            for (int i = 0; i < scope->UIElements.ListData->Length; i++)
-            {
-                if ((*scope->UIElements.ListData)[i].Value.Id != id) continue;
-                if ((*scope->UIElements.ListData)[i].Owner != scope->Team.ValueRO.Team) continue;
-                exists = true;
-                break;
-            }
-
-            if (!exists) break;
-            id++;
-        }
-
-        switch (ptr->Type)
-        {
-            case UserUIElementType.Label:
-                char* text = (char*)&ptr->Label.Text;
-                scope->UIElements.AddNoResize(new(
-                    scope->Team.ValueRO.Team,
-                    *ptr = new UserUIElement()
-                    {
-                        IsDirty = true,
-                        Type = UserUIElementType.Label,
-                        Id = id,
-                        Position = ptr->Position,
-                        Size = ptr->Size,
-                        Label = new UserUIElementLabel()
-                        {
-                            Color = ptr->Label.Color,
-                            Text = ptr->Label.Text,
-                        },
-                    }
-                ));
-                break;
-            case UserUIElementType.Image:
-                scope->UIElements.AddNoResize(new(
-                    scope->Team.ValueRO.Team,
-                    *ptr = new UserUIElement()
-                    {
-                        IsDirty = true,
-                        Type = UserUIElementType.Image,
-                        Id = id,
-                        Position = ptr->Position,
-                        Size = ptr->Size,
-                        Image = new UserUIElementImage()
-                        {
-                            Width = ptr->Image.Width,
-                            Height = ptr->Image.Height,
-                            Image = ptr->Image.Image,
-                        },
-                    }
-                ));
-                break;
-            case UserUIElementType.MIN:
-            case UserUIElementType.MAX:
-            default:
-                break;
-        }
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _gui_destroy(nint _scope, nint arguments, nint returnValue)
-    {
-        int id = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        for (int i = 0; i < scope->UIElements.ListData->Length; i++)
-        {
-            if ((*scope->UIElements.ListData)[i].Value.Id != id) continue;
-            if ((*scope->UIElements.ListData)[i].Owner != scope->Team.ValueRO.Team) continue;
-            (*scope->UIElements.ListData)[i] = default;
-            break;
-        }
-    }
-
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-    static void _gui_update(nint _scope, nint arguments, nint returnValue)
-    {
-        int _ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-        FunctionScope* scope = (FunctionScope*)_scope;
-
-        UserUIElement* ptr = (UserUIElement*)((nint)scope->Memory + _ptr);
-
-        for (int i = 0; i < scope->UIElements.ListData->Length; i++)
-        {
-            ref var uiElement = ref (*scope->UIElements.ListData).Ptr[i];
-            if (uiElement.Value.Id != ptr->Id) continue;
-            if (uiElement.Owner != scope->Team.ValueRO.Team) continue;
-            switch (ptr->Type)
-            {
-                case UserUIElementType.Label:
-                    char* text = (char*)&ptr->Label.Text;
-                    uiElement = new OwnedData<UserUIElement>(
-                        scope->Team.ValueRO.Team,
-                        *ptr = new UserUIElement()
-                        {
-                            IsDirty = true,
-                            Type = UserUIElementType.Label,
-                            Id = ptr->Id,
-                            Position = ptr->Position,
-                            Size = ptr->Size,
-                            Label = ptr->Label,
-                        }
-                    );
-                    break;
-                case UserUIElementType.Image:
-                    uiElement = new OwnedData<UserUIElement>(
-                        scope->Team.ValueRO.Team,
-                        *ptr = new UserUIElement()
-                        {
-                            IsDirty = true,
-                            Type = UserUIElementType.Image,
-                            Id = ptr->Id,
-                            Position = ptr->Position,
-                            Size = ptr->Size,
-                            Image = ptr->Image,
-                        }
-                    );
-                    break;
-            }
-            break;
-        }
-    }
-
-    public const int ExternalFunctionCount = 25;
-
-    [BurstCompile]
-    public static void GenerateExternalFunctions(ExternalFunctionScopedSync* buffer)
-    {
-        int i = 0;
-
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_stdout).Value, 01, ExternalFunctionGenerator.SizeOf<char>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_stdin).Value, 02, 0, ExternalFunctionGenerator.SizeOf<char>(), default);
-
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_sqrt).Value, 11, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_atan2).Value, 12, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_sin).Value, 13, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_cos).Value, 14, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_tan).Value, 15, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_asin).Value, 16, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_acos).Value, 17, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_atan).Value, 18, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default);
-
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_send).Value, 21, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_receive).Value, 22, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_radar).Value, 23, 0, 0, default);
-
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_toglobal).Value, 31, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_tolocal).Value, 32, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_time).Value, 33, 0, ExternalFunctionGenerator.SizeOf<float>(), default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_random).Value, 34, 0, ExternalFunctionGenerator.SizeOf<int>(), default);
-
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug).Value, 41, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug).Value, 42, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default);
-
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_debug_label).Value, 43, ExternalFunctionGenerator.SizeOf<float3, int>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_ldebug_label).Value, 44, ExternalFunctionGenerator.SizeOf<float3, int>(), 0, default);
-
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_dequeue_command).Value, 51, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default);
-
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_create).Value, 61, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_destroy).Value, 62, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
-        buffer[i++] = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(_gui_update).Value, 63, ExternalFunctionGenerator.SizeOf<int>(), 0, default);
-
-        Unity.Assertions.Assert.AreEqual(i, ExternalFunctionCount);
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.IO.StdOut).Value, ProcessorAPI.IO.Prefix + 1, ExternalFunctionGenerator.SizeOf<char>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.IO.StdIn).Value, ProcessorAPI.IO.Prefix + 2, 0, ExternalFunctionGenerator.SizeOf<char>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Sqrt).Value, ProcessorAPI.Math.Prefix + 1, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Atan2).Value, ProcessorAPI.Math.Prefix + 2, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Sin).Value, ProcessorAPI.Math.Prefix + 3, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Cos).Value, ProcessorAPI.Math.Prefix + 4, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Tan).Value, ProcessorAPI.Math.Prefix + 5, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Asin).Value, ProcessorAPI.Math.Prefix + 6, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Acos).Value, ProcessorAPI.Math.Prefix + 7, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Atan).Value, ProcessorAPI.Math.Prefix + 8, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Math.Random).Value, ProcessorAPI.Math.Prefix + 9, 0, ExternalFunctionGenerator.SizeOf<int>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Transmission.Send).Value, ProcessorAPI.Transmission.Prefix + 1, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Transmission.Receive).Value, ProcessorAPI.Transmission.Prefix + 2, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Sensors.Radar).Value, ProcessorAPI.Sensors.Prefix + 1, 0, 0, default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Environment.ToGlobal).Value, ProcessorAPI.Environment.Prefix + 1, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Environment.ToLocal).Value, ProcessorAPI.Environment.Prefix + 2, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Environment.Time).Value, ProcessorAPI.Environment.Prefix + 3, 0, ExternalFunctionGenerator.SizeOf<float>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Debug.Line).Value, ProcessorAPI.Debug.Prefix + 1, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Debug.LineL).Value, ProcessorAPI.Debug.Prefix + 2, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Debug.Label).Value, ProcessorAPI.Debug.Prefix + 3, ExternalFunctionGenerator.SizeOf<float3, int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Debug.LabelL).Value, ProcessorAPI.Debug.Prefix + 4, ExternalFunctionGenerator.SizeOf<float3, int>(), 0, default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Commands.Dequeue).Value, ProcessorAPI.Commands.Prefix + 1, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.GUI.Create).Value, ProcessorAPI.GUI.Prefix + 1, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.GUI.Destroy).Value, ProcessorAPI.GUI.Prefix + 2, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.GUI.Update).Value, ProcessorAPI.GUI.Prefix + 3, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.TryPlug).Value, ProcessorAPI.Pendrive.Prefix + 1, 0, 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.TryUnplug).Value, ProcessorAPI.Pendrive.Prefix + 2, 0, 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.Read).Value, ProcessorAPI.Pendrive.Prefix + 3, ExternalFunctionGenerator.SizeOf<int, int, int>(), 0, default));
     }
 
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
@@ -762,8 +184,13 @@ unsafe partial struct ProcessorSystemServer : ISystem
     void ISystem.OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<WorldLabelSettings>();
-        scopedExternalFunctions = new NativeArray<ExternalFunctionScopedSync>(ExternalFunctionCount, Allocator.Persistent);
-        GenerateExternalFunctions((ExternalFunctionScopedSync*)scopedExternalFunctions.GetUnsafePtr());
+
+        NativeList<ExternalFunctionScopedSync> _scopedExternalFunctions = new(Allocator.Temp);
+        GenerateExternalFunctions(ref _scopedExternalFunctions);
+        scopedExternalFunctions = new NativeArray<ExternalFunctionScopedSync>(_scopedExternalFunctions.Length, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        scopedExternalFunctions.CopyFrom(_scopedExternalFunctions.AsArray());
+        _scopedExternalFunctions.Dispose();
+
         debugLines = new(256, Allocator.Persistent);
         worldLabels = new(256, Allocator.Persistent);
         uiElements = new(256, Allocator.Persistent);
@@ -873,6 +300,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
             debugLines = debugLines.AsParallelWriter(),
             worldLabels = worldLabels.AsParallelWriter(),
             uiElements = uiElements.AsParallelWriter(),
+            QFacility = SystemAPI.GetComponentLookup<Facility>(true),
+            QCoreComputer = SystemAPI.GetComponentLookup<CoreComputer>(true),
+            QRadar = SystemAPI.GetComponentLookup<Radar>(true),
         }.ScheduleParallel();
     }
 }
@@ -885,6 +315,9 @@ partial struct ProcessorJob : IJobEntity
     public NativeList<OwnedData<BufferedLine>>.ParallelWriter debugLines;
     public NativeList<OwnedData<BufferedWorldLabel>>.ParallelWriter worldLabels;
     public NativeList<OwnedData<UserUIElement>>.ParallelWriter uiElements;
+    [ReadOnly] public ComponentLookup<Facility> QFacility;
+    [ReadOnly] public ComponentLookup<CoreComputer> QCoreComputer;
+    [ReadOnly] public ComponentLookup<Radar> QRadar;
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(
@@ -908,6 +341,9 @@ partial struct ProcessorJob : IJobEntity
             return;
         }
 
+        MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
+        mapped->Pendrive.IsPlugged = processor.ValueRW.IsPendrivePlugged;
+
         ProcessorSystemServer.FunctionScope scope = new()
         {
             Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
@@ -923,17 +359,23 @@ partial struct ProcessorJob : IJobEntity
             Signal = null,
         };
 
-        NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions = new(ProcessorSystemServer.ExternalFunctionCount + generatedFunctions.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+        NativeList<ExternalFunctionScopedSync> scopedExternalFunctions = new(this.scopedExternalFunctions.Length + generatedFunctions.Length, Allocator.Temp);
 
-        for (int i = 0; i < ProcessorSystemServer.ExternalFunctionCount; i++)
+        for (int i = 0; i < this.scopedExternalFunctions.Length; i++)
         {
-            scopedExternalFunctions[i] = this.scopedExternalFunctions[i];
-            ((ExternalFunctionScopedSync*)scopedExternalFunctions.GetUnsafePtr())[i].Scope = (nint)(void*)&scope;
+            if ((this.scopedExternalFunctions[i].Id & ProcessorAPI.GUI.Prefix) != 0 &&
+                !QCoreComputer.HasComponent(entity))
+            {
+                continue;
+            }
+
+            scopedExternalFunctions.Add(this.scopedExternalFunctions[i]);
+            scopedExternalFunctions.GetUnsafePtr()[scopedExternalFunctions.Length - 1].Scope = (nint)(void*)&scope;
         }
 
-        for (int i = ProcessorSystemServer.ExternalFunctionCount; i < scopedExternalFunctions.Length; i++)
+        for (int i = 0; i < generatedFunctions.Length; i++)
         {
-            scopedExternalFunctions[i] = generatedFunctions[i - ProcessorSystemServer.ExternalFunctionCount].V;
+            scopedExternalFunctions.Add(generatedFunctions[i].V);
         }
 
         ProcessorState processorState = new(
@@ -941,7 +383,7 @@ partial struct ProcessorJob : IJobEntity
             processor.ValueRW.Registers,
             new Span<byte>(Unsafe.AsPointer(ref processor.ValueRW.Memory), Processor.TotalMemorySize),
             new ReadOnlySpan<Instruction>(code.GetUnsafeReadOnlyPtr(), code.Length),
-            scopedExternalFunctions
+            scopedExternalFunctions.AsReadOnly()
         )
         {
             Signal = processor.ValueRO.Signal,

@@ -2,6 +2,7 @@ using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 
 public enum PlayerConnectionState : byte
@@ -29,4 +30,5 @@ public struct Player : IComponentData
     [GhostField] public GameOutcome Outcome;
     public bool IsCoreComputerSpawned;
     public Guid Guid;
+    public float2 Position;
 }

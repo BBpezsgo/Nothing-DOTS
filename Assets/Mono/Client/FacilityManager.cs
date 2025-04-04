@@ -174,6 +174,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
             selected.Current = new BufferedResearch()
             {
                 Name = research.Name,
+                Hash = research.Hash,
                 ResearchTime = research.ResearchTime,
             };
             selected.CurrentProgress = 0f;
@@ -184,6 +185,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
             queue.Add(new BufferedResearch()
             {
                 Name = research.Name,
+                Hash = research.Hash,
                 ResearchTime = research.ResearchTime,
             });
         }

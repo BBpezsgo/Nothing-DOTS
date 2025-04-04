@@ -1,0 +1,74 @@
+using "move.bbc";
+using "api.bbc";
+
+[UnitCommand(1, "Plug")]
+struct CommandPlug
+{
+    [Context("position")] float2 position;
+}
+
+[UnitCommand(2, "Unplug")]
+struct CommandUnplug
+{
+    [Context("position")] float2 position;
+}
+
+const int MaxCommandDataSize = 8;
+
+float2 currentPlug = new float2;
+float2 currentUnplug = new float2;
+
+while (1)
+{
+    byte[MaxCommandDataSize] _command;
+
+    int commandId = dequeue_command(&_command);
+
+    if (commandId == 1)
+    {
+        CommandPlug* command = &_command as CommandPlug*;
+        currentPlug = command.position;
+    }
+    else if (commandId == 2)
+    {
+        CommandUnplug* command = &_command as CommandUnplug*;
+        currentUnplug = command.position;
+    }
+
+    if (currentPlug.x != 0f &&
+        currentPlug.y != 0f)
+    {
+        float d = DistanceSqr(GPS.Position, currentPlug);
+        if (d < 2f * 2f)
+        {
+            StopMoving();
+            while (!Pendrive.IsPlugged)
+            {
+                _pendrive_plug();
+            }
+            currentPlug = new float2;
+        }
+        else
+        {
+            MoveTo(currentPlug.x, currentPlug.y);
+        }
+    }
+    elseif (currentUnplug.x != 0f &&
+            currentUnplug.y != 0f)
+    {
+        float d = DistanceSqr(GPS.Position, currentUnplug);
+        if (d < 2f * 2f)
+        {
+            StopMoving();
+            while (Pendrive.IsPlugged)
+            {
+                _pendrive_unplug();
+            }
+            currentUnplug = new float2;
+        }
+        else
+        {
+            MoveTo(currentUnplug.x, currentUnplug.y);
+        }
+    }
+}

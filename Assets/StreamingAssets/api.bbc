@@ -7,7 +7,7 @@ struct MappedMemory_Vehicle
     i8 InputForward;
     i8 InputSteer;
 }
-export const MappedMemory_Vehicle* Vehicle = MappedMemoryStart + 0;
+export const MappedMemory_Vehicle* Vehicle = MappedMemoryStart + 25;
 *Vehicle = new MappedMemory_Vehicle;
 
 struct MappedMemory_CombatTurret
@@ -18,14 +18,14 @@ struct MappedMemory_CombatTurret
     f32 TurretCurrentRotation;
     f32 TurretCurrentAngle;
 }
-export const MappedMemory_CombatTurret* CombatTurret = MappedMemoryStart + 2;
+export const MappedMemory_CombatTurret* CombatTurret = MappedMemoryStart + 27;
 *CombatTurret = new MappedMemory_CombatTurret;
 
 struct MappedMemory_Extractor
 {
     u8 InputExtract;
 }
-export const MappedMemory_Extractor* Extractor = MappedMemoryStart + 2;
+export const MappedMemory_Extractor* Extractor = MappedMemoryStart + 27;
 *Extractor = new MappedMemory_Extractor;
 
 struct MappedMemory_Transporter
@@ -33,7 +33,7 @@ struct MappedMemory_Transporter
     u8 LoadDirection;
     i32 CurrentLoad;
 }
-export const MappedMemory_Transporter* Transporter = MappedMemoryStart + 2;
+export const MappedMemory_Transporter* Transporter = MappedMemoryStart + 27;
 *Transporter = new MappedMemory_Transporter;
 
 struct MappedMemory_Radar
@@ -41,7 +41,7 @@ struct MappedMemory_Radar
     f32 RadarDirection;
     f32 RadarResponse;
 }
-export const MappedMemory_Radar* Radar = MappedMemoryStart + 19;
+export const MappedMemory_Radar* Radar = MappedMemoryStart + 17;
 *Radar = new MappedMemory_Radar;
 
 struct MappedMemory_GPS
@@ -49,8 +49,23 @@ struct MappedMemory_GPS
     float2 Position;
     float2 Forward;
 }
-export const MappedMemory_GPS* GPS = MappedMemoryStart + 27;
+export const MappedMemory_GPS* GPS = MappedMemoryStart + 0;
 *GPS = new MappedMemory_GPS;
+
+struct MappedMemory_Pendrive
+{
+    u8 IsPlugged;
+}
+export const MappedMemory_Pendrive* Pendrive = MappedMemoryStart + 16;
+*Pendrive = new MappedMemory_Pendrive;
+
+struct MappedMemory_Facility
+{
+    u8 Status;
+    string HashLocation;
+}
+export const MappedMemory_Facility* Facility = MappedMemoryStart + 27;
+*Facility = new MappedMemory_Facility;
 
 export void Print(float2 v)
 {
@@ -292,7 +307,7 @@ export struct UIImage
         //         this.Image[x + (y * width)] = (u8)(x + (y * width));
         //     }
         // }
-        gui_create(&this);
+        gui_create(this);
     }
 
     export inline void Destroy()
@@ -320,7 +335,7 @@ export struct UIImage
 
     export inline void Update()
     {
-        gui_update(&this);
+        gui_update(this);
     }
 
     // export inline void Set(int2 pos, int r, int g, int b)   { this.Set(pos.x, pos.y, r, g, b); }
@@ -329,3 +344,12 @@ export struct UIImage
     export inline void Set(float2 pos, int r, int g, int b) { this.Set((int)pos.x, (int)pos.y, r, g, b); }
     export inline void Set(float2 pos, u8 color)            { this.Set((int)pos.x, (int)pos.y, color); }
 }
+
+[External("pendrive_plug")]
+export void _pendrive_plug();
+
+[External("pendrive_unplug")]
+export void _pendrive_unplug();
+
+[External("pendrive_read")]
+export void _pendrive_read(int source, byte[]* destination, int length);

@@ -71,13 +71,35 @@ public struct MappedMemory_GPS
     public float2 Forward;
 }
 
+/// <summary>
+/// Size: 1
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct MappedMemory_Pendrive
+{
+    public bool IsPlugged;
+}
+
+/// <summary>
+/// Size: 1
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct MappedMemory_Facility
+{
+    public u8 Status;
+    public i32 HashLocation;
+}
+
 [StructLayout(LayoutKind.Explicit)]
 public struct MappedMemory
 {
-    [FieldOffset(0)] public MappedMemory_Vehicle Vehicle;
-    [FieldOffset(2)] public MappedMemory_CombatTurret CombatTurret;
-    [FieldOffset(2)] public MappedMemory_Extractor Extractor;
-    [FieldOffset(2)] public MappedMemory_Transporter Transporter;
-    [FieldOffset(19)] public MappedMemory_Radar Radar;
-    [FieldOffset(27)] public MappedMemory_GPS GPS;
+    [FieldOffset(0)] public MappedMemory_GPS GPS;
+    [FieldOffset(16)] public MappedMemory_Pendrive Pendrive;
+    [FieldOffset(17)] public MappedMemory_Radar Radar;
+    [FieldOffset(25)] public MappedMemory_Vehicle Vehicle;
+
+    [FieldOffset(27)] public MappedMemory_CombatTurret CombatTurret;
+    [FieldOffset(27)] public MappedMemory_Extractor Extractor;
+    [FieldOffset(27)] public MappedMemory_Transporter Transporter;
+    [FieldOffset(27)] public MappedMemory_Facility Facility;
 }

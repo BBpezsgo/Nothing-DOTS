@@ -121,42 +121,6 @@ public partial class CompilerSystemServer : SystemBase
 {
     static readonly bool EnableLogging = false;
 
-    static readonly FrozenDictionary<int, string> ExternalFunctionNames = new Dictionary<int, string>()
-    {
-        { 01, "stdout" },
-        { 02, "stdin" },
-
-        { 11, "sqrt" },
-        { 12, "atan2" },
-        { 13, "sin" },
-        { 14, "cos" },
-        { 15, "tan" },
-        { 16, "asin" },
-        { 17, "acos" },
-        { 18, "atan" },
-
-        { 21, "send" },
-        { 22, "receive" },
-        { 23, "radar" },
-
-        { 31, "toglobal" },
-        { 32, "tolocal" },
-        { 33, "time" },
-        { 34, "random" },
-
-        { 41, "debug" },
-        { 42, "ldebug" },
-
-        { 43, "debug_label" },
-        { 44, "ldebug_label" },
-
-        { 51, "dequeue_command" },
-
-        { 61, "gui_create" },
-        { 62, "gui_destroy" },
-        { 63, "gui_update" },
-    }.ToFrozenDictionary();
-
     [NotNull] public readonly SerializableDictionary<FileId, CompiledSource>? CompiledSources = new();
 
     protected override void OnUpdate()
@@ -371,40 +335,46 @@ public partial class CompilerSystemServer : SystemBase
         try
         {
             static float _time() => MonoTime.Now;
+            static int _random() => ProcessorAPI.Math.SharedRandom.NextInt();
+
             IExternalFunction[] externalFunctions = new IExternalFunction[]
             {
-                new ExternalFunctionStub(01, "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
-                new ExternalFunctionStub(02, "stdin", 0, ExternalFunctionGenerator.SizeOf<char>()),
+                new ExternalFunctionStub(ProcessorAPI.IO.Prefix + 1, "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.IO.Prefix + 2, "stdin", 0, ExternalFunctionGenerator.SizeOf<char>()),
 
-                ExternalFunctionSync.Create<float, float>(11, "sqrt", MathF.Sqrt),
-                ExternalFunctionSync.Create<float, float, float>(12, "atan2", MathF.Atan2),
-                ExternalFunctionSync.Create<float, float>(13, "sin", MathF.Sin),
-                ExternalFunctionSync.Create<float, float>(14, "cos", MathF.Cos),
-                ExternalFunctionSync.Create<float, float>(15, "tan", MathF.Tan),
-                ExternalFunctionSync.Create<float, float>(16, "asin", MathF.Asin),
-                ExternalFunctionSync.Create<float, float>(17, "acos", MathF.Acos),
-                ExternalFunctionSync.Create<float, float>(18, "atan", MathF.Atan),
+                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 1, "sqrt", MathF.Sqrt),
+                ExternalFunctionSync.Create<float, float, float>(ProcessorAPI.Math.Prefix + 2, "atan2", MathF.Atan2),
+                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 3, "sin", MathF.Sin),
+                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 4, "cos", MathF.Cos),
+                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 5, "tan", MathF.Tan),
+                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 6, "asin", MathF.Asin),
+                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 7, "acos", MathF.Acos),
+                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 8, "atan", MathF.Atan),
+                ExternalFunctionSync.Create<int>(ProcessorAPI.Math.Prefix + 9, "random", _random),
 
-                new ExternalFunctionStub(21, "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
-                new ExternalFunctionStub(22, "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
-                new ExternalFunctionStub(23, "radar", 0, 0),
+                new ExternalFunctionStub(ProcessorAPI.Transmission.Prefix + 1, "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Transmission.Prefix + 2, "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
 
-                new ExternalFunctionStub(31, "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(32, "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                ExternalFunctionSync.Create(33, "time", _time),
-                new ExternalFunctionStub(34, "random", 0, ExternalFunctionGenerator.SizeOf<int>()),
+                new ExternalFunctionStub(ProcessorAPI.Sensors.Prefix + 1, "radar", 0, 0),
 
-                new ExternalFunctionStub(41, "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
-                new ExternalFunctionStub(42, "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Environment.Prefix + 1, "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Environment.Prefix + 2, "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                ExternalFunctionSync.Create(ProcessorAPI.Environment.Prefix + 3, "time", _time),
 
-                new ExternalFunctionStub(43, "debug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
-                new ExternalFunctionStub(44, "ldebug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 1, "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 2, "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 3, "debug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 4, "ldebug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
 
-                new ExternalFunctionStub(51, "dequeue_command", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>()),
+                new ExternalFunctionStub(ProcessorAPI.Commands.Prefix + 1, "dequeue_command", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>()),
 
-                new ExternalFunctionStub(61, "gui_create", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(62, "gui_destroy", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(63, "gui_update", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 1, "gui_create", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 2, "gui_destroy", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 3, "gui_update", ExternalFunctionGenerator.SizeOf<int>(), 0),
+
+                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 1, "pendrive_plug", 0, 0),
+                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 2, "pendrive_unplug", 0, 0),
+                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 3, "pendrive_read", ExternalFunctionGenerator.SizeOf<int, int, int>(), 0),
             };
 
             compiled = StatementCompiler.CompileFile(
@@ -426,12 +396,12 @@ public partial class CompilerSystemServer : SystemBase
                 new MainGeneratorSettings(MainGeneratorSettings.Default)
                 {
                     StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
-                    ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
-                    {
-                        AllowCrash = false,
-                        AllowHeap = false,
-                        AllowPointers = true,
-                    },
+                    // ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
+                    // {
+                    //     AllowCrash = false,
+                    //     AllowHeap = false,
+                    //     AllowPointers = true,
+                    // },
                 },
                 null,
                 source.Diagnostics

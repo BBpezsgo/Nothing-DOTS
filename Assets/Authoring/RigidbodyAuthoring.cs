@@ -9,7 +9,10 @@ public class RigidbodyAuthoring : MonoBehaviour
         public override void Bake(RigidbodyAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent<Rigidbody>(entity);
+            AddComponent<Rigidbody>(entity, new()
+            {
+                IsEnabled = true,
+            });
         }
     }
 }
