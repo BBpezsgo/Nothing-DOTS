@@ -73,6 +73,9 @@ public struct Processor : IComponentData
     [GhostField] public BlinkingLED NetworkReceiveLED;
     [GhostField] public BlinkingLED NetworkSendLED;
     [GhostField] public BlinkingLED RadarLED;
+    [GhostField] public BlinkingLED USBLED;
+    public float3 USBPosition;
+    public quaternion USBRotation;
 
     public static unsafe nint GetMemoryPtr(ref Processor processor) => (nint)Unsafe.AsPointer(ref processor.Memory);
 }

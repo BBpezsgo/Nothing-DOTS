@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Burst;
+using Unity.NetCode;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -21,8 +22,8 @@ partial struct PendriveProcessorSystem : ISystem
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        foreach (var (processor, transform, localTransform, entity) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, RefRO<LocalTransform>>()
+        foreach (var (processor, transform, localTransform, ghostInstance, entity) in
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, RefRO<LocalTransform>, RefRO<GhostInstance>>()
             .WithEntityAccess())
         {
             MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
@@ -33,20 +34,18 @@ partial struct PendriveProcessorSystem : ISystem
 
                 if (processor.ValueRO.PluggedPendrive.Entity == Entity.Null)
                 {
-                    foreach (var (pendrive, pendriveTransform, pendriveLocalTransform, rigidbody, pendriveEntity) in
-                        SystemAPI.Query<RefRO<Pendrive>, RefRO<LocalToWorld>, RefRW<LocalTransform>, RefRW<Rigidbody>>()
+                    foreach (var (pendrive, pendriveTransform, pendriveLocalTransform, rigidbody, collider, pendriveChild, pendriveEntity) in
+                        SystemAPI.Query<RefRO<Pendrive>, RefRO<LocalToWorld>, RefRW<LocalTransform>, RefRW<Rigidbody>, RefRW<Collider>, RefRW<GhostChild>>()
                         .WithEntityAccess())
                     {
                         if (math.distancesq(pendriveTransform.ValueRO.Position, transform.ValueRO.Position) >= 5f * 5f) continue;
 
                         processor.ValueRW.PluggedPendrive = (false, pendrive.ValueRO, pendriveEntity);
-
-                        commandBuffer.AddComponent<Parent>(pendriveEntity, new()
-                        {
-                            Value = entity
-                        });
-                        pendriveLocalTransform.ValueRW.Position = new float3(0f, 1f, 0f);
+                        pendriveChild.ValueRW.ParentId = ghostInstance.ValueRO;
+                        pendriveChild.ValueRW.LocalPosition = processor.ValueRO.USBPosition;
+                        pendriveChild.ValueRW.LocalRotation = processor.ValueRO.USBRotation;
                         rigidbody.ValueRW.IsEnabled = false;
+                        collider.ValueRW.IsEnabled = false;
                     }
                 }
             }
@@ -74,18 +73,18 @@ partial struct PendriveProcessorSystem : ISystem
 
                 if (processor.ValueRO.PluggedPendrive.Entity != Entity.Null)
                 {
-                    foreach (var (pendrive, pendriveTransform, pendriveParent, rigidbody, pendriveEntity) in
-                        SystemAPI.Query<RefRO<Pendrive>, RefRO<LocalToWorld>, RefRO<Parent>, RefRW<Rigidbody>>()
+                    foreach (var (pendrive, pendriveTransform, pendriveParent, rigidbody, collider, pendriveChild, pendriveEntity) in
+                        SystemAPI.Query<RefRO<Pendrive>, RefRW<LocalTransform>, RefRO<Parent>, RefRW<Rigidbody>, RefRW<Collider>, RefRW<GhostChild>>()
                         .WithEntityAccess())
                     {
                         if (pendriveParent.ValueRO.Value != entity) continue;
 
                         processor.ValueRW.PluggedPendrive = default;
-
-                        commandBuffer.RemoveComponent<Parent>(pendriveEntity);
-                        rigidbody.ValueRW.Velocity = new float3(_random.NextFloat3Direction() * 5f);
+                        pendriveChild.ValueRW.ParentId = default;
+                        rigidbody.ValueRW.Velocity = new float3(_random.NextFloat3Direction() * 1f);
                         rigidbody.ValueRW.Velocity.y = math.abs(rigidbody.ValueRW.Velocity.y);
                         rigidbody.ValueRW.IsEnabled = true;
+                        collider.ValueRW.IsEnabled = true;
                         break;
                     }
                 }

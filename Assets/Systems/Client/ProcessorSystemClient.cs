@@ -57,6 +57,12 @@ partial struct ProcessorSystemClient : ISystem
                     processor.ValueRO.RadarLED.IsOn(now) ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
+
+            if (processor.ValueRO.USBLED.LED != Entity.Null)
+                _emissionColorQ.GetRefRW(processor.ValueRO.USBLED.LED).ValueRW.Value =
+                    processor.ValueRO.USBLED.IsOn(now) ?
+                    new float4(0.1f, 0.2f, 1f, 1f) * 10f :
+                    default;
         }
 
         foreach (var (request, command, entity) in

@@ -675,10 +675,7 @@ static unsafe class ProcessorAPI
             }
 
             scope->EntityRef.Processor.ValueRW.PluggedPendrive.Pendrive.Span.Slice(source, length).CopyTo(scope->ProcessorRef.MemorySpan[destination..]);
-
-            // length = math.min(length, 1024 - source);
-            // byte* sourcePtr = (byte*)Unsafe.AsPointer(ref scope->EntityRef.Processor.ValueRW.PluggedPendrive.Data);
-            // Buffer.MemoryCopy(sourcePtr + source, (byte*)scope->ProcessorRef.Memory + destination, Processor.TotalMemorySize - destination, length);
+            scope->EntityRef.Processor.ValueRW.USBLED.Blink();
 
             returnValue.Set(1);
         }
@@ -702,18 +699,11 @@ static unsafe class ProcessorAPI
                 return;
             }
 
-            Span<byte> a = scope->ProcessorRef.MemorySpan.Slice(source, length);
-            Span<byte> b = scope->EntityRef.Processor.ValueRW.PluggedPendrive.Pendrive.Span[destination..];
-
-            a.CopyTo(b);
-
+            scope->ProcessorRef.MemorySpan.Slice(source, length).CopyTo(scope->EntityRef.Processor.ValueRW.PluggedPendrive.Pendrive.Span[destination..]);
             scope->EntityRef.Processor.ValueRW.PluggedPendrive.Write = true;
+            scope->EntityRef.Processor.ValueRW.USBLED.Blink();
 
             returnValue.Set(1);
-
-            // length = math.min(length, 1024 - source);
-            // byte* destinationPtr = (byte*)Unsafe.AsPointer(ref scope->EntityRef.Processor.ValueRW.PluggedPendrive.Data);
-            // Buffer.MemoryCopy((byte*)scope->ProcessorRef.Memory + source, destinationPtr + destination, 1024 - destination, length);
         }
     }
 }

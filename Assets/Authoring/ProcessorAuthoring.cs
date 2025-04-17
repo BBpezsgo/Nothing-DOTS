@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Processor")]
@@ -8,6 +9,8 @@ public class ProcessorAuthoring : MonoBehaviour
     [SerializeField] GameObject? NetworkReceiveLED = default;
     [SerializeField] GameObject? NetworkSendLED = default;
     [SerializeField] GameObject? RadarLED = default;
+    [SerializeField] GameObject? USBLED = default;
+    [SerializeField] Transform? USBPosition = default;
 
     class Baker : Baker<ProcessorAuthoring>
     {
@@ -36,6 +39,19 @@ public class ProcessorAuthoring : MonoBehaviour
                     ? Entity.Null
                     : GetEntity(authoring.RadarLED, TransformUsageFlags.Dynamic)
                 ),
+                USBLED = new(
+                    authoring.USBLED == null
+                    ? Entity.Null
+                    : GetEntity(authoring.USBLED, TransformUsageFlags.Dynamic)
+                ),
+                USBPosition =
+                    authoring.USBPosition == null
+                    ? float3.zero
+                    : authoring.transform.InverseTransformPoint(authoring.USBPosition.position),
+                USBRotation =
+                    authoring.USBPosition == null
+                    ? quaternion.identity
+                    : authoring.USBPosition.rotation,
             });
             AddBuffer<BufferedInstruction>(entity);
             AddBuffer<BufferedGeneratedFunction>(entity);

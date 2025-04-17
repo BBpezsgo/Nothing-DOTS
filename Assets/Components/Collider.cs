@@ -3,8 +3,9 @@ using Unity.Entities;
 using Unity.Mathematics;
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public readonly struct SphereCollider
+public struct SphereCollider
 {
+    [MarshalAs(UnmanagedType.U1)] public bool IsEnabled;
     [MarshalAs(UnmanagedType.U1)] public readonly bool IsStatic;
     public readonly float Radius;
     public readonly float3 Offset;
@@ -18,8 +19,9 @@ public readonly struct SphereCollider
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public readonly struct AABBCollider
+public struct AABBCollider
 {
+    [MarshalAs(UnmanagedType.U1)] public bool IsEnabled;
     [MarshalAs(UnmanagedType.U1)] public readonly bool IsStatic;
     public readonly AABB AABB;
 
@@ -37,10 +39,13 @@ public enum ColliderType : byte
 }
 
 [StructLayout(LayoutKind.Explicit)]
-public readonly struct Collider : IComponentData
+public struct Collider : IComponentData
 {
     [FieldOffset(0)] public readonly ColliderType Type;
-    [FieldOffset(1), MarshalAs(UnmanagedType.U1)] public readonly bool IsStatic;
+
+    [FieldOffset(1), MarshalAs(UnmanagedType.U1)] public bool IsEnabled;
+    [FieldOffset(2), MarshalAs(UnmanagedType.U1)] public readonly bool IsStatic;
+
     [FieldOffset(1)] public readonly SphereCollider Sphere;
     [FieldOffset(1)] public readonly AABBCollider AABB;
 
