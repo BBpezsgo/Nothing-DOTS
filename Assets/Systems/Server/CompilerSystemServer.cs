@@ -375,6 +375,7 @@ public partial class CompilerSystemServer : SystemBase
                 new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 1, "pendrive_plug", 0, 0),
                 new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 2, "pendrive_unplug", 0, 0),
                 new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 3, "pendrive_read", ExternalFunctionGenerator.SizeOf<int, int, int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 4, "pendrive_write", ExternalFunctionGenerator.SizeOf<int, int, int>(), 0),
             };
 
             compiled = StatementCompiler.CompileFile(

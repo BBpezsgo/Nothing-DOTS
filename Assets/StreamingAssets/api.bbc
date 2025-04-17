@@ -353,3 +353,6 @@ export void _pendrive_unplug();
 
 [External("pendrive_read")]
 export void _pendrive_read(int source, byte[]* destination, int length);
+
+[External("pendrive_write")]
+export void _pendrive_write(byte[]* source, int destination, int length);

@@ -45,6 +45,7 @@ public class UIManager : Singleton<UIManager>
     [SerializeField, NotNull] public UIDocument? Facility = default;
     [SerializeField, NotNull] public UIDocument? Pause = default;
     [SerializeField, NotNull] public UIDocument? Buildings = default;
+    [SerializeField, NotNull] public UIDocument? DiskDrive = default;
 
     ImmutableArray<UIDocument>? _uis = default;
 
@@ -53,7 +54,8 @@ public class UIManager : Singleton<UIManager>
         Factory,
         Facility,
         Pause,
-        Buildings
+        Buildings,
+        DiskDrive
     )).Value;
 
     [NotNull] Dictionary<UIDocument, List<IUICleanup>>? OpenedUIs = default;

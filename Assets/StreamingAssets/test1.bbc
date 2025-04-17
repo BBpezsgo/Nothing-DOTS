@@ -47,6 +47,9 @@ while (1)
                 _pendrive_plug();
             }
             currentPlug = new float2;
+
+            byte[6] nonsense = "Hello";
+            _pendrive_write(&nonsense, 0, 6);
         }
         else
         {

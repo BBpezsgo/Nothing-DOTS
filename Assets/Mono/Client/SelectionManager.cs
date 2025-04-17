@@ -230,14 +230,6 @@ public class SelectionManager : Singleton<SelectionManager>
         Entity selectableHit = hit.Entity.Entity;
         if (!IsMine(selectableHit)) return;
 
-        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-
-        if (!entityManager.HasComponent<SelectableUnit>(selectableHit))
-        {
-            Debug.LogError($"Entity {selectableHit} doesn't have a {nameof(SelectableUnit)} component");
-            return;
-        }
-
         _firstHit = selectableHit;
     }
 
@@ -261,12 +253,6 @@ public class SelectionManager : Singleton<SelectionManager>
         if (selectableHit != firstHit) return;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-
-        if (!entityManager.HasComponent<SelectableUnit>(selectableHit))
-        {
-            Debug.LogError($"Entity {selectableHit} doesn't have a {nameof(SelectableUnit)} component");
-            return;
-        }
 
         if (entityManager.HasComponent<Factory>(selectableHit))
         {
@@ -316,6 +302,13 @@ public class SelectionManager : Singleton<SelectionManager>
         {
             UIManager.Instance.OpenUI(UIManager.Instance.Unit)
                 .Setup(TerminalManager.Instance, selectableHit);
+            return;
+        }
+
+        if (entityManager.HasComponent<Pendrive>(selectableHit))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.DiskDrive)
+                .Setup(DiskDriveManager.Instance, selectableHit);
             return;
         }
     }
@@ -440,16 +433,22 @@ public class SelectionManager : Singleton<SelectionManager>
 
     SelectableUnit GetUnitStatus(Entity unit)
     {
-        if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return new()
+        if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit) ||
+            !ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<SelectableUnit>(unit))
         {
-            Status = SelectionStatus.None,
-        };
+            return new SelectableUnit()
+            {
+                Status = SelectionStatus.None,
+            };
+        }
+
         return ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<SelectableUnit>(unit);
     }
 
     static bool IsMine(Entity unit)
     {
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return false;
+        if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<UnitTeam>(unit)) return true;
         UnitTeam unitTeam = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<UnitTeam>(unit);
         if (!PlayerManager.TryGetLocalPlayer(out Player localPlayer)) return false;
         return unitTeam.Team == localPlayer.Team;
@@ -457,7 +456,8 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void SetUnitStatus(Entity unit, SelectableUnit status)
     {
-        if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return;
+        if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit) ||
+            !ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<SelectableUnit>(unit)) return;
         ConnectionManager.ClientOrDefaultWorld.EntityManager.SetComponentData<SelectableUnit>(unit, status);
     }
 

@@ -119,6 +119,11 @@ public class CameraControl : Singleton<CameraControl>
         UpdateVelocity();
         UpdateCameraZoom();
         UpdateBasePosition();
+
+        if (ConnectionManager.ClientWorld != null)
+        {
+            PlayerPositionSystemClient.GetInstance(ConnectionManager.ClientWorld.Unmanaged).CurrentPosition = new(transform.position.x, transform.position.z);
+        }
     }
 
     void UpdateVelocity()
@@ -131,6 +136,7 @@ public class CameraControl : Singleton<CameraControl>
     void GetKeyboardMovement()
     {
         if (UI.IsUIFocused) return;
+        if (startDragWorld != default) return;
 
         Vector3 inputValue = (
             movement.ReadValue<Vector2>().x * GetCameraRight() +
