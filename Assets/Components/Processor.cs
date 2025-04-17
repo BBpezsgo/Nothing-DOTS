@@ -56,8 +56,7 @@ public struct Processor : IComponentData
 
     public bool PendrivePlugRequested;
     public bool PendriveUnplugRequested;
-    public bool IsPendrivePlugged;
-    public Pendrive PluggedPendrive;
+    public (bool Write, Pendrive Pendrive, Entity Entity) PluggedPendrive;
 
     public bool IsKeyRequested;
     public FixedList128Bytes<char> InputKey;

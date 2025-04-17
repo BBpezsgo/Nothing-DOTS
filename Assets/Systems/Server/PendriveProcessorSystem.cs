@@ -27,11 +27,11 @@ partial struct PendriveProcessorSystem : ISystem
         {
             MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
 
-            if (processor.ValueRW.PendrivePlugRequested)
+            if (processor.ValueRO.PendrivePlugRequested)
             {
                 processor.ValueRW.PendrivePlugRequested = false;
 
-                if (!processor.ValueRW.IsPendrivePlugged)
+                if (processor.ValueRO.PluggedPendrive.Entity == Entity.Null)
                 {
                     foreach (var (pendrive, pendriveTransform, pendriveLocalTransform, rigidbody, pendriveEntity) in
                         SystemAPI.Query<RefRO<Pendrive>, RefRO<LocalToWorld>, RefRW<LocalTransform>, RefRW<Rigidbody>>()
@@ -39,8 +39,7 @@ partial struct PendriveProcessorSystem : ISystem
                     {
                         if (math.distancesq(pendriveTransform.ValueRO.Position, transform.ValueRO.Position) >= 5f * 5f) continue;
 
-                        processor.ValueRW.IsPendrivePlugged = true;
-                        processor.ValueRW.PluggedPendrive = pendrive.ValueRO;
+                        processor.ValueRW.PluggedPendrive = (false, pendrive.ValueRO, pendriveEntity);
 
                         commandBuffer.AddComponent<Parent>(pendriveEntity, new()
                         {
@@ -52,11 +51,28 @@ partial struct PendriveProcessorSystem : ISystem
                 }
             }
 
-            if (processor.ValueRW.PendriveUnplugRequested)
+            if (processor.ValueRO.PluggedPendrive.Write)
+            {
+                processor.ValueRW.PluggedPendrive.Write = false;
+
+                if (processor.ValueRO.PluggedPendrive.Entity != Entity.Null)
+                {
+                    if (state.EntityManager.Exists(processor.ValueRO.PluggedPendrive.Entity))
+                    {
+                        SystemAPI.GetComponentRW<Pendrive>(processor.ValueRO.PluggedPendrive.Entity).ValueRW.Data = processor.ValueRW.PluggedPendrive.Pendrive.Data;
+                    }
+                    else
+                    {
+                        Debug.LogError(string.Format("Pendrive entity {0} does not exists", processor.ValueRO.PluggedPendrive.Entity));
+                    }
+                }
+            }
+
+            if (processor.ValueRO.PendriveUnplugRequested)
             {
                 processor.ValueRW.PendriveUnplugRequested = false;
 
-                if (processor.ValueRW.IsPendrivePlugged)
+                if (processor.ValueRO.PluggedPendrive.Entity != Entity.Null)
                 {
                     foreach (var (pendrive, pendriveTransform, pendriveParent, rigidbody, pendriveEntity) in
                         SystemAPI.Query<RefRO<Pendrive>, RefRO<LocalToWorld>, RefRO<Parent>, RefRW<Rigidbody>>()
@@ -64,7 +80,6 @@ partial struct PendriveProcessorSystem : ISystem
                     {
                         if (pendriveParent.ValueRO.Value != entity) continue;
 
-                        processor.ValueRW.IsPendrivePlugged = false;
                         processor.ValueRW.PluggedPendrive = default;
 
                         commandBuffer.RemoveComponent<Parent>(pendriveEntity);

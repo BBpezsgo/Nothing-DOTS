@@ -19,6 +19,8 @@ using FunctionScope = ProcessorSystemServer.FunctionScope;
 [BurstCompile]
 static unsafe class ProcessorAPI
 {
+    public const int GlobalPrefix = unchecked((int)0xFFFF0000);
+
     [BurstCompile]
     public static class Math
     {
@@ -666,14 +668,19 @@ static unsafe class ProcessorAPI
             (int source, int destination, int length) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            if (!scope->EntityRef.Processor.ValueRW.IsPendrivePlugged || source < 0 || source >= 1024 || destination <= 0 || length <= 0 || length > 1024)
+            if (scope->EntityRef.Processor.ValueRW.PluggedPendrive.Entity == Entity.Null || source < 0 || source >= 1024 || destination <= 0 || length <= 0 || length > 1024)
             {
+                returnValue.Set(0);
                 return;
             }
 
-            length = math.min(length, 1024 - source);
-            byte* sourcePtr = (byte*)Unsafe.AsPointer(ref scope->EntityRef.Processor.ValueRW.PluggedPendrive.Data);
-            Buffer.MemoryCopy(sourcePtr + source, (byte*)scope->ProcessorRef.Memory + destination, Processor.TotalMemorySize - destination, length);
+            scope->EntityRef.Processor.ValueRW.PluggedPendrive.Pendrive.Span.Slice(source, length).CopyTo(scope->ProcessorRef.MemorySpan[destination..]);
+
+            // length = math.min(length, 1024 - source);
+            // byte* sourcePtr = (byte*)Unsafe.AsPointer(ref scope->EntityRef.Processor.ValueRW.PluggedPendrive.Data);
+            // Buffer.MemoryCopy(sourcePtr + source, (byte*)scope->ProcessorRef.Memory + destination, Processor.TotalMemorySize - destination, length);
+
+            returnValue.Set(1);
         }
 
         [BurstCompile]
@@ -683,14 +690,30 @@ static unsafe class ProcessorAPI
             (int source, int destination, int length) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            if (!scope->EntityRef.Processor.ValueRW.IsPendrivePlugged || destination < 0 || destination >= 1024 || source <= 0 || length <= 0 || length > 1024)
+            if (!scope->EntityRef.Processor.IsValid)
             {
+                returnValue.Set(0);
                 return;
             }
 
-            length = math.min(length, 1024 - source);
-            byte* destinationPtr = (byte*)Unsafe.AsPointer(ref scope->EntityRef.Processor.ValueRW.PluggedPendrive.Data);
-            Buffer.MemoryCopy((byte*)scope->ProcessorRef.Memory + source, destinationPtr + destination, 1024 - destination, length);
+            if (scope->EntityRef.Processor.ValueRW.PluggedPendrive.Entity == Entity.Null || destination < 0 || destination >= 1024 || source <= 0 || length <= 0 || length > 1024)
+            {
+                returnValue.Set(0);
+                return;
+            }
+
+            Span<byte> a = scope->ProcessorRef.MemorySpan.Slice(source, length);
+            Span<byte> b = scope->EntityRef.Processor.ValueRW.PluggedPendrive.Pendrive.Span[destination..];
+
+            a.CopyTo(b);
+
+            scope->EntityRef.Processor.ValueRW.PluggedPendrive.Write = true;
+
+            returnValue.Set(1);
+
+            // length = math.min(length, 1024 - source);
+            // byte* destinationPtr = (byte*)Unsafe.AsPointer(ref scope->EntityRef.Processor.ValueRW.PluggedPendrive.Data);
+            // Buffer.MemoryCopy((byte*)scope->ProcessorRef.Memory + source, destinationPtr + destination, 1024 - destination, length);
         }
     }
 }

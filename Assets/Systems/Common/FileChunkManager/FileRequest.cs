@@ -1,11 +1,12 @@
 using System;
 using UnityEngine;
 
-public readonly struct FileRequest : IInspect<FileRequest>
+public class FileRequest : IInspect<FileRequest>
 {
-    public readonly FileId File;
-    public readonly AwaitableCompletionSource<RemoteFile> Task;
-    public readonly IProgress<(int Current, int Total)>? Progress;
+    public FileId File { get; }
+    public AwaitableCompletionSource<RemoteFile> Task { get; }
+    public IProgress<(int Current, int Total)>? Progress { get; }
+    public double RequestSentAt { get; private set; }
 
     public FileRequest(
         FileId file,
@@ -15,6 +16,7 @@ public readonly struct FileRequest : IInspect<FileRequest>
         File = file;
         Task = task;
         Progress = progress;
+        RequestSentAt = default;
     }
 
     public FileRequest OnGUI(Rect rect, FileRequest value)
@@ -33,5 +35,10 @@ public readonly struct FileRequest : IInspect<FileRequest>
         GUI.enabled = true;
 #endif
         return value;
+    }
+
+    public void RequestSent()
+    {
+        RequestSentAt = DateTime.UtcNow.TimeOfDay.TotalSeconds;
     }
 }

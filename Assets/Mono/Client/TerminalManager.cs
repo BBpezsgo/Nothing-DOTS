@@ -310,7 +310,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
-        var compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
+        SerializableDictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
         if (processor.SourceFile == default || !compiledSources.TryGetValue(processor.SourceFile, out CompiledSource? source))
         {
             _terminal = null;
@@ -375,23 +375,15 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
                 ui_scrollProgresses.SyncList(source.SubFiles.ToArray(), ProgressItem, (file, element, recycled) =>
                 {
-                    var progressBar = element.Q<ProgressBar>();
-                    if (compiledSources.TryGetValue(file.Key, out var source1))
+                    ProgressBar progressBar = element.Q<ProgressBar>();
+                    progressBar.title = file.Key.Name.ToString();
+                    if (file.Value.Progress.Total == 0)
                     {
-                        progressBar.title = source1.SourceFile.Name.ToString();
-                        progressBar.value = source1.Progress;
+                        progressBar.value = 0f;
                     }
                     else
                     {
-                        progressBar.title = file.Key.Name.ToString();
-                        if (file.Value.Progress.Total == 0)
-                        {
-                            progressBar.value = 0f;
-                        }
-                        else
-                        {
-                            progressBar.value = (float)file.Value.Progress.Current / (float)file.Value.Progress.Total;
-                        }
+                        progressBar.value = (float)file.Value.Progress.Current / (float)file.Value.Progress.Total;
                     }
                 });
 
@@ -409,16 +401,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         _terminal = null;
                         if (float.IsNaN(source.Progress))
                         {
-                            if (source.CompileSecuedued == default)
-                            {
-                                ui_progressCompilation.title = "Compilation in ? sec";
-                                SetProgressStatus(null);
-                            }
-                            else
-                            {
-                                ui_progressCompilation.title = $"Compilation in {math.max(0f, source.CompileSecuedued - MonoTime.Now):#.0} sec ";
-                                SetProgressStatus(null);
-                            }
+                            ui_progressCompilation.title = "Compilation soon ...";
+                            SetProgressStatus(null);
                         }
                         break;
                     }
@@ -496,7 +480,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                                 .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}_{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
                                         }
 
-                                        var awaiter = _memoryDownloadTask.GetAwaiter();
+                                        Awaitable<RemoteFile>.Awaiter awaiter = _memoryDownloadTask.GetAwaiter();
                                         if (awaiter.IsCompleted)
                                         {
                                             // Debug.Log("Memory loaded");

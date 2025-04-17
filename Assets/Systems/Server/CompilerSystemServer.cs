@@ -32,8 +32,6 @@ public class CompiledSource : IInspect<CompiledSource>
     public long LatestVersion;
     public CompilationStatus Status;
 
-    public float CompileSecuedued;
-
     public float Progress;
     public bool StatusChanged;
     public double LastStatusSync;
@@ -53,7 +51,6 @@ public class CompiledSource : IInspect<CompiledSource>
         long compiledVersion,
         long latestVersion,
         CompilationStatus status,
-        float compileSecuedued,
         float progress,
         bool isSuccess,
         NativeArray<Instruction>? code,
@@ -63,7 +60,6 @@ public class CompiledSource : IInspect<CompiledSource>
         SourceFile = sourceFile;
         CompiledVersion = compiledVersion;
         LatestVersion = latestVersion;
-        CompileSecuedued = compileSecuedued;
         Progress = progress;
         IsSuccess = isSuccess;
         Code = code;
@@ -79,7 +75,6 @@ public class CompiledSource : IInspect<CompiledSource>
         default,
         latestVersion,
         CompilationStatus.Secuedued,
-        (float)MonoTime.Now + 1f,
         0,
         false,
         default,
@@ -92,7 +87,6 @@ public class CompiledSource : IInspect<CompiledSource>
         rpc.CompiledVersion,
         rpc.LatestVersion,
         rpc.Status,
-        default,
         rpc.Progress,
         rpc.IsSuccess,
         default,
@@ -134,9 +128,7 @@ public partial class CompilerSystemServer : SystemBase
                 case CompilationStatus.None:
                     break;
                 case CompilationStatus.Secuedued:
-                    if (source.CompileSecuedued > MonoTime.Now) continue;
                     source.Status = CompilationStatus.Compiling;
-                    source.CompileSecuedued = default;
                     Task.Factory.StartNew(static (object state)
                         // TODO: recompiling
                         => CompileSourceTask(((FileId, bool, CompiledSource))state), (object)(file, false, CompiledSources[file]))
@@ -163,7 +155,6 @@ public partial class CompilerSystemServer : SystemBase
                     {
                         Debug.Log($"[{nameof(CompilerSystemServer)}]: Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
                         source.Status = CompilationStatus.Secuedued;
-                        source.CompileSecuedued = 1f;
                         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                         SendCompilationStatus(source, commandBuffer);
                     }
@@ -267,8 +258,6 @@ public partial class CompilerSystemServer : SystemBase
         Uri sourceUri = file.ToUri();
         if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Compilation started for \"{sourceUri}\" ...");
 
-        bool sourcesFromOtherConnectionsNeeded = false;
-
         source.IsSuccess = false;
         source.Diagnostics = new DiagnosticsCollection();
         source.Status = CompilationStatus.Compiling;
@@ -339,8 +328,8 @@ public partial class CompilerSystemServer : SystemBase
 
             IExternalFunction[] externalFunctions = new IExternalFunction[]
             {
-                new ExternalFunctionStub(ProcessorAPI.IO.Prefix + 1, "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.IO.Prefix + 2, "stdin", 0, ExternalFunctionGenerator.SizeOf<char>()),
+                new ExternalFunctionStub(ProcessorAPI.IO.Prefix + 1,                "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.IO.Prefix + 2,                "stdin", 0, ExternalFunctionGenerator.SizeOf<char>()),
 
                 ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 1, "sqrt", MathF.Sqrt),
                 ExternalFunctionSync.Create<float, float, float>(ProcessorAPI.Math.Prefix + 2, "atan2", MathF.Atan2),
@@ -350,32 +339,32 @@ public partial class CompilerSystemServer : SystemBase
                 ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 6, "asin", MathF.Asin),
                 ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 7, "acos", MathF.Acos),
                 ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 8, "atan", MathF.Atan),
-                ExternalFunctionSync.Create<int>(ProcessorAPI.Math.Prefix + 9, "random", _random),
+                ExternalFunctionSync.Create<int>(ProcessorAPI.Math.Prefix + 9,      "random", _random),
 
-                new ExternalFunctionStub(ProcessorAPI.Transmission.Prefix + 1, "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Transmission.Prefix + 2, "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+                new ExternalFunctionStub(ProcessorAPI.Transmission.Prefix + 1,      "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Transmission.Prefix + 2,      "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
 
-                new ExternalFunctionStub(ProcessorAPI.Sensors.Prefix + 1, "radar", 0, 0),
+                new ExternalFunctionStub(ProcessorAPI.Sensors.Prefix + 1,           "radar", 0, 0),
 
-                new ExternalFunctionStub(ProcessorAPI.Environment.Prefix + 1, "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Environment.Prefix + 2, "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                ExternalFunctionSync.Create(ProcessorAPI.Environment.Prefix + 3, "time", _time),
+                new ExternalFunctionStub(ProcessorAPI.Environment.Prefix + 1,       "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Environment.Prefix + 2,       "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                ExternalFunctionSync.Create(ProcessorAPI.Environment.Prefix + 3,    "time", _time),
 
-                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 1, "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 2, "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 3, "debug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 4, "ldebug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 1,             "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 2,             "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 3,             "debug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 4,             "ldebug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
 
-                new ExternalFunctionStub(ProcessorAPI.Commands.Prefix + 1, "dequeue_command", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>()),
+                new ExternalFunctionStub(ProcessorAPI.Commands.Prefix + 1,          "dequeue_command", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>()),
 
-                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 1, "gui_create", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 2, "gui_destroy", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 3, "gui_update", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 1,               "gui_create", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 2,               "gui_destroy", ExternalFunctionGenerator.SizeOf<int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 3,               "gui_update", ExternalFunctionGenerator.SizeOf<int>(), 0),
 
-                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 1, "pendrive_plug", 0, 0),
-                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 2, "pendrive_unplug", 0, 0),
-                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 3, "pendrive_read", ExternalFunctionGenerator.SizeOf<int, int, int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 4, "pendrive_write", ExternalFunctionGenerator.SizeOf<int, int, int>(), 0),
+                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 1,          "pendrive_plug", 0, 0),
+                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 2,          "pendrive_unplug", 0, 0),
+                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 3,          "pendrive_read", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 4,          "pendrive_write", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
             };
 
             compiled = StatementCompiler.CompileFile(
@@ -426,20 +415,12 @@ public partial class CompilerSystemServer : SystemBase
             ));
         }
 
-        if (sourcesFromOtherConnectionsNeeded)
-        {
-            source.Diagnostics.Clear();
-            source.CompileSecuedued = MonoTime.Now + 5f;
-            source.Status = CompilationStatus.Secuedued;
-            source.StatusChanged = true;
-        }
-        else if (source.Diagnostics.HasErrors)
+        if (source.Diagnostics.HasErrors)
         {
             source.Status = CompilationStatus.Compiled;
             source.Compiled = compiled;
             source.Generated = generated;
-            source.CompileSecuedued = default;
-            source.CompiledVersion = DateTime.UtcNow.Ticks;
+            source.CompiledVersion = source.LatestVersion;
             source.IsSuccess = false;
             source.DebugInformation = new CompiledDebugInformation(null);
             source.Code?.Dispose();
@@ -453,8 +434,7 @@ public partial class CompilerSystemServer : SystemBase
             source.Status = CompilationStatus.Compiled;
             source.Compiled = compiled;
             source.Generated = generated;
-            source.CompileSecuedued = default;
-            source.CompiledVersion = DateTime.UtcNow.Ticks;
+            source.CompiledVersion = source.LatestVersion;
             source.IsSuccess = true;
             source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
             source.Code?.Dispose();

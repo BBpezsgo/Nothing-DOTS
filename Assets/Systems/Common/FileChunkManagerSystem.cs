@@ -8,7 +8,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Entities.UniversalDelegates;
 using Unity.NetCode;
 using UnityEngine;
 
@@ -17,9 +16,8 @@ public partial class FileChunkManagerSystem : SystemBase
     const bool EnableLogging = false;
     public static string? BasePath => Application.streamingAssetsPath;
 
-    [NotNull] Dictionary<FileId, RemoteFile>? RemoteFiles = new();
-    [NotNull] List<FileRequest>? Requests = new();
-    double NextCheckAt;
+    [NotNull] readonly Dictionary<FileId, RemoteFile>? RemoteFiles = new();
+    [NotNull] readonly List<FileRequest>? Requests = new();
 
     public static FileChunkManagerSystem GetInstance(World world)
         => world.GetExistingSystemManaged<FileChunkManagerSystem>();
@@ -31,9 +29,6 @@ public partial class FileChunkManagerSystem : SystemBase
 
     protected override void OnUpdate()
     {
-        if (NextCheckAt > SystemAPI.Time.ElapsedTime) return;
-        NextCheckAt = SystemAPI.Time.ElapsedTime + .2d;
-
         if (Requests.Count == 0) return;
 
         EntityCommandBuffer commandBuffer = default;
@@ -84,7 +79,7 @@ public partial class FileChunkManagerSystem : SystemBase
         ref EntityCommandBuffer commandBuffer,
         DynamicBuffer<BufferedReceivingFile> fileHeaders,
         DynamicBuffer<BufferedReceivingFileChunk> fileChunks,
-        in FileRequest request,
+        FileRequest request,
         out bool shouldDelete,
         out int headerIndex)
     {
@@ -177,20 +172,24 @@ public partial class FileChunkManagerSystem : SystemBase
             }
         }
 
-        if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+        if (DateTime.UtcNow.TimeOfDay.TotalSeconds - request.RequestSentAt > 5d)
+        {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
 
-        Entity rpcEntity = commandBuffer.CreateEntity();
-        commandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
-        {
-            FileName = request.File.Name,
-            Version = requestCached && RemoteFiles.TryGetValue(request.File, out RemoteFile v) ? v.File.Version : 0,
-        });
-        Entity targetConnection = request.File.Source.GetEntity(World.EntityManager);
-        commandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
-        {
-            TargetConnection = targetConnection,
-        });
-        if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Sending request for file \"{request.File.ToUri()}\"");
+            Entity rpcEntity = commandBuffer.CreateEntity();
+            commandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
+            {
+                FileName = request.File.Name,
+                Version = requestCached && RemoteFiles.TryGetValue(request.File, out RemoteFile v) ? v.File.Version : 0,
+            });
+            Entity targetConnection = request.File.Source.GetEntity(World.EntityManager);
+            commandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
+            {
+                TargetConnection = targetConnection,
+            });
+            request.RequestSent();
+            if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Sending request for file \"{request.File.ToUri()}\"");
+        }
     }
 
     void CloseRemoteFile(EntityCommandBuffer commandBuffer, FileId fileId)
@@ -261,8 +260,6 @@ public partial class FileChunkManagerSystem : SystemBase
 
     public static FileData? GetFileData(string fileName)
     {
-        if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Loading file data \"{fileName}\"");
-
         if (string.IsNullOrWhiteSpace(fileName)) return null;
 
         if (fileName.StartsWith("/i"))
@@ -270,13 +267,8 @@ public partial class FileChunkManagerSystem : SystemBase
             ReadOnlySpan<char> _fileName = fileName;
             _fileName = _fileName[2..];
 
-            if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Internal \"{_fileName.ToString()}\" ...");
             if (_fileName.Consume("/e/"))
             {
-                if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Entity \"{_fileName.ToString()}\" ...");
-
-                if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Ghost \"{_fileName.ToString()}\" ...");
-
                 if (!_fileName.ConsumeInt(out int ghostId))
                 {
                     Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Can't get ghost id");
@@ -326,7 +318,6 @@ public partial class FileChunkManagerSystem : SystemBase
 
                 if (_fileName.Consume("/m"))
                 {
-                    if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Memory ...");
                     unsafe
                     {
                         Processor processor = World.DefaultGameObjectInjectionWorld.EntityManager.GetComponentData<Processor>(entity);

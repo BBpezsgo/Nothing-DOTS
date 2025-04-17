@@ -9,6 +9,5 @@ public struct BufferedSendingFile : IBufferElementData
     public required int TransactionId;
     public required FixedString128Bytes FileName;
     public required bool AutoSendEverything;
-    public required double LastSentAt;
     public required int TotalLength;
 }

@@ -38,13 +38,14 @@ partial struct BufferedFileReceiverSystem : ISystem
                 TransactionId = command.ValueRO.TransactionId,
                 FileName = command.ValueRO.FileName,
                 TotalLength = command.ValueRO.TotalLength,
-                LastRedeivedAt = SystemAPI.Time.ElapsedTime,
+                LastReceivedAt = SystemAPI.Time.ElapsedTime,
                 Version = command.ValueRO.Version,
             };
 
             for (int i = 0; i < receivingFiles.Length; i++)
             {
                 if (receivingFiles[i].Source != ep) continue;
+                if (receivingFiles[i].FileName != command.ValueRO.FileName) continue;
                 if (receivingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
 
                 receivingFiles[i] = fileHeader;
@@ -77,7 +78,7 @@ partial struct BufferedFileReceiverSystem : ISystem
 
                 receivingFiles[i] = receivingFiles[i] with
                 {
-                    LastRedeivedAt = SystemAPI.Time.ElapsedTime
+                    LastReceivedAt = SystemAPI.Time.ElapsedTime
                 };
                 fileFound = true;
                 if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength)}");
@@ -87,7 +88,16 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             if (!fileFound)
             {
-                Debug.LogWarning("Unexpected file chunk");
+                Entity requestRpcEneity = commandBuffer.CreateEntity();
+                commandBuffer.AddComponent(requestRpcEneity, new CloseTransactionRpc
+                {
+                    TransactionId = command.ValueRO.TransactionId,
+                });
+                commandBuffer.AddComponent(requestRpcEneity, new SendRpcCommandRequest
+                {
+                    TargetConnection = request.ValueRO.SourceConnection,
+                });
+                Debug.LogWarning("Unexpected file chunk, closing transaction ...");
                 continue;
             }
 
@@ -128,8 +138,7 @@ partial struct BufferedFileReceiverSystem : ISystem
         int requested = 0;
         for (int i = 0; i < receivingFiles.Length; i++)
         {
-            double delta = SystemAPI.Time.ElapsedTime - receivingFiles[i].LastRedeivedAt;
-            if (delta < ChunkRequestsCooldown) continue;
+            if (SystemAPI.Time.ElapsedTime - receivingFiles[i].LastReceivedAt < ChunkRequestsCooldown) continue;
             if (receivingFiles[i].Kind != FileResponseStatus.OK) continue;
 
             NativeArray<bool> receivedChunks = new(FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength), Allocator.Temp);
@@ -165,7 +174,7 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             receivingFiles[i] = receivingFiles[i] with
             {
-                LastRedeivedAt = SystemAPI.Time.ElapsedTime
+                LastReceivedAt = SystemAPI.Time.ElapsedTime
             };
         }
     }

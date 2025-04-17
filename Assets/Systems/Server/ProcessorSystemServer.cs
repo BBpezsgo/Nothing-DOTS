@@ -89,6 +89,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required Signal* Signal;
         public required Registers* Registers;
 
+        public readonly Span<byte> MemorySpan => new(Memory, Processor.TotalMemorySize);
+
         [BurstCompile]
         public void Push(scoped ReadOnlySpan<byte> data)
         {
@@ -186,8 +188,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.TryPlug).Value,        ProcessorAPI.Pendrive.Prefix + 1,       0, 0, default));
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.TryUnplug).Value,      ProcessorAPI.Pendrive.Prefix + 2,       0, 0, default));
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.Read).Value,           ProcessorAPI.Pendrive.Prefix + 3,       ExternalFunctionGenerator.SizeOf<int, int, int>(), 0, default));
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.Write).Value,          ProcessorAPI.Pendrive.Prefix + 4,       ExternalFunctionGenerator.SizeOf<int, int, int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.Read).Value,           ProcessorAPI.Pendrive.Prefix + 3,       ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(ProcessorAPI.Pendrive.Write).Value,          ProcessorAPI.Pendrive.Prefix + 4,       ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
     }
 
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
@@ -356,7 +358,7 @@ partial struct ProcessorJob : IJobEntity
         }
 
         MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
-        mapped->Pendrive.IsPlugged = processor.ValueRW.IsPendrivePlugged;
+        mapped->Pendrive.IsPlugged = processor.ValueRW.PluggedPendrive.Entity != Entity.Null;
 
         ProcessorSystemServer.FunctionScope scope = new()
         {
@@ -384,7 +386,7 @@ partial struct ProcessorJob : IJobEntity
 
         for (int i = 0; i < this.scopedExternalFunctions.Length; i++)
         {
-            if ((this.scopedExternalFunctions[i].Id & ProcessorAPI.GUI.Prefix) != 0 &&
+            if ((this.scopedExternalFunctions[i].Id & ProcessorAPI.GlobalPrefix) == ProcessorAPI.GUI.Prefix &&
                 !QCoreComputer.HasComponent(entity))
             {
                 continue;

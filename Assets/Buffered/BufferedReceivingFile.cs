@@ -10,6 +10,6 @@ public struct BufferedReceivingFile : IBufferElementData
     public required int TransactionId;
     public required FixedString128Bytes FileName;
     public required int TotalLength;
-    public required double LastRedeivedAt;
+    public required double LastReceivedAt;
     public required long Version;
 }
