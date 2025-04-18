@@ -240,12 +240,9 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             if (ConnectionManager.ClientOrDefaultWorld.IsServer())
             {
                 throw new NotImplementedException();
-                // Debug.Log($"Placing building from server");
-                // PlaceBuilding(position, SelectedBuilding);
             }
             else
             {
-                // Debug.Log($"Placing building from client");
                 SendPlaceBuildingRequest(new PlaceBuildingRequestRpc()
                 {
                     BuildingName = SelectedBuilding.Name,
@@ -260,7 +257,6 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
 
     void SendPlaceBuildingRequest(PlaceBuildingRequestRpc request, World world)
     {
-        // Debug.Log($"Sending place building request ...");
         Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(PlaceBuildingRequestRpc));
         world.EntityManager.SetComponentData(entity, request);
     }
@@ -269,7 +265,6 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
     {
         GameObject hologramModels = GetHologramModelGroup(hologram);
         hologramModels.transform.SetPositionAndRotation(default, Quaternion.identity);
-        // CopyModel(buildingPrefab, hologramModels);
 
         List<MeshRenderer> renderers = new();
         renderers.AddRange(hologram.GetComponentsInChildren<MeshRenderer>());
@@ -288,48 +283,6 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         hologramModels.SetParent(hologram.transform);
         hologramModels.localPosition = default;
         return hologramModels.gameObject;
-    }
-
-    static void CopyModel(GameObject from, GameObject to)
-    {
-        /*
-        MeshRenderer[] meshRenderers = from.GetComponentsInChildren<MeshRenderer>(false);
-
-        for (int i = 0; i < meshRenderers.Length; i++)
-        {
-            MeshRenderer meshRenderer = meshRenderers[i];
-            MeshFilter meshFilter = meshRenderer.GetComponent<MeshFilter>();
-            Vector3 relativePosition = from.transform.InverseTransformPoint(meshRenderer.transform.position);
-            Vector3 relativeRotation = from.transform.InverseTransformDirection(meshRenderer.transform.eulerAngles);
-
-            GameObject newObject = new(meshRenderer.gameObject.name);
-            newObject.transform.SetParent(to.transform);
-            newObject.transform.SetLocalPositionAndRotation(relativePosition, Quaternion.Euler(relativeRotation));
-            newObject.transform.localScale = meshRenderer.transform.localScale;
-
-            MeshRenderer.Instantiate(meshRenderer, newObject.transform);
-            MeshFilter.Instantiate(meshFilter, newObject.transform);
-        }
-        */
-
-        to.transform.localScale = from.transform.localScale;
-        to.transform.SetLocalPositionAndRotation(from.transform.localPosition, from.transform.localRotation);
-
-        if (from.TryGetComponent<MeshRenderer>(out MeshRenderer? meshRenderer) &&
-            !to.TryGetComponent<MeshRenderer>(out _))
-        {
-            MeshRenderer.Instantiate(meshRenderer, to.transform);
-            MeshFilter.Instantiate(from.GetComponent<MeshFilter>(), to.transform);
-        }
-
-        int childCount = from.transform.childCount;
-        for (int i = 0; i < childCount; i++)
-        {
-            GameObject prefabChild = from.transform.GetChild(i).gameObject;
-            GameObject newHologramChild = new(prefabChild.name);
-            newHologramChild.transform.SetParent(to.transform);
-            CopyModel(prefabChild, newHologramChild);
-        }
     }
 
     public void Setup(UIDocument ui)

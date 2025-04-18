@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using LanguageCore.Runtime;
 using Unity.Collections;
@@ -20,16 +21,26 @@ public struct StatusLED
 public struct BlinkingLED
 {
     [GhostField(SendData = false)] public Entity LED;
-    [GhostField] public float LastBlinked;
+    [GhostField(SendData = false)] public float LastBlinked;
+    [GhostField(SendData = false)] public uint LastBlinkedLocal;
+    [GhostField] public uint LastBlinkedNet;
 
     public BlinkingLED(Entity led)
     {
         LED = led;
-        LastBlinked = default;
     }
 
-    public void Blink() => LastBlinked = MonoTime.Now;
-    public readonly bool IsOn(float now) => now - LastBlinked < 0.05f;
+    public void Blink() => LastBlinkedNet = unchecked(LastBlinkedNet + 1);
+    public bool ReceiveBlink()
+    {
+        if (LastBlinkedLocal != LastBlinkedNet)
+        {
+            LastBlinkedLocal = LastBlinkedNet;
+            LastBlinked = Math.Max(LastBlinkedNet, MonoTime.Now);
+            return true;
+        }
+        return false;
+    }
 }
 
 public struct Processor : IComponentData

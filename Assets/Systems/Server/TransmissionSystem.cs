@@ -79,8 +79,9 @@ unsafe partial struct TransmissionSystem : ISystem
                             }
                         }
 
-                        var other = processorComponentQ.GetRefRWOptional(cell[i].Entity);
+                        RefRW<Processor> other = processorComponentQ.GetRefRWOptional(cell[i].Entity);
                         if (!other.IsValid) continue;
+                        if (other.ValueRO.SourceFile == default) continue;
 
                         other.ValueRW.NetworkReceiveLED.Blink();
 

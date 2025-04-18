@@ -92,7 +92,7 @@ public partial struct PlayerSystemServer : ISystem
                     ConnectionState = PlayerConnectionState.Connected,
                     Team = -1,
                     IsCoreComputerSpawned = false,
-                    Resources = 5,
+                    Resources = 30,
                     Guid = guid,
                     Nickname = command.ValueRO.Nickname,
                 });

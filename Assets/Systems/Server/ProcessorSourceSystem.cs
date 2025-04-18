@@ -98,7 +98,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             if (!compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
             {
                 if (EnableLogging) Debug.Log(string.Format("Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
-                compilerSystem.AddEmpty(processor.ValueRO.SourceFile, default);
+                compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);
                 instructions.Clear();
                 continue;
             }

@@ -228,6 +228,13 @@ MonoBehaviour:
     ConstructionTime: 1
     RequiredResources: 1
     RequiredResearch: {fileID: 0}
+  - Prefab: {fileID: 1289979656329170851, guid: 9a341ad25308cd27d8c38c9c9143c6fb,
+      type: 3}
+    PlaceholderPrefab: {fileID: 1289979656329170851, guid: 6ec630a7793cbdb428740947825fe2c2,
+      type: 3}
+    ConstructionTime: 5
+    RequiredResources: 5
+    RequiredResearch: {fileID: 1732038088}
 --- !u!4 &501907723
 Transform:
   m_ObjectHideFlags: 0
@@ -322,7 +329,7 @@ MonoBehaviour:
   Projectiles:
   - Prefab: {fileID: 2786101604496490284, guid: 43271472464ab435ea8449499228d966,
       type: 3}
-    Damage: 5
+    Damage: 0
     Speed: 20
 --- !u!4 &741854146
 Transform:
@@ -548,6 +555,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 789572735}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1128443016
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1128443017}
+  m_Layer: 0
+  m_Name: Pole
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1128443017
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1128443016}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1183496106
 GameObject:
   m_ObjectHideFlags: 0
@@ -602,6 +640,121 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 2027137027}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1398039792
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 2.09
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.8242618
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.04432878
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.5099331
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.24206561
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -18.66
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -59.84
+      objectReference: {fileID: 0}
+    - target: {fileID: 3961270386879384409, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: -21.93
+      objectReference: {fileID: 0}
+    - target: {fileID: 8959943860032353991, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a,
+        type: 3}
+      propertyPath: m_Name
+      value: Pendrive
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: c0dd75f2f29a7ed86ab91c1a1bf5af8a, type: 3}
+--- !u!1 &1732038086
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1732038087}
+  - component: {fileID: 1732038088}
+  m_Layer: 0
+  m_Name: RadarResearch
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 2147483647
+  m_IsActive: 1
+--- !u!4 &1732038087
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1732038086}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1738085997}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1732038088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1732038086}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9249db1d77abddbe2a10686a9bd12397, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Name: Radar
+  ResearchTime: 5
+  Requirements: []
 --- !u!1 &1738085996
 GameObject:
   m_ObjectHideFlags: 0
@@ -633,6 +786,7 @@ Transform:
   m_Children:
   - {fileID: 1183496107}
   - {fileID: 531714874}
+  - {fileID: 1732038087}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1978361163
@@ -915,3 +1069,5 @@ SceneRoots:
   - {fileID: 897640371744703909}
   - {fileID: 1738085997}
   - {fileID: 789572735}
+  - {fileID: 1128443017}
+  - {fileID: 1398039792}

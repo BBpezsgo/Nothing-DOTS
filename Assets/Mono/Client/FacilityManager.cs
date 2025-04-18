@@ -99,7 +99,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
         });
 
         NativeList<FixedString64Bytes> avaliable = ResearchSystemClient.GetInstance(entityManager.WorldUnmanaged).AvaliableResearches;
-        NativeList<FixedString64Bytes> avaliableNotInQueue = new(avaliable.Length - queue.Length, Allocator.Temp);
+        NativeList<FixedString64Bytes> avaliableNotInQueue = new(Math.Max(0, avaliable.Length - queue.Length), Allocator.Temp);
 
         for (int i = 0; i < avaliable.Length; i++)
         {

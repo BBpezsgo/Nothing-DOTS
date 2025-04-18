@@ -27,8 +27,8 @@ partial struct ProcessorSystemClient : ISystem
         _emissionColorQ.Update(ref state);
         float now = MonoTime.Now;
 
-        foreach (RefRO<Processor> processor in
-            SystemAPI.Query<RefRO<Processor>>())
+        foreach (RefRW<Processor> processor in
+            SystemAPI.Query<RefRW<Processor>>())
         {
             if (processor.ValueRO.StatusLED.LED != Entity.Null)
             {
@@ -42,25 +42,25 @@ partial struct ProcessorSystemClient : ISystem
 
             if (processor.ValueRO.NetworkSendLED.LED != Entity.Null)
                 _emissionColorQ.GetRefRW(processor.ValueRO.NetworkSendLED.LED).ValueRW.Value =
-                    processor.ValueRO.NetworkSendLED.IsOn(now) ?
+                    processor.ValueRW.NetworkSendLED.ReceiveBlink() ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
 
             if (processor.ValueRO.NetworkReceiveLED.LED != Entity.Null)
                 _emissionColorQ.GetRefRW(processor.ValueRO.NetworkReceiveLED.LED).ValueRW.Value =
-                    processor.ValueRO.NetworkReceiveLED.IsOn(now) ?
+                    processor.ValueRW.NetworkReceiveLED.ReceiveBlink() ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
 
             if (processor.ValueRO.RadarLED.LED != Entity.Null)
                 _emissionColorQ.GetRefRW(processor.ValueRO.RadarLED.LED).ValueRW.Value =
-                    processor.ValueRO.RadarLED.IsOn(now) ?
+                    processor.ValueRW.RadarLED.ReceiveBlink() ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
 
             if (processor.ValueRO.USBLED.LED != Entity.Null)
                 _emissionColorQ.GetRefRW(processor.ValueRO.USBLED.LED).ValueRW.Value =
-                    processor.ValueRO.USBLED.IsOn(now) ?
+                    processor.ValueRW.USBLED.ReceiveBlink() ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
         }
