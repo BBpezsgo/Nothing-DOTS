@@ -448,6 +448,7 @@ GameObject:
   - component: {fileID: 5882390945745655132}
   - component: {fileID: 5703389016185253051}
   - component: {fileID: 7488714515863496120}
+  - component: {fileID: -7005501249638528122}
   m_Layer: 6
   m_Name: Transporter
   m_TagString: Untagged
@@ -550,6 +551,8 @@ MonoBehaviour:
   NetworkReceiveLED: {fileID: 996139562965703133}
   NetworkSendLED: {fileID: 7315960762508625619}
   RadarLED: {fileID: 0}
+  USBLED: {fileID: 0}
+  USBPosition: {fileID: 0}
 --- !u!114 &3694215652677040203
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -615,6 +618,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   IsStatic: 0
+--- !u!114 &-7005501249638528122
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8196213229133260831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 110411aa55f36ba5b9926da214e7fba7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RelevancyRadius: 50
 --- !u!1 &9053958080788308250
 GameObject:
   m_ObjectHideFlags: 0

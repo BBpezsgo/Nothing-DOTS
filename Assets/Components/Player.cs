@@ -30,5 +30,5 @@ public struct Player : IComponentData
     [GhostField] public GameOutcome Outcome;
     public bool IsCoreComputerSpawned;
     public Guid Guid;
-    public float2 Position;
+    public float3 Position;
 }

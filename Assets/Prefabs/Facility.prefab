@@ -193,6 +193,7 @@ GameObject:
   - component: {fileID: 4611636116166020034}
   - component: {fileID: 6905483753670050396}
   - component: {fileID: 1800227550995558781}
+  - component: {fileID: 4071649569041009695}
   m_Layer: 6
   m_Name: Facility
   m_TagString: Untagged
@@ -308,6 +309,8 @@ MonoBehaviour:
   NetworkReceiveLED: {fileID: 3227504257845984517}
   NetworkSendLED: {fileID: 4944699706832134667}
   RadarLED: {fileID: 0}
+  USBLED: {fileID: 0}
+  USBPosition: {fileID: 0}
 --- !u!114 &4849325661188702559
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -400,7 +403,7 @@ MonoBehaviour:
   SupportedGhostModes: 3
   OptimizationMode: 1
   Importance: 1
-  prefabId: 
+  prefabId: 2d0850f7884f35ca8b4ae63ab65740df
   HasOwner: 1
   SupportAutoCommandTarget: 1
   TrackInterpolationDelay: 0
@@ -420,6 +423,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c2562f427ba299938e5f811481e946b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Team: 0
+--- !u!114 &4071649569041009695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9140697471898167478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 110411aa55f36ba5b9926da214e7fba7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RelevancyRadius: 50
 --- !u!1001 &7372414275554161235
 PrefabInstance:
   m_ObjectHideFlags: 0

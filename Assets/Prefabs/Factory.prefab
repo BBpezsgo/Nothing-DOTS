@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: 6059215961481375331}
   - component: {fileID: 3302439605676428537}
   - component: {fileID: 628276976772150553}
+  - component: {fileID: 7178615066619863551}
   m_Layer: 6
   m_Name: Factory
   m_TagString: Untagged
@@ -134,6 +135,8 @@ MonoBehaviour:
   NetworkReceiveLED: {fileID: 7931587471001208579}
   NetworkSendLED: {fileID: 452564358002251789}
   RadarLED: {fileID: 0}
+  USBLED: {fileID: 0}
+  USBPosition: {fileID: 0}
 --- !u!114 &5347357159272078129
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -226,7 +229,7 @@ MonoBehaviour:
   SupportedGhostModes: 3
   OptimizationMode: 1
   Importance: 1
-  prefabId: 
+  prefabId: 1272de8941c0e148d961ca7a6f39466d
   HasOwner: 1
   SupportAutoCommandTarget: 1
   TrackInterpolationDelay: 0
@@ -246,6 +249,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c2562f427ba299938e5f811481e946b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Team: 0
+--- !u!114 &7178615066619863551
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7887398088158380673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 110411aa55f36ba5b9926da214e7fba7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RelevancyRadius: 50
 --- !u!1001 &2632597475191654485
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -105,6 +105,7 @@ GameObject:
   - component: {fileID: 505277417124185127}
   - component: {fileID: 794652324480731092}
   - component: {fileID: 3447805605622345422}
+  - component: {fileID: 7009210575530201207}
   m_Layer: 6
   m_Name: RadarStation
   m_TagString: Untagged
@@ -204,6 +205,8 @@ MonoBehaviour:
   NetworkReceiveLED: {fileID: 2447701851480365545}
   NetworkSendLED: {fileID: 5305952807411566311}
   RadarLED: {fileID: 0}
+  USBLED: {fileID: 0}
+  USBPosition: {fileID: 0}
 --- !u!114 &2639703292439312697
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -268,6 +271,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c2562f427ba299938e5f811481e946b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Team: 0
 --- !u!114 &3447805605622345422
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -281,6 +285,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Radar: {fileID: 5601257594661473603}
+--- !u!114 &7009210575530201207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289979656329170851}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 110411aa55f36ba5b9926da214e7fba7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RelevancyRadius: 50
 --- !u!1 &5059903025704087588
 GameObject:
   m_ObjectHideFlags: 0

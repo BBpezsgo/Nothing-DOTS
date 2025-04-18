@@ -120,9 +120,9 @@ public class CameraControl : Singleton<CameraControl>
         UpdateCameraZoom();
         UpdateBasePosition();
 
-        if (ConnectionManager.ClientWorld != null)
+        if (ConnectionManager.ClientWorld != null && Time.timeSinceLevelLoad > 5f)
         {
-            PlayerPositionSystemClient.GetInstance(ConnectionManager.ClientWorld.Unmanaged).CurrentPosition = new(transform.position.x, transform.position.z);
+            PlayerPositionSystemClient.GetInstance(ConnectionManager.ClientWorld.Unmanaged).CurrentPosition = cameraTransform.position;
         }
     }
 
