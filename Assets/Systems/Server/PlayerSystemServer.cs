@@ -225,7 +225,7 @@ public partial struct PlayerSystemServer : ISystem
                         {
                             Team = player.ValueRO.Team
                         });
-                        commandBuffer.SetComponent<LocalTransform>(builder, LocalTransform.FromPosition(spawns[i].Position + new Unity.Mathematics.float3(2f, 0.5f, 2f)));
+                        commandBuffer.SetComponent<LocalTransform>(builder, LocalTransform.FromPosition(spawns[i].Position + new Unity.Mathematics.float3(2f, 0f, 2f)));
                         commandBuffer.SetComponent<GhostOwner>(builder, new()
                         {
                             NetworkId = player.ValueRO.ConnectionId,

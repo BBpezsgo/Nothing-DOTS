@@ -142,14 +142,14 @@ public class SetupManager : Singleton<SetupManager>
                     if (RandomRotation)
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
-                            new float3(generated.x, 0.5f, generated.y),
+                            new float3(generated.x, 0f, generated.y),
                             quaternion.EulerXYZ(0f, RandomManaged.Shared.Float(0f, math.TAU), 0f)
                         ));
                     }
                     else
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
-                            new float3(generated.x, 0.5f, generated.y)
+                            new float3(generated.x, 0f, generated.y)
                         ));
                     }
                     world.EntityManager.SetComponentData(newUnit, new Processor()

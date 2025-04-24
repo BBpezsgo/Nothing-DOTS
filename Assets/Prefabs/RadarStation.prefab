@@ -161,7 +161,7 @@ MonoBehaviour:
   OptimizationMode: 1
   Importance: 1
   prefabId: 9a341ad25308cd27d8c38c9c9143c6fb
-  HasOwner: 0
+  HasOwner: 1
   SupportAutoCommandTarget: 1
   TrackInterpolationDelay: 0
   GhostGroup: 0
