@@ -1,9 +1,15 @@
-using "api.bbc";
+using api;
 
 char[32] hashPtr = new char[32];
 
 [UnitCommand(1, "Extract From USB")]
 struct ExtractUSB
+{
+    [Context("position")] float2 position;
+}
+
+[UnitCommand(2, "Save To USB")]
+struct SaveUSB
 {
     [Context("position")] float2 position;
 }
@@ -20,24 +26,51 @@ while (1)
     {
         if (commandId == 1)
         {
+            PrintLine("Plugging pendrive ...");
             while (!Pendrive.IsPlugged)
             {
                 _pendrive_plug();
             }
+            PrintLine("Plugged");
+
             _pendrive_read(0, &hashPtr, 32);
-            Facility.HashLocation = &hashPtr;
+            PrintLine("Hash readed");
+
+            PrintLine("Unplugging pendrive ...");
             while (Pendrive.IsPlugged)
             {
                 _pendrive_unplug();
             }
+            PrintLine("Unplugged");
+
+            PrintLine("Researching technology");
+            _facility_enqueue(&hashPtr);
         }
-        else
+        else if (commandId == 2)
         {
-            Facility.HashLocation = 0 as string;
+            PrintLine("Plugging pendrive ...");
+            while (!Pendrive.IsPlugged)
+            {
+                _pendrive_plug();
+            }
+            PrintLine("Plugged");
+
+            if (_facility_dequeue(&hashPtr))
+            {
+                PrintLine("Hash writed");
+                _pendrive_write(&hashPtr, 0, 32);
+            }
+            else
+            {
+                PrintLine("No technology avaliable");
+            }
+
+            PrintLine("Unplugging pendrive ...");
+            while (Pendrive.IsPlugged)
+            {
+                _pendrive_unplug();
+            }
+            PrintLine("Unplugged");
         }
-    }
-    else
-    {
-        Facility.HashLocation = &hashPtr;
     }
 }

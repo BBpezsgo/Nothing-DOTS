@@ -13,6 +13,8 @@ public class FacilityAuthoring : MonoBehaviour
             AddComponent<SelectableUnit>(entity);
             AddComponent<EntityWithInfoUI>(entity);
             AddBuffer<BufferedResearch>(entity);
+            AddBuffer<BufferedTechnologyHashIn>(entity);
+            AddBuffer<BufferedTechnologyHashOut>(entity);
         }
     }
 }

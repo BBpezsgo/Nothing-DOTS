@@ -129,9 +129,7 @@ public partial class CompilerSystemServer : SystemBase
                     break;
                 case CompilationStatus.Secuedued:
                     source.Status = CompilationStatus.Compiling;
-                    Task.Factory.StartNew(static (object state)
-                        // TODO: recompiling
-                        => CompileSourceTask(((FileId, bool, CompiledSource))state), (object)(file, false, CompiledSources[file]))
+                    Task.Factory.StartNew(static v => CompileSourceTask(((FileId, bool, CompiledSource))v), (file, false, CompiledSources[file]))
                         .ContinueWith(task =>
                         {
                             if (task.IsFaulted)
@@ -323,49 +321,7 @@ public partial class CompilerSystemServer : SystemBase
         };
         try
         {
-            static float _time() => MonoTime.Now;
-            static int _random() => ProcessorAPI.Math.SharedRandom.NextInt();
-
-            IExternalFunction[] externalFunctions = new IExternalFunction[]
-            {
-                new ExternalFunctionStub(ProcessorAPI.IO.Prefix + 1,                "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.IO.Prefix + 2,                "stdin", 0, ExternalFunctionGenerator.SizeOf<char>()),
-
-                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 1, "sqrt", MathF.Sqrt),
-                ExternalFunctionSync.Create<float, float, float>(ProcessorAPI.Math.Prefix + 2, "atan2", MathF.Atan2),
-                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 3, "sin", MathF.Sin),
-                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 4, "cos", MathF.Cos),
-                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 5, "tan", MathF.Tan),
-                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 6, "asin", MathF.Asin),
-                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 7, "acos", MathF.Acos),
-                ExternalFunctionSync.Create<float, float>(ProcessorAPI.Math.Prefix + 8, "atan", MathF.Atan),
-                ExternalFunctionSync.Create<int>(ProcessorAPI.Math.Prefix + 9,      "random", _random),
-
-                new ExternalFunctionStub(ProcessorAPI.Transmission.Prefix + 1,      "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Transmission.Prefix + 2,      "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
-
-                new ExternalFunctionStub(ProcessorAPI.Sensors.Prefix + 1,           "radar", 0, 0),
-
-                new ExternalFunctionStub(ProcessorAPI.Environment.Prefix + 1,       "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Environment.Prefix + 2,       "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                ExternalFunctionSync.Create(ProcessorAPI.Environment.Prefix + 3,    "time", _time),
-
-                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 1,             "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 2,             "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 3,             "debug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.Debug.Prefix + 4,             "ldebug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
-
-                new ExternalFunctionStub(ProcessorAPI.Commands.Prefix + 1,          "dequeue_command", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>()),
-
-                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 1,               "gui_create", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 2,               "gui_destroy", ExternalFunctionGenerator.SizeOf<int>(), 0),
-                new ExternalFunctionStub(ProcessorAPI.GUI.Prefix + 3,               "gui_update", ExternalFunctionGenerator.SizeOf<int>(), 0),
-
-                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 1,          "pendrive_plug", 0, 0),
-                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 2,          "pendrive_unplug", 0, 0),
-                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 3,          "pendrive_read", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
-                new ExternalFunctionStub(ProcessorAPI.Pendrive.Prefix + 4,          "pendrive_write", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
-            };
+            IExternalFunction[] externalFunctions = ProcessorAPI.GenerateManagedExternalFunctions();
 
             compiled = StatementCompiler.CompileFile(
                 sourceUri.ToString(),

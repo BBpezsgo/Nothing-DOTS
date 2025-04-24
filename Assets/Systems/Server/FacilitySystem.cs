@@ -1,4 +1,5 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
@@ -118,31 +119,65 @@ public partial struct FacilitySystem : ISystem
             }
         }
 
-        foreach (var (facility, unitTeam, queue) in
-            SystemAPI.Query<RefRW<Facility>, RefRO<UnitTeam>, DynamicBuffer<BufferedResearch>>())
+        foreach (var (facility, unitTeam, queue, hashIn, hashOut) in
+            SystemAPI.Query<RefRW<Facility>, RefRO<UnitTeam>, DynamicBuffer<BufferedResearch>, DynamicBuffer<BufferedTechnologyHashIn>, DynamicBuffer<BufferedTechnologyHashOut>>())
         {
-            if (facility.ValueRO.Current.Name.IsEmpty)
+            Research finishedResearch;
+
+            if (!hashIn.IsEmpty)
             {
-                if (queue.Length > 0)
+                BufferedTechnologyHashIn hash = hashIn[0];
+                hashIn.RemoveAt(0);
+
+                foreach (var research in
+                    SystemAPI.Query<RefRO<Research>>())
                 {
-                    BufferedResearch research = queue[0];
-                    queue.RemoveAt(0);
-                    facility.ValueRW.Current = research;
-                    facility.ValueRW.CurrentProgress = 0f;
+                    if (research.ValueRO.Hash == hash.Hash)
+                    {
+                        finishedResearch = research.ValueRO;
+                        goto good;
+                    }
                 }
 
+                Debug.LogError(string.Format("Research with hash \"{0}\" not found", hash.Hash));
                 continue;
+                good:;
             }
+            else
+            {
+                if (facility.ValueRO.Current.Name.IsEmpty)
+                {
+                    if (queue.Length > 0)
+                    {
+                        BufferedResearch research = queue[0];
+                        queue.RemoveAt(0);
+                        facility.ValueRW.Current = research;
+                        facility.ValueRW.CurrentProgress = 0f;
+                    }
 
-            facility.ValueRW.CurrentProgress += SystemAPI.Time.DeltaTime * Facility.ResearchSpeed;
+                    continue;
+                }
 
-            if (facility.ValueRO.CurrentProgress < facility.ValueRO.Current.ResearchTime)
-            { continue; }
+                facility.ValueRW.CurrentProgress += SystemAPI.Time.DeltaTime * Facility.ResearchSpeed;
 
-            BufferedResearch finishedResearch = facility.ValueRO.Current;
+                if (facility.ValueRO.CurrentProgress < facility.ValueRO.Current.ResearchTime)
+                { continue; }
 
-            facility.ValueRW.Current = default;
-            facility.ValueRW.CurrentProgress = default;
+                finishedResearch = new Research()
+                {
+                    Hash = facility.ValueRO.Current.Hash,
+                    Name = facility.ValueRO.Current.Name,
+                    ResearchTime = facility.ValueRO.Current.ResearchTime,
+                };
+
+                facility.ValueRW.Current = default;
+                facility.ValueRW.CurrentProgress = default;
+
+                hashOut.Add(new BufferedTechnologyHashOut()
+                {
+                    Hash = finishedResearch.Hash,
+                });
+            }
 
             Entity playerEntity = default;
             Player player = default;
@@ -159,7 +194,7 @@ public partial struct FacilitySystem : ISystem
 
             if (playerEntity == Entity.Null)
             {
-                Debug.LogError(string.Format("Failed to finish research: requested by team {0}", unitTeam.ValueRO.Team));
+                Debug.LogError(string.Format("Failed to finish research: No player found im team {0}", unitTeam.ValueRO.Team));
                 return;
             }
 

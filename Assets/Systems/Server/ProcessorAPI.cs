@@ -19,6 +19,101 @@ using FunctionScope = ProcessorSystemServer.FunctionScope;
 [BurstCompile]
 static unsafe class ProcessorAPI
 {
+    [BurstCompile]
+    public static void GenerateExternalFunctions(ref NativeList<ExternalFunctionScopedSync> buffer)
+    {
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(IO.StdOut).Value, IO.Prefix + 1, ExternalFunctionGenerator.SizeOf<char>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(IO.StdIn).Value, IO.Prefix + 2, 0, ExternalFunctionGenerator.SizeOf<char>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Sqrt).Value, Math.Prefix + 1, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Atan2).Value, Math.Prefix + 2, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Sin).Value, Math.Prefix + 3, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Cos).Value, Math.Prefix + 4, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Tan).Value, Math.Prefix + 5, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Asin).Value, Math.Prefix + 6, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Acos).Value, Math.Prefix + 7, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Atan).Value, Math.Prefix + 8, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Random).Value, Math.Prefix + 9, 0, ExternalFunctionGenerator.SizeOf<int>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Transmission.Send).Value, Transmission.Prefix + 1, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Transmission.Receive).Value, Transmission.Prefix + 2, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Sensors.Radar).Value, Sensors.Prefix + 1, 0, 0, default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.ToGlobal).Value, Environment.Prefix + 1, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.ToLocal).Value, Environment.Prefix + 2, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.Time).Value, Environment.Prefix + 3, 0, ExternalFunctionGenerator.SizeOf<float>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Debug.Line).Value, Debug.Prefix + 1, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Debug.LineL).Value, Debug.Prefix + 2, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Debug.Label).Value, Debug.Prefix + 3, ExternalFunctionGenerator.SizeOf<float3, int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Debug.LabelL).Value, Debug.Prefix + 4, ExternalFunctionGenerator.SizeOf<float3, int>(), 0, default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Commands.Dequeue).Value, Commands.Prefix + 1, ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(GUI.Create).Value, GUI.Prefix + 1, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(GUI.Destroy).Value, GUI.Prefix + 2, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(GUI.Update).Value, GUI.Prefix + 3, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.TryPlug).Value, Pendrive.Prefix + 1, 0, 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.TryUnplug).Value, Pendrive.Prefix + 2, 0, 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.Read).Value, Pendrive.Prefix + 3, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.Write).Value, Pendrive.Prefix + 4, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Facility.EnqueueTechnology).Value, Facility.Prefix + 1, 0, ExternalFunctionGenerator.SizeOf<int>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Facility.DequeueTechnology).Value, Facility.Prefix + 2, ExternalFunctionGenerator.SizeOf<byte>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+    }
+
+    public static IExternalFunction[] GenerateManagedExternalFunctions()
+    {
+        static float _time() => MonoTime.Now;
+        static int _random() => Math.SharedRandom.NextInt();
+
+        return new IExternalFunction[]
+        {
+            new ExternalFunctionStub(IO.Prefix + 1,                "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
+            new ExternalFunctionStub(IO.Prefix + 2,                "stdin", 0, ExternalFunctionGenerator.SizeOf<char>()),
+
+            ExternalFunctionSync.Create<float, float>(Math.Prefix + 1, "sqrt", MathF.Sqrt),
+            ExternalFunctionSync.Create<float, float, float>(Math.Prefix + 2, "atan2", MathF.Atan2),
+            ExternalFunctionSync.Create<float, float>(Math.Prefix + 3, "sin", MathF.Sin),
+            ExternalFunctionSync.Create<float, float>(Math.Prefix + 4, "cos", MathF.Cos),
+            ExternalFunctionSync.Create<float, float>(Math.Prefix + 5, "tan", MathF.Tan),
+            ExternalFunctionSync.Create<float, float>(Math.Prefix + 6, "asin", MathF.Asin),
+            ExternalFunctionSync.Create<float, float>(Math.Prefix + 7, "acos", MathF.Acos),
+            ExternalFunctionSync.Create<float, float>(Math.Prefix + 8, "atan", MathF.Atan),
+            ExternalFunctionSync.Create<int>(Math.Prefix + 9,      "random", _random),
+
+            new ExternalFunctionStub(Transmission.Prefix + 1,      "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
+            new ExternalFunctionStub(Transmission.Prefix + 2,      "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+
+            new ExternalFunctionStub(Sensors.Prefix + 1,           "radar", 0, 0),
+
+            new ExternalFunctionStub(Environment.Prefix + 1,       "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+            new ExternalFunctionStub(Environment.Prefix + 2,       "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
+            ExternalFunctionSync.Create(Environment.Prefix + 3,    "time", _time),
+
+            new ExternalFunctionStub(Debug.Prefix + 1,             "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+            new ExternalFunctionStub(Debug.Prefix + 2,             "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
+            new ExternalFunctionStub(Debug.Prefix + 3,             "debug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
+            new ExternalFunctionStub(Debug.Prefix + 4,             "ldebug_label", ExternalFunctionGenerator.SizeOf<float3, int>(), 0),
+
+            new ExternalFunctionStub(Commands.Prefix + 1,          "dequeue_command", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<int>()),
+
+            new ExternalFunctionStub(GUI.Prefix + 1,               "gui_create", ExternalFunctionGenerator.SizeOf<int>(), 0),
+            new ExternalFunctionStub(GUI.Prefix + 2,               "gui_destroy", ExternalFunctionGenerator.SizeOf<int>(), 0),
+            new ExternalFunctionStub(GUI.Prefix + 3,               "gui_update", ExternalFunctionGenerator.SizeOf<int>(), 0),
+
+            new ExternalFunctionStub(Pendrive.Prefix + 1,          "pendrive_plug", 0, 0),
+            new ExternalFunctionStub(Pendrive.Prefix + 2,          "pendrive_unplug", 0, 0),
+            new ExternalFunctionStub(Pendrive.Prefix + 3,          "pendrive_read", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+            new ExternalFunctionStub(Pendrive.Prefix + 4,          "pendrive_write", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+
+            new ExternalFunctionStub(Facility.Prefix + 1,          "facility_enqueue", ExternalFunctionGenerator.SizeOf<int>(), 0),
+            new ExternalFunctionStub(Facility.Prefix + 2,          "facility_dequeue", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<byte>()),
+        };
+    }
+
     public const int GlobalPrefix = unchecked((int)0xFFFF0000);
 
     [BurstCompile]
@@ -704,6 +799,53 @@ static unsafe class ProcessorAPI
             scope->EntityRef.Processor.ValueRW.USBLED.Blink();
 
             returnValue.Set(1);
+        }
+    }
+
+    [BurstCompile]
+    public static class Facility
+    {
+        public const int Prefix = 0x000A0000;
+
+        [BurstCompile]
+        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+        public static void EnqueueTechnology(nint _scope, nint arguments, nint returnValue)
+        {
+            FunctionScope* scope = (FunctionScope*)_scope;
+            int _ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+            if (_ptr <= 0 || _ptr >= scope->ProcessorRef.MemorySpan.Length) return;
+            scope->ProcessorRef.GetString(_ptr, out FixedString32Bytes hash);
+            ((UnsafeDynamicBuffer<BufferedTechnologyHashIn>*)&scope->EntityRef.TechnologyHashIns)->Add(new BufferedTechnologyHashIn()
+            {
+                Hash = hash,
+            });
+        }
+
+        [BurstCompile]
+        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+        public static void DequeueTechnology(nint _scope, nint arguments, nint returnValue)
+        {
+            FunctionScope* scope = (FunctionScope*)_scope;
+            int _ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+
+            if (scope->EntityRef.TechnologyHashOuts.IsEmpty)
+            {
+                returnValue.Set(false);
+                return;
+            }
+
+            returnValue.Set(true);
+
+            if (_ptr <= 0 || _ptr >= scope->ProcessorRef.MemorySpan.Length) return;
+            FixedString64Bytes hash = scope->EntityRef.TechnologyHashOuts[0].Hash;
+            // ((UnsafeDynamicBuffer<BufferedTechnologyHashOut>*)&scope->EntityRef.TechnologyHashOuts)->RemoveAt(0);
+
+            int i;
+            for (i = 0; i < hash.Length; i++)
+            {
+                MemoryUtils.Set(i, (byte)hash[i]);
+            }
+            MemoryUtils.Set(i, (byte)0);
         }
     }
 }

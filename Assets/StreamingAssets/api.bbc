@@ -62,7 +62,6 @@ export const MappedMemory_Pendrive* Pendrive = MappedMemoryStart + 16;
 struct MappedMemory_Facility
 {
     u8 Status;
-    string HashLocation;
 }
 export const MappedMemory_Facility* Facility = MappedMemoryStart + 27;
 *Facility = new MappedMemory_Facility;
@@ -356,3 +355,11 @@ export int _pendrive_read(int source, byte[]* destination, int length);
 
 [External("pendrive_write")]
 export int _pendrive_write(byte[]* source, int destination, int length);
+
+export alias TechnologyHash u8[]*;
+
+[External("facility_enqueue")]
+export void _facility_enqueue(TechnologyHash hash);
+
+[External("facility_dequeue")]
+export u8 _facility_dequeue(TechnologyHash hash);
