@@ -112,6 +112,7 @@ public partial struct FacilitySystem : ISystem
                 SystemAPI.GetBuffer<BufferedResearch>(ghostEntity).Add(new BufferedResearch()
                 {
                     Name = research.Name,
+                    Hash = research.Hash,
                     ResearchTime = research.ResearchTime,
                 });
 
@@ -132,7 +133,7 @@ public partial struct FacilitySystem : ISystem
                 foreach (var research in
                     SystemAPI.Query<RefRO<Research>>())
                 {
-                    if (research.ValueRO.Hash == hash.Hash)
+                    if (FixedBytes.AreEqual(research.ValueRO.Hash, hash.Hash))
                     {
                         finishedResearch = research.ValueRO;
                         goto good;

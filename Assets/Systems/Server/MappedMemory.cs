@@ -86,7 +86,12 @@ public struct MappedMemory_Pendrive
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct MappedMemory_Facility
 {
-    public u8 Status;
+    public const u8 SignalEnqueueHash = 1;
+    public const u8 SignalDequeueHash = 2;
+    public const u8 SignalDequeueSuccess = 3;
+    public const u8 SignalDequeueFailure = 4;
+
+    public u8 Signal;
     public i32 HashLocation;
 }
 

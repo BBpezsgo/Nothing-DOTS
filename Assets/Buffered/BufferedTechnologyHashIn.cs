@@ -5,5 +5,5 @@ using Unity.Entities;
 [BurstCompile]
 public struct BufferedTechnologyHashIn : IBufferElementData
 {
-    public required FixedString64Bytes Hash;
+    public required FixedBytes30 Hash;
 }

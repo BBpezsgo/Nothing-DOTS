@@ -59,9 +59,6 @@ static unsafe class ProcessorAPI
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.TryUnplug).Value, Pendrive.Prefix + 2, 0, 0, default));
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.Read).Value, Pendrive.Prefix + 3, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.Write).Value, Pendrive.Prefix + 4, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
-
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Facility.EnqueueTechnology).Value, Facility.Prefix + 1, 0, ExternalFunctionGenerator.SizeOf<int>(), default));
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Facility.DequeueTechnology).Value, Facility.Prefix + 2, ExternalFunctionGenerator.SizeOf<byte>(), ExternalFunctionGenerator.SizeOf<int>(), default));
     }
 
     public static IExternalFunction[] GenerateManagedExternalFunctions()
@@ -108,9 +105,6 @@ static unsafe class ProcessorAPI
             new ExternalFunctionStub(Pendrive.Prefix + 2,          "pendrive_unplug", 0, 0),
             new ExternalFunctionStub(Pendrive.Prefix + 3,          "pendrive_read", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
             new ExternalFunctionStub(Pendrive.Prefix + 4,          "pendrive_write", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
-
-            new ExternalFunctionStub(Facility.Prefix + 1,          "facility_enqueue", ExternalFunctionGenerator.SizeOf<int>(), 0),
-            new ExternalFunctionStub(Facility.Prefix + 2,          "facility_dequeue", ExternalFunctionGenerator.SizeOf<int>(), ExternalFunctionGenerator.SizeOf<byte>()),
         };
     }
 
@@ -799,53 +793,6 @@ static unsafe class ProcessorAPI
             scope->EntityRef.Processor.ValueRW.USBLED.Blink();
 
             returnValue.Set(1);
-        }
-    }
-
-    [BurstCompile]
-    public static class Facility
-    {
-        public const int Prefix = 0x000A0000;
-
-        [BurstCompile]
-        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-        public static void EnqueueTechnology(nint _scope, nint arguments, nint returnValue)
-        {
-            FunctionScope* scope = (FunctionScope*)_scope;
-            int _ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-            if (_ptr <= 0 || _ptr >= scope->ProcessorRef.MemorySpan.Length) return;
-            scope->ProcessorRef.GetString(_ptr, out FixedString32Bytes hash);
-            ((UnsafeDynamicBuffer<BufferedTechnologyHashIn>*)&scope->EntityRef.TechnologyHashIns)->Add(new BufferedTechnologyHashIn()
-            {
-                Hash = hash,
-            });
-        }
-
-        [BurstCompile]
-        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
-        public static void DequeueTechnology(nint _scope, nint arguments, nint returnValue)
-        {
-            FunctionScope* scope = (FunctionScope*)_scope;
-            int _ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-
-            if (scope->EntityRef.TechnologyHashOuts.IsEmpty)
-            {
-                returnValue.Set(false);
-                return;
-            }
-
-            returnValue.Set(true);
-
-            if (_ptr <= 0 || _ptr >= scope->ProcessorRef.MemorySpan.Length) return;
-            FixedString64Bytes hash = scope->EntityRef.TechnologyHashOuts[0].Hash;
-            // ((UnsafeDynamicBuffer<BufferedTechnologyHashOut>*)&scope->EntityRef.TechnologyHashOuts)->RemoveAt(0);
-
-            int i;
-            for (i = 0; i < hash.Length; i++)
-            {
-                MemoryUtils.Set(i, (byte)hash[i]);
-            }
-            MemoryUtils.Set(i, (byte)0);
         }
     }
 }

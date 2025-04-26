@@ -138,8 +138,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required RefRO<LocalToWorld> WorldTransform;
         public required RefRO<LocalTransform> LocalTransform;
         public required RefRO<UnitTeam> Team;
-        public required DynamicBuffer<BufferedTechnologyHashIn> TechnologyHashIns;
-        public required DynamicBuffer<BufferedTechnologyHashOut> TechnologyHashOuts;
     }
 
     [BurstCompile]
@@ -281,8 +279,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
             QCoreComputer = SystemAPI.GetComponentLookup<CoreComputer>(true),
             QRadar = SystemAPI.GetComponentLookup<Radar>(true),
             QFacility = SystemAPI.GetComponentLookup<Facility>(true),
-            QTechnologyHashIn = SystemAPI.GetBufferLookup<BufferedTechnologyHashIn>(true),
-            QTechnologyHashOut = SystemAPI.GetBufferLookup<BufferedTechnologyHashOut>(true),
         }.ScheduleParallel();
     }
 }
@@ -298,8 +294,6 @@ partial struct ProcessorJob : IJobEntity
     [ReadOnly] public ComponentLookup<CoreComputer> QCoreComputer;
     [ReadOnly] public ComponentLookup<Radar> QRadar;
     [ReadOnly] public ComponentLookup<Facility> QFacility;
-    [NativeDisableParallelForRestriction] public BufferLookup<BufferedTechnologyHashIn> QTechnologyHashIn;
-    [NativeDisableParallelForRestriction] public BufferLookup<BufferedTechnologyHashOut> QTechnologyHashOut;
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(
@@ -345,8 +339,6 @@ partial struct ProcessorJob : IJobEntity
                 WorldTransform = worldTransform,
                 LocalTransform = localTransform,
                 Team = team,
-                TechnologyHashIns = QTechnologyHashIn.TryGetBuffer(entity, out var v1) ? v1 : default,
-                TechnologyHashOuts = QTechnologyHashOut.TryGetBuffer(entity, out var v2) ? v2 : default,
             },
         };
 

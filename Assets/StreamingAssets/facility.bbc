@@ -1,6 +1,6 @@
 using api;
 
-char[32] hashPtr = new char[32];
+TechnologyHash hashPtr = new u8[30];
 
 [UnitCommand(1, "Extract From USB")]
 struct ExtractUSB
@@ -22,55 +22,53 @@ while (1)
 
     int commandId = dequeue_command(&_command);
 
-    if (Facility.Status == 0)
+    if (commandId == 1)
     {
-        if (commandId == 1)
+        PrintLine("Plugging pendrive ...");
+        while (!Pendrive.IsPlugged)
         {
-            PrintLine("Plugging pendrive ...");
-            while (!Pendrive.IsPlugged)
-            {
-                _pendrive_plug();
-            }
-            PrintLine("Plugged");
-
-            _pendrive_read(0, &hashPtr, 32);
-            PrintLine("Hash readed");
-
-            PrintLine("Unplugging pendrive ...");
-            while (Pendrive.IsPlugged)
-            {
-                _pendrive_unplug();
-            }
-            PrintLine("Unplugged");
-
-            PrintLine("Researching technology");
-            _facility_enqueue(&hashPtr);
+            _pendrive_plug();
         }
-        else if (commandId == 2)
+        PrintLine("Plugged");
+
+        _pendrive_read(0, &hashPtr, 32);
+        PrintLine("Hash readed");
+
+        PrintLine("Unplugging pendrive ...");
+        while (Pendrive.IsPlugged)
         {
-            PrintLine("Plugging pendrive ...");
-            while (!Pendrive.IsPlugged)
-            {
-                _pendrive_plug();
-            }
-            PrintLine("Plugged");
-
-            if (_facility_dequeue(&hashPtr))
-            {
-                PrintLine("Hash writed");
-                _pendrive_write(&hashPtr, 0, 32);
-            }
-            else
-            {
-                PrintLine("No technology avaliable");
-            }
-
-            PrintLine("Unplugging pendrive ...");
-            while (Pendrive.IsPlugged)
-            {
-                _pendrive_unplug();
-            }
-            PrintLine("Unplugged");
+            _pendrive_unplug();
         }
+        PrintLine("Unplugged");
+
+        PrintLine("Researching technology");
+        _facility_enqueue(&hashPtr);
+    }
+    else if (commandId == 2)
+    {
+        PrintLine("Plugging pendrive ...");
+        while (!Pendrive.IsPlugged)
+        {
+            _pendrive_plug();
+        }
+        PrintLine("Plugged");
+
+        if (_facility_dequeue(&hashPtr))
+        {
+            PrintLine(&hashPtr as string);
+            _pendrive_write(&hashPtr, 0, 32);
+            PrintLine("Hash writed");
+        }
+        else
+        {
+            PrintLine("No technology avaliable");
+        }
+
+        PrintLine("Unplugging pendrive ...");
+        while (Pendrive.IsPlugged)
+        {
+            _pendrive_unplug();
+        }
+        PrintLine("Unplugged");
     }
 }

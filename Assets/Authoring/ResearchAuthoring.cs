@@ -11,24 +11,25 @@ public class ResearchAuthoring : MonoBehaviour
 
     class Baker : Baker<ResearchAuthoring>
     {
-        public override void Bake(ResearchAuthoring authoring)
+        public override unsafe void Bake(ResearchAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            FixedString32Bytes hash = new();
+            byte* hash = stackalloc byte[30];
             Unity.Mathematics.Random random = new(42);
-            for (int i = 0; i < hash.Capacity; i++)
+            for (int i = 0; i < 29; i++)
             {
                 switch (random.NextInt(0, 2))
                 {
-                    case 0: hash.Append((char)random.NextInt('a', 'z')); break;
-                    case 1: hash.Append((char)random.NextInt('A', 'A')); break;
-                    case 2: hash.Append((char)random.NextInt('0', '9')); break;
+                    case 0: hash[i] = (byte)random.NextInt('a', 'z'); break;
+                    case 1: hash[i] = (byte)random.NextInt('A', 'A'); break;
+                    case 2: hash[i] = (byte)random.NextInt('0', '9'); break;
                 }
             }
+            hash[29] = 0;
             AddComponent<Research>(entity, new()
             {
                 Name = authoring.Name ?? string.Empty,
-                Hash = hash,
+                Hash = *(FixedBytes30*)hash,
                 ResearchTime = authoring.ResearchTime,
             });
             DynamicBuffer<BufferedResearchRequirement> requirements = AddBuffer<BufferedResearchRequirement>(entity);

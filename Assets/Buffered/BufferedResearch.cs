@@ -7,6 +7,6 @@ using Unity.NetCode;
 public struct BufferedResearch : IBufferElementData
 {
     [GhostField] public FixedString64Bytes Name;
-    [GhostField] public FixedString32Bytes Hash;
+    [GhostField] public FixedBytes30 Hash;
     [GhostField] public float ResearchTime;
 }

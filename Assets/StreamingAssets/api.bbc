@@ -59,9 +59,12 @@ struct MappedMemory_Pendrive
 export const MappedMemory_Pendrive* Pendrive = MappedMemoryStart + 16;
 *Pendrive = new MappedMemory_Pendrive;
 
+export alias TechnologyHash u8[30];
+
 struct MappedMemory_Facility
 {
-    u8 Status;
+    u8 Signal;
+    TechnologyHash* HashLocation;
 }
 export const MappedMemory_Facility* Facility = MappedMemoryStart + 27;
 *Facility = new MappedMemory_Facility;
@@ -356,10 +359,23 @@ export int _pendrive_read(int source, byte[]* destination, int length);
 [External("pendrive_write")]
 export int _pendrive_write(byte[]* source, int destination, int length);
 
-export alias TechnologyHash u8[]*;
+export void _facility_enqueue(TechnologyHash* hash)
+{
+    Facility.HashLocation = hash;
+    Facility.Signal = (u8)1;
+    while (Facility.Signal == (u8)1)
+    {
 
-[External("facility_enqueue")]
-export void _facility_enqueue(TechnologyHash hash);
+    }
+}
 
-[External("facility_dequeue")]
-export u8 _facility_dequeue(TechnologyHash hash);
+export u8 _facility_dequeue(TechnologyHash* hash)
+{
+    Facility.HashLocation = hash;
+    Facility.Signal = (u8)2;
+    while (Facility.Signal == (u8)2)
+    {
+
+    }
+    return Facility.Signal == (u8)3;
+}

@@ -3,5 +3,5 @@ using Unity.Entities;
 
 public struct BufferedResearchRequirement : IBufferElementData
 {
-    public required FixedString32Bytes Name;
+    public required FixedString64Bytes Name;
 }
