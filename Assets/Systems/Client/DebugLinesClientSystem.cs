@@ -26,10 +26,25 @@ public partial class DebugLinesClientSystem : SystemBase
     {
         if (!SystemAPI.TryGetSingleton(out NetworkId networkId)) return;
 
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+
         foreach (var (player, lines) in
             SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>>())
         {
             if (player.ValueRO.ConnectionId != networkId.Value) continue;
+
+            foreach (var (_, command, entity) in
+                SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<DebugLineRpc>>()
+                .WithEntityAccess())
+            {
+                commandBuffer.DestroyEntity(entity);
+                lines.Add(new BufferedLine()
+                {
+                    Value = command.ValueRO.Position,
+                    Color = command.ValueRO.Color,
+                    DieAt = (float)SystemAPI.Time.ElapsedTime + 0.5f,
+                });
+            }
 
             for (int i = 0; i < _batches.Length; i++)
             {
@@ -39,7 +54,8 @@ public partial class DebugLinesClientSystem : SystemBase
 
             for (int i = 0; i < lines.Length; i++)
             {
-                _batches[lines[i].Color - 1].buffer.Add(lines[i].Value);
+                if (lines[i].DieAt <= SystemAPI.Time.ElapsedTime) lines.RemoveAt(i--);
+                else _batches[lines[i].Color - 1].buffer.Add(lines[i].Value);
             }
             break;
         }

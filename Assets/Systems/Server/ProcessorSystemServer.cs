@@ -181,21 +181,48 @@ unsafe partial struct ProcessorSystemServer : ISystem
         foreach (var (player, lines, labels) in
             SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>, DynamicBuffer<BufferedWorldLabel>>())
         {
-            for (int i = 0; i < debugLines.Length; i++)
+            Entity connection = Entity.Null;
+            foreach (var (_connection, _connectionEntity) in
+                SystemAPI.Query<RefRO<NetworkId>>()
+                .WithEntityAccess())
             {
-                if (debugLines[i].Owner != player.ValueRO.Team) continue;
-
-                for (int j = 0; j < lines.Length; j++)
-                {
-                    if (debugLines[i].Value.Value.Equals(lines[j].Value))
-                    {
-                        lines.Set(j, debugLines[i].Value);
-                        goto next;
-                    }
-                }
-                lines.Add(debugLines[i].Value);
-            next:;
+                if (_connection.ValueRO.Value != player.ValueRO.ConnectionId) continue;
+                connection = _connectionEntity;
+                break;
             }
+
+            if (connection != Entity.Null && player.ValueRO.ConnectionState == PlayerConnectionState.Connected)
+                for (int i = 0; i < debugLines.Length; i++)
+                {
+                    if (debugLines[i].Owner != player.ValueRO.Team) continue;
+
+                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+
+                    if (Utils.Distance(player.ValueRO.Position, debugLines[i].Value.Value) < 50f)
+                    {
+                        Entity rpc = commandBuffer.CreateEntity();
+                        commandBuffer.AddComponent<SendRpcCommandRequest>(rpc, new()
+                        {
+                            TargetConnection = connection,
+                        });
+                        commandBuffer.AddComponent<DebugLineRpc>(rpc, new()
+                        {
+                            Position = debugLines[i].Value.Value,
+                            Color = debugLines[i].Value.Color,
+                        });
+                    }
+
+                    // for (int j = 0; j < lines.Length; j++)
+                    // {
+                    //     if (debugLines[i].Value.Value.Equals(lines[j].Value))
+                    //     {
+                    //         lines.Set(j, debugLines[i].Value);
+                    //         goto next;
+                    //     }
+                    // }
+                    // lines.Add(debugLines[i].Value);
+                    // next:;
+                }
 
             for (int i = 0; i < worldLabels.Length; i++)
             {
@@ -218,19 +245,9 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 if (uiElements[i].Owner != player.ValueRO.Team) continue;
                 if (!uiElements[i].Value.IsDirty && uiElements[i].Value.Id != 0) continue;
 
-                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-
-                Entity connection = Entity.Null;
-                foreach (var (_connection, _connectionEntity) in
-                    SystemAPI.Query<RefRO<NetworkId>>()
-                    .WithEntityAccess())
-                {
-                    if (_connection.ValueRO.Value != player.ValueRO.ConnectionId) continue;
-                    connection = _connectionEntity;
-                    break;
-                }
-
                 if (connection == Entity.Null) continue;
+
+                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
                 if (uiElements[i].Value.Id == 0)
                 {
