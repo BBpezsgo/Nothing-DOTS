@@ -26,8 +26,11 @@ Material:
   m_ModifiedSerializedProperties: 2
   m_ValidKeywords:
   - _EMISSION
+  - _ENVIRONMENTREFLECTIONS_OFF
+  - _RECEIVE_SHADOWS_OFF
+  - _SPECULARHIGHLIGHTS_OFF
   m_InvalidKeywords: []
-  m_LightmapFlags: 0
+  m_LightmapFlags: 1
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -40,8 +43,13 @@ Material:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _EnvironmentReflections: 0
+    - _ReceiveShadows: 0
+    - _SpecularHighlights: 0
     m_Colors:
-    - _EmissionColor: {r: 6.498019, g: 2.5155396, b: 0.3984636, a: 1}
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _EmissionColor: {r: 19.468573, g: 5.2086263, b: 1.3250864, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

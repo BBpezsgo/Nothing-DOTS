@@ -88,7 +88,11 @@ public class ChatManager : Singleton<ChatManager>
     {
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
-        Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ChatMessageRpc));
+        Entity entity = entityManager.CreateEntity(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(ChatMessageRpc),
+        });
         entityManager.SetComponentData(entity, new ChatMessageRpc()
         {
             Sender = 0,

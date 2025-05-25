@@ -63,9 +63,11 @@ public partial struct BuildingsSystemClient : ISystem
         ref BuildingsSystemClient system = ref GetInstance(world);
         system.Buildings.Clear();
 
-        Entity request = world.EntityManager.CreateEntity();
-        world.EntityManager.AddComponent<SendRpcCommandRequest>(request);
-        world.EntityManager.AddComponent<BuildingsRequestRpc>(request);
+        Entity request = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(BuildingsRequestRpc),
+        });
 
         Debug.Log("Request avaliable buildings ...");
     }

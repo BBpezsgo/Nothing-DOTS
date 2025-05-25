@@ -13,13 +13,14 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityCommandBuffer commandBuffer = default;
         var compilerSystem = state.World.GetExistingSystemManaged<CompilerSystemServer>();
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ProcessorCommandRequestRpc>>()
             .WithEntityAccess())
         {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             commandBuffer.DestroyEntity(entity);
 
             foreach (var (ghostInstance, processor) in
@@ -58,6 +59,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SetProcessorSourceRequestRpc>>()
             .WithEntityAccess())
         {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             commandBuffer.DestroyEntity(entity);
 
             foreach (var (ghostInstance, processor) in

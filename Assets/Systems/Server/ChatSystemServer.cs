@@ -38,7 +38,11 @@ public partial struct ChatSystemServer : ISystem
 
     public static void SendChatMessage(in EntityManager entityManager, FixedString64Bytes message)
     {
-        Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(FacilityQueueResearchRequestRpc));
+        Entity entity = entityManager.CreateEntity(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(FacilityQueueResearchRequestRpc),
+        });
         entityManager.SetComponentData(entity, new ChatMessageRpc()
         {
             Sender = 0,

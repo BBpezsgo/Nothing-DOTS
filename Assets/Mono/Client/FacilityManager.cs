@@ -162,7 +162,11 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
         GhostInstance ghostInstance = entityManager.GetComponentData<GhostInstance>(selectedEntity);
 
-        Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(FacilityQueueResearchRequestRpc));
+        Entity entity = entityManager.CreateEntity(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(FacilityQueueResearchRequestRpc),
+        });
         entityManager.SetComponentData(entity, new FacilityQueueResearchRequestRpc()
         {
             ResearchName = research.Name,

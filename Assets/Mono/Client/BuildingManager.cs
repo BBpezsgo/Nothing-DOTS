@@ -257,7 +257,11 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
 
     void SendPlaceBuildingRequest(PlaceBuildingRequestRpc request, World world)
     {
-        Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(PlaceBuildingRequestRpc));
+        Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(PlaceBuildingRequestRpc),
+        });
         world.EntityManager.SetComponentData(entity, request);
     }
 

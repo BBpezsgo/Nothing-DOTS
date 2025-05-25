@@ -19,6 +19,11 @@ public partial struct TurretShootingSystemServer : ISystem
     {
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityArchetype shootRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            typeof(ShootRpc),
+            typeof(SendRpcCommandRequest),
+        });
 
         foreach (var turret in
             SystemAPI.Query<RefRW<CombatTurret>>())
@@ -51,14 +56,13 @@ public partial struct TurretShootingSystemServer : ISystem
                 Damage = projectiles[projectileIndex].Damage,
             });
 
-            Entity request = commandBuffer.CreateEntity();
-            commandBuffer.AddComponent(request, new ShootRpc()
+            Entity request = commandBuffer.CreateEntity(shootRpcArchetype);
+            commandBuffer.SetComponent(request, new ShootRpc()
             {
                 Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
                 Velocity = velocity,
                 ProjectileIndex = projectileIndex,
             });
-            commandBuffer.AddComponent<SendRpcCommandRequest>(request);
         }
     }
 }

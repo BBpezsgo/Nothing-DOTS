@@ -29,8 +29,9 @@ partial struct ProjectileSystemClient : ISystem
         {
             float3 lastPosition = transform.ValueRO.Position;
             float3 newPosition = lastPosition + (projectile.ValueRO.Velocity * SystemAPI.Time.DeltaTime);
-            transform.ValueRW.Position = newPosition;
             projectile.ValueRW.Velocity += new float3(0f, ProjectileSystemServer.Gravity, 0f) * SystemAPI.Time.DeltaTime;
+            transform.ValueRW.Position = newPosition;
+            transform.ValueRW.Rotation = quaternion.LookRotation(math.normalizesafe(projectile.ValueRO.Velocity), new float3(0f, 1f, 0f));
 
             if (transform.ValueRO.Position.y < 0f)
             {

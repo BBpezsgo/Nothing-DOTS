@@ -20,8 +20,6 @@ partial struct PendriveProcessorSystem : ISystem
     [BurstCompile]
     unsafe void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-
         foreach (var (processor, transform, localTransform, ghostInstance, entity) in
             SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, RefRO<LocalTransform>, RefRO<GhostInstance>>()
             .WithEntityAccess())

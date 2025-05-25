@@ -76,9 +76,11 @@ public partial struct ResearchSystemClient : ISystem
         ref ResearchSystemClient system = ref GetInstance(world);
         system.AvaliableResearches.Clear();
 
-        Entity request = world.EntityManager.CreateEntity();
-        world.EntityManager.AddComponent<SendRpcCommandRequest>(request);
-        world.EntityManager.AddComponent<ResearchesRequestRpc>(request);
+        Entity request = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(ResearchesRequestRpc),
+        });
 
         Debug.Log("Request avaliable researches ...");
     }

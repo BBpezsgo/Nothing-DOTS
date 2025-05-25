@@ -129,7 +129,11 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
         GhostInstance ghostInstance = entityManager.GetComponentData<GhostInstance>(selectedFactoryEntity);
 
-        Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(FactoryQueueUnitRequestRpc));
+        Entity entity = entityManager.CreateEntity(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(FactoryQueueUnitRequestRpc),
+        });
         entityManager.SetComponentData(entity, new FactoryQueueUnitRequestRpc()
         {
             Unit = unit.Name,

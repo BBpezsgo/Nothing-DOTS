@@ -63,9 +63,11 @@ public partial struct UnitsSystemClient : ISystem
         ref UnitsSystemClient system = ref GetInstance(world);
         system.Units.Clear();
 
-        Entity request = world.EntityManager.CreateEntity();
-        world.EntityManager.AddComponent<SendRpcCommandRequest>(request);
-        world.EntityManager.AddComponent<UnitsRequestRpc>(request);
+        Entity request = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(UnitsRequestRpc),
+        });
 
         Debug.Log("Request avaliable units ...");
     }

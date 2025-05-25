@@ -17,9 +17,12 @@ public partial struct PlayerPositionSystemClient : ISystem
         SyncedPosition = CurrentPosition;
 
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-        Entity rpc = commandBuffer.CreateEntity();
-        commandBuffer.AddComponent<SendRpcCommandRequest>(rpc);
-        commandBuffer.AddComponent<PlayerPositionSyncRpc>(rpc, new()
+        Entity rpc = commandBuffer.CreateEntity(state.EntityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(PlayerPositionSyncRpc),
+        }));
+        commandBuffer.SetComponent<PlayerPositionSyncRpc>(rpc, new()
         {
             Position = CurrentPosition,
         });

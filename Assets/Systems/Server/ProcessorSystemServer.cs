@@ -177,6 +177,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = default;
+        EntityArchetype rpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(DebugLineRpc),
+        });
 
         foreach (var (player, lines, labels) in
             SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>, DynamicBuffer<BufferedWorldLabel>>())
@@ -200,12 +205,12 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
                     if (Utils.Distance(player.ValueRO.Position, debugLines[i].Value.Value) < 50f)
                     {
-                        Entity rpc = commandBuffer.CreateEntity();
-                        commandBuffer.AddComponent<SendRpcCommandRequest>(rpc, new()
+                        Entity rpc = commandBuffer.CreateEntity(rpcArchetype);
+                        commandBuffer.SetComponent<SendRpcCommandRequest>(rpc, new()
                         {
                             TargetConnection = connection,
                         });
-                        commandBuffer.AddComponent<DebugLineRpc>(rpc, new()
+                        commandBuffer.SetComponent<DebugLineRpc>(rpc, new()
                         {
                             Position = debugLines[i].Value.Value,
                             Color = debugLines[i].Value.Color,

@@ -383,13 +383,18 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         Entity[] yeah = _selected.ToArray();
+        EntityArchetype commandRequestArchetype = entityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            typeof(SendRpcCommandRequest),
+            typeof(UnitCommandRequestRpc),
+        });
 
         // int i = 0;
         foreach (Entity selected in yeah)
         {
             yield return null;
             if (!entityManager.Exists(selected)) continue;
-            Entity entity = entityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(UnitCommandRequestRpc));
+            Entity entity = entityManager.CreateEntity(commandRequestArchetype);
             GhostInstance ghostInstance = entityManager.GetComponentData<GhostInstance>(selected);
             entityManager.SetComponentData(entity, new UnitCommandRequestRpc()
             {

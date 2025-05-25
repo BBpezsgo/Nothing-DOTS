@@ -158,7 +158,11 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 ? ui_inputSourcePath.value
                 : Path.Combine(FileChunkManagerSystem.BasePath, ui_inputSourcePath.value);
 
-            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(SetProcessorSourceRequestRpc));
+            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            {
+                typeof(SendRpcCommandRequest),
+                typeof(SetProcessorSourceRequestRpc),
+            });
             GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
             world.EntityManager.SetComponentData(entity, new SetProcessorSourceRequestRpc()
             {
@@ -179,7 +183,11 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 return;
             }
 
-            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            {
+                typeof(SendRpcCommandRequest),
+                typeof(ProcessorCommandRequestRpc),
+            });
             GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
             world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
             {
@@ -199,7 +207,11 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 return;
             }
 
-            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            {
+                typeof(SendRpcCommandRequest),
+                typeof(ProcessorCommandRequestRpc),
+            });
             GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
             world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
             {
@@ -219,7 +231,11 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 return;
             }
 
-            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            {
+                typeof(SendRpcCommandRequest),
+                typeof(ProcessorCommandRequestRpc),
+            });
             GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
             world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
             {
@@ -449,7 +465,11 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                         }
                                         else
                                         {
-                                            Entity entity = world.EntityManager.CreateEntity(typeof(SendRpcCommandRequest), typeof(ProcessorCommandRequestRpc));
+                                            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+                                            {
+                                                typeof(SendRpcCommandRequest),
+                                                typeof(ProcessorCommandRequestRpc),
+                                            });
                                             GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
                                             world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
                                             {
