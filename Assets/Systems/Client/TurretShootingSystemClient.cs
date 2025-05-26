@@ -18,6 +18,11 @@ public partial struct TurretShootingSystemClient : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
+        EntityArchetype visualEffectSpawnArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            typeof(VisualEffectSpawn),
+        });
+
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (command, entity) in
@@ -28,19 +33,29 @@ public partial struct TurretShootingSystemClient : ISystem
             commandBuffer.DestroyEntity(entity);
 
             Entity projectilePrefab = projectiles[command.ValueRO.ProjectileIndex].Prefab;
-
-            Entity instance = commandBuffer.Instantiate(projectilePrefab);
-            commandBuffer.SetComponent(instance, new LocalTransform
+            Entity projectileInstance = commandBuffer.Instantiate(projectilePrefab);
+            commandBuffer.SetComponent(projectileInstance, new LocalTransform
             {
                 Position = command.ValueRO.Position,
-                Rotation = quaternion.identity,
+                Rotation = quaternion.LookRotation(math.normalizesafe(command.ValueRO.Velocity), new float3(0f, 1f, 0f)),
                 Scale = SystemAPI.GetComponent<LocalTransform>(projectilePrefab).Scale
             });
-            commandBuffer.SetComponent(instance, new Projectile
+            commandBuffer.SetComponent(projectileInstance, new Projectile
             {
                 Velocity = command.ValueRO.Velocity,
                 Damage = projectiles[command.ValueRO.ProjectileIndex].Damage,
             });
+
+            if (command.ValueRO.VisualEffectIndex >= 0)
+            {
+                Entity visualEffectSpawn = commandBuffer.CreateEntity(visualEffectSpawnArchetype);
+                commandBuffer.SetComponent(visualEffectSpawn, new VisualEffectSpawn
+                {
+                    Position = command.ValueRO.Position,
+                    Rotation = quaternion.LookRotation(math.normalizesafe(command.ValueRO.Velocity), new float3(0f, 1f, 0f)),
+                    Index = command.ValueRO.VisualEffectIndex,
+                });
+            }
         }
     }
 }

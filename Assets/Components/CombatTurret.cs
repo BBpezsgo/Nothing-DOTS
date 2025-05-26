@@ -9,6 +9,9 @@ public struct CombatTurret : IComponentData
     
     public bool ShootRequested;
 
+    public float MinAngle;
+    public float MaxAngle;
+
     public float TurretRotationSpeed;
     public float CannonRotationSpeed;
 }

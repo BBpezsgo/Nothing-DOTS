@@ -1,10 +1,7 @@
 using System.Runtime.CompilerServices;
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
 using Unity.Burst;
 using LanguageCore.Runtime;
-using System;
 using Unity.Collections;
 
 [BurstCompile]

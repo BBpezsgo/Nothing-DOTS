@@ -62,6 +62,7 @@ public partial struct TurretShootingSystemServer : ISystem
                 Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
                 Velocity = velocity,
                 ProjectileIndex = projectileIndex,
+                VisualEffectIndex = 0,
             });
         }
     }

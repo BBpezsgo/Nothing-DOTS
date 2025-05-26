@@ -9,6 +9,8 @@ public class CombatTurretAuthoring : MonoBehaviour
     [SerializeField] GameObject? ProjectilePrefab = default;
     [SerializeField] Transform? ShootPosition = default;
 
+    [SerializeField, NaughtyAttributes.MinMaxSlider(-90f, 90f)] Vector2 AngleConstraint = new(-90f, 90f);
+
     [SerializeField] float TurretRotationSpeed = default;
     [SerializeField] float CannonRotationSpeed = default;
 
@@ -19,6 +21,8 @@ public class CombatTurretAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new CombatTurret
             {
+                MinAngle = authoring.AngleConstraint.x * Mathf.Deg2Rad,
+                MaxAngle = authoring.AngleConstraint.y * Mathf.Deg2Rad,
                 TurretRotationSpeed = authoring.TurretRotationSpeed,
                 CannonRotationSpeed = authoring.CannonRotationSpeed,
                 Turret =

@@ -306,7 +306,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 }
 
 [BurstCompile(CompileSynchronously = true)]
-[WithAll(typeof(Processor), typeof(UnitTeam), typeof(LocalToWorld), typeof(LocalTransform))]
+[WithAll(typeof(Processor))]
 partial struct ProcessorJob : IJobEntity
 {
     [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;

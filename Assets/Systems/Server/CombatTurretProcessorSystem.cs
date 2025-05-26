@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Burst;
+using System;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -39,7 +40,7 @@ partial struct CombatTurretProcessorSystem : ISystem
 
             if (float.IsFinite(mapped->CombatTurret.TurretTargetAngle))
             {
-                float x = Utils.MoveTowardsAngle(cannonEuler.x, mapped->CombatTurret.TurretTargetAngle, combatTurret.ValueRO.CannonRotationSpeed * SystemAPI.Time.DeltaTime);
+                float x = Utils.MoveTowardsAngle(cannonEuler.x, Math.Clamp(mapped->CombatTurret.TurretTargetAngle, combatTurret.ValueRO.MinAngle, combatTurret.ValueRO.MaxAngle), combatTurret.ValueRO.CannonRotationSpeed * SystemAPI.Time.DeltaTime);
                 cannonTransform.ValueRW.Rotation = quaternion.EulerXYZ(x, 0, 0);
             }
         }

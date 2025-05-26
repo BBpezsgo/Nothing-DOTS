@@ -66,6 +66,15 @@ public static partial class Utils
     /// <summary>
     /// <seealso href="https://discussions.unity.com/t/is-there-a-conversion-method-from-quaternion-to-euler/731052/39">Source</seealso>
     /// </summary>
+    public static float3 ToEuler(this in quaternion q)
+    {
+        ToEuler(q, out float3 v);
+        return v;
+    }
+
+    /// <summary>
+    /// <seealso href="https://discussions.unity.com/t/is-there-a-conversion-method-from-quaternion-to-euler/731052/39">Source</seealso>
+    /// </summary>
     [BurstCompile]
     public static void ToEuler(this in quaternion q, out float3 euler)
     {
