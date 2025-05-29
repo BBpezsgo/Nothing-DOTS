@@ -142,9 +142,21 @@ int UnitIndexAt(List<Unit>* units, float2 position)
     return -1;
 }
 
+int UnitIndexAt(List<Unit>* units, float2 position, float* distanceSqr)
+{
+    for (int i = 0; i < units.Length(); i++)
+    {
+        *distanceSqr = DistanceSqr(units.Raw()[i].Position, position);
+        if ((*distanceSqr) < DistanceThresholdSq)
+        { return i; }
+    }
+    return -1;
+}
+
 void UpdateUnit(List<Unit>* units, Unit unit)
 {
-    int existing = UnitIndexAt(units, unit.Position);
+    float distanceSqr = 0f;
+    int existing = UnitIndexAt(units, unit.Position, &distanceSqr);
     if (existing == -1)
     {
         if (units.Length() >= 4)
@@ -157,10 +169,16 @@ void UpdateUnit(List<Unit>* units, Unit unit)
             units.Add(unit);
         }
     }
-    else
+    elseif (distanceSqr < 2f)
     {
         unit.Position.x = (units.Raw()[existing].Position.x + unit.Position.x) * 0.5f;
         unit.Position.y = (units.Raw()[existing].Position.y + unit.Position.y) * 0.5f;
+        units[existing] = unit;
+    }
+    else
+    {
+        unit.Position.x = unit.Position.x;
+        unit.Position.y = unit.Position.y;
         units[existing] = unit;
     }
 }
@@ -205,7 +223,7 @@ void PerformRadar()
     {
         prevRadarDistance = 0f;
     }
-    Radar.RadarDirection = (Radar.RadarDirection + 0.1f) % TAU;
+    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
 }
 
 void TrySendVerificationRequest(Unit* unit)
@@ -224,10 +242,15 @@ void SendVerificationRequest(Unit* unit)
     packet.Header = (u8)REQUEST_HEADER;
     packet.Position = point;
 
-    // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
-    send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
-
     debug(point, BLUE);
+
+    ToLocal(&point);
+    float distance = _Sqrt(point.x * point.x + point.y * point.y);
+    Normalise(&point);
+    float angle = Atan2(point.y, point.x);
+
+    // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
+    send(&packet as u8[]*, sizeof(VerificationRequestPacket), angle, Asin(1.2f / distance));
 
     unit.VerificationSentAt = time();
 }

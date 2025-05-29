@@ -3,12 +3,26 @@ using "api.bbc";
 const f32 G = 9.82f;
 const f32 PROJECTILE_V = 20f ;
 const f32 PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
+const f32 HEIGHT_OFFSET = 0f;
+
+f32 CalculateAngle(f32 targetDistance)
+{
+    float a = (G * targetDistance) / PROJECTILE_V2;
+    if (a < -1f || a > 1f)
+    {
+        return -0.785398f;
+    }
+    else
+    {
+        return -0.5f * Asin(a);
+    }
+}
 
 f32 CalculateAngle(f32 targetDistance, f32 height)
 {
     f32 discriminant = (
         (PROJECTILE_V2 * PROJECTILE_V2) -
-        (G * (G * targetDistance * targetDistance + ((10f + height) * -2f * PROJECTILE_V2)))
+        (G * (G * targetDistance * targetDistance + ((HEIGHT_OFFSET + height) * 2f * PROJECTILE_V2)))
     );
 
     if (discriminant < 0f)
@@ -58,9 +72,9 @@ export u8 TargetAt(float2 target, float2* targetedPosition)
 
         f32 targetDistance = Magnitude(target);
         targetDistance -= Cos(CombatTurret.TurretCurrentAngle) * 2.5f;
-        f32 height = Sin(CombatTurret.TurretCurrentAngle) * 2.5f;
+        // f32 height = Sin(CombatTurret.TurretCurrentAngle) * 2.5f;
 
-        CombatTurret.TurretTargetAngle = CalculateAngle(targetDistance, height);
+        CombatTurret.TurretTargetAngle = CalculateAngle(targetDistance);
     }
 
     f32 diff1 = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
