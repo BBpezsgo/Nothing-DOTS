@@ -18,6 +18,7 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     [SerializeField] string DebugNickname = string.Empty;
     [SerializeField] ushort DebugPort = default;
     [SerializeField] bool AutoHost = false;
+    [SerializeField] bool NoClient = false;
 #endif
     [SerializeField, NotNull] UIDocument? UI = default;
 
@@ -42,7 +43,14 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (AutoHost)
         {
-            StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), DebugNickname));
+            if (NoClient)
+            {
+                StartCoroutine(StartServerAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
+            }
+            else
+            {
+                StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), DebugNickname));
+            }
         }
 #endif
     }
@@ -183,6 +191,10 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         SetInputEnabled(true);
         UI.gameObject.SetActive(false);
+
+#if UNITY_EDITOR && EDITOR_DEBUG
+        if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
+#endif
     }
 
     public static void KickClient(int connectionId)
