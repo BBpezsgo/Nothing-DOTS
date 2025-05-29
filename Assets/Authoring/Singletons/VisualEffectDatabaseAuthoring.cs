@@ -6,7 +6,19 @@ using UnityEngine.VFX;
 [AddComponentMenu("Authoring/Visual Effect Database")]
 public class VisualEffectDatabaseAuthoring : MonoBehaviour
 {
-    [SerializeField, NotNull] VisualEffectAsset[]? VisualEffects = default;
+    [SerializeField, NotNull] public VisualEffectAsset[]? VisualEffects = default;
+
+    public int Find(VisualEffectAsset? visualEffect)
+    {
+        if (visualEffect == null) return -1;
+        for (int i = 0; i < VisualEffects.Length; i++)
+        {
+            if (VisualEffects[i] != visualEffect) continue;
+            return i;
+        }
+        Debug.LogError($"Visual effect {visualEffect} is not present in the database", visualEffect);
+        return -1;
+    }
 
     class Baker : Baker<VisualEffectDatabaseAuthoring>
     {

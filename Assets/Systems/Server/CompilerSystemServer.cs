@@ -176,7 +176,7 @@ public partial class CompilerSystemServer : SystemBase
                 typeof(CompilerStatusRpc),
                 typeof(SendRpcCommandRequest),
             }));
-            commandBuffer.SetComponent(request, new CompilerStatusRpc()
+            commandBuffer.SetComponent<CompilerStatusRpc>(request, new()
             {
                 FileName = source.SourceFile,
                 Status = source.Status,
@@ -185,7 +185,7 @@ public partial class CompilerSystemServer : SystemBase
                 CompiledVersion = source.CompiledVersion,
                 LatestVersion = source.LatestVersion,
             });
-            commandBuffer.SetComponent(request, new SendRpcCommandRequest()
+            commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
@@ -206,14 +206,14 @@ public partial class CompilerSystemServer : SystemBase
         foreach (var subfile in source.SubFiles)
         {
             Entity request = commandBuffer.CreateEntity(substatusRpcArchetype);
-            commandBuffer.SetComponent(request, new CompilerSubstatusRpc()
+            commandBuffer.SetComponent<CompilerSubstatusRpc>(request, new()
             {
                 FileName = source.SourceFile,
                 SubFileName = subfile.Key,
                 CurrentProgress = subfile.Value.Progress.Current,
                 TotalProgress = subfile.Value.Progress.Total,
             });
-            commandBuffer.SetComponent(request, new SendRpcCommandRequest()
+            commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
@@ -229,7 +229,7 @@ public partial class CompilerSystemServer : SystemBase
             if (!item.File.TryGetNetcode(out FileId file)) continue;
 
             Entity request = commandBuffer.CreateEntity(analysticsRpcArchetype);
-            commandBuffer.SetComponent(request, new CompilationAnalysticsRpc()
+            commandBuffer.SetComponent<CompilationAnalysticsRpc>(request, new()
             {
                 Source = source.SourceFile,
                 FileName = file,
@@ -238,7 +238,7 @@ public partial class CompilerSystemServer : SystemBase
                 Level = item.Level,
                 Message = item.Message,
             });
-            commandBuffer.SetComponent(request, new SendRpcCommandRequest()
+            commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });

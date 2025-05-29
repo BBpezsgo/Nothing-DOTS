@@ -226,6 +226,8 @@ MonoBehaviour:
     type: 3}
   RandomRotation: 1
   RandomPosition: 1
+  Deterministic: 1
+  RandomSeed: 2
 --- !u!1 &185226095
 GameObject:
   m_ObjectHideFlags: 0

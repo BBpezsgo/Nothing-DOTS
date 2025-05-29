@@ -66,7 +66,7 @@ public partial class VisualEffectSystem : SystemBase
 
             VisualEffect effect = Pools[spawn.ValueRO.Index].Get();
             effect.transform.position = spawn.ValueRO.Position;
-            effect.SetVector3("direction", (spawn.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new Unity.Mathematics.float3(90f, 0f, 0f));
+            effect.SetVector3("direction", (spawn.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
             effect.Play();
         }
     }

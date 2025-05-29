@@ -6,8 +6,7 @@ public struct CombatTurret : IComponentData
     public Entity Cannon;
     public Entity ProjectilePrefab;
     public Entity ShootPosition;
-    
-    public bool ShootRequested;
+    public int ShootEffect;
 
     public float MinAngle;
     public float MaxAngle;

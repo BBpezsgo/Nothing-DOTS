@@ -8,6 +8,7 @@ public class CombatTurretAuthoring : MonoBehaviour
     [SerializeField] Transform? Cannon = default;
     [SerializeField] GameObject? ProjectilePrefab = default;
     [SerializeField] Transform? ShootPosition = default;
+    [SerializeField] int ShootEffect = default;
 
     [SerializeField, NaughtyAttributes.MinMaxSlider(-90f, 90f)] Vector2 AngleConstraint = new(-90f, 90f);
 
@@ -40,7 +41,8 @@ public class CombatTurretAuthoring : MonoBehaviour
                 ShootPosition =
                     authoring.ShootPosition == null
                     ? Entity.Null
-                    : GetEntity(authoring.ShootPosition, TransformUsageFlags.Dynamic)
+                    : GetEntity(authoring.ShootPosition, TransformUsageFlags.Dynamic),
+                ShootEffect = authoring.ShootEffect,
             });
         }
     }

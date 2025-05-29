@@ -2,20 +2,21 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.VFX;
 
 [AddComponentMenu("Authoring/Projectile Database")]
 public class ProjectileDatabaseAuthoring : MonoBehaviour
 {
+    [SerializeField, NotNull] VisualEffectDatabaseAuthoring? VisualEffects = default;
     [SerializeField, NotNull] Item[]? Projectiles = default;
 
     [Serializable]
     class Item
     {
         [SerializeField, NotNull] public GameObject? Prefab = default;
-        [Min(0f)]
-        [SerializeField] public float Damage = default;
-        [Min(0f)]
-        [SerializeField] public float Speed = default;
+        [SerializeField, Min(0f)] public float Damage = default;
+        [SerializeField, Min(0f)] public float Speed = default;
+        [SerializeField] public VisualEffectAsset? ImpactEffect = default;
     }
 
     class Baker : Baker<ProjectileDatabaseAuthoring>
@@ -32,6 +33,7 @@ public class ProjectileDatabaseAuthoring : MonoBehaviour
                     Prefab = GetEntity(projectile.Prefab, TransformUsageFlags.Dynamic),
                     Damage = projectile.Damage,
                     Speed = projectile.Speed,
+                    ImpactEffect = authoring.VisualEffects.Find(projectile.ImpactEffect),
                 });
             }
         }

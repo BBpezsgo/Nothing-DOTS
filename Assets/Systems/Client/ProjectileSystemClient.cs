@@ -19,6 +19,10 @@ partial struct ProjectileSystemClient : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityArchetype visualEffectSpawnArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            typeof(VisualEffectSpawn),
+        });
 
         damageQ.Update(ref state);
         var map = QuadrantSystem.GetMap(ref state);
@@ -46,6 +50,16 @@ partial struct ProjectileSystemClient : ISystem
 
             if (damageQ.HasBuffer(hit.Entity.Entity))
             {
+                if (projectile.ValueRO.ImpactEffect != -1)
+                {
+                    Entity visualEffectSpawn = commandBuffer.CreateEntity(visualEffectSpawnArchetype);
+                    commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
+                    {
+                        Position = ray.GetPoint(hit.Distance),
+                        Rotation = quaternion.LookRotation(math.normalizesafe(-projectile.ValueRW.Velocity), new float3(0f, 1f, 0f)),
+                        Index = projectile.ValueRO.ImpactEffect,
+                    });
+                }
                 commandBuffer.DestroyEntity(entity);
                 continue;
             }

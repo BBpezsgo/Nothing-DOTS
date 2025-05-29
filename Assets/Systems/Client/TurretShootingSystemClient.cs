@@ -23,7 +23,7 @@ public partial struct TurretShootingSystemClient : ISystem
             typeof(VisualEffectSpawn),
         });
 
-        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
         foreach (var (command, entity) in
             SystemAPI.Query<RefRO<ShootRpc>>()
@@ -34,22 +34,23 @@ public partial struct TurretShootingSystemClient : ISystem
 
             Entity projectilePrefab = projectiles[command.ValueRO.ProjectileIndex].Prefab;
             Entity projectileInstance = commandBuffer.Instantiate(projectilePrefab);
-            commandBuffer.SetComponent(projectileInstance, new LocalTransform
+            commandBuffer.SetComponent<LocalTransform>(projectileInstance, new()
             {
                 Position = command.ValueRO.Position,
                 Rotation = quaternion.LookRotation(math.normalizesafe(command.ValueRO.Velocity), new float3(0f, 1f, 0f)),
                 Scale = SystemAPI.GetComponent<LocalTransform>(projectilePrefab).Scale
             });
-            commandBuffer.SetComponent(projectileInstance, new Projectile
+            commandBuffer.SetComponent<Projectile>(projectileInstance, new()
             {
                 Velocity = command.ValueRO.Velocity,
                 Damage = projectiles[command.ValueRO.ProjectileIndex].Damage,
+                ImpactEffect = projectiles[command.ValueRO.ProjectileIndex].ImpactEffect,
             });
 
             if (command.ValueRO.VisualEffectIndex >= 0)
             {
                 Entity visualEffectSpawn = commandBuffer.CreateEntity(visualEffectSpawnArchetype);
-                commandBuffer.SetComponent(visualEffectSpawn, new VisualEffectSpawn
+                commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
                 {
                     Position = command.ValueRO.Position,
                     Rotation = quaternion.LookRotation(math.normalizesafe(command.ValueRO.Velocity), new float3(0f, 1f, 0f)),
