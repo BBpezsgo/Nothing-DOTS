@@ -27,6 +27,7 @@ public class SetupManager : Singleton<SetupManager>
     [SerializeField] public int Team = default;
     [SerializeField, NotNull] public string? GeneratedScript = default;
     [SerializeField] public int GeneratedCount = default;
+    [SerializeField] public float Density = 0f;
     [SerializeField] public Vector2 Start = default;
     [SerializeField] public Vector2 End = default;
     [SerializeField] public GameObject? RandomUnitPrefab = default;
@@ -38,6 +39,10 @@ public class SetupManager : Singleton<SetupManager>
     [ShowIf(nameof(Deterministic)), SerializeField] int RandomSeed = default;
 
     System.Random? Random;
+
+    const float UnitRadius = 1.45f;
+    const float UnitArea = UnitRadius * UnitRadius * MathF.PI;
+    const float PositionY = 0f;
 
     void OnValidate()
     {
@@ -73,7 +78,7 @@ public class SetupManager : Singleton<SetupManager>
                 }
 
                 Entity newUnit = world.EntityManager.Instantiate(unit.Prefab);
-                world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(new float3(unitSetup.Spawn.x, 0.5f, unitSetup.Spawn.y)));
+                world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(new float3(unitSetup.Spawn.x, PositionY, unitSetup.Spawn.y)));
                 world.EntityManager.SetComponentData(newUnit, new Processor()
                 {
                     SourceFile = new FileId(unitSetup.Script, NetcodeEndPoint.Server),
@@ -93,6 +98,13 @@ public class SetupManager : Singleton<SetupManager>
         if (RandomUnitPrefab == null)
         { yield break; }
 
+        if (Density != 0f)
+        {
+            float width = MathF.Sqrt(UnitArea * Density * GeneratedCount);
+            Start = new Vector2(width, width) * -0.5f;
+            End = new Vector2(width, width) * 0.5f;
+        }
+
         BufferedUnit prefab = units.FirstOrDefault(static (v, c) => v.Name == c, RandomUnitPrefab.name);
 
         if (prefab.Prefab == Entity.Null)
@@ -106,21 +118,19 @@ public class SetupManager : Singleton<SetupManager>
         List<float2> spawned = new(GeneratedCount);
         int c = 0;
 
-        const float unitRadius = .1f;
-
         bool IsOccupied(float2 position)
         {
             if (SpawnExactUnits)
             {
                 foreach (UnitSetup unit in Units)
                 {
-                    if (math.distance(unit.Spawn, position) < 2f * unitRadius) return true;
+                    if (math.distance(unit.Spawn, position) < 2f * UnitRadius) return true;
                 }
             }
 
             foreach (float2 unit in spawned)
             {
-                if (math.distance(unit, position) < 2f * unitRadius) return true;
+                if (math.distance(unit, position) < 2f * UnitRadius) return true;
             }
 
             return false;
@@ -149,14 +159,14 @@ public class SetupManager : Singleton<SetupManager>
                     if (RandomRotation)
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
-                            new float3(generated.x, 0f, generated.y),
+                            new float3(generated.x, PositionY, generated.y),
                             quaternion.EulerXYZ(0f, (Random ?? RandomManaged.Shared).Float(0f, math.TAU), 0f)
                         ));
                     }
                     else
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
-                            new float3(generated.x, 0f, generated.y)
+                            new float3(generated.x, PositionY, generated.y)
                         ));
                     }
                     world.EntityManager.SetComponentData(newUnit, new Processor()
@@ -170,12 +180,15 @@ public class SetupManager : Singleton<SetupManager>
                     failed = false;
                     break;
                 }
+
                 if (failed)
                 {
                     Debug.LogWarning($"Only spawned {i} but had to {GeneratedCount}");
-                    break;
+                    yield break;
                 }
             }
+
+            Debug.Log($"Spawned {GeneratedCount}");
         }
         else if (GeneratedCount > 0)
         {
@@ -201,14 +214,14 @@ public class SetupManager : Singleton<SetupManager>
                     if (RandomRotation)
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
-                            new float3(generated.x, 0.5f, generated.y),
+                            new float3(generated.x, PositionY, generated.y),
                             quaternion.EulerXYZ(0f, (Random ?? RandomManaged.Shared).Float(0f, math.TAU), 0f)
                         ));
                     }
                     else
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
-                            new float3(generated.x, 0.5f, generated.y)
+                            new float3(generated.x, PositionY, generated.y)
                         ));
                     }
                     world.EntityManager.SetComponentData(newUnit, new Processor()
@@ -217,6 +230,8 @@ public class SetupManager : Singleton<SetupManager>
                     });
                 }
             }
+
+            Debug.Log($"Spawned {GeneratedCount}");
         }
     }
 
