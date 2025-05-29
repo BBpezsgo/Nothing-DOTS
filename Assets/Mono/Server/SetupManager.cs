@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using NaughtyAttributes;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -33,6 +34,11 @@ public class SetupManager : Singleton<SetupManager>
     [SerializeField] public bool RandomRotation = default;
     [SerializeField] public bool RandomPosition = default;
 
+    [SerializeField] bool Deterministic = default;
+    [ShowIf(nameof(Deterministic)), SerializeField] int RandomSeed = default;
+
+    System.Random? Random;
+
     void OnValidate()
     {
         if (Start.x > End.x) Start.x = End.x;
@@ -41,6 +47,8 @@ public class SetupManager : Singleton<SetupManager>
 
     public void Setup()
     {
+        Random = Deterministic ? new System.Random(RandomSeed) : null;
+
         World world = ConnectionManager.ServerOrDefaultWorld;
 
         using EntityQuery unitDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(UnitDatabase));
@@ -77,10 +85,10 @@ public class SetupManager : Singleton<SetupManager>
             }
         }
 
-        StartCoroutine(SpawnRandomUnits(units));
+        StartCoroutine(SpawnRandomUnits(units, world));
     }
 
-    IEnumerator SpawnRandomUnits(DynamicBuffer<BufferedUnit> units)
+    IEnumerator SpawnRandomUnits(DynamicBuffer<BufferedUnit> units, World world)
     {
         if (RandomUnitPrefab == null)
         { yield break; }
@@ -95,7 +103,6 @@ public class SetupManager : Singleton<SetupManager>
 
         yield return new WaitForSecondsRealtime(0.1f);
 
-        World world = ConnectionManager.ServerOrDefaultWorld;
         List<float2> spawned = new(GeneratedCount);
         int c = 0;
 
@@ -133,8 +140,8 @@ public class SetupManager : Singleton<SetupManager>
                         c = 0;
                     }
                     generated = new(
-                        RandomManaged.Shared.Float(Start.x, End.x),
-                        RandomManaged.Shared.Float(Start.y, End.y)
+                        (Random ?? RandomManaged.Shared).Float(Start.x, End.x),
+                        (Random ?? RandomManaged.Shared).Float(Start.y, End.y)
                     );
                     if (IsOccupied(generated)) continue;
                     spawned.Add(generated);
@@ -143,7 +150,7 @@ public class SetupManager : Singleton<SetupManager>
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
                             new float3(generated.x, 0f, generated.y),
-                            quaternion.EulerXYZ(0f, RandomManaged.Shared.Float(0f, math.TAU), 0f)
+                            quaternion.EulerXYZ(0f, (Random ?? RandomManaged.Shared).Float(0f, math.TAU), 0f)
                         ));
                     }
                     else
@@ -195,7 +202,7 @@ public class SetupManager : Singleton<SetupManager>
                     {
                         world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
                             new float3(generated.x, 0.5f, generated.y),
-                            quaternion.EulerXYZ(0f, RandomManaged.Shared.Float(0f, math.TAU), 0f)
+                            quaternion.EulerXYZ(0f, (Random ?? RandomManaged.Shared).Float(0f, math.TAU), 0f)
                         ));
                     }
                     else
