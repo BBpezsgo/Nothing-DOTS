@@ -303,7 +303,7 @@ public unsafe partial struct CollisionSystem : ISystem
         normal = default;
         depth = default;
 
-        if (!quadrantMap.TryGetValue(QuadrantSystem.ToGrid(colliderPosition).key, out var quadrant)) return false;
+        if (!quadrantMap.TryGetValue(Cell.ToGrid(colliderPosition).key, out var quadrant)) return false;
 
         for (int i = 0; i < quadrant.Length; i++)
         {

@@ -57,8 +57,8 @@ public static class QuadrantRayCast
     {
         if (ray.Start.Equals(ray.End)) { hit = default; return false; }
 
-        QuadrantSystem.ToGridF(ray.Start, out float2 _start);
-        QuadrantSystem.ToGridF(ray.End, out float2 _end);
+        Cell.ToGridF(ray.Start, out float2 _start);
+        Cell.ToGridF(ray.End, out float2 _end);
         float2 _dir = math.normalize(_end - _start);
 
         float2 rayUnitStepSize = new(
@@ -66,7 +66,7 @@ public static class QuadrantRayCast
             math.sqrt(1f + (_dir.x / _dir.y) * (_dir.x / _dir.y))
         );
 
-        QuadrantSystem.ToGrid(ray.Start, out Cell mapCheck);
+        Cell.ToGrid(ray.Start, out Cell mapCheck);
         float2 rayLength1D;
         Cell step;
 

@@ -41,13 +41,12 @@ public struct QuadrantEntity
 [StructLayout(LayoutKind.Explicit)]
 public struct Cell : IEquatable<Cell>
 {
-    [FieldOffset(0)]
-    public uint key;
+    public const int Size = 20;
 
-    [FieldOffset(0)]
-    public short x;
-    [FieldOffset(2)]
-    public short y;
+    [FieldOffset(0)] public uint key;
+
+    [FieldOffset(0)] public short x;
+    [FieldOffset(2)] public short y;
 
     public Cell(uint key)
     {
@@ -73,6 +72,96 @@ public struct Cell : IEquatable<Cell>
     public override readonly bool Equals(object obj) => obj is Cell other && Equals(other);
     [BurstCompile] public readonly bool Equals(Cell other) => key == other.key;
     public override readonly string ToString() => $"Cell({x}, {y})";
+
+    public static float2 TL(Cell cell) => new(
+        cell.x * Size,
+        cell.y * Size
+    );
+    public static float2 TR(Cell cell) => new(
+        cell.x * Size + Size,
+        cell.y * Size
+    );
+    public static float2 BL(Cell cell) => new(
+        cell.x * Size,
+        cell.y * Size + Size
+    );
+    public static float2 BR(Cell cell) => new(
+        cell.x * Size + Size,
+        cell.y * Size + Size
+    );
+
+    public static Cell ToGrid(float3 worldPosition)
+    {
+        if (worldPosition.x < 0f) worldPosition.x += -Size;
+        if (worldPosition.z < 0f) worldPosition.z += -Size;
+        return new(
+            (int)(worldPosition.x / Size),
+            (int)(worldPosition.z / Size)
+        );
+    }
+
+    [BurstCompile]
+    public static void ToGrid(in float3 worldPosition, out Cell position)
+    {
+        float3 fixedWorldPosition = worldPosition;
+        if (worldPosition.x < 0f) fixedWorldPosition.x += -Size;
+        if (worldPosition.z < 0f) fixedWorldPosition.z += -Size;
+        position = new(
+            (int)(fixedWorldPosition.x / Size),
+            (int)(fixedWorldPosition.z / Size)
+        );
+    }
+
+    public static float2 ToGridF(float3 worldPosition) => new(
+        math.clamp(worldPosition.x / Size, short.MinValue, short.MaxValue),
+        math.clamp(worldPosition.z / Size, short.MinValue, short.MaxValue)
+    );
+
+    [BurstCompile]
+    public static void ToGridF(in float3 worldPosition, out float2 position)
+    {
+        position = new(
+            math.clamp(worldPosition.x / Size, short.MinValue, short.MaxValue),
+            math.clamp(worldPosition.z / Size, short.MinValue, short.MaxValue)
+        );
+    }
+
+    public static float3 ToWorld(Cell position) => new(
+        position.x * Size,
+        0f,
+        position.y * Size
+    );
+
+    [BurstCompile]
+    public static void ToWorld(in Cell position, out float3 worldPosition)
+    {
+        worldPosition = new(
+            position.x * Size,
+            0f,
+            position.y * Size
+        );
+    }
+
+    public static Color Color(uint key)
+    {
+#if UNITY_EDITOR && EDITOR_DEBUG
+        if (key == uint.MaxValue) return UnityEngine.Color.white;
+        var random = Unity.Mathematics.Random.CreateFromIndex(key);
+        var c = random.NextFloat3();
+        return new Color(c.x, c.y, c.z);
+#else
+        return default;
+#endif
+    }
+
+    public static void Draw(Cell cell, float duration = 0.1f)
+    {
+#if UNITY_EDITOR && EDITOR_DEBUG
+        float3 start = ToWorld(cell) + new float3(0f, 1f, 0f);
+        float3 end = start + new float3(Size, 0f, Size);
+        DebugEx.DrawRectangle(start, end, Color(cell.key), duration);
+#endif
+    }
 }
 
 [BurstCompile]
@@ -91,81 +180,6 @@ public readonly struct Hit
 [BurstCompile]
 public partial struct QuadrantSystem : ISystem
 {
-    const int QuadrantCellSize = 20;
-
-    public static Cell ToGrid(float3 worldPosition)
-    {
-        if (worldPosition.x < 0f) worldPosition.x += -QuadrantCellSize;
-        if (worldPosition.z < 0f) worldPosition.z += -QuadrantCellSize;
-        return new(
-            (int)(worldPosition.x / QuadrantCellSize),
-            (int)(worldPosition.z / QuadrantCellSize)
-        );
-    }
-
-    [BurstCompile]
-    public static void ToGrid(in float3 worldPosition, out Cell position)
-    {
-        float3 fixedWorldPosition = worldPosition;
-        if (worldPosition.x < 0f) fixedWorldPosition.x += -QuadrantCellSize;
-        if (worldPosition.z < 0f) fixedWorldPosition.z += -QuadrantCellSize;
-        position = new(
-            (int)(fixedWorldPosition.x / QuadrantCellSize),
-            (int)(fixedWorldPosition.z / QuadrantCellSize)
-        );
-    }
-
-    public static float2 ToGridF(float3 worldPosition) => new(
-        math.clamp(worldPosition.x / QuadrantCellSize, short.MinValue, short.MaxValue),
-        math.clamp(worldPosition.z / QuadrantCellSize, short.MinValue, short.MaxValue)
-    );
-
-    [BurstCompile]
-    public static void ToGridF(in float3 worldPosition, out float2 position)
-    {
-        position = new(
-            math.clamp(worldPosition.x / QuadrantCellSize, short.MinValue, short.MaxValue),
-            math.clamp(worldPosition.z / QuadrantCellSize, short.MinValue, short.MaxValue)
-        );
-    }
-
-    public static float3 ToWorld(Cell position) => new(
-        position.x * QuadrantCellSize,
-        0f,
-        position.y * QuadrantCellSize
-    );
-
-    [BurstCompile]
-    public static void ToWorld(in Cell position, out float3 worldPosition)
-    {
-        worldPosition = new(
-            position.x * QuadrantCellSize,
-            0f,
-            position.y * QuadrantCellSize
-        );
-    }
-
-    public static Color CellColor(uint key)
-    {
-#if UNITY_EDITOR && EDITOR_DEBUG
-        if (key == uint.MaxValue) return Color.white;
-        var random = Unity.Mathematics.Random.CreateFromIndex(key);
-        var c = random.NextFloat3();
-        return new Color(c.x, c.y, c.z);
-#else
-        return default;
-#endif
-    }
-
-    public static void DrawQuadrant(Cell cell)
-    {
-#if UNITY_EDITOR && EDITOR_DEBUG
-        float3 start = ToWorld(cell);
-        float3 end = start + new float3(QuadrantCellSize, 0f, QuadrantCellSize);
-        DebugEx.DrawRectangle(start, end, CellColor(cell.key), .1f);
-#endif
-    }
-
     NativeParallelHashMap<uint, NativeList<QuadrantEntity>> HashMap;
 
     public static NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly GetMap(ref SystemState state) => GetMap(state.WorldUnmanaged);
@@ -192,7 +206,7 @@ public partial struct QuadrantSystem : ISystem
             SystemAPI.Query<RefRW<QuadrantEntityIdentifier>, RefRO<Collider>, RefRO<LocalToWorld>>()
             .WithEntityAccess())
         {
-            ToGrid(transform.ValueRO.Position, out Cell cell);
+            Cell.ToGrid(transform.ValueRO.Position, out Cell cell);
 
             inQuadrant.ValueRW.Added = true;
             inQuadrant.ValueRW.Key = cell.key;

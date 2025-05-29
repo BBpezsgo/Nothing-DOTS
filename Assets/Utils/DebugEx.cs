@@ -204,10 +204,10 @@ public static partial class DebugEx
     public static void DrawRectangle(float3 start, float3 end, Color color, float duration = 0f, bool depthTest = true)
     {
 #if UNITY_EDITOR && EDITOR_DEBUG
-        Debug.DrawLine(start, new float3(start.x, 0f, end.z), color, duration, depthTest);
-        Debug.DrawLine(start, new float3(end.x, 0f, start.z), color, duration, depthTest);
-        Debug.DrawLine(new float3(start.x, 0f, end.z), end, color, duration, depthTest);
-        Debug.DrawLine(new float3(end.x, 0f, start.z), end, color, duration, depthTest);
+        Debug.DrawLine(start, new float3(start.x, start.y, end.z), color, duration, depthTest);
+        Debug.DrawLine(start, new float3(end.x, start.y, start.z), color, duration, depthTest);
+        Debug.DrawLine(new float3(start.x, end.y, end.z), end, color, duration, depthTest);
+        Debug.DrawLine(new float3(end.x, end.y, start.z), end, color, duration, depthTest);
 #endif
     }
 
