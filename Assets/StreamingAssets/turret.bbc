@@ -1,7 +1,7 @@
 using "api.bbc";
 
 const f32 G = 9.82f;
-const f32 PROJECTILE_V = 20f ;
+const f32 PROJECTILE_V = 50f;
 const f32 PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
 const f32 HEIGHT_OFFSET = 0f;
 
