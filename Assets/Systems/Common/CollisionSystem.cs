@@ -335,7 +335,6 @@ public unsafe partial struct CollisionSystem : ISystem
             for (int i = 0; i < quadrant.Length; i++)
             {
                 QuadrantEntity* a = &quadrant.GetUnsafePtr()[i];
-                a->ResolvedOffset = default;
 
                 for (int j = i + 1; j < quadrant.Length; j++)
                 {
@@ -349,6 +348,10 @@ public unsafe partial struct CollisionSystem : ISystem
                     // { continue; }
 
                     // a->LastPosition = a->Position;
+
+#if DEBUG_COLLISIONS
+                    UnityEngine.Debug.DrawLine(a->Position, b->Position, Color.Lerp(Color.green, Color.white, 0.5f), 0.1f, false);
+#endif
 
                     if (!Intersect(
                         a->Collider, a->Position,
@@ -391,12 +394,19 @@ public unsafe partial struct CollisionSystem : ISystem
                     }
                 }
 
-                var transform = localTransformQ.GetRefRWOptional(a->Entity);
-                if (transform.IsValid)
+                if (!a->ResolvedOffset.Equals(default))
                 {
-                    transform.ValueRW.Position += a->ResolvedOffset;
+                    RefRW<LocalTransform> transform = localTransformQ.GetRefRWOptional(a->Entity);
+                    if (transform.IsValid)
+                    {
+#if DEBUG_COLLISIONS
+                        DebugEx.Label(transform.ValueRO.Position, a->ResolvedOffset.ToString());
+                        UnityEngine.Debug.DrawLine(transform.ValueRO.Position, transform.ValueRO.Position + a->ResolvedOffset, Color.green, 0.1f, false);
+#endif
+                        transform.ValueRW.Position += a->ResolvedOffset;
+                    }
+                    a->ResolvedOffset = default;
                 }
-                a->ResolvedOffset = default;
             }
         }
         enumerator.Dispose();
