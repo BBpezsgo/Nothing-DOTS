@@ -7,6 +7,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Profiling;
 using Unity.Transforms;
 
 [BurstCompile]
@@ -14,6 +15,9 @@ using Unity.Transforms;
 unsafe partial struct TransmissionSystem : ISystem
 {
     ComponentLookup<Processor> processorComponentQ;
+
+    static readonly ProfilerMarker _CellVisibilityCheck = new(ProfilerCategory.Scripts, "TransmissionSystem.CellVisibilityCheck");
+    static readonly ProfilerMarker _CellOperation = new(ProfilerCategory.Scripts, "TransmissionSystem.CellOperation");
 
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
@@ -71,21 +75,26 @@ unsafe partial struct TransmissionSystem : ISystem
                 for (int z = -diff; z <= diff; z++)
                 {
                     Cell p = grid + new Cell(x, z);
-                    if (PointSquareDistance(position, Cell.TL(p), Cell.BR(p)) + 3f /* error */ > Unit.TransmissionRadius)
+                    /*
+                    using (var marker = _CellVisibilityCheck.Auto())
                     {
-                        continue;
+                        if (PointSquareDistance(position, Cell.TL(p), Cell.BR(p)) + 3 f > Unit.TransmissionRadius)
+                        {
+                            continue;
+                        }
+                        else if (!transmission.Direction.Equals(float3.zero))
+                        {
+                            if ((x != 0 || z != 0) && !IsSquareVisible(
+                                position,
+                                new float2(transmission.Direction.x, transmission.Direction.z),
+                                transmission.Angle,
+                                Cell.TL(p),
+                                Cell.BR(p),
+                                Unit.TransmissionRadius))
+                            { continue; }
+                        }
                     }
-                    else if (!transmission.Direction.Equals(float3.zero))
-                    {
-                        if ((x != 0 || z != 0) && !IsSquareVisible(
-                            position,
-                            new float2(transmission.Direction.x, transmission.Direction.z),
-                            transmission.Angle,
-                            Cell.TL(p),
-                            Cell.BR(p),
-                            Unit.TransmissionRadius))
-                        { continue; }
-                    }
+                    */
 
 #if DEBUG_LINES
                     Cell.Draw(p, 1f);
@@ -93,42 +102,45 @@ unsafe partial struct TransmissionSystem : ISystem
 
                     if (!map.TryGetValue(p.key, out NativeList<QuadrantEntity> cell)) continue;
 
-                    for (int i = 0; i < cell.Length; i++)
+                    using (var marker = _CellOperation.Auto())
                     {
-                        if (cell[i].Entity == entity) continue;
-
-                        float3 entityLocalPosition = cell[i].Position;
-                        entityLocalPosition.x = cell[i].Position.x - transform.ValueRO.Position.x;
-                        entityLocalPosition.y = 0f;
-                        entityLocalPosition.z = cell[i].Position.z - transform.ValueRO.Position.z;
-
-                        float entityDistanceSq = math.lengthsq(entityLocalPosition);
-                        if (entityDistanceSq > (Unit.TransmissionRadius * Unit.TransmissionRadius)) continue;
-
-                        if (!transmission.Direction.Equals(float3.zero))
+                        for (int i = 0; i < cell.Length; i++)
                         {
-                            float dot = math.abs(math.dot(transmission.Direction, math.normalize(entityLocalPosition)));
-                            if (dot < transmission.CosAngle)
+                            if (cell[i].Entity == entity) continue;
+
+                            float3 entityLocalPosition = cell[i].Position;
+                            entityLocalPosition.x = cell[i].Position.x - transform.ValueRO.Position.x;
+                            entityLocalPosition.y = 0f;
+                            entityLocalPosition.z = cell[i].Position.z - transform.ValueRO.Position.z;
+
+                            float entityDistanceSq = math.lengthsq(entityLocalPosition);
+                            if (entityDistanceSq > (Unit.TransmissionRadius * Unit.TransmissionRadius)) continue;
+
+                            if (!transmission.Direction.Equals(float3.zero))
                             {
-                                // Debug.Log(string.Format("{0} > {1}", dot, transmission.CosAngle));
-                                continue;
+                                float dot = math.abs(math.dot(transmission.Direction, math.normalize(entityLocalPosition)));
+                                if (dot < transmission.CosAngle)
+                                {
+                                    // Debug.Log(string.Format("{0} > {1}", dot, transmission.CosAngle));
+                                    continue;
+                                }
                             }
+
+                            RefRW<Processor> other = processorComponentQ.GetRefRWOptional(cell[i].Entity);
+                            if (!other.IsValid) continue;
+                            if (other.ValueRO.SourceFile == default) continue;
+
+                            other.ValueRW.NetworkReceiveLED.Blink();
+
+                            ref var transmissions = ref other.ValueRW.IncomingTransmissions;
+
+                            if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
+                            transmissions.Add(new()
+                            {
+                                Source = transform.ValueRO.Position,
+                                Data = transmission.Data,
+                            });
                         }
-
-                        RefRW<Processor> other = processorComponentQ.GetRefRWOptional(cell[i].Entity);
-                        if (!other.IsValid) continue;
-                        if (other.ValueRO.SourceFile == default) continue;
-
-                        other.ValueRW.NetworkReceiveLED.Blink();
-
-                        ref var transmissions = ref other.ValueRW.IncomingTransmissions;
-
-                        if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
-                        transmissions.Add(new()
-                        {
-                            Source = transform.ValueRO.Position,
-                            Data = transmission.Data,
-                        });
                     }
                 }
             }
