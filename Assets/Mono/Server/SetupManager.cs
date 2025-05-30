@@ -200,6 +200,7 @@ public class SetupManager : Singleton<SetupManager>
 
             float dx = width / math.max(1f, columns - 1);
             float dy = height / math.max(1f, rows - 1);
+            int i = 0;
 
             for (float x = Start.x; x <= End.x; x += dx)
             {
@@ -228,15 +229,27 @@ public class SetupManager : Singleton<SetupManager>
                     {
                         SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
                     });
+
+                    if (++i >= GeneratedCount) break;
                 }
             }
 
-            Debug.Log($"Spawned {GeneratedCount}");
+            Debug.Log($"Spawned {i}");
         }
     }
 
     void OnDrawGizmosSelected()
     {
+        Vector2 Start = this.Start;
+        Vector2 End = this.End;
+
+        if (Density != 0f)
+        {
+            float width = MathF.Sqrt(UnitArea * Density * GeneratedCount);
+            Start = new Vector2(width, width) * -0.5f;
+            End = new Vector2(width, width) * 0.5f;
+        }
+
         if (!RandomPosition)
         {
             float width = End.x - Start.x;
@@ -248,13 +261,15 @@ public class SetupManager : Singleton<SetupManager>
             float dx = width / math.max(1f, columns - 1);
             float dy = height / math.max(1f, rows - 1);
 
+            int i = 0;
+
             for (float x = Start.x; x <= End.x; x += dx)
             {
                 for (float y = Start.y; y <= End.y; y += dy)
                 {
                     float2 generated = new(x, y);
-
                     Gizmos.DrawSphere(new Vector3(generated.x, 0.5f, generated.y), 1f);
+                    if (++i >= GeneratedCount) break;
                 }
             }
         }
