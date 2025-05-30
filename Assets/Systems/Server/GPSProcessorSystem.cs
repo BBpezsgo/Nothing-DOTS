@@ -5,7 +5,7 @@ using Unity.Burst;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-partial struct CoreComputerSystem : ISystem
+partial struct GPSProcessorSystem : ISystem
 {
     [BurstCompile]
     unsafe void ISystem.OnUpdate(ref SystemState state)
@@ -16,6 +16,7 @@ partial struct CoreComputerSystem : ISystem
         {
             MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
             mapped->GPS.Position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
+            mapped->GPS.Forward = new(transform.ValueRO.Forward.x, transform.ValueRO.Forward.z);
         }
     }
 }
