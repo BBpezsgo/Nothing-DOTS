@@ -4,6 +4,7 @@
 
 using System;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -154,166 +155,6 @@ public unsafe partial struct CollisionSystem : ISystem
         }
     }
 
-    [BurstCompile]
-    static void ClosestPoint(
-        in AABB aabb, in float3 point, out float3 closestPoint
-    )
-    {
-        closestPoint = math.clamp(point, aabb.Min, aabb.Max);
-    }
-
-    [BurstCompile]
-    static bool CircleRectIntersect(
-        in float3 sphereOrigin, float sphereRadius,
-        in float3 aabbOrigin, in AABB aabb,
-        out float3 normal, out float depth)
-    {
-        depth = default;
-        float3 closestPoint = math.clamp(sphereOrigin, aabb.Min + aabbOrigin, aabb.Max + aabbOrigin);
-        normal = sphereOrigin - closestPoint;
-        float distanceSquared = math.lengthsq(normal);
-        float radiusSquared = sphereRadius * sphereRadius;
-        if (distanceSquared >= radiusSquared)
-        { return false; }
-        float distance = math.sqrt(distanceSquared);
-        if (distance == 0f)
-        { return false; }
-
-        normal /= distance;
-        depth = sphereRadius - distance;
-        return true;
-    }
-
-    [BurstCompile]
-    static bool CircleCircleIntersect(
-        in float3 originA, float radiusA,
-        in float3 originB, float radiusB,
-        out float3 normal, out float depth
-    )
-    {
-        depth = default;
-        normal = originA - originB;
-
-        float distance = math.length(normal);
-        if (distance == 0f) return false;
-
-        float radii = radiusA + radiusB;
-
-        if (distance > radii) return false;
-
-        normal /= distance;
-        depth = radii - distance;
-        return true;
-    }
-
-    [BurstCompile]
-    static bool AABBAABBIntersect(
-        in float3 originA, in AABB a,
-        in float3 originB, in AABB b,
-        out float3 normal, out float depth
-    )
-    {
-        AABB _a = a;
-        AABB _b = b;
-
-        _a.Center += originA;
-        _b.Center += originB;
-
-        normal = default;
-        depth = default;
-
-        if (
-            _a.Min.x <= _b.Max.x &&
-            _a.Max.x >= _b.Min.x &&
-
-            _a.Min.y <= _b.Max.y &&
-            _a.Max.y >= _b.Min.y &&
-
-            _a.Min.z <= _b.Max.z &&
-            _a.Max.z >= _b.Min.z
-        )
-        {
-            // float dx = Math.Min(a.Max.x - b.Min.x, b.Max.x - a.Min.x);
-            // float dy = Math.Min(a.Max.y - b.Min.y, b.Max.y - a.Min.y);
-            // float dz = Math.Min(a.Max.z - b.Min.z, b.Max.z - a.Min.z);
-            return true;
-        }
-
-        return false;
-    }
-
-    [BurstCompile]
-    public static bool Intersect(
-        in Collider a, in float3 positionA,
-        in Collider b, in float3 positionB,
-        out float3 normal, out float depth
-    )
-    {
-        if (a.Type == ColliderType.Sphere &&
-            b.Type == ColliderType.Sphere)
-        {
-            return CircleCircleIntersect(
-                positionA, a.Sphere.Radius,
-                positionB, b.Sphere.Radius,
-                out normal, out depth
-            );
-        }
-        else if (a.Type == ColliderType.Sphere &&
-                 b.Type == ColliderType.AABB)
-        {
-            return CircleRectIntersect(
-                positionA, a.Sphere.Radius,
-                positionB, b.AABB.AABB,
-                out normal, out depth
-            );
-        }
-        else if (a.Type == ColliderType.AABB &&
-                 b.Type == ColliderType.Sphere)
-        {
-            return CircleRectIntersect(
-                positionB, b.Sphere.Radius,
-                positionA, a.AABB.AABB,
-                out normal, out depth
-            );
-        }
-        else if (a.Type == ColliderType.AABB &&
-                 b.Type == ColliderType.AABB)
-        {
-            return AABBAABBIntersect(
-                positionA, a.AABB.AABB,
-                positionB, b.AABB.AABB,
-                out normal, out depth
-            );
-        }
-        else
-        {
-            UnityEngine.Debug.LogWarning(string.Format("Unsupported collision combination: {0} - {1}", a.Type, b.Type));
-            normal = default;
-            depth = default;
-            return false;
-        }
-    }
-
-    [BurstCompile]
-    public static bool Intersect(
-        in Unity.Collections.NativeParallelHashMap<uint, Unity.Collections.NativeList<QuadrantEntity>>.ReadOnly quadrantMap,
-        in Collider collider, in float3 colliderPosition,
-        out float3 normal, out float depth)
-    {
-        normal = default;
-        depth = default;
-
-        if (!quadrantMap.TryGetValue(Cell.ToGrid(colliderPosition).key, out var quadrant)) return false;
-
-        for (int i = 0; i < quadrant.Length; i++)
-        {
-            if (Intersect(quadrant[i].Collider, quadrant[i].Position, collider, colliderPosition, out normal, out depth))
-            { return true; }
-        }
-
-        return false;
-    }
-
     ComponentLookup<LocalTransform> localTransformQ;
 
     void ISystem.OnCreate(ref SystemState state)
@@ -331,7 +172,8 @@ public unsafe partial struct CollisionSystem : ISystem
         var enumerator = map.GetEnumerator();
         while (enumerator.MoveNext())
         {
-            var quadrant = enumerator.Current.Value;
+            Cell p = new(enumerator.Current.Key);
+            NativeList<QuadrantEntity> quadrant = enumerator.Current.Value;
             for (int i = 0; i < quadrant.Length; i++)
             {
                 QuadrantEntity* a = &quadrant.GetUnsafePtr()[i];
@@ -339,58 +181,26 @@ public unsafe partial struct CollisionSystem : ISystem
                 for (int j = i + 1; j < quadrant.Length; j++)
                 {
                     QuadrantEntity* b = &quadrant.GetUnsafePtr()[j];
+                    HandleCollision(a, b, false);
+                }
 
-                    if (a->Collider.IsStatic && b->Collider.IsStatic) continue;
-                    if (!a->Collider.IsEnabled || !b->Collider.IsEnabled) continue;
-
-                    // if (a->LastPosition.Equals(a->Position) &&
-                    //     b->LastPosition.Equals(b->Position))
-                    // { continue; }
-
-                    // a->LastPosition = a->Position;
-
-#if DEBUG_COLLISIONS
-                    UnityEngine.Debug.DrawLine(a->Position, b->Position, Color.Lerp(Color.green, Color.white, 0.5f), 0.1f, false);
-#endif
-
-                    if (!Intersect(
-                        a->Collider, a->Position,
-                        b->Collider, b->Position,
-                        out float3 normal, out float depth
-                        )) continue;
-
-#if DEBUG_COLLISIONS
-                    Debug(a->Collider, a->Position, Color.green, 0.1f, false);
-                    Debug(b->Collider, b->Position, Color.green, 0.1f, false);
-#endif
-
-                    normal.y = 0f;
-                    depth = math.clamp(depth, 0f, 0.1f);
-
-                    if (a->Collider.IsStatic)
+                for (int x = -1; x <= 1; x++)
+                {
+                    for (int y = -1; y <= 1; y++)
                     {
-                        float3 displaceB = normal * -depth;
+                        Cell otherP = new(p.x + x, p.y + y);
+                        if (p == otherP) continue;
+                        if (!map.TryGetValue(otherP.key, out NativeList<QuadrantEntity> otherQuadrant)) continue;
+                        if (!Collision.Intersect(
+                            a->Collider, a->Position,
+                            Cell.Collider, Cell.ToWorld(otherP)))
+                        { continue; }
 
-                        b->ResolvedOffset += displaceB;
-                        b->Position += displaceB;
-                    }
-                    else if (b->Collider.IsStatic)
-                    {
-                        float3 displaceA = normal * depth;
-
-                        a->ResolvedOffset += displaceA;
-                        a->Position += displaceA;
-                    }
-                    else
-                    {
-                        float3 displaceA = normal * (depth * 0.5f);
-                        float3 displaceB = normal * (depth * -0.5f);
-
-                        a->ResolvedOffset += displaceA;
-                        a->Position += displaceA;
-
-                        b->ResolvedOffset += displaceB;
-                        b->Position += displaceB;
+                        for (int j = 0; j < otherQuadrant.Length; j++)
+                        {
+                            QuadrantEntity* b = &otherQuadrant.GetUnsafePtr()[j];
+                            HandleCollision(a, b, true);
+                        }
                     }
                 }
 
@@ -410,5 +220,90 @@ public unsafe partial struct CollisionSystem : ISystem
             }
         }
         enumerator.Dispose();
+    }
+
+    [BurstCompile]
+    static void HandleCollision(QuadrantEntity* a, QuadrantEntity* b, bool skipB)
+    {
+        if (skipB && a->Collider.IsStatic) return;
+        if (a->Collider.IsStatic && b->Collider.IsStatic) return;
+        if (!a->Collider.IsEnabled || !b->Collider.IsEnabled) return;
+
+        // if (a->LastPosition.Equals(a->Position) &&
+        //     b->LastPosition.Equals(b->Position))
+        // { continue; }
+
+        // a->LastPosition = a->Position;
+
+#if DEBUG_COLLISIONS
+        UnityEngine.Debug.DrawLine(a->Position, b->Position, Color.Lerp(Color.green, Color.white, 0.5f), 0.1f, false);
+        DebugEx.DrawPoint(a->Position, 0.5f, Color.Lerp(Color.green, Color.white, 0.5f), 0.1f, false);
+        if (!skipB)
+        {
+            DebugEx.DrawPoint(b->Position, 0.5f, Color.Lerp(Color.green, Color.white, 0.5f), 0.1f, false);
+        }
+#endif
+
+        if (!Collision.Intersect(
+            a->Collider, a->Position,
+            b->Collider, b->Position,
+            out float3 normal, out float depth
+            ))
+        {
+#if DEBUG_COLLISIONS
+            Debug(a->Collider, a->Position, Color.Lerp(Color.green, Color.white, 0.5f), 0.1f, false);
+            if (!skipB)
+            {
+                Debug(b->Collider, b->Position, Color.Lerp(Color.green, Color.white, 0.5f), 0.1f, false);
+            }
+#endif
+
+            return;
+        }
+
+
+#if DEBUG_COLLISIONS
+        Debug(a->Collider, a->Position, Color.green, 0.1f, false);
+        if (!skipB)
+        {
+            Debug(b->Collider, b->Position, Color.green, 0.1f, false);
+        }
+#endif
+
+
+        normal.y = 0f;
+        depth = math.clamp(depth, 0f, 0.1f);
+
+        if (a->Collider.IsStatic)
+        {
+            if (!skipB)
+            {
+                float3 displaceB = normal * -depth;
+
+                b->ResolvedOffset += displaceB;
+                b->Position += displaceB;
+            }
+        }
+        else if (b->Collider.IsStatic)
+        {
+            float3 displaceA = normal * depth;
+
+            a->ResolvedOffset += displaceA;
+            a->Position += displaceA;
+        }
+        else
+        {
+            float3 displaceA = normal * (depth * 0.5f);
+            float3 displaceB = normal * (depth * -0.5f);
+
+            a->ResolvedOffset += displaceA;
+            a->Position += displaceA;
+
+            if (!skipB)
+            {
+                b->ResolvedOffset += displaceB;
+                b->Position += displaceB;
+            }
+        }
     }
 }

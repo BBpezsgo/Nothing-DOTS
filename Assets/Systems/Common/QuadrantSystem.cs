@@ -48,6 +48,12 @@ public struct Cell : IEquatable<Cell>
     [FieldOffset(0)] public short x;
     [FieldOffset(2)] public short y;
 
+    public static readonly Collider Collider = new AABBCollider(true, new AABB()
+    {
+        Center = new float3(Size / 2f, Size / 2f, Size / 2f),
+        Extents = new float3(Size / 2f, Size / 2f, Size / 2f),
+    });
+
     public Cell(uint key)
     {
         this.key = key;
@@ -67,6 +73,9 @@ public struct Cell : IEquatable<Cell>
 
     public static Cell operator +(Cell a, Cell b) => new(a.x + b.x, a.y + b.y);
     public static Cell operator -(Cell a, Cell b) => new(a.x - b.x, a.y - b.y);
+
+    public static bool operator ==(Cell a, Cell b) => a.key == b.key;
+    public static bool operator !=(Cell a, Cell b) => a.key != b.key;
 
     [BurstCompile] public override readonly int GetHashCode() => unchecked((int)key);
     public override readonly bool Equals(object obj) => obj is Cell other && Equals(other);

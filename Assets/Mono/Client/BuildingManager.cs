@@ -206,7 +206,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         var map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
         Collider placeholderCollider = new AABBCollider(true, new AABB() { Extents = new float3(1f, 1f, 1f) });
 
-        IsValidPosition = !CollisionSystem.Intersect(
+        IsValidPosition = !Collision.Intersect(
             map,
             placeholderCollider, position,
             out _, out _);
