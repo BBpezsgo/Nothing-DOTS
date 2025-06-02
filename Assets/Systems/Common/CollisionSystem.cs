@@ -27,11 +27,11 @@ public unsafe partial struct CollisionSystem : ISystem
             case ColliderType.Sphere:
                 if (collider.Sphere.Radius == 0f)
                 {
-                    DebugEx.DrawPoint(offset, 1f, color, duration, depthTest);
+                    DebugEx.DrawPoint(offset + collider.Sphere.Offset, 1f, color, duration, depthTest);
                 }
                 else
                 {
-                    DebugEx.DrawSphere(offset, collider.Sphere.Radius, color, duration, depthTest);
+                    DebugEx.DrawSphere(offset + collider.Sphere.Offset, collider.Sphere.Radius, color, duration, depthTest);
                 }
                 break;
             case ColliderType.AABB:
@@ -52,7 +52,7 @@ public unsafe partial struct CollisionSystem : ISystem
         switch (collider.Type)
         {
             case ColliderType.Sphere:
-                return math.distancesq(point, offset) <= collider.Sphere.Radius * collider.Sphere.Radius;
+                return math.distancesq(point, offset + collider.Sphere.Offset) <= collider.Sphere.Radius * collider.Sphere.Radius;
             case ColliderType.AABB:
                 AABB aabb = collider.AABB.AABB;
                 aabb.Center += offset;

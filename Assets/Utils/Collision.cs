@@ -107,8 +107,8 @@ public static class Collision
             b.Type == ColliderType.Sphere)
         {
             return CircleCircleIntersect(
-                positionA, a.Sphere.Radius,
-                positionB, b.Sphere.Radius,
+                positionA + a.Sphere.Offset, a.Sphere.Radius,
+                positionB + b.Sphere.Offset, b.Sphere.Radius,
                 out normal, out depth
             );
         }
@@ -116,7 +116,7 @@ public static class Collision
                  b.Type == ColliderType.AABB)
         {
             return CircleAABBIntersect(
-                positionA, a.Sphere.Radius,
+                positionA + a.Sphere.Offset, a.Sphere.Radius,
                 positionB, b.AABB.AABB,
                 out normal, out depth
             );
@@ -125,7 +125,7 @@ public static class Collision
                  b.Type == ColliderType.Sphere)
         {
             return CircleAABBIntersect(
-                positionB, b.Sphere.Radius,
+                positionB + b.Sphere.Offset, b.Sphere.Radius,
                 positionA, a.AABB.AABB,
                 out normal, out depth
             );
@@ -208,15 +208,15 @@ public static class Collision
             b.Type == ColliderType.Sphere)
         {
             return CircleCircleIntersect(
-                positionA, a.Sphere.Radius,
-                positionB, b.Sphere.Radius
+                positionA + a.Sphere.Offset, a.Sphere.Radius,
+                positionB + b.Sphere.Offset, b.Sphere.Radius
             );
         }
         else if (a.Type == ColliderType.Sphere &&
                  b.Type == ColliderType.AABB)
         {
             return CircleAABBIntersect(
-                positionA, a.Sphere.Radius,
+                positionA + a.Sphere.Offset, a.Sphere.Radius,
                 positionB, b.AABB.AABB
             );
         }
@@ -224,7 +224,7 @@ public static class Collision
                  b.Type == ColliderType.Sphere)
         {
             return CircleAABBIntersect(
-                positionB, b.Sphere.Radius,
+                positionB + b.Sphere.Offset, b.Sphere.Radius,
                 positionA, a.AABB.AABB
             );
         }

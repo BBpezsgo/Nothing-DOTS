@@ -71,7 +71,7 @@ export u8 TargetAt(float2 target, float2* targetedPosition)
         CombatTurret.TurretTargetRotation = CalculateRotation(target);
 
         f32 targetDistance = Magnitude(target);
-        targetDistance -= Cos(CombatTurret.TurretCurrentAngle) * 2.5f;
+        // targetDistance -= Cos(CombatTurret.TurretCurrentAngle) * 2.5f;
         // f32 height = Sin(CombatTurret.TurretCurrentAngle) * 2.5f;
 
         CombatTurret.TurretTargetAngle = CalculateAngle(targetDistance);

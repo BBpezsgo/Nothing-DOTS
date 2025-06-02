@@ -242,15 +242,14 @@ void SendVerificationRequest(Unit* unit)
     packet.Header = (u8)REQUEST_HEADER;
     packet.Position = point;
 
-    debug(point, BLUE);
-
-    ToLocal(&point);
-    float distance = _Sqrt(point.x * point.x + point.y * point.y);
-    Normalise(&point);
-    float angle = Atan2(point.y, point.x);
+    // ToLocal(&point);
+    // float distance = _Sqrt(point.x * point.x + point.y * point.y);
+    // Normalise(&point);
+    // float angle = Atan2(point.y, point.x);
 
     // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
-    send(&packet as u8[]*, sizeof(VerificationRequestPacket), angle, Asin(1.2f / distance));
+    send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
+    debug(point, BLUE);
 
     unit.VerificationSentAt = time();
 }
