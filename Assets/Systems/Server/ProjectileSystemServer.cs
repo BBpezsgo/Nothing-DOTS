@@ -41,11 +41,15 @@ partial struct ProjectileSystemServer : ISystem
 
             Ray ray = new(lastPosition, newPosition, Layers.BuildingOrUnit);
 
+            Debug.DrawLine(ray.Start, ray.End, Color.Lerp(Color.green, Color.white, 0.5f), 2f);
+
             if (!QuadrantRayCast.RayCast(map, ray, out Hit hit))
             { continue; }
 
             if (damageQ.TryGetBuffer(hit.Entity.Entity, out DynamicBuffer<BufferedDamage> damage))
             {
+                DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 0.2f, Color.green, 4f);
+
                 damage.Add(new()
                 {
                     Amount = projectile.ValueRO.Damage,

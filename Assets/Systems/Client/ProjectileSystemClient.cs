@@ -7,24 +7,24 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 partial struct ProjectileSystemClient : ISystem
 {
-    BufferLookup<BufferedDamage> damageQ;
+    BufferLookup<BufferedDamage> DamageQ;
+    EntityArchetype VisualEffectSpawnArchetype;
 
-    [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
-        damageQ = state.GetBufferLookup<BufferedDamage>(true);
+        DamageQ = state.GetBufferLookup<BufferedDamage>(true);
+        VisualEffectSpawnArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            typeof(VisualEffectSpawn),
+        });
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-        EntityArchetype visualEffectSpawnArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            typeof(VisualEffectSpawn),
-        });
 
-        damageQ.Update(ref state);
+        DamageQ.Update(ref state);
         var map = QuadrantSystem.GetMap(ref state);
 
         foreach (var (transform, projectile, entity) in
@@ -48,11 +48,11 @@ partial struct ProjectileSystemClient : ISystem
             if (!QuadrantRayCast.RayCast(map, ray, out var hit))
             { continue; }
 
-            if (damageQ.HasBuffer(hit.Entity.Entity))
+            if (DamageQ.HasBuffer(hit.Entity.Entity))
             {
                 if (projectile.ValueRO.ImpactEffect != -1)
                 {
-                    Entity visualEffectSpawn = commandBuffer.CreateEntity(visualEffectSpawnArchetype);
+                    Entity visualEffectSpawn = commandBuffer.CreateEntity(VisualEffectSpawnArchetype);
                     commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
                     {
                         Position = ray.GetPoint(hit.Distance),

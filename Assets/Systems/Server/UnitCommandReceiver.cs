@@ -31,7 +31,7 @@ public partial struct UnitCommandReceiver : ISystem
 
             if (sourceTeam == -1)
             {
-                Debug.LogError("Invalid team");
+                Debug.LogError("[Server] Invalid team");
                 continue;
             }
 
@@ -43,7 +43,7 @@ public partial struct UnitCommandReceiver : ISystem
 
                 if (team.ValueRO.Team != sourceTeam)
                 {
-                    Debug.LogError(string.Format("Can't send commands to units in other team. Source: {0} Target: {1}", sourceTeam, team.ValueRO.Team));
+                    Debug.LogError(string.Format("[Server] Can't send commands to units in other team. Source: {0} Target: {1}", sourceTeam, team.ValueRO.Team));
                     break;
                 }
 
@@ -70,7 +70,7 @@ public partial struct UnitCommandReceiver : ISystem
                         if (processor.ValueRW.CommandQueue.Length >= processor.ValueRW.CommandQueue.Capacity)
                         {
                             processor.ValueRW.CommandQueue.RemoveAt(0);
-                            Debug.LogWarning("Too much commands");
+                            Debug.LogWarning("[Server] Too much commands");
                         }
                         processor.ValueRW.CommandQueue.Add(new UnitCommandRequest(command.ValueRO.CommandId, (ushort)dataLength, data));
                         break;

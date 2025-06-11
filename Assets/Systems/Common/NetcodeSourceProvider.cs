@@ -102,8 +102,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
                     progress.Report((1, 1));
                     try
                     {
-                        MemoryStream data = new(task.GetAwaiter().GetResult().File.Data);
-                        result.SetResult(data);
+                        result.SetResult(new MemoryStream(task.GetAwaiter().GetResult().File.Data));
                         if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source \"{fileId}\" downloaded ...");
                         // if (source.Status == CompilationStatus.Secuedued &&
                         //     source.CompileSecuedued != 1f)

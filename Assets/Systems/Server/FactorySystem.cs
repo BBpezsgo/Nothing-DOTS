@@ -43,7 +43,7 @@ public partial struct FactorySystem : ISystem
 
             if (playerE == Entity.Null)
             {
-                Debug.LogError(string.Format("Failed to queue unit: requested by {0} but aint have a team", networkId.ValueRO));
+                Debug.LogError(string.Format("[Server] Failed to queue unit: requested by {0} but aint have a team", networkId.ValueRO));
                 continue;
             }
 
@@ -67,7 +67,7 @@ public partial struct FactorySystem : ISystem
 
                 if (unit.Prefab == Entity.Null)
                 {
-                    Debug.LogWarning($"Unit \"{command.ValueRO.Unit}\" not found in the database");
+                    Debug.LogWarning($"[Server] Unit \"{command.ValueRO.Unit}\" not found in the database");
                     break;
                 }
 
@@ -83,14 +83,14 @@ public partial struct FactorySystem : ISystem
 
                     if (!can)
                     {
-                        Debug.LogWarning($"Can't queue unit \"{unit.Name}\": not researched");
+                        Debug.LogWarning($"[Server] Can't queue unit \"{unit.Name}\": not researched");
                         break;
                     }
                 }
 
                 if (player.Resources < unit.RequiredResources)
                 {
-                    Debug.LogWarning($"Can't queue unit \"{unit.Name}\": not enought resources ({player.Resources} < {unit.RequiredResources})");
+                    Debug.LogWarning($"[Server] Can't queue unit \"{unit.Name}\": not enought resources ({player.Resources} < {unit.RequiredResources})");
                     break;
                 }
 

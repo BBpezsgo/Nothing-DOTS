@@ -229,6 +229,10 @@ public class SetupManager : Singleton<SetupManager>
                     {
                         SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
                     });
+                    world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+                    {
+                        Team = Team,
+                    });
 
                     if (++i >= GeneratedCount) break;
                 }
@@ -258,8 +262,8 @@ public class SetupManager : Singleton<SetupManager>
             float columns = math.sqrt(GeneratedCount * width / height);
             float rows = GeneratedCount / columns;
 
-            float dx = width / math.max(1f, columns - 1);
-            float dy = height / math.max(1f, rows - 1);
+            float dx = math.max(0.1f, width / math.max(1f, columns - 1));
+            float dy = math.max(0.1f, height / math.max(1f, rows - 1));
 
             int i = 0;
 

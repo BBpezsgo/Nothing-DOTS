@@ -44,7 +44,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
                     case ProcessorCommand.Key:
                         if (processor.ValueRW.InputKey.Length >= processor.ValueRW.InputKey.Capacity)
                         {
-                            Debug.LogWarning("Couldn't append the key to the stdin stream");
+                            Debug.LogWarning("[Server] Couldn't append the key to the stdin stream");
                             break;
                         }
                         processor.ValueRW.InputKey.Add(unchecked((char)command.ValueRO.Data));
@@ -75,12 +75,12 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
                 if (compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
                 {
-                    if (EnableLogging) Debug.Log(string.Format("Update source file {0}", command.ValueRO.Source));
+                    if (EnableLogging) Debug.Log(string.Format("[Server] Update source file {0}", command.ValueRO.Source));
                     source.LatestVersion++;
                 }
                 else
                 {
-                    if (EnableLogging) Debug.Log(string.Format("Creating new source file {0}", command.ValueRO.Source));
+                    if (EnableLogging) Debug.Log(string.Format("[Server] Creating new source file {0}", command.ValueRO.Source));
                     compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);
                 }
 
@@ -89,7 +89,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
         }
 
         foreach (var (processor, commandDefinitions, instructions, generatedFunctions) in
-                    SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>, DynamicBuffer<BufferedInstruction>, DynamicBuffer<BufferedGeneratedFunction>>())
+            SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>, DynamicBuffer<BufferedInstruction>, DynamicBuffer<BufferedGeneratedFunction>>())
         {
             if (processor.ValueRO.SourceFile == default)
             {
@@ -99,7 +99,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
             if (!compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
             {
-                if (EnableLogging) Debug.Log(string.Format("Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
+                if (EnableLogging) Debug.Log(string.Format("[Server] Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
                 compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);
                 instructions.Clear();
                 continue;

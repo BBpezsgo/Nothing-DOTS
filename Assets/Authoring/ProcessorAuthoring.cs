@@ -12,6 +12,8 @@ public class ProcessorAuthoring : MonoBehaviour
     [SerializeField] GameObject? USBLED = default;
     [SerializeField] Transform? USBPosition = default;
 
+    [SerializeField] string? Script = default;
+
     class Baker : Baker<ProcessorAuthoring>
     {
         public override void Bake(ProcessorAuthoring authoring)
@@ -52,6 +54,9 @@ public class ProcessorAuthoring : MonoBehaviour
                     authoring.USBPosition == null
                     ? quaternion.identity
                     : authoring.USBPosition.rotation,
+#if UNITY_EDITOR
+                SourceFile = authoring.Script is null ? default : new FileId(authoring.Script, NetcodeEndPoint.Server),
+#endif
             });
             AddBuffer<BufferedInstruction>(entity);
             AddBuffer<BufferedGeneratedFunction>(entity);

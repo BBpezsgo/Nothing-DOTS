@@ -20,8 +20,6 @@ partial class CompilerSystemClient : SystemBase
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            // Debug.Log($"Received compilation status for {command.ValueRO.FileName}");
-
             CompiledSources[command.ValueRO.FileName] = CompiledSource.FromRpc(command.ValueRO);
         }
 
@@ -50,7 +48,7 @@ partial class CompilerSystemClient : SystemBase
 
             if (!CompiledSources.TryGetValue(command.ValueRO.Source, out CompiledSource source))
             {
-                Debug.LogWarning($"Received analytics for unknown compiled source \"{command.ValueRO.FileName}\"");
+                Debug.LogWarning(string.Format("[Client] Received diagnostics for unknown compiled source \"{0}\"", command.ValueRO.FileName));
                 continue;
             }
 

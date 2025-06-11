@@ -311,6 +311,13 @@ public class SelectionManager : Singleton<SelectionManager>
                 .Setup(DiskDriveManager.Instance, selectableHit);
             return;
         }
+
+        if (entityManager.HasComponent<Building>(selectableHit))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, selectableHit);
+            return;
+        }
     }
 
     void ShowUnitCommandsUI()

@@ -256,7 +256,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
                 if (uiElements[i].Value.Id == 0)
                 {
-                    // Debug.Log(string.Format("{0} destroyed", uiElements[i]));
+                    // Debug.Log(string.Format("[Server] {0} destroyed", uiElements[i]));
 
                     Entity rpc = commandBuffer.CreateEntity();
                     commandBuffer.AddComponent<SendRpcCommandRequest>(rpc, new()
@@ -271,7 +271,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 }
                 else
                 {
-                    // Debug.Log(string.Format("{0} updated, {1}", uiElements[i], uiElements[i].Value.Label.Text.AsString()));
+                    // Debug.Log(string.Format("[Server] {0} updated, {1}", uiElements[i], uiElements[i].Value.Label.Text.AsString()));
 
                     Entity rpc = commandBuffer.CreateEntity();
                     commandBuffer.AddComponent<SendRpcCommandRequest>(rpc, new()

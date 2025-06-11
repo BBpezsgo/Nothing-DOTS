@@ -37,7 +37,7 @@ public partial struct FacilitySystem : ISystem
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogError(string.Format("Failed to start research: requested by {0} but aint have a team", networkId.ValueRO));
+                Debug.LogError(string.Format("[Server] Failed to start research: requested by {0} but aint have a team", networkId.ValueRO));
                 return;
             }
 
@@ -83,13 +83,13 @@ public partial struct FacilitySystem : ISystem
 
                 if (research.Name.IsEmpty)
                 {
-                    Debug.LogWarning($"Research \"{command.ValueRO.ResearchName}\" not found in the database");
+                    Debug.LogWarning($"[Server] Research \"{command.ValueRO.ResearchName}\" not found in the database");
                     break;
                 }
 
                 if (!canResearch)
                 {
-                    Debug.LogWarning($"Research \"{command.ValueRO.ResearchName}\" cannot be started");
+                    Debug.LogWarning($"[Server] Research \"{command.ValueRO.ResearchName}\" cannot be started");
                     break;
                 }
 
@@ -105,7 +105,7 @@ public partial struct FacilitySystem : ISystem
 
                 if (alreadyHas)
                 {
-                    Debug.LogWarning($"Research \"{research.Name}\" already acquired");
+                    Debug.LogWarning($"[Server] Research \"{research.Name}\" already acquired");
                     break;
                 }
 
@@ -140,7 +140,7 @@ public partial struct FacilitySystem : ISystem
                     }
                 }
 
-                Debug.LogError(string.Format("Research with hash \"{0}\" not found", hash.Hash));
+                Debug.LogError(string.Format("[Server] Research with hash \"{0}\" not found", hash.Hash));
                 continue;
                 good:;
             }
@@ -195,7 +195,7 @@ public partial struct FacilitySystem : ISystem
 
             if (playerEntity == Entity.Null)
             {
-                Debug.LogError(string.Format("Failed to finish research: No player found im team {0}", unitTeam.ValueRO.Team));
+                Debug.LogError(string.Format("[Server] Failed to finish research: No player found im team {0}", unitTeam.ValueRO.Team));
                 return;
             }
 

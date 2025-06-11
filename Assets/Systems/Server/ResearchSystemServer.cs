@@ -31,7 +31,7 @@ public partial struct ResearchSystemServer : ISystem
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogError(string.Format("Player with network id {0} aint have a team", networkId));
+                Debug.LogError(string.Format("[Server] Player with network id {0} aint have a team", networkId));
                 continue;
             }
 

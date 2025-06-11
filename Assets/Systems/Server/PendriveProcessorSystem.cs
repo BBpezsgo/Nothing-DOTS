@@ -60,7 +60,7 @@ partial struct PendriveProcessorSystem : ISystem
                     }
                     else
                     {
-                        Debug.LogError(string.Format("Pendrive entity {0} does not exists", processor.ValueRO.PluggedPendrive.Entity));
+                        Debug.LogError(string.Format("[Server] Pendrive entity {0} does not exists", processor.ValueRO.PluggedPendrive.Entity));
                     }
                 }
             }

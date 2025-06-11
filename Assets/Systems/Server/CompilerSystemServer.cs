@@ -147,11 +147,12 @@ public partial class CompilerSystemServer : SystemBase
 
                     if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                     SendCompilationStatus(source, commandBuffer);
+                    SendDiagnostics(source, commandBuffer);
                     break;
                 case CompilationStatus.Done:
                     if (source.CompiledVersion < source.LatestVersion)
                     {
-                        Debug.Log($"[{nameof(CompilerSystemServer)}]: Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
+                        Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
                         source.Status = CompilationStatus.Secuedued;
                         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                         SendCompilationStatus(source, commandBuffer);
@@ -189,14 +190,9 @@ public partial class CompilerSystemServer : SystemBase
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
-            if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
+            if (EnableLogging) Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
-        EntityArchetype analysticsRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            typeof(CompilationAnalysticsRpc),
-            typeof(SendRpcCommandRequest),
-        });
         EntityArchetype substatusRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
             typeof(CompilerSubstatusRpc),
@@ -218,6 +214,15 @@ public partial class CompilerSystemServer : SystemBase
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
         }
+    }
+
+    void SendDiagnostics(CompiledSource source, EntityCommandBuffer commandBuffer)
+    {
+        EntityArchetype analysticsRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            typeof(CompilationAnalysticsRpc),
+            typeof(SendRpcCommandRequest),
+        });
 
         // .ToArray() because the collection can be modified somewhere idk
         foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
@@ -269,7 +274,7 @@ public partial class CompilerSystemServer : SystemBase
         (FileId file, bool force, CompiledSource source) = args;
 
         Uri sourceUri = file.ToUri();
-        if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Compilation started for \"{sourceUri}\" ...");
+        if (EnableLogging) Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Compilation started for \"{sourceUri}\" ...");
 
         source.IsSuccess = false;
         source.Diagnostics = new DiagnosticsCollection();

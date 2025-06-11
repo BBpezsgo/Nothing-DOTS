@@ -349,6 +349,43 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             const string SpinnerChars = "-\\|/";
             char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
 
+            void SyncDiagnosticItems(VisualElement container, IEnumerable<Diagnostic> diagnostics)
+            {
+                container.SyncList(
+                    diagnostics
+                        .Where(v => v.Level != DiagnosticsLevel.OptimizationNotice)
+                        .ToArray(),
+                    DiagnosticsItem,
+                    (item, element, recycled) =>
+                    {
+                        element.userData = item;
+                        VisualElement icon = element.Q<VisualElement>("diagnostic-icon");
+                        Label label = element.Q<Label>("diagnostic-label");
+                        Foldout foldout = element.Q<Foldout>("diagnostic-foldout");
+
+                        icon.style.backgroundImage = item.Level switch
+                        {
+                            DiagnosticsLevel.Error => new StyleBackground(DiagnosticsErrorIcon),
+                            DiagnosticsLevel.Warning => new StyleBackground(DiagnosticsWarningIcon),
+                            DiagnosticsLevel.Information => new StyleBackground(DiagnosticsInfoIcon),
+                            DiagnosticsLevel.Hint => new StyleBackground(DiagnosticsHintIcon),
+                            DiagnosticsLevel.OptimizationNotice => new StyleBackground(DiagnosticsOptimizationNoticeIcon),
+                            _ => new StyleBackground(DiagnosticsInfoIcon),
+                        };
+
+                        label.text = item.Message;
+                        if (item.SubErrors.Length > 0)
+                        {
+                            SyncDiagnosticItems(foldout, item.SubErrors);
+                        }
+                        else
+                        {
+                            foldout.style.display = DisplayStyle.None;
+                        }
+                    });
+            }
+            SyncDiagnosticItems(ui_scrollDiagnostics!, source.Diagnostics.Diagnostics);
+
             if (source.Status != CompilationStatus.Done || !source.IsSuccess)
             {
                 switch (source.Status)
@@ -557,36 +594,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                             SetProgressStatus("error");
                             _terminal = null;
 
-                            void SyncDiagnosticItems(VisualElement container, IEnumerable<Diagnostic> diagnostics)
-                            {
-                                container.SyncList(
-                                    diagnostics.ToArray(),
-                                    DiagnosticsItem,
-                                    (item, element, recycled) =>
-                                    {
-                                        element.userData = item;
-                                        VisualElement icon = element.Q<VisualElement>("diagnostic-icon");
-                                        Label label = element.Q<Label>("diagnostic-label");
-                                        Foldout foldout = element.Q<Foldout>("diagnostic-foldout");
-
-                                        icon.style.backgroundImage = item.Level switch
-                                        {
-                                            DiagnosticsLevel.Error => new StyleBackground(DiagnosticsErrorIcon),
-                                            DiagnosticsLevel.Warning => new StyleBackground(DiagnosticsWarningIcon),
-                                            DiagnosticsLevel.Information => new StyleBackground(DiagnosticsInfoIcon),
-                                            DiagnosticsLevel.Hint => new StyleBackground(DiagnosticsHintIcon),
-                                            DiagnosticsLevel.OptimizationNotice => new StyleBackground(DiagnosticsOptimizationNoticeIcon),
-                                            _ => new StyleBackground(DiagnosticsInfoIcon),
-                                        };
-
-                                        label.text = item.Message;
-
-                                        SyncDiagnosticItems(foldout, item.SubErrors);
-                                    });
-                            }
-
                             _requestedTabSwitch = Tab.Diagnostics;
-                            SyncDiagnosticItems(ui_scrollDiagnostics!, source.Diagnostics.Diagnostics);
 
                             /*
                             foreach (Diagnostic item in source.Diagnostics.Diagnostics)

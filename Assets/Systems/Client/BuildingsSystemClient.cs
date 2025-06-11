@@ -69,6 +69,6 @@ public partial struct BuildingsSystemClient : ISystem
             typeof(BuildingsRequestRpc),
         });
 
-        Debug.Log("Request avaliable buildings ...");
+        Debug.Log("[Client] Request avaliable buildings ...");
     }
 }

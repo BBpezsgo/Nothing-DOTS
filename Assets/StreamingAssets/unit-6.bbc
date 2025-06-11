@@ -178,63 +178,6 @@ void RemoveUnitAt(List<Unit>* units, float2 unit)
     }
 }
 
-void PerformRadar()
-{
-    f32 radarDistance = radar();
-    if (radarDistance > 0f)
-    {
-        prevRadarDistance = radarDistance;
-
-        float2 point;
-        point.x = Cos(Radar.RadarDirection);
-        point.y = Sin(Radar.RadarDirection);
-        point.x *= radarDistance;
-        point.y *= radarDistance;
-        ToGlobal(&point);
-
-        Unit enemy;
-        enemy.Recorded = time();
-        enemy.Expires = time() + 12f;
-        enemy.Position = point;
-        enemy.PositionRecords = 1;
-        SendVerificationRequest(&enemy);
-        UpdateUnit(&enemies, enemy);
-    }
-    if (radarDistance == 0f)
-    {
-        prevRadarDistance = 0f;
-    }
-    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
-}
-
-void TrySendVerificationRequest(Unit* unit)
-{
-    if (unit.VerificationSentAt + 1f < time())
-    {
-        SendVerificationRequest(unit);
-    }
-}
-
-void SendVerificationRequest(Unit* unit)
-{
-    float2 point = unit.Position;
-
-    VerificationRequestPacket packet = new VerificationRequestPacket;
-    packet.Header = (u8)REQUEST_HEADER;
-    packet.Position = point;
-
-    // ToLocal(&point);
-    // float distance = _Sqrt(point.x * point.x + point.y * point.y);
-    // Normalise(&point);
-    // float angle = Atan2(point.y, point.x);
-
-    // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
-    send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
-    debug(point, BLUE);
-
-    unit.VerificationSentAt = time();
-}
-
 struct Unit
 {
     float2 Position;
@@ -244,7 +187,6 @@ struct Unit
     u8 PositionRecords;
 }
 
-f32 prevRadarDistance = 0f;
 float2 targetedPosition = new float2;
 float2 currentTarget = new float2;
 List<Unit> enemies = new List<Unit>(4);
@@ -259,8 +201,6 @@ while (1)
 {
     Receive();
 
-    PerformRadar();
-
     currentTarget = new float2;
     shouldShoot = false;
 
@@ -272,10 +212,27 @@ while (1)
         }
         else
         {
-            TrySendVerificationRequest(&(&enemies).Raw()[i]);
             float2 p = (&enemies).Raw()[i].Position;
             ToLocal(&p);
-            if (time() >= (&enemies).Raw()[i].Recorded + 4f)
+
+            float2 norm = Normalised(p);
+            Radar.RadarDirection = Atan2(norm.y, norm.x);
+            f32 radarDistance = radar();
+            bool destroyed = radarDistance <= 0f;
+            if (!destroyed)
+            {
+                float2 p2 = norm * radarDistance;
+                if (DistanceSqr(p, p2) > DistanceThresholdSq)
+                {
+                    destroyed = true;
+                }
+            }
+
+            if (destroyed)
+            {
+                (&enemies).Remove(i);
+            }
+            elseif (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
                 ldebug(p, RED);
                 currentTarget = p;
@@ -297,7 +254,6 @@ while (1)
     {
         if (time() >= (&allies).Raw()[i].Expires)
         {
-            TrySendVerificationRequest(&(&allies).Raw()[i]);
             (&allies).Remove(i);
         }
         else

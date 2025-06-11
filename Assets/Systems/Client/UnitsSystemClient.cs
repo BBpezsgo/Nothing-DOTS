@@ -69,6 +69,6 @@ public partial struct UnitsSystemClient : ISystem
             typeof(UnitsRequestRpc),
         });
 
-        Debug.Log("Request avaliable units ...");
+        Debug.Log("[Client] Request avaliable units ...");
     }
 }

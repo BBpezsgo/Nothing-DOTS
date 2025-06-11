@@ -82,6 +82,6 @@ public partial struct ResearchSystemClient : ISystem
             typeof(ResearchesRequestRpc),
         });
 
-        Debug.Log("Request avaliable researches ...");
+        Debug.Log("[Client] Request avaliable researches ...");
     }
 }
