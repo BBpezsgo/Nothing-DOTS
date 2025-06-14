@@ -54,9 +54,10 @@ public partial struct UnitCommandReceiver : ISystem
                         Unity.Collections.FixedBytes30 data = default;
                         nint dataPtr = (nint)(&data);
                         int dataLength = 0;
-                        for (int j = 0; j < commandDefinitions[i].Parameters.Length; j++)
+                        for (int j = 0; j < commandDefinitions[i].ParameterCount; j++)
                         {
-                            switch (commandDefinitions[i].Parameters[j])
+                            BufferedUnitCommandDefinition commandDefinition = commandDefinitions[i];
+                            switch (((UnitCommandParameter*)&commandDefinition.Parameters)[j])
                             {
                                 case UnitCommandParameter.Position:
                                     {
