@@ -4,7 +4,7 @@ public struct CombatTurret : IComponentData
 {
     public Entity Turret;
     public Entity Cannon;
-    public Entity ProjectilePrefab;
+    public int Projectile;
     public Entity ShootPosition;
     public int ShootEffect;
 

@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e947560a50b24943e9c35b4da7fdb8a7, type: 3}
+  m_Name: TankProjectile
+  m_EditorClassIdentifier: 
+  Prefab: {fileID: 2786101604496490284, guid: 43271472464ab435ea8449499228d966, type: 3}
+  Damage: 2
+  Speed: 50
+  ImpactEffect: {fileID: 8926484042661614526, guid: bdc4dd8447cc02411aeac8c3f652fb3f,
+    type: 3}

@@ -55,15 +55,7 @@ partial struct CombatTurretProcessorSystem : ISystem
 
             if (mapped->CombatTurret.InputShoot != 0)
             {
-                int projectileIndex = -1;
-                for (int i = 0; i < projectiles.Length; i++)
-                {
-                    if (projectiles[i].Prefab == turret.ValueRO.ProjectilePrefab)
-                    {
-                        projectileIndex = i;
-                        break;
-                    }
-                }
+                int projectileIndex = turret.ValueRO.Projectile;
 
                 if (projectileIndex == -1) continue;
 
@@ -73,7 +65,7 @@ partial struct CombatTurretProcessorSystem : ISystem
 
                 float3 velocity = math.normalize(shootPosition.ValueRO.Forward) * projectiles[projectileIndex].Speed;
 
-                Entity instance = commandBuffer.Instantiate(turret.ValueRO.ProjectilePrefab);
+                Entity instance = commandBuffer.Instantiate(projectiles[turret.ValueRO.Projectile].Prefab);
                 commandBuffer.SetComponent(instance, LocalTransform.FromPosition(SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position));
                 commandBuffer.SetComponent<Projectile>(instance, new()
                 {

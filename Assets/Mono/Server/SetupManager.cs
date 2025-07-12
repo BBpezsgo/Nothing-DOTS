@@ -38,8 +38,6 @@ public class SetupManager : Singleton<SetupManager>
     [SerializeField] bool Deterministic = default;
     [ShowIf(nameof(Deterministic)), SerializeField] int RandomSeed = default;
 
-    System.Random? Random;
-
     const float UnitRadius = 1.45f;
     const float UnitArea = UnitRadius * UnitRadius * MathF.PI;
     const float PositionY = 0f;
@@ -52,8 +50,6 @@ public class SetupManager : Singleton<SetupManager>
 
     public void Setup()
     {
-        Random = Deterministic ? new System.Random(RandomSeed) : null;
-
         World world = ConnectionManager.ServerOrDefaultWorld;
 
         using EntityQuery unitDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(UnitDatabase));
@@ -95,14 +91,19 @@ public class SetupManager : Singleton<SetupManager>
 
     IEnumerator SpawnRandomUnits(DynamicBuffer<BufferedUnit> units, World world)
     {
+        System.Random random = Deterministic ? new System.Random(RandomSeed) : RandomManaged.Shared;
+
         if (RandomUnitPrefab == null)
         { yield break; }
+
+        Vector2 start = Start;
+        Vector2 end = End;
 
         if (Density != 0f)
         {
             float width = MathF.Sqrt(UnitArea * Density * GeneratedCount);
-            Start = new Vector2(width, width) * -0.5f;
-            End = new Vector2(width, width) * 0.5f;
+            start = new Vector2(width, width) * -0.5f;
+            end = new Vector2(width, width) * 0.5f;
         }
 
         BufferedUnit prefab = units.FirstOrDefault(static (v, c) => v.Name == c, RandomUnitPrefab.name);
@@ -115,8 +116,57 @@ public class SetupManager : Singleton<SetupManager>
 
         yield return new WaitForSecondsRealtime(0.1f);
 
-        List<float2> spawned = new(GeneratedCount);
         int c = 0;
+
+        foreach (var generated in GetPositions())
+        {
+            if (c++ > 50)
+            {
+                yield return null;
+                c = 0;
+            }
+
+
+            Entity newUnit = world.EntityManager.Instantiate(prefab.Prefab);
+            if (RandomRotation)
+            {
+                world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
+                    new float3(generated.x, PositionY, generated.y),
+                    quaternion.EulerXYZ(0f, random.Float(0f, math.TAU), 0f)
+                ));
+            }
+            else
+            {
+                world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
+                    new float3(generated.x, PositionY, generated.y)
+                ));
+            }
+            world.EntityManager.SetComponentData(newUnit, new Processor()
+            {
+                SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
+            });
+            world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+            {
+                Team = Team,
+            });
+        }
+    }
+
+    IEnumerable<Vector2> GetPositions()
+    {
+        Vector2 start = Start;
+        Vector2 end = End;
+
+        if (Density != 0f)
+        {
+            float width = MathF.Sqrt(UnitArea * Density * GeneratedCount);
+            start = new Vector2(width, width) * -0.5f;
+            end = new Vector2(width, width) * 0.5f;
+        }
+
+        System.Random random = Deterministic ? new System.Random(RandomSeed) : RandomManaged.Shared;
+
+        List<float2> spawned = new(GeneratedCount);
 
         bool IsOccupied(float2 position)
         {
@@ -140,60 +190,33 @@ public class SetupManager : Singleton<SetupManager>
         {
             for (int i = 0; i < GeneratedCount; i++)
             {
-                float2 generated;
-                bool failed = true;
                 for (int j = 0; j < 50; j++)
                 {
-                    if (c++ > 50)
-                    {
-                        yield return null;
-                        c = 0;
-                    }
-                    generated = new(
-                        (Random ?? RandomManaged.Shared).Float(Start.x, End.x),
-                        (Random ?? RandomManaged.Shared).Float(Start.y, End.y)
+                    float2 generated = new(
+                        random.Float(start.x, end.x),
+                        random.Float(start.y, end.y)
                     );
+
                     if (IsOccupied(generated)) continue;
+
                     spawned.Add(generated);
-                    Entity newUnit = world.EntityManager.Instantiate(prefab.Prefab);
-                    if (RandomRotation)
-                    {
-                        world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
-                            new float3(generated.x, PositionY, generated.y),
-                            quaternion.EulerXYZ(0f, (Random ?? RandomManaged.Shared).Float(0f, math.TAU), 0f)
-                        ));
-                    }
-                    else
-                    {
-                        world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
-                            new float3(generated.x, PositionY, generated.y)
-                        ));
-                    }
-                    world.EntityManager.SetComponentData(newUnit, new Processor()
-                    {
-                        SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
-                    });
-                    world.EntityManager.SetComponentData(newUnit, new UnitTeam()
-                    {
-                        Team = Team,
-                    });
-                    failed = false;
-                    break;
+                    yield return generated;
+
+                    goto ok;
                 }
 
-                if (failed)
-                {
-                    Debug.LogWarning($"Only spawned {i} but had to {GeneratedCount}");
-                    yield break;
-                }
+                Debug.LogWarning($"Only spawned {i} but had to {GeneratedCount}");
+                yield break;
+
+            ok:;
             }
 
             Debug.Log($"Spawned {GeneratedCount}");
         }
         else if (GeneratedCount > 0)
         {
-            float width = End.x - Start.x;
-            float height = End.y - Start.y;
+            float width = end.x - start.x;
+            float height = end.y - start.y;
 
             float columns = math.sqrt(GeneratedCount * width / height);
             float rows = GeneratedCount / columns;
@@ -202,79 +225,30 @@ public class SetupManager : Singleton<SetupManager>
             float dy = math.max(0.1f, height / math.max(1f, rows - 1));
             int i = 0;
 
-            for (float x = Start.x; x <= End.x; x += dx)
+            for (float x = start.x; x <= end.x; x += dx)
             {
-                for (float y = Start.y; y <= End.y; y += dy)
+                for (float y = start.y; y <= end.y; y += dy)
                 {
                     float2 generated = new(x, y);
 
                     if (IsOccupied(generated)) continue;
 
                     spawned.Add(generated);
-                    Entity newUnit = world.EntityManager.Instantiate(prefab.Prefab);
-                    if (RandomRotation)
-                    {
-                        world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
-                            new float3(generated.x, PositionY, generated.y),
-                            quaternion.EulerXYZ(0f, (Random ?? RandomManaged.Shared).Float(0f, math.TAU), 0f)
-                        ));
-                    }
-                    else
-                    {
-                        world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
-                            new float3(generated.x, PositionY, generated.y)
-                        ));
-                    }
-                    world.EntityManager.SetComponentData(newUnit, new Processor()
-                    {
-                        SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
-                    });
-                    world.EntityManager.SetComponentData(newUnit, new UnitTeam()
-                    {
-                        Team = Team,
-                    });
+                    yield return generated;
 
                     if (++i >= GeneratedCount) break;
                 }
             }
-
-            Debug.Log($"Spawned {i}");
         }
     }
 
     void OnDrawGizmosSelected()
     {
-        Vector2 Start = this.Start;
-        Vector2 End = this.End;
-
-        if (Density != 0f)
+        if (!RandomPosition || Deterministic)
         {
-            float width = MathF.Sqrt(UnitArea * Density * GeneratedCount);
-            Start = new Vector2(width, width) * -0.5f;
-            End = new Vector2(width, width) * 0.5f;
-        }
-
-        if (!RandomPosition)
-        {
-            float width = End.x - Start.x;
-            float height = End.y - Start.y;
-
-            float columns = math.sqrt(GeneratedCount * width / height);
-            float rows = GeneratedCount / columns;
-
-            float dx = math.max(0.1f, width / math.max(1f, columns - 1));
-            float dy = math.max(0.1f, height / math.max(1f, rows - 1));
-
-            int i = 0;
-
-            for (float x = Start.x; x <= End.x; x += dx)
+            foreach (var position in GetPositions())
             {
-                for (float y = Start.y; y <= End.y; y += dy)
-                {
-                    float2 generated = new(x, y);
-                    Gizmos.DrawSphere(new Vector3(generated.x, 0.5f, generated.y), 1f);
-                    if (++i >= GeneratedCount) break;
-                }
+                Gizmos.DrawSphere(new Vector3(position.x, 0.5f, position.y), UnitRadius);
             }
         }
     }

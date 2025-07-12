@@ -1,14 +1,15 @@
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.VFX;
 
 [AddComponentMenu("Authoring/Combat Turret")]
 public class CombatTurretAuthoring : MonoBehaviour
 {
     [SerializeField] Transform? Turret = default;
     [SerializeField] Transform? Cannon = default;
-    [SerializeField] GameObject? ProjectilePrefab = default;
+    [SerializeField] ProjectileStats? Projectile = default;
     [SerializeField] Transform? ShootPosition = default;
-    [SerializeField] int ShootEffect = default;
+    [SerializeField] VisualEffectAsset? ShootEffect = default;
 
     [SerializeField, NaughtyAttributes.MinMaxSlider(-90f, 90f)] Vector2 AngleConstraint = new(-90f, 90f);
 
@@ -34,15 +35,12 @@ public class CombatTurretAuthoring : MonoBehaviour
                     authoring.Cannon == null
                     ? Entity.Null
                     : GetEntity(authoring.Cannon, TransformUsageFlags.Dynamic),
-                ProjectilePrefab =
-                    authoring.ProjectilePrefab == null
-                    ? Entity.Null
-                    : GetEntity(authoring.ProjectilePrefab, TransformUsageFlags.Dynamic),
+                Projectile = FindFirstObjectByType<ProjectileDatabaseAuthoring>().Find(authoring.Projectile),
                 ShootPosition =
                     authoring.ShootPosition == null
                     ? Entity.Null
                     : GetEntity(authoring.ShootPosition, TransformUsageFlags.Dynamic),
-                ShootEffect = authoring.ShootEffect,
+                ShootEffect = FindFirstObjectByType<VisualEffectDatabaseAuthoring>().Find(authoring.ShootEffect),
             });
         }
     }
