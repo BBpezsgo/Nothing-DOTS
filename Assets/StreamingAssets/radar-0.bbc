@@ -54,7 +54,7 @@ void Receive()
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
             RemoveUnitAt(&enemies, unit.Position);
-            UpdateUnit(&allies, unit);
+            SetUnit(&allies, unit);
         }
         else if (v[0] == (u8)ENEMY_HEADER &&
                  receivedLength == sizeof(EnemyNotificationPacket))
@@ -67,7 +67,7 @@ void Receive()
             unit.Expires = time() + 5f;
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
-            UpdateUnit(&enemies, unit);
+            SetUnit(&enemies, unit);
         }
         else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
@@ -81,83 +81,7 @@ void Receive()
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
             RemoveUnitAt(&enemies, unit.Position);
-            UpdateUnit(&allies, unit);
-        }
-    }
-}
-
-int UnitIndexAt(List<Unit>* units, float2 position)
-{
-    for (int i = 0; i < units.Length(); i++)
-    {
-        if (DistanceSqr(units.Raw()[i].Position, position) < DistanceThresholdSq)
-        { return i; }
-    }
-    return -1;
-}
-
-int UnitIndexAt(List<Unit>* units, float2 position, float* distanceSqr)
-{
-    for (int i = 0; i < units.Length(); i++)
-    {
-        *distanceSqr = DistanceSqr(units.Raw()[i].Position, position);
-        if ((*distanceSqr) < DistanceThresholdSq)
-        { return i; }
-    }
-    return -1;
-}
-
-void UpdateUnit(List<Unit>* units, Unit unit)
-{
-    float distanceSqr = 0f;
-    int existing = UnitIndexAt(units, unit.Position, &distanceSqr);
-    if (existing == -1)
-    {
-        if (units.Length() >= 4)
-        {
-            PrintLine("Too many units");
-            units.Raw()[0] = unit;
-        }
-        else
-        {
-            units.Add(unit);
-        }
-    }
-    elseif (distanceSqr < 2f * 2f)
-    {
-        if (units.Raw()[existing].PositionRecords > 20)
-        {
-            unit.Position.x = unit.Position.x;
-            unit.Position.y = unit.Position.y;
-            unit.PositionRecords = 1;
-            units[existing] = unit;
-        }
-        else
-        {
-            unit.Position.x = (units.Raw()[existing].Position.x * unit.PositionRecords + unit.Position.x) / (float)(unit.PositionRecords + 1);
-            unit.Position.y = (units.Raw()[existing].Position.y * unit.PositionRecords + unit.Position.y) / (float)(unit.PositionRecords + 1);
-            unit.PositionRecords++;
-            units[existing] = unit;
-        }
-    }
-    else
-    {
-        unit.Position.x = unit.Position.x;
-        unit.Position.y = unit.Position.y;
-        units[existing] = unit;
-    }
-}
-
-void RemoveUnitAt(List<Unit>* units, float2 unit)
-{
-    u8 isNotDone = true;
-    for (int i = 0; isNotDone && i < units.Length(); i++)
-    {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
-        if (distanceSqr < DistanceThresholdSq)
-        {
-            isNotDone = false;
-            units.Remove(i);
+            SetUnit(&allies, unit);
         }
     }
 }
@@ -191,47 +115,11 @@ void PerformRadar()
     Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
 }
 
-void TrySendVerificationRequest(Unit* unit)
-{
-    if (unit.VerificationSentAt + 1f < time())
-    {
-        SendVerificationRequest(unit);
-    }
-}
-
-void SendVerificationRequest(Unit* unit)
-{
-    float2 point = unit.Position;
-
-    VerificationRequestPacket packet = new VerificationRequestPacket;
-    packet.Header = (u8)REQUEST_HEADER;
-    packet.Position = point;
-
-    // ToLocal(&point);
-    // float distance = _Sqrt(point.x * point.x + point.y * point.y);
-    // Normalise(&point);
-    // float angle = Atan2(point.y, point.x);
-
-    // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
-    send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
-    debug(point, BLUE);
-
-    unit.VerificationSentAt = time();
-}
-
-struct Unit
-{
-    float2 Position;
-    f32 Recorded;
-    f32 Expires;
-    f32 VerificationSentAt;
-    u8 PositionRecords;
-    f32 NotifiedAt;
-}
-
 f32 prevRadarDistance = 0f;
 List<Unit> enemies = new List<Unit>(4);
 List<Unit> allies = new List<Unit>(4);
+int i = 0;
+int j = 0;
 
 PrintLine("Started ...");
 
@@ -241,11 +129,12 @@ while (1)
 
     PerformRadar();
 
-    for (int i = (&enemies).Length() - 1; i >= 0; i--)
+    if ((&enemies).Length())
     {
+        i = (i + 1) % (&enemies).Length();
         if (time() >= (&enemies).Raw()[i].Expires)
         {
-            (&enemies).Remove(i);
+            (&enemies).SwapBack(i);
         }
         else
         {
@@ -263,7 +152,7 @@ while (1)
                 }
                 ldebug(p, RED);
             }
-            else
+            elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
             {
                 ldebug(p, YELLOW);
             }
@@ -271,17 +160,17 @@ while (1)
         }
     }
 
-    for (int i = (&allies).Length() - 1; i >= 0; i--)
+    if ((&allies).Length())
     {
-        if (time() >= (&allies).Raw()[i].Expires)
+        j = (j + 1) % (&allies).Length();
+        if (time() >= (&allies).Raw()[j].Expires)
         {
-            TrySendVerificationRequest(&(&allies).Raw()[i]);
-            (&allies).Remove(i);
+            TrySendVerificationRequest(&(&allies).Raw()[j]);
+            (&allies).SwapBack(j);
         }
         else
         {
-            float2 p = (&allies).Raw()[i].Position;
-            debug(p, GREEN);
+            debug((&allies).Raw()[j].Position, GREEN);
         }
     }
 }

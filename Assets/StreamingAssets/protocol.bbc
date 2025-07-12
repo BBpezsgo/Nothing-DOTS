@@ -31,3 +31,137 @@ export struct EnemyNotificationPacket
     byte Header;
     float2 Position;
 }
+
+export struct Unit
+{
+    float2 Position;
+    f32 Recorded;
+    f32 Expires;
+    f32 VerificationSentAt;
+    u8 PositionRecords;
+    f32 NotifiedAt;
+}
+
+export void TrySendVerificationRequest(Unit* unit)
+{
+    if (unit.VerificationSentAt + 1f < time())
+    {
+        SendVerificationRequest(unit);
+    }
+}
+
+export void SendVerificationRequest(Unit* unit)
+{
+    float2 point = unit.Position;
+
+    VerificationRequestPacket packet = new VerificationRequestPacket;
+    packet.Header = (u8)REQUEST_HEADER;
+    packet.Position = point;
+
+    // ToLocal(&point);
+    // float distance = _Sqrt(point.x * point.x + point.y * point.y);
+    // Normalise(&point);
+    // float angle = Atan2(point.y, point.x);
+
+    // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
+    send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
+    debug(point, BLUE);
+
+    unit.VerificationSentAt = time();
+}
+
+export int UnitIndexAt(List<Unit>* units, float2 position)
+{
+    for (int i = 0; i < units.Length(); i++)
+    {
+        if (DistanceSqr(units.Raw()[i].Position, position) < DistanceThresholdSq)
+        { return i; }
+    }
+    return -1;
+}
+
+export int UnitIndexAt(List<Unit>* units, float2 position, float* distanceSqr)
+{
+    for (int i = 0; i < units.Length(); i++)
+    {
+        *distanceSqr = DistanceSqr(units.Raw()[i].Position, position);
+        if ((*distanceSqr) < DistanceThresholdSq)
+        { return i; }
+    }
+    return -1;
+}
+
+export void UpdateUnit(List<Unit>* units, Unit unit)
+{
+    float distanceSqr = 0f;
+    int existing = UnitIndexAt(units, unit.Position, &distanceSqr);
+    if (existing == -1)
+    {
+        if (units.Length() >= 4)
+        {
+            PrintLine("Too many units");
+        }
+        else
+        {
+            units.Add(unit);
+        }
+    }
+    elseif (distanceSqr < 2f * 2f)
+    {
+        Unit* existingUnit = &units.Raw()[existing];
+        if (existingUnit.PositionRecords >= 255)
+        {
+            unit.PositionRecords = 1;
+            units[existing] = unit;
+        }
+        else
+        {
+            unit.PositionRecords = existingUnit.PositionRecords + 1;
+            float b = (float)(int)unit.PositionRecords;
+            float a = (float)(int)existingUnit.PositionRecords / b;
+            unit.Position.x = (existingUnit.Position.x * a) + (unit.Position.x / b);
+            unit.Position.y = (existingUnit.Position.y * a) + (unit.Position.y / b);
+            units[existing] = unit;
+            debug(new float3(unit.Position.x, 0.1f, unit.Position.y), MAGENTA);
+        }
+    }
+    else
+    {
+        units[existing] = unit;
+    }
+}
+
+export void SetUnit(List<Unit>* units, Unit unit)
+{
+    int existing = UnitIndexAt(units, unit.Position);
+    if (existing == -1)
+    {
+        if (units.Length() >= 4)
+        {
+            PrintLine("Too many units");
+            units.Raw()[0] = unit;
+        }
+        else
+        {
+            units.Add(unit);
+        }
+    }
+    else
+    {
+        units[existing] = unit;
+    }
+}
+
+export void RemoveUnitAt(List<Unit>* units, float2 unit)
+{
+    u8 isNotDone = true;
+    for (int i = 0; isNotDone && i < units.Length(); i++)
+    {
+        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        if (distanceSqr < DistanceThresholdSq)
+        {
+            isNotDone = false;
+            units.Remove(i);
+        }
+    }
+}

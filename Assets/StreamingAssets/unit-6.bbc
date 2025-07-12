@@ -173,7 +173,7 @@ void RemoveUnitAt(List<Unit>* units, float2 unit)
         if (distanceSqr < DistanceThresholdSq)
         {
             isNotDone = false;
-            units.Remove(i);
+            units.SwapBack(i);
         }
     }
 }
@@ -208,7 +208,7 @@ while (1)
     {
         if (time() >= (&enemies).Raw()[i].Expires)
         {
-            (&enemies).Remove(i);
+            (&enemies).SwapBack(i);
         }
         else
         {
@@ -230,7 +230,7 @@ while (1)
 
             if (destroyed)
             {
-                (&enemies).Remove(i);
+                (&enemies).SwapBack(i);
             }
             elseif (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
@@ -254,7 +254,7 @@ while (1)
     {
         if (time() >= (&allies).Raw()[i].Expires)
         {
-            (&allies).Remove(i);
+            (&allies).SwapBack(i);
         }
         else
         {
