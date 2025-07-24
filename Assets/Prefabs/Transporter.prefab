@@ -506,12 +506,14 @@ MonoBehaviour:
   SupportedGhostModes: 3
   OptimizationMode: 0
   Importance: 1
+  MaxSendRate: 0
   prefabId: db5fdfea86a3f105cba31ebaf6206a76
   HasOwner: 1
   SupportAutoCommandTarget: 1
   TrackInterpolationDelay: 0
   GhostGroup: 0
   UsePreSerialization: 0
+  UseSingleBaseline: 0
   RollbackPredictedSpawnedGhostState: 0
   RollbackPredictionOnStructuralChanges: 1
 --- !u!135 &2523102578704043102
@@ -553,6 +555,7 @@ MonoBehaviour:
   RadarLED: {fileID: 0}
   USBLED: {fileID: 0}
   USBPosition: {fileID: 0}
+  Script: 
 --- !u!114 &3694215652677040203
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -579,6 +582,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MaxHealth: 5
+  DestroyEffect: {fileID: 8926484042661614526, guid: 8faf1c8db239f6f8ba43f391090e0e6c,
+    type: 3}
 --- !u!114 &5882390945745655132
 MonoBehaviour:
   m_ObjectHideFlags: 0

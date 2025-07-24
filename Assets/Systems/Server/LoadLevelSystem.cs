@@ -32,7 +32,6 @@ public partial struct LoadLevelSystem : ISystem
         state.EntityManager.AddComponentData<GhostImportance>(gridSingleton, new()
         {
             BatchScaleImportanceFunction = BatchScaleFunction,
-            ScaleImportanceFunction = ScaleFunctionPointer,
             GhostConnectionComponentType = ComponentType.ReadOnly<GhostConnectionPosition>(),
             GhostImportanceDataType = ComponentType.ReadOnly<GhostDistanceData>(),
             GhostImportancePerChunkDataType = ComponentType.ReadOnly<GhostDistancePartitionShared>(),

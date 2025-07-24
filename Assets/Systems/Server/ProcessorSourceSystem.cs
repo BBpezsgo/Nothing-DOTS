@@ -1,5 +1,3 @@
-#pragma warning disable CS0162 // Unreachable code detected
-
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 using Unity.Collections;
@@ -7,20 +5,20 @@ using Unity.Entities;
 using Unity.NetCode;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-unsafe partial struct ProcessorSourceSystem : ISystem
+unsafe partial class ProcessorSourceSystem : SystemBase
 {
-    const bool EnableLogging = false;
+    const bool EnableLogging = true;
 
-    void ISystem.OnUpdate(ref SystemState state)
+    protected override void OnUpdate()
     {
         EntityCommandBuffer commandBuffer = default;
-        var compilerSystem = state.World.GetExistingSystemManaged<CompilerSystemServer>();
+        var compilerSystem = World.GetExistingSystemManaged<CompilerSystemServer>();
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ProcessorCommandRequestRpc>>()
             .WithEntityAccess())
         {
-            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
             foreach (var (ghostInstance, processor) in
@@ -59,14 +57,14 @@ unsafe partial struct ProcessorSourceSystem : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SetProcessorSourceRequestRpc>>()
             .WithEntityAccess())
         {
-            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
             foreach (var (ghostInstance, processor) in
                 SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
                 NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
-                if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
+                if (!World.IsServer()) ep = NetcodeEndPoint.Server;
 
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
@@ -113,6 +111,7 @@ unsafe partial struct ProcessorSourceSystem : ISystem
 
             if (processor.ValueRO.CompiledSourceVersion != source.CompiledVersion)
             {
+                if (EnableLogging) Debug.Log("[Server] New source version avaliable, reloading processor ...");
                 ResetProcessor(processor);
                 processor.ValueRW.CompiledSourceVersion = source.CompiledVersion;
 

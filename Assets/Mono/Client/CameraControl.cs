@@ -128,8 +128,11 @@ public class CameraControl : Singleton<CameraControl>
 
     void UpdateVelocity()
     {
-        horizontalVelocity = (transform.position - lastPosition) / Time.deltaTime;
-        horizontalVelocity.y = 0;
+        if (Time.deltaTime > 0)
+        {
+            horizontalVelocity = (transform.position - lastPosition) / Time.deltaTime;
+            horizontalVelocity.y = 0;
+        }
         lastPosition = transform.position;
     }
 

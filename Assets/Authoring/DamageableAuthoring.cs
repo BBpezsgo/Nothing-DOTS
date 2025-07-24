@@ -1,10 +1,12 @@
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.VFX;
 
 [AddComponentMenu("Authoring/Damageable")]
 public class DamageableAuthoring : MonoBehaviour
 {
     [SerializeField] float MaxHealth = default;
+    [SerializeField] VisualEffectAsset? DestroyEffect = default;
 
     class Baker : Baker<DamageableAuthoring>
     {
@@ -15,6 +17,7 @@ public class DamageableAuthoring : MonoBehaviour
             {
                 MaxHealth = authoring.MaxHealth,
                 Health = authoring.MaxHealth,
+                DestroyEffect = FindFirstObjectByType<VisualEffectDatabaseAuthoring>().Find(authoring.DestroyEffect),
             });
             AddBuffer<BufferedDamage>(entity);
         }

@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.Pool;
 using UnityEngine.VFX;
@@ -35,6 +36,7 @@ public partial class VisualEffectSystem : SystemBase
                         VisualEffectHandlerComponent handlerComponent = gameObject.AddComponent<VisualEffectHandlerComponent>();
                         handlerComponent.Lifetime = 0.5f;
                         handlerComponent.Pool = Pools[_i];
+                        handlerComponent.VisualEffect = visualEffect;
 
                         return visualEffect;
                     },
@@ -66,7 +68,25 @@ public partial class VisualEffectSystem : SystemBase
 
             VisualEffect effect = Pools[spawn.ValueRO.Index].Get();
             effect.transform.position = spawn.ValueRO.Position;
-            effect.SetVector3("direction", (spawn.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
+            if (effect.HasVector3("direction")) effect.SetVector3("direction", (spawn.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
+            effect.Play();
+        }
+
+        foreach (var (command, entity) in
+            SystemAPI.Query<RefRO<VisualEffectRpc>>()
+            .WithAll<ReceiveRpcCommandRequest>()
+            .WithEntityAccess())
+        {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+            commandBuffer.DestroyEntity(entity);
+
+            var p = MainCamera.Camera.WorldToViewportPoint(command.ValueRO.Position);
+            if (p.z < 0f || p.x < 0f || p.y < 0f || p.x > 1f || p.y > 1f) continue;
+            if (math.distancesq(MainCamera.Camera.transform.position, command.ValueRO.Position) > 50f * 50f) continue;
+
+            VisualEffect effect = Pools[command.ValueRO.Index].Get();
+            effect.transform.position = command.ValueRO.Position;
+            if (effect.HasVector3("direction")) effect.SetVector3("direction", (command.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
             effect.Play();
         }
     }

@@ -205,13 +205,13 @@ public class SetupManager : Singleton<SetupManager>
                     goto ok;
                 }
 
-                Debug.LogWarning($"Only spawned {i} but had to {GeneratedCount}");
+                //Debug.LogWarning($"Only spawned {i} but had to {GeneratedCount}");
                 yield break;
 
             ok:;
             }
 
-            Debug.Log($"Spawned {GeneratedCount}");
+            //Debug.Log($"Spawned {GeneratedCount}");
         }
         else if (GeneratedCount > 0)
         {

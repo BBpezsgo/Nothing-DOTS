@@ -30,7 +30,7 @@
       "hash": "36d3260fdca03bf6feb105c67022d1fd7629dd2f"
     },
     "com.unity.burst": {
-      "version": "1.8.21",
+      "version": "1.8.23",
       "depth": 2,
       "source": "registry",
       "dependencies": {
@@ -108,7 +108,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.inputsystem": {
-      "version": "1.14.0",
+      "version": "1.14.1",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -124,7 +124,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.netcode": {
-      "version": "1.6.1",
+      "version": "1.6.2",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -274,7 +274,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.transport": {
-      "version": "2.5.1",
+      "version": "2.5.2",
       "depth": 1,
       "source": "registry",
       "dependencies": {

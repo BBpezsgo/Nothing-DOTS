@@ -106,16 +106,16 @@ public class CompiledSource : IInspect<CompiledSource>
     }
 }
 
-#if UNITY_EDITOR
-[UnityEditor.CustomPropertyDrawer(typeof(SerializableDictionary<FileId, CompiledSource>))]
-public class _Drawer1 : DictionaryDrawer<FileId, CompiledSource> { }
-#endif
+//#if UNITY_EDITOR
+//[UnityEditor.CustomPropertyDrawer(typeof(SerializableDictionary<FileId, CompiledSource>))]
+//public class _Drawer1 : DictionaryDrawer<FileId, CompiledSource> { }
+//#endif
 
 public partial class CompilerSystemServer : SystemBase
 {
     static readonly bool EnableLogging = false;
 
-    [NotNull] public readonly SerializableDictionary<FileId, CompiledSource>? CompiledSources = new();
+    [NotNull] public readonly Dictionary<FileId, CompiledSource>? CompiledSources = new();
 
     protected override void OnUpdate()
     {

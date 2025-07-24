@@ -6,6 +6,7 @@ class VisualEffectHandlerComponent : MonoBehaviour
 {
     public float Lifetime;
     public float Age;
+    public VisualEffect VisualEffect;
     public ObjectPool<VisualEffect>? Pool;
 
     public void Reinit()
@@ -16,9 +17,9 @@ class VisualEffectHandlerComponent : MonoBehaviour
     void Update()
     {
         Age += Time.deltaTime;
-        if (Age >= Lifetime)
+        if (Age >= Lifetime && VisualEffect.aliveParticleCount == 0)
         {
-            Pool!.Release(GetComponent<VisualEffect>());
+            Pool!.Release(VisualEffect);
         }
     }
 }

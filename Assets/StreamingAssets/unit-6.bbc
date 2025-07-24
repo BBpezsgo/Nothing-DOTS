@@ -39,7 +39,7 @@ void Receive()
             {
                 responsePacket.Position = GPS.Position;
                 debug(packet.Position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction);
             }
             else
             {
@@ -52,7 +52,7 @@ void Receive()
                         indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.Position = (&allies).Raw()[i].Position;
                         indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
-                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), direction, 0.1f);
+                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), direction);
                         return;
                     }
                 }

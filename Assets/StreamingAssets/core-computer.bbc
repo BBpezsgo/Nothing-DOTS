@@ -191,7 +191,7 @@ void SendVerificationRequest(Unit* unit)
     packet.Position = point;
 
     // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
-    send(&packet as u8[]*, sizeof(VerificationRequestPacket), 0f, 0f);
+    send(&packet as u8[]*, sizeof(VerificationRequestPacket));
 
     debug(point, BLUE);
 
