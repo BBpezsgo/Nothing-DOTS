@@ -18,10 +18,23 @@ public class ProjectPostProcessor : AssetPostprocessor
 
         XElement propertyGroup = project.Descendants($"{@namespace}PropertyGroup").First();
 
-        XElement? nullableElement = project.Descendants($"{@namespace}Nullable").SingleOrDefault();
-        if (nullableElement == null)
-        { propertyGroup.Add(nullableElement = new XElement($"{@namespace}Nullable", "enable")); }
-        nullableElement.Value = "enable";
+        void Set(string propertyName, string value)
+        {
+            XElement? e = project.Descendants(@namespace + propertyName).SingleOrDefault();
+            if (e == null)
+            {
+                propertyGroup.Add(e = new XElement(@namespace + propertyName, value));
+            }
+            else
+            {
+                e.Value = value;
+            }
+        }
+
+        Set("Nullable", "enable");
+        Set("EnableNETAnalyzers", "true");
+        Set("AnalysisMode", "preview-all");
+        Set("InvariantGlobalization", "true");
 
         System.Collections.Generic.IEnumerable<XElement>? noWarnElements = project.Descendants($"{@namespace}NoWarn");
         if (noWarnElements == null)
@@ -46,31 +59,20 @@ public class ProjectPostProcessor : AssetPostprocessor
         {
             string csc = File.ReadAllText(Path.Combine(Application.dataPath, "..", cscFilePath));
             string[] cscArguments = csc.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            string? langVersion = null;
             foreach (string cscArgument in cscArguments)
             {
                 if (cscArgument.StartsWith("-langVersion:"))
                 {
-                    langVersion = cscArgument.Replace("-langVersion:", string.Empty);
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(langVersion))
-            {
-                XElement? langVersionElement = project.Descendants($"{@namespace}LangVersion").SingleOrDefault();
-                if (langVersionElement == null)
-                {
-                    propertyGroup.Add(langVersionElement = new XElement($"{@namespace}LangVersion", "9.0"));
-                }
-
-                switch (langVersion)
-                {
-                    case "10":
-                        langVersionElement.Value = "10.0";
-                        break;
-                    case "preview":
-                        langVersionElement.Value = "11.0";
-                        break;
+                    string? langVersion = cscArgument.Replace("-langVersion:", string.Empty);
+                    if (!string.IsNullOrWhiteSpace(langVersion))
+                    {
+                        Set("LangVersion", langVersion switch
+                        {
+                            "10" => "10.0",
+                            "preview" => "11.0",
+                            _ => "9.0",
+                        });
+                    }
                 }
             }
         }

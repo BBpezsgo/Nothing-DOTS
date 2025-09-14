@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Player")]
-public class PlayerAuthoring : MonoBehaviour
+class PlayerAuthoring : MonoBehaviour
 {
     class Baker : Baker<PlayerAuthoring>
     {

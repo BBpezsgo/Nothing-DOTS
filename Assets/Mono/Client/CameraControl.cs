@@ -101,13 +101,13 @@ public class CameraControl : Singleton<CameraControl>
 
     void Update()
     {
-        if (UIManager.Instance.AnyUIVisible)
-        {
-            lastPosition = transform.position;
-            startDragWorld = default;
-            startDragScreen = default;
-            return;
-        }
+        //if (UIManager.Instance.AnyUIVisible)
+        //{
+        //    lastPosition = transform.position;
+        //    startDragWorld = default;
+        //    startDragScreen = default;
+        //    return;
+        //}
 
         GetKeyboardMovement();
         GetKeyZoom();
@@ -211,8 +211,7 @@ public class CameraControl : Singleton<CameraControl>
 
     void RotateCamera(InputAction.CallbackContext inputValue)
     {
-        if (UI.IsMouseHandled ||
-            UIManager.Instance.AnyUIVisible) return;
+        if (UI.IsMouseHandled) return;
 
         if (!Mouse.current.middleButton.isPressed || Keyboard.current.shiftKey.isPressed || Keyboard.current.ctrlKey.isPressed) return;
 
@@ -227,8 +226,7 @@ public class CameraControl : Singleton<CameraControl>
 
     void ZoomCameraWithWheel(InputAction.CallbackContext inputValue)
     {
-        if (UI.IsMouseHandled ||
-            UIManager.Instance.AnyUIVisible) return;
+        if (UI.IsMouseHandled) return;
 
         float value = -inputValue.ReadValue<Vector2>().y;
         if (Mathf.Abs(value) <= 0f) return;

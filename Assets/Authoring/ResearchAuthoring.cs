@@ -3,7 +3,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Research")]
-public class ResearchAuthoring : MonoBehaviour
+class ResearchAuthoring : MonoBehaviour
 {
     [SerializeField] public string? Name = default;
     [SerializeField] float ResearchTime = default;

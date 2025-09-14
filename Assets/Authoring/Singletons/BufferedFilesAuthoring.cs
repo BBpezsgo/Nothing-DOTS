@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Buffered Files")]
-public class BufferedFilesAuthoring : MonoBehaviour
+class BufferedFilesAuthoring : MonoBehaviour
 {
     class Baker : Baker<BufferedFilesAuthoring>
     {

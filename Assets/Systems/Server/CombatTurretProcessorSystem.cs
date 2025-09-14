@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -17,7 +16,7 @@ partial struct CombatTurretProcessorSystem : ISystem
     }
 
     [BurstCompile]
-    unsafe void ISystem.OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
@@ -30,7 +29,7 @@ partial struct CombatTurretProcessorSystem : ISystem
         foreach (var (processor, turret) in
             SystemAPI.Query<RefRW<Processor>, RefRW<CombatTurret>>())
         {
-            MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
+            ref MappedMemory mapped = ref processor.ValueRW.Memory.MappedMemory;
 
             RefRW<LocalTransform> turretTransform = SystemAPI.GetComponentRW<LocalTransform>(turret.ValueRO.Turret);
             RefRW<LocalTransform> cannonTransform = SystemAPI.GetComponentRW<LocalTransform>(turret.ValueRO.Cannon);
@@ -38,28 +37,28 @@ partial struct CombatTurretProcessorSystem : ISystem
             turretTransform.ValueRO.Rotation.ToEuler(out float3 turretEuler);
             cannonTransform.ValueRO.Rotation.ToEuler(out float3 cannonEuler);
 
-            mapped->CombatTurret.TurretCurrentRotation = turretEuler.y;
-            mapped->CombatTurret.TurretCurrentAngle = cannonEuler.x;
+            mapped.CombatTurret.TurretCurrentRotation = turretEuler.y;
+            mapped.CombatTurret.TurretCurrentAngle = cannonEuler.x;
 
-            if (float.IsFinite(mapped->CombatTurret.TurretTargetRotation))
+            if (float.IsFinite(mapped.CombatTurret.TurretTargetRotation))
             {
-                float y = Utils.MoveTowardsAngle(turretEuler.y, mapped->CombatTurret.TurretTargetRotation, turret.ValueRO.TurretRotationSpeed * SystemAPI.Time.DeltaTime);
+                float y = Utils.MoveTowardsAngle(turretEuler.y, mapped.CombatTurret.TurretTargetRotation, turret.ValueRO.TurretRotationSpeed * SystemAPI.Time.DeltaTime);
                 turretTransform.ValueRW.Rotation = quaternion.EulerXYZ(0, y, 0);
             }
 
-            if (float.IsFinite(mapped->CombatTurret.TurretTargetAngle))
+            if (float.IsFinite(mapped.CombatTurret.TurretTargetAngle))
             {
-                float x = Utils.MoveTowardsAngle(cannonEuler.x, Math.Clamp(mapped->CombatTurret.TurretTargetAngle, turret.ValueRO.MinAngle, turret.ValueRO.MaxAngle), turret.ValueRO.CannonRotationSpeed * SystemAPI.Time.DeltaTime);
+                float x = Utils.MoveTowardsAngle(cannonEuler.x, Math.Clamp(mapped.CombatTurret.TurretTargetAngle, turret.ValueRO.MinAngle, turret.ValueRO.MaxAngle), turret.ValueRO.CannonRotationSpeed * SystemAPI.Time.DeltaTime);
                 cannonTransform.ValueRW.Rotation = quaternion.EulerXYZ(x, 0, 0);
             }
 
-            if (mapped->CombatTurret.InputShoot != 0)
+            if (mapped.CombatTurret.InputShoot != 0)
             {
                 int projectileIndex = turret.ValueRO.Projectile;
 
                 if (projectileIndex == -1) continue;
 
-                mapped->CombatTurret.InputShoot = 0;
+                mapped.CombatTurret.InputShoot = 0;
 
                 RefRO<LocalToWorld> shootPosition = SystemAPI.GetComponentRO<LocalToWorld>(turret.ValueRO.ShootPosition);
 

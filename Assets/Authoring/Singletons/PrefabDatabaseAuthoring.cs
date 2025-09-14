@@ -3,7 +3,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Prefab Database")]
-public class PrefabDatabaseAuthoring : MonoBehaviour
+class PrefabDatabaseAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] GameObject? PlayerPrefab = default;
     [SerializeField, NotNull] GameObject? CoreComputerPrefab = default;

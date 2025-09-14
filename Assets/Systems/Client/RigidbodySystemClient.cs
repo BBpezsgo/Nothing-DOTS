@@ -4,9 +4,12 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [BurstCompile]
+[UpdateInGroup(typeof(TransformSystemGroup))]
+[UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
-public partial struct RigidbodySystemClient : ISystem
+partial struct RigidbodySystemClient : ISystem
 {
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         foreach (var (rigidbody, collider, transform) in

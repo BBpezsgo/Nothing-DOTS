@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -18,7 +17,7 @@ partial struct TransporterProcessorSystem : ISystem
     }
 
     [BurstCompile]
-    unsafe void ISystem.OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         PrefabDatabase prefabDatabase = SystemAPI.GetSingleton<PrefabDatabase>();
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
@@ -26,14 +25,14 @@ partial struct TransporterProcessorSystem : ISystem
         foreach (var (processor, transporter, transform, localTransform) in
             SystemAPI.Query<RefRW<Processor>, RefRW<Transporter>, RefRO<LocalToWorld>, RefRO<LocalTransform>>())
         {
-            MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
+            ref MappedMemory mapped = ref processor.ValueRW.Memory.MappedMemory;
 
-            mapped->Transporter.CurrentLoad = transporter.ValueRO.CurrentLoad;
+            mapped.Transporter.CurrentLoad = transporter.ValueRO.CurrentLoad;
 
-            if (mapped->Transporter.LoadDirection != 0)
+            if (mapped.Transporter.LoadDirection != 0)
             {
-                byte direction = mapped->Transporter.LoadDirection;
-                mapped->Transporter.LoadDirection = 0;
+                byte direction = mapped.Transporter.LoadDirection;
+                mapped.Transporter.LoadDirection = 0;
 
                 if (direction == 1) // out
                 {

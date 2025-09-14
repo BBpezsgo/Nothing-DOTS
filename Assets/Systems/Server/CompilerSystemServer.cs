@@ -117,6 +117,8 @@ public partial class CompilerSystemServer : SystemBase
 
     [NotNull] public readonly Dictionary<FileId, CompiledSource>? CompiledSources = new();
 
+    readonly List<Task> _tasks = new();
+
     protected override void OnUpdate()
     {
         EntityCommandBuffer commandBuffer = default;
@@ -129,14 +131,14 @@ public partial class CompilerSystemServer : SystemBase
                     break;
                 case CompilationStatus.Secuedued:
                     source.Status = CompilationStatus.Compiling;
-                    Task.Factory.StartNew(static v => CompileSourceTask(((FileId, bool, CompiledSource))v), (file, false, CompiledSources[file]))
+                    _tasks.Add(Task.Factory.StartNew(static v => CompileSourceTask(((FileId, bool, CompiledSource))v), (file, false, CompiledSources[file]))
                         .ContinueWith(task =>
                         {
                             if (task.IsFaulted)
                             { Debug.LogException(task.Exception); }
                             else if (task.IsCanceled)
                             { Debug.LogError($"[{nameof(CompilerSystemServer)}]: Compilation task cancelled"); }
-                        });
+                        }));
                     if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                     SendCompilationStatus(source, commandBuffer);
                     break;
@@ -164,6 +166,16 @@ public partial class CompilerSystemServer : SystemBase
                 if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                 SendCompilationStatus(source, commandBuffer);
             }
+        }
+    }
+
+    protected override void OnDestroy()
+    {
+        if (_tasks.Count > 0)
+        {
+            Debug.Log($"Waiting for {_tasks.Count} compilation tasks to finish ...");
+            Task.WaitAll(_tasks.ToArray());
+            Debug.Log($"Compilation tasks finished");
         }
     }
 
@@ -362,12 +374,12 @@ public partial class CompilerSystemServer : SystemBase
                 new MainGeneratorSettings(MainGeneratorSettings.Default)
                 {
                     StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
-                    // ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
-                    // {
-                    //     AllowCrash = false,
-                    //     AllowHeap = false,
-                    //     AllowPointers = true,
-                    // },
+                    ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
+                    {
+                        AllowCrash = false,
+                        AllowHeap = false,
+                        AllowPointers = true,
+                    },
                 },
                 null,
                 source.Diagnostics

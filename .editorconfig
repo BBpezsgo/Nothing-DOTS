@@ -1,0 +1,18 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[*.{cs,vb}]
+
+dotnet_analyzer_diagnostic.category-Style.severity = warning
+
+# IDE0040: Add accessibility modifiers
+dotnet_style_require_accessibility_modifiers = omit_if_default
+
+# IDE0048: Add parentheses for clarity
+dotnet_diagnostic.IDE0048.severity = suggestion
+
+# IDE0011: Add braces
+csharp_prefer_braces = when_multiline

@@ -3,7 +3,7 @@ using Unity.Mathematics;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Processor")]
-public class ProcessorAuthoring : MonoBehaviour
+class ProcessorAuthoring : MonoBehaviour
 {
     [SerializeField] GameObject? StatusLED = default;
     [SerializeField] GameObject? NetworkReceiveLED = default;

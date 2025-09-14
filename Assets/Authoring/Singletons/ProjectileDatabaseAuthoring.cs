@@ -3,7 +3,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Projectile Database")]
-public class ProjectileDatabaseAuthoring : MonoBehaviour
+class ProjectileDatabaseAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] ProjectileStats[]? Projectiles = default;
 

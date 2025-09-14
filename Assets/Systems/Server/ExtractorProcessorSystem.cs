@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -6,7 +5,7 @@ using Unity.Burst;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-public partial struct ExtractorProcessorSystem : ISystem
+partial struct ExtractorProcessorSystem : ISystem
 {
     Random _random;
 
@@ -18,7 +17,7 @@ public partial struct ExtractorProcessorSystem : ISystem
     }
 
     [BurstCompile]
-    unsafe void ISystem.OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         PrefabDatabase prefabDatabase = SystemAPI.GetSingleton<PrefabDatabase>();
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
@@ -26,11 +25,11 @@ public partial struct ExtractorProcessorSystem : ISystem
         foreach (var (processor, extractor, transform, localTransform) in
             SystemAPI.Query<RefRW<Processor>, RefRW<Extractor>, RefRO<LocalToWorld>, RefRO<LocalTransform>>())
         {
-            MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
+            ref MappedMemory mapped = ref processor.ValueRW.Memory.MappedMemory;
 
-            if (mapped->Extractor.InputExtract != 0)
+            if (mapped.Extractor.InputExtract != 0)
             {
-                mapped->Extractor.InputExtract = 0;
+                mapped.Extractor.InputExtract = 0;
 
                 foreach (var resourceNodeTransform in
                     SystemAPI.Query<RefRO<LocalToWorld>>()

@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Factory")]
-public class FactoryAuthoring : MonoBehaviour
+class FactoryAuthoring : MonoBehaviour
 {
     class Baker : Baker<FactoryAuthoring>
     {

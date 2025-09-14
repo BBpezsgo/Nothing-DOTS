@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Pendrive")]
-public class PendriveAuthoring : MonoBehaviour
+class PendriveAuthoring : MonoBehaviour
 {
     class Baker : Baker<PendriveAuthoring>
     {

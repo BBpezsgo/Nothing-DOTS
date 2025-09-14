@@ -4,8 +4,10 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [BurstCompile]
+[UpdateInGroup(typeof(TransformSystemGroup))]
+[UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-public partial struct RigidbodySystem : ISystem
+partial struct RigidbodySystem : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)
     {

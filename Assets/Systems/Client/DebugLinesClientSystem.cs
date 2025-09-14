@@ -1,32 +1,44 @@
-using System.Diagnostics.CodeAnalysis;
+using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
+[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
-public partial class DebugLinesClientSystem : SystemBase
+partial struct DebugLinesClientSystem : ISystem
 {
-    [NotNull] Segments.Batch[]? _batches = default;
+    NativeArray<Entity>.ReadOnly Batches;
 
-    protected override void OnCreate()
+    [BurstCompile]
+    void ISystem.OnCreate(ref SystemState state)
     {
-        RequireForUpdate<DebugLinesSettings>();
+        state.RequireForUpdate<DebugLinesSettings>();
     }
 
-    protected override void OnStartRunning()
-    {
-        DebugLinesSettings settings = SystemAPI.ManagedAPI.GetSingleton<DebugLinesSettings>();
-        _batches = new Segments.Batch[settings.Materials.Length];
-        for (int i = 0; i < settings.Materials.Length; i++)
-        {
-            Segments.Core.CreateBatch(out _batches[i], settings.Materials[i]);
-        }
-    }
-
-    protected override void OnUpdate()
+    [BurstCompile]
+    void ISystem.OnUpdate(ref SystemState state)
     {
         if (!SystemAPI.TryGetSingleton(out NetworkId networkId)) return;
 
-        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+        if (!Batches.IsCreated)
+        {
+            DebugLinesSettings settings = SystemAPI.ManagedAPI.GetSingleton<DebugLinesSettings>();
+            NativeArray<Entity> _batches = new(settings.Materials.Length, Allocator.Persistent);
+            for (int i = 0; i < settings.Materials.Length; i++)
+            {
+                Segments.Core.Create(out Entity v, settings.Materials[i]);
+                _batches[i] = v;
+            }
+            Batches = _batches.AsReadOnly();
+        }
+
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        NativeArray<DynamicBuffer<Unity.Mathematics.float3x2>> batches = new(Batches.Length, Allocator.Temp);
+
+        for (int i = 0; i < Batches.Length; i++)
+        {
+            batches[i] = Segments.Core.GetBuffer(Batches[i], false);
+        }
 
         foreach (var (player, lines) in
             SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>>())
@@ -46,16 +58,15 @@ public partial class DebugLinesClientSystem : SystemBase
                 });
             }
 
-            for (int i = 0; i < _batches.Length; i++)
+            for (int i = 0; i < batches.Length; i++)
             {
-                _batches[i].Dependency.Complete();
-                _batches[i].buffer.Clear();
+                batches[i].Clear();
             }
 
             for (int i = 0; i < lines.Length; i++)
             {
                 if (lines[i].DieAt <= SystemAPI.Time.ElapsedTime) lines.RemoveAt(i--);
-                else _batches[lines[i].Color - 1].buffer.Add(lines[i].Value);
+                else batches[lines[i].Color - 1].Add(lines[i].Value);
             }
             break;
         }

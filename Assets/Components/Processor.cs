@@ -1,12 +1,13 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 
-public struct StatusLED
+struct StatusLED
 {
     [GhostField(SendData = false)] public Entity LED;
     [GhostField] public int Status;
@@ -18,7 +19,7 @@ public struct StatusLED
     }
 }
 
-public struct BlinkingLED
+struct BlinkingLED
 {
     [GhostField(SendData = false)] public Entity LED;
     [GhostField(SendData = false)] public float LastBlinked;
@@ -43,7 +44,14 @@ public struct BlinkingLED
     }
 }
 
-public struct Processor : IComponentData
+[StructLayout(LayoutKind.Explicit)]
+struct ProcessorMemory
+{
+    [FieldOffset(0)] public FixedBytes2048 Memory;
+    [FieldOffset(Processor.MappedMemoryStart)] public MappedMemory MappedMemory;
+}
+
+struct Processor : IComponentData
 {
     public const int TotalMemorySize = 2048;
     public const int HeapSize = 512;
@@ -57,7 +65,7 @@ public struct Processor : IComponentData
     public long CompiledSourceVersion;
 
     public Registers Registers;
-    public FixedBytes2048 Memory;
+    public ProcessorMemory Memory;
     public FixedList128Bytes<BufferedUnitTransmission> IncomingTransmissions;
     public FixedList128Bytes<BufferedUnitTransmissionOutgoing> OutgoingTransmissions;
     public FixedList128Bytes<UnitCommandRequest> CommandQueue;

@@ -1,14 +1,12 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.NetCode;
 using Unity.Transforms;
 
-public partial struct GhostChildSystem : ISystem
+[BurstCompile]
+partial struct GhostChildSystem : ISystem
 {
-    void ISystem.OnCreate(ref SystemState state)
-    {
-
-    }
-
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);

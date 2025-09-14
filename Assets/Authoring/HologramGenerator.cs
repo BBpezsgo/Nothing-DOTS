@@ -1,9 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using NaughtyAttributes;
 using UnityEngine;
 
-public class HologramGenerator : MonoBehaviour
+class HologramGenerator : MonoBehaviour
 {
 #if UNITY_EDITOR
     [SerializeField, NotNull] GameObject? Prefab = default;

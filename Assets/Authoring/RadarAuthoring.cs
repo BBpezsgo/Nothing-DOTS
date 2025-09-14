@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Radar")]
-public class RadarAuthoring : MonoBehaviour
+class RadarAuthoring : MonoBehaviour
 {
     [SerializeField] GameObject? Radar = default;
 

@@ -5,7 +5,7 @@ using Unity.Entities;
 using Unity.NetCode;
 
 [BurstCompile]
-public unsafe struct UIElementUpdateRpc : IComponentData, IRpcCommandSerializer<UIElementUpdateRpc>
+unsafe struct UIElementUpdateRpc : IComponentData, IRpcCommandSerializer<UIElementUpdateRpc>
 {
     public required UserUIElement UIElement;
 

@@ -5,9 +5,9 @@
       "depth": 0,
       "source": "git",
       "dependencies": {
-        "com.unity.entities.graphics": "1.0.0-pre.44"
+        "com.unity.entities.graphics": "1.4.12"
       },
-      "hash": "2321374ba5e881425a1f55cfc26ef60befb8ce9e"
+      "hash": "711e86a6f6c282ae8e0d16aac9431fbb40c13454"
     },
     "com.banszky.bblang": {
       "version": "file:/home/BB/Projects/BBLang/Core/Unity",
@@ -27,7 +27,7 @@
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "36d3260fdca03bf6feb105c67022d1fd7629dd2f"
+      "hash": "a7c6b49a0141a5bff9b1983e38137522ef61977d"
     },
     "com.unity.burst": {
       "version": "1.8.23",
@@ -108,7 +108,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.inputsystem": {
-      "version": "1.14.1",
+      "version": "1.14.2",
       "depth": 0,
       "source": "registry",
       "dependencies": {

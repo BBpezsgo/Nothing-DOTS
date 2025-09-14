@@ -1,4 +1,4 @@
-#define _UNITY_PROFILER
+#define UNITY_PROFILER
 #if UNITY_EDITOR && EDITOR_DEBUG
 #define DEBUG_LINES
 #endif
@@ -17,9 +17,8 @@ using Unity.NetCode;
 using Unity.Profiling;
 using Unity.Transforms;
 using System.Runtime.InteropServices;
-using Unity.Entities.UniversalDelegates;
 
-public enum UserUIElementType : byte
+enum UserUIElementType : byte
 {
     MIN,
     Label,
@@ -29,7 +28,7 @@ public enum UserUIElementType : byte
 
 [BurstCompile]
 [StructLayout(LayoutKind.Explicit)]
-public struct UserUIElement
+struct UserUIElement
 {
     [FieldOffset(0)] public bool IsDirty;
     [FieldOffset(1)] public int Id;
@@ -42,7 +41,7 @@ public struct UserUIElement
 
 [BurstCompile]
 [StructLayout(LayoutKind.Sequential)]
-public struct UserUIElementLabel
+struct UserUIElementLabel
 {
     public float3 Color;
     public FixedBytes30 Text;
@@ -50,7 +49,7 @@ public struct UserUIElementLabel
 
 [BurstCompile]
 [StructLayout(LayoutKind.Sequential)]
-public struct UserUIElementImage
+struct UserUIElementImage
 {
     public short Width;
     public short Height;
@@ -148,6 +147,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required NativeList<OwnedData<UserUIElement>>.ParallelWriter UIElements;
         public required ProcessorRef ProcessorRef;
         public required EntityRef EntityRef;
+        public required EntityCommandBuffer.ParallelWriter CommandBuffer;
     }
 
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
@@ -176,7 +176,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = default;
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
         EntityArchetype rpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
             typeof(SendRpcCommandRequest),
@@ -200,8 +200,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 for (int i = 0; i < debugLines.Length; i++)
                 {
                     if (debugLines[i].Owner != player.ValueRO.Team) continue;
-
-                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
                     if (Utils.Distance(player.ValueRO.Position, debugLines[i].Value.Value) < 50f)
                     {
@@ -252,8 +250,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
                 if (connection == Entity.Null) continue;
 
-                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-
                 if (uiElements[i].Value.Id == 0)
                 {
                     // Debug.Log(string.Format("[Server] {0} destroyed", uiElements[i]));
@@ -293,6 +289,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         new ProcessorJob()
         {
             scopedExternalFunctions = scopedExternalFunctions,
+            commandBuffer = commandBuffer.AsParallelWriter(),
 
             debugLines = debugLines.AsParallelWriter(),
             worldLabels = worldLabels.AsParallelWriter(),
@@ -309,6 +306,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
 [WithAll(typeof(Processor))]
 partial struct ProcessorJob : IJobEntity
 {
+#if UNITY_PROFILER
+    public static readonly ProfilerMarker __ProcessorJobOuter = new("ProcessorJobOuter");
+    public static readonly ProfilerMarker __ProcessorJobInner = new("ProcessorJobInner");
+#endif
+
     [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     public NativeList<OwnedData<BufferedLine>>.ParallelWriter debugLines;
     public NativeList<OwnedData<BufferedWorldLabel>>.ParallelWriter worldLabels;
@@ -316,6 +318,7 @@ partial struct ProcessorJob : IJobEntity
     [ReadOnly] public ComponentLookup<CoreComputer> QCoreComputer;
     [ReadOnly] public ComponentLookup<Radar> QRadar;
     [ReadOnly] public ComponentLookup<Facility> QFacility;
+    public EntityCommandBuffer.ParallelWriter commandBuffer;
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(
@@ -327,6 +330,8 @@ partial struct ProcessorJob : IJobEntity
         DynamicBuffer<BufferedGeneratedFunction> generatedFunctions,
         Entity entity)
     {
+        //using var _1 = __ProcessorJobOuter.Auto();
+
         if (processor.ValueRO.SourceFile == default)
         {
             processor.ValueRW.StatusLED.Status = 0;
@@ -362,6 +367,7 @@ partial struct ProcessorJob : IJobEntity
                 LocalTransform = localTransform,
                 Team = team,
             },
+            CommandBuffer = commandBuffer,
         };
 
         NativeList<ExternalFunctionScopedSync> scopedExternalFunctions = new(this.scopedExternalFunctions.Length + generatedFunctions.Length, Allocator.Temp);
@@ -399,47 +405,50 @@ partial struct ProcessorJob : IJobEntity
         scope.ProcessorRef.Signal = &processorState.Signal;
         scope.ProcessorRef.Registers = &processorState.Registers;
 
-        for (int i = 0; i < ProcessorSystemServer.CyclesPerTick; i++)
+        //using (var _2 = __ProcessorJobInner.Auto())
         {
-            if (processorState.Signal != Signal.None)
+            for (int i = 0; i < ProcessorSystemServer.CyclesPerTick; i++)
             {
-                if (!processor.ValueRO.SignalNotified)
+                if (processorState.Signal != Signal.None)
                 {
-                    processor.ValueRW.SignalNotified = true;
-                    switch (processorState.Signal)
+                    if (!processor.ValueRO.SignalNotified)
                     {
-                        case Signal.UserCrash:
-                            Debug.LogError(string.Format("Crashed ({0})", processorState.Crash));
-                            break;
-                        case Signal.StackOverflow:
-                            Debug.LogError("Stack Overflow");
-                            break;
-                        case Signal.Halt:
-                            // Debug.LogError("Halted");
-                            break;
-                        case Signal.UndefinedExternalFunction:
-                            Debug.LogError(string.Format("Undefined external function {0}", processorState.Crash));
-                            break;
-                        case Signal.PointerOutOfRange:
-                            Debug.LogError("Pointer out of Range");
-                            break;
+                        processor.ValueRW.SignalNotified = true;
+                        switch (processorState.Signal)
+                        {
+                            case Signal.UserCrash:
+                                Debug.LogError(string.Format("[Server] Crashed ({0})", processorState.Crash));
+                                break;
+                            case Signal.StackOverflow:
+                                Debug.LogError("[Server] Stack Overflow");
+                                break;
+                            case Signal.Halt:
+                                // Debug.LogError("[Server] Halted");
+                                break;
+                            case Signal.UndefinedExternalFunction:
+                                Debug.LogError(string.Format("[Server] Undefined external function {0}", processorState.Crash));
+                                break;
+                            case Signal.PointerOutOfRange:
+                                Debug.LogError("[Server] Pointer out of Range");
+                                break;
+                        }
                     }
+                    break;
                 }
-                break;
-            }
-            processor.ValueRW.SignalNotified = false;
+                processor.ValueRW.SignalNotified = false;
 
-            if (processor.ValueRO.IsKeyRequested)
-            {
-                if (processor.ValueRO.InputKey.Length == 0) break;
-                char key = processor.ValueRW.InputKey[0];
-                processor.ValueRW.InputKey.RemoveAt(0);
-                processor.ValueRW.IsKeyRequested = false;
-                processorState.Pop(2);
-                processorState.Push(key.AsBytes());
-            }
+                if (processor.ValueRO.IsKeyRequested)
+                {
+                    if (processor.ValueRO.InputKey.Length == 0) break;
+                    char key = processor.ValueRW.InputKey[0];
+                    processor.ValueRW.InputKey.RemoveAt(0);
+                    processor.ValueRW.IsKeyRequested = false;
+                    processorState.Pop(2);
+                    processorState.Push(key.AsBytes());
+                }
 
-            processorState.Process();
+                processorState.Process();
+            }
         }
 
         processor.ValueRW.Registers = processorState.Registers;

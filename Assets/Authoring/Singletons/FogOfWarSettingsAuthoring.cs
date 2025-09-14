@@ -7,7 +7,7 @@ using UnityEngine;
 /// <seealso href="https://assetstore.unity.com/packages/vfx/shaders/fullscreen-camera-effects/aos-fog-of-war-249249">Source</seealso>
 /// </summary>
 [AddComponentMenu("Authoring/Fog of War Settings")]
-public class FogOfWarSettingsAuthoring : MonoBehaviour
+class FogOfWarSettingsAuthoring : MonoBehaviour
 {
     [SerializeField] float3 levelMidPoint = default;
 

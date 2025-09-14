@@ -14,7 +14,7 @@ using Unity.Transforms;
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-public unsafe partial struct CollisionSystem : ISystem
+unsafe partial struct CollisionSystem : ISystem
 {
     [BurstCompile]
     public static void Debug(

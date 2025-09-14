@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Possibly Irrelevant")]
-public class PossiblyIrrelevantAuthoring : MonoBehaviour
+class PossiblyIrrelevantAuthoring : MonoBehaviour
 {
     [SerializeField, Min(0f)] float RelevancyRadius = 10f;
 

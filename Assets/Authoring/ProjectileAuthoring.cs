@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Projectile")]
-public class ProjectileAuthoring : MonoBehaviour
+class ProjectileAuthoring : MonoBehaviour
 {
     class Baker : Baker<ProjectileAuthoring>
     {

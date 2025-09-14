@@ -3,7 +3,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/UI Prefabs")]
-public class UIPrefabsAuthoring : MonoBehaviour
+class UIPrefabsAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] GameObject? EntityInfo = default;
 

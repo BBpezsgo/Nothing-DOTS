@@ -4,7 +4,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/UnitDatabase")]
-public class UnitDatabaseAuthoring : MonoBehaviour
+class UnitDatabaseAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] Item[]? Units = default;
 

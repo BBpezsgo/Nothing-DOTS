@@ -11,7 +11,7 @@ using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
 
-public partial class FileChunkManagerSystem : SystemBase
+partial class FileChunkManagerSystem : SystemBase
 {
     const bool EnableLogging = false;
     public static string? BasePath => Application.streamingAssetsPath;
@@ -100,7 +100,7 @@ public partial class FileChunkManagerSystem : SystemBase
             {
                 shouldDelete = true;
 
-                Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.ToUri()}\" not found");
+                Debug.LogWarning($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.ToUri()}\" not found");
                 RemoteFiles.Remove(request.File);
                 request.Task.SetException(new FileNotFoundException("Remote file not found", request.File.Name.ToString()));
                 if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
@@ -228,6 +228,7 @@ public partial class FileChunkManagerSystem : SystemBase
     public FileStatus GetRequestStatus(FileId fileId)
     {
         Entity databaseEntity = SystemAPI.GetSingletonEntity<BufferedFiles>();
+        // FIXME: this will crash
         using NativeArray<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(databaseEntity, true).ToNativeArray(Allocator.TempJob);
 
         for (int i = fileHeaders.Length - 1; i >= 0; i--)

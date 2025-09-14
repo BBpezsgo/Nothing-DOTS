@@ -57,7 +57,7 @@
         "Temp/": true
     },
     "dotnet.defaultSolution": "Nothing-DOTS.sln",
-    "files.autoSave": "off",
+    "files.autoSave": "afterDelay",
     "vstuc.refreshOnSave": false,
     "vstuc.displayBackgroundProcesses": true,
     "omnisharp.useModernNet": false,

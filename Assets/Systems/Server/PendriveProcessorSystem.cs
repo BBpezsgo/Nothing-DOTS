@@ -18,14 +18,12 @@ partial struct PendriveProcessorSystem : ISystem
     }
 
     [BurstCompile]
-    unsafe void ISystem.OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         foreach (var (processor, transform, localTransform, ghostInstance, entity) in
             SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>, RefRO<LocalTransform>, RefRO<GhostInstance>>()
             .WithEntityAccess())
         {
-            MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
-
             if (processor.ValueRO.PendrivePlugRequested)
             {
                 processor.ValueRW.PendrivePlugRequested = false;

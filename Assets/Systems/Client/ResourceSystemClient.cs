@@ -1,10 +1,15 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[BurstCompile]
+[UpdateInGroup(typeof(TransformSystemGroup))]
+[UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
-public partial struct ResourceSystemClient : ISystem
+partial struct ResourceSystemClient : ISystem
 {
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         foreach (var (resource, transform) in

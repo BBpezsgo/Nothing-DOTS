@@ -5,7 +5,7 @@
 		"body": [
 			"using Unity.NetCode;",
 			"",
-			"public struct ${1:$TM_FILENAME_BASE} : IRpcCommand",
+			"struct ${1:$TM_FILENAME_BASE} : IRpcCommand",
 			"{",
 			"    $2",
 			"}",
@@ -18,7 +18,7 @@
 		"body": [
 			"using Unity.Entities;",
 			"",
-			"public struct ${1:$TM_FILENAME_BASE} : IComponentData",
+			"struct ${1:$TM_FILENAME_BASE} : IComponentData",
 			"{",
 			"    $2",
 			"}",
@@ -33,7 +33,7 @@
 			"using UnityEngine;",
 			"",
 			"[AddComponentMenu(\"Authoring/${1:$TM_FILENAME_BASE}\")]",
-			"public class ${1:$TM_FILENAME_BASE} : MonoBehaviour",
+			"class ${1:$TM_FILENAME_BASE} : MonoBehaviour",
 			"{$2",
 			"    class Baker : Baker<${1:$TM_FILENAME_BASE}>",
 			"    {",
@@ -52,7 +52,7 @@
 		"body": [
 			"using Unity.Entities;",
 			"",
-			"public partial struct ${1:$TM_FILENAME_BASE} : ISystem",
+			"partial struct ${1:$TM_FILENAME_BASE} : ISystem",
 			"{",
 			"    void ISystem.OnCreate(ref SystemState state)",
 			"    {",

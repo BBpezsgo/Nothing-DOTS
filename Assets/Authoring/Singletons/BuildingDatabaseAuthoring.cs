@@ -4,7 +4,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Building Database")]
-public class BuildingDatabaseAuthoring : MonoBehaviour
+class BuildingDatabaseAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] Item[]? Buildings = default;
 

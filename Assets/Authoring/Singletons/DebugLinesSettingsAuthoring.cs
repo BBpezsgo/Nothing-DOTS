@@ -3,7 +3,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Debug Lines Settings")]
-public class DebugLinesSettingsAuthoring : MonoBehaviour
+class DebugLinesSettingsAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] Material[]? Materials = default;
 

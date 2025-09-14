@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Building")]
-public class BuildingAuthoring : MonoBehaviour
+class BuildingAuthoring : MonoBehaviour
 {
     [SerializeField] int Team;
 

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 using UnityEngine.Pool;
 using UnityEngine.VFX;
@@ -6,7 +7,7 @@ class VisualEffectHandlerComponent : MonoBehaviour
 {
     public float Lifetime;
     public float Age;
-    public VisualEffect VisualEffect;
+    [NotNull] public VisualEffect? VisualEffect = null;
     public ObjectPool<VisualEffect>? Pool;
 
     public void Reinit()
