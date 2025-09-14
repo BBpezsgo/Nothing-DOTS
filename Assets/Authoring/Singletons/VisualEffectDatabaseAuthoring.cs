@@ -27,7 +27,7 @@ public class VisualEffectDatabaseAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent(entity, new VisualEffectDatabase());
             DynamicBuffer<BufferedVisualEffect> visualEffects = AddBuffer<BufferedVisualEffect>(entity);
-            foreach (var visualEffect in authoring.VisualEffects)
+            foreach (VisualEffectAsset visualEffect in authoring.VisualEffects)
             {
                 visualEffects.Add(new()
                 {

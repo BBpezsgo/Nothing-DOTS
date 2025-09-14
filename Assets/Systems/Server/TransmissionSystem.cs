@@ -43,7 +43,7 @@ unsafe partial struct TransmissionSystem : ISystem
 
             processor.ValueRW.NetworkSendLED.Blink();
 
-            float2 position = new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
+            float2 position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
 
 #if DEBUG_LINES
             if (!transmission.Direction.Equals(float3.zero))

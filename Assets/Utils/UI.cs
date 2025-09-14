@@ -137,7 +137,7 @@ public static class UI
         }
     }
 
-    static List<VisualElement> _picked = new();
+    static readonly List<VisualElement> _picked = new();
 
     public static bool IsPointerOverUI() => IsPointerOverUI(Input.mousePosition);
     public static bool IsPointerOverUI(Vector2 screenPos)

@@ -1,5 +1,4 @@
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
@@ -142,7 +141,7 @@ public partial struct FacilitySystem : ISystem
 
                 Debug.LogError(string.Format("[Server] Research with hash \"{0}\" not found", hash.Hash));
                 continue;
-                good:;
+            good:;
             }
             else
             {

@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class MonoTime : MonoBehaviour
 {
-    class _nowKey {}
-    class _ticksKey {}
+    class _nowKey { }
+    class _ticksKey { }
     static readonly SharedStatic<float> _now = SharedStatic<float>.GetOrCreate<MonoTime, _nowKey>();
     static readonly SharedStatic<long> _ticks = SharedStatic<long>.GetOrCreate<MonoTime, _ticksKey>();
 

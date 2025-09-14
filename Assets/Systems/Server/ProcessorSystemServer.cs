@@ -5,7 +5,6 @@
 
 using System;
 using System.Runtime.CompilerServices;
-using AOT;
 using LanguageCore;
 using LanguageCore.Runtime;
 using Unity.Burst;
@@ -95,8 +94,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         {
             Registers->StackPointer += data.Length * ProcessorState.StackDirection;
 
-            if (Registers->StackPointer >= global::Processor.UserMemorySize ||
-                Registers->StackPointer < global::Processor.HeapSize)
+            if (Registers->StackPointer is >= Processor.UserMemorySize or < Processor.HeapSize)
             {
                 *Signal = LanguageCore.Runtime.Signal.StackOverflow;
                 return;
@@ -197,6 +195,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
             }
 
             if (connection != Entity.Null && player.ValueRO.ConnectionState == PlayerConnectionState.Connected)
+            {
                 for (int i = 0; i < debugLines.Length; i++)
                 {
                     if (debugLines[i].Owner != player.ValueRO.Team) continue;
@@ -226,6 +225,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
                     // lines.Add(debugLines[i].Value);
                     // next:;
                 }
+            }
 
             for (int i = 0; i < worldLabels.Length; i++)
             {
@@ -431,6 +431,10 @@ partial struct ProcessorJob : IJobEntity
                             case Signal.PointerOutOfRange:
                                 Debug.LogError("[Server] Pointer out of Range");
                                 break;
+                            case Signal.None:
+                                break;
+                            default:
+                                throw new UnreachableException();
                         }
                     }
                     break;

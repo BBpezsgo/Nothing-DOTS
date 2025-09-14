@@ -55,7 +55,7 @@ public class ChatManager : Singleton<ChatManager>
 
     public void AppendChatMessageElement(int sender, string message)
     {
-        var instance = _chatMessageTemplate.Instantiate();
+        TemplateContainer instance = _chatMessageTemplate.Instantiate();
 
         if (sender == 0)
         {

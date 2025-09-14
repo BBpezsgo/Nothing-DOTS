@@ -37,6 +37,8 @@ public partial struct PlayerSystemServer : ISystem
             commandBuffer.AddComponent<InitializedClient>(entity);
         }
 
+        ReadOnlySpan<byte> bytes = stackalloc byte[16];
+
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SessionRegisterRequestRpc>>()
             .WithEntityAccess())
@@ -77,7 +79,6 @@ public partial struct PlayerSystemServer : ISystem
                 Guid guid;
                 unsafe
                 {
-                    ReadOnlySpan<byte> bytes = stackalloc byte[16];
                     byte* ptr = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(bytes));
                     *(int*)(ptr + 0) = source.ValueRO.Value; // 4
                     *(double*)(ptr + 4) = SystemAPI.Time.ElapsedTime; // 8

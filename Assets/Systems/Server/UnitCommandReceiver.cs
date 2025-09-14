@@ -1,3 +1,4 @@
+using System;
 using LanguageCore.Runtime;
 using Unity.Burst;
 using Unity.Entities;
@@ -66,6 +67,8 @@ public partial struct UnitCommandReceiver : ISystem
                                         dataLength += sizeof(float2);
                                         break;
                                     }
+                                default:
+                                    throw new UnreachableException();
                             }
                         }
                         if (processor.ValueRW.CommandQueue.Length >= processor.ValueRW.CommandQueue.Capacity)

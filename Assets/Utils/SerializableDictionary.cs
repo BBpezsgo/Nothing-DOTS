@@ -164,7 +164,7 @@ public class SerializableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, I
             {
                 if (hashCodesCopy[i] != -1)
                 {
-                    hashCodesCopy[i] = (_Comparer.GetHashCode(keysCopy[i]) & 2147483647);
+                    hashCodesCopy[i] = _Comparer.GetHashCode(keysCopy[i]) & 2147483647;
                 }
             }
         }
@@ -409,14 +409,14 @@ public class SerializableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, I
         {
             if (min < 0) throw new ArgumentException("min < 0");
 
-            for (int i = 0; i < PrimeHelper.Primes.Length; i++)
+            for (int i = 0; i < Primes.Length; i++)
             {
-                int prime = PrimeHelper.Primes[i];
+                int prime = Primes[i];
                 if (prime >= min) return prime;
             }
             for (int i = min | 1; i < 2147483647; i += 2)
             {
-                if (PrimeHelper.IsPrime(i) && (i - 1) % 101 != 0) return i;
+                if (IsPrime(i) && (i - 1) % 101 != 0) return i;
             }
             return min;
         }
@@ -428,7 +428,7 @@ public class SerializableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, I
             {
                 return 2146435069;
             }
-            return PrimeHelper.GetPrime(num);
+            return GetPrime(num);
         }
     }
 
@@ -461,7 +461,7 @@ public class SerializableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, I
 
     public bool Remove(KeyValuePair<TKey, TValue> item) => Remove(item.Key);
 
-    public Enumerator GetEnumerator() => new Enumerator(this);
+    public Enumerator GetEnumerator() => new(this);
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => GetEnumerator();
 

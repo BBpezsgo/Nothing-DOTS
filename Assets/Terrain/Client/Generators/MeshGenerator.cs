@@ -63,7 +63,7 @@ public static class MeshGenerator
 
                 if (isEdgeConntectionVertex)
                 {
-                    bool isVertical = x == 2 || x == TerrainSystemServer.NumVertsPerLine - 3;
+                    bool isVertical = x is 2 or (TerrainSystemServer.NumVertsPerLine - 3);
                     int dstToMainVertexA = (isVertical ? y - 2 : x - 2) % skipIncrement;
                     int dstToMainVertexB = skipIncrement - dstToMainVertexA;
                     float dstPercentFromAToB = dstToMainVertexA / (float)skipIncrement;

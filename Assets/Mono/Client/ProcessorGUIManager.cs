@@ -30,7 +30,7 @@ public class ProcessorGUIManager : MonoBehaviour
                 case UserUIElementType.Label:
                     if (labelIndex >= _labels.Count)
                     {
-                        var o = Instantiate(_labelPrefab, _canvas.transform);
+                        GameObject o = Instantiate(_labelPrefab, _canvas.transform);
                         _labels.Add(o.GetComponent<Text>());
                     }
                     _labels[labelIndex].rectTransform.anchoredPosition = new Vector2(uiElement.Position.x, uiElement.Position.y);
@@ -41,7 +41,7 @@ public class ProcessorGUIManager : MonoBehaviour
                 case UserUIElementType.Image:
                     if (imageIndex >= _images.Count)
                     {
-                        var o = Instantiate(_imagePrefab, _canvas.transform);
+                        GameObject o = Instantiate(_imagePrefab, _canvas.transform);
                         _images.Add(o.GetComponent<Image>());
                     }
                     _images[imageIndex].rectTransform.anchoredPosition = new Vector2(uiElement.Position.x, uiElement.Position.y);

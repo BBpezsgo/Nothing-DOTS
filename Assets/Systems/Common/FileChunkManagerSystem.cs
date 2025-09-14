@@ -360,9 +360,9 @@ partial class FileChunkManagerSystem : SystemBase
 
     public static int GetChunkSize(int totalLength, int chunkIndex)
     {
-        if (chunkIndex == FileChunkManagerSystem.GetChunkLength(totalLength) - 1)
+        if (chunkIndex == GetChunkLength(totalLength) - 1)
         {
-            return totalLength - (FileChunkManagerSystem.GetChunkLength(totalLength) - 1) * FileChunkResponseRpc.ChunkSize;
+            return totalLength - (GetChunkLength(totalLength) - 1) * FileChunkResponseRpc.ChunkSize;
         }
         return FileChunkResponseRpc.ChunkSize;
     }

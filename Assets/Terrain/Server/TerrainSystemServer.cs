@@ -222,44 +222,6 @@ partial struct TerrainSystemServer : ISystem
             normal = math.normalize(math.cross(v1 - v0, v2 - v0));
             return (1 - dz) * h00 + dx * h11 + (dz - dx) * h01;
         }
-
-        /*
-        if (dx < dz)
-        {
-            h00 = h00 * (1 - dx - dz) + h10 * dx + h01 * dz;
-
-            float3 v0 = new(dataPos00.x, h00, dataPos00.y);
-            float3 v1 = new(dataPos11.x, h10, dataPos00.y);
-            float3 v2 = new(dataPos00.x, h01, dataPos11.y);
-
-            DebugEx.DrawTriangle(
-                v0,
-                v1,
-                v2,
-                Color.gray, 100f, false);
-
-            normal = math.cross(v1 - v0, v2 - v0);
-        }
-        else
-        {
-            h00 = h11 * (dx + dz - 1) + h01 * (1 - dx) + h10 * (1 - dz);
-
-            float3 v0 = new(dataPos11.x, h11, dataPos11.y);
-            float3 v1 = new(dataPos00.x, h01, dataPos11.y);
-            float3 v2 = new(dataPos11.x, h10, dataPos00.y);
-
-            DebugEx.DrawTriangle(
-                v0,
-                v1,
-                v2,
-                Color.white, 100f, false);
-
-            normal = math.cross(v1 - v0, v2 - v0);
-        }
-        */
-
-        //Debug.DrawRay(new float3(position.x, h00, position.y), normal * 0.1f, Color.blue, 10f);
-        return h00;
     }
 }
 

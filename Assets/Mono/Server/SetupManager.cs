@@ -118,7 +118,7 @@ public class SetupManager : Singleton<SetupManager>
 
         int c = 0;
 
-        foreach (var generated in GetPositions())
+        foreach (Vector2 generated in GetPositions())
         {
             if (c++ > 50)
             {
@@ -246,7 +246,7 @@ public class SetupManager : Singleton<SetupManager>
     {
         if (!RandomPosition || Deterministic)
         {
-            foreach (var position in GetPositions())
+            foreach (Vector2 position in GetPositions())
             {
                 Gizmos.DrawSphere(new Vector3(position.x, 0.5f, position.y), UnitRadius);
             }

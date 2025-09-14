@@ -12,7 +12,7 @@ unsafe partial class ProcessorSourceSystem : SystemBase
     protected override void OnUpdate()
     {
         EntityCommandBuffer commandBuffer = default;
-        var compilerSystem = World.GetExistingSystemManaged<CompilerSystemServer>();
+        CompilerSystemServer compilerSystem = World.GetExistingSystemManaged<CompilerSystemServer>();
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ProcessorCommandRequestRpc>>()

@@ -26,12 +26,12 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
     {
         UI.rootVisualElement.Q<Button>("button-host").clicked += () =>
         {
-            if (!HandleInput(out NetworkEndpoint endpoint, out var nickname)) return;
+            if (!HandleInput(out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
             StartCoroutine(StartHostAsync(endpoint, nickname));
         };
         UI.rootVisualElement.Q<Button>("button-client").clicked += () =>
         {
-            if (!HandleInput(out NetworkEndpoint endpoint, out var nickname)) return;
+            if (!HandleInput(out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
             StartCoroutine(StartClientAsync(endpoint, nickname));
         };
         UI.rootVisualElement.Q<Button>("button-server").clicked += () =>

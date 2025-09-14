@@ -154,9 +154,9 @@ public class CameraControl : Singleton<CameraControl>
         if (UI.IsUIFocused) return;
         if (startDragWorld != default) return;
 
-        Vector3 inputValue = (
+        Vector3 inputValue =
             movement.ReadValue<Vector2>().x * GetCameraRight() +
-            movement.ReadValue<Vector2>().y * GetCameraForward());
+            movement.ReadValue<Vector2>().y * GetCameraForward();
         inputValue.Normalize();
 
         if (inputValue.sqrMagnitude <= 0.1f) return;

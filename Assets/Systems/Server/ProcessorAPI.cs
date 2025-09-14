@@ -724,6 +724,8 @@ static unsafe class ProcessorAPI
                             }
                         );
                         break;
+                    default:
+                        throw new UnreachableException();
                 }
                 break;
             }

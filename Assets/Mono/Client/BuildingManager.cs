@@ -65,11 +65,14 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             element.userData = item.Name;
 
             Button button = element.Q<Button>();
-            if (!recycled) button.clicked += () =>
+            if (!recycled)
             {
-                SelectBuilding((Unity.Collections.FixedString32Bytes)element.userData);
-                button.Blur();
-            };
+                button.clicked += () =>
+                {
+                    SelectBuilding((Unity.Collections.FixedString32Bytes)element.userData);
+                    button.Blur();
+                };
+            }
 
             element.Q<Label>("label-name").text = item.Name.ToString();
             element.Q<Label>("label-resources").text = item.RequiredResources.ToString();
@@ -124,7 +127,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             }
             else if (!UIManager.Instance.AnyUIVisible)
             {
-                UIManager.Instance.OpenUI(this.BuildingUI)
+                UIManager.Instance.OpenUI(BuildingUI)
                     .Setup(this);
             }
         }
@@ -180,7 +183,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
 
         if (BuildingHologram == null)
         {
-            BuildingHologram = GameObject.Instantiate(BuildingHologramPrefab, transform);
+            BuildingHologram = Instantiate(BuildingHologramPrefab, transform);
             ApplyHologram(BuildingHologram, SelectedBuilding);
         }
         else if (!BuildingHologram.activeSelf)
@@ -274,7 +277,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         renderers.AddRange(hologram.GetComponentsInChildren<MeshRenderer>());
 
         for (int i = 0; i < renderers.Count; i++)
-        { renderers[i].materials = new Material[] { Material.Instantiate(Instance.HologramMaterial) }; }
+        { renderers[i].materials = new Material[] { Instantiate(Instance.HologramMaterial) }; }
     }
 
     static GameObject GetHologramModelGroup(GameObject hologram)

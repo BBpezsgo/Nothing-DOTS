@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;

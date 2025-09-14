@@ -4,5 +4,5 @@ using Unity.Entities;
 [BurstCompile]
 public struct CoreComputer : IComponentData
 {
-    
+
 }

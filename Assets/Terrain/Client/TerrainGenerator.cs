@@ -1,13 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using System.IO;
-using System.Net.Http;
-using LanguageCore;
 using System;
 using NaughtyAttributes;
-using BitMiracle.LibTiff.Classic;
-using System.Collections;
-using Unity.EditorCoroutines.Editor;
 using Unity.Profiling;
 using Unity.Mathematics;
 using System.Diagnostics.CodeAnalysis;
@@ -269,6 +263,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         }
     }
 
+#if false
     IEnumerator GenerateAsync()
     {
         for (int i = transform.childCount - 1; i >= 0; i--)
@@ -467,6 +462,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
 
     [Button]
     void Generate() => EditorCoroutineUtility.StartCoroutine(GenerateAsync(), this);
+#endif
 
     void OnTerrainChunkVisibilityChanged(TerrainChunk chunk, bool isVisible)
     {
