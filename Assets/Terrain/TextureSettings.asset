@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19b8eb2a9bb9dc276a112cf5fa6bd14c, type: 3}
+  m_Name: TextureSettings
+  m_EditorClassIdentifier: 
+  Resolution: 64
+  HeightThreshold: 10
+  Noise1Threshold: 0.2
+  Noise2Threshold: 0.2
+  NoiseSettings:
+    scale: 10
+    octaves: 8
+    persistance: 0.5
+    lacunarity: 4
+    seed: 0
+    offset: {x: 0, y: 0}

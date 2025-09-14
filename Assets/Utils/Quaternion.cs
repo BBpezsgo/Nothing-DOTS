@@ -102,4 +102,32 @@ public static partial class Utils
             euler = new float3(math.atan2(x1, x2), -math.asin(y1), 0f).yzx;
         }
     }
+
+    /// <summary>
+    /// <seealso href="https://discussions.unity.com/t/is-there-a-conversion-method-from-quaternion-to-euler/731052/39">Source</seealso>
+    /// </summary>
+    [BurstCompile]
+    public static float Yaw(this in quaternion q)
+    {
+        const float epsilon = 1e-6f;
+        const float cutoff = (1f - 2f * epsilon) * (1f - 2f * epsilon);
+        float4 d1 = q.value * q.value.wwww * 2f;
+        float4 d2 = q.value * q.value.yzxw * 2f;
+        float4 d3 = q.value * q.value;
+        float y1 = d2.y - d1.x;
+        if (y1 * y1 < cutoff)
+        {
+            float x1 = d2.x + d1.z;
+            float x2 = d3.y + d3.w - d3.x - d3.z;
+            return math.atan2(x1, x2);
+        }
+        else
+        {
+            float4 abcd = new(d2.z, d1.y, d2.y, d1.x);
+            float x1 = 2f * (abcd.x * abcd.w + abcd.y * abcd.z);
+            float4 x = abcd * abcd * new float4(-1f, 1f, -1f, 1f);
+            float x2 = (x.x + x.y) + (x.z + x.w);
+            return math.atan2(x1, x2);
+        }
+    }
 }

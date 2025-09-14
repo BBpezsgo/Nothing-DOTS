@@ -120,6 +120,19 @@ public class CameraControl : Singleton<CameraControl>
         UpdateCameraZoom();
         UpdateBasePosition();
 
+        if (TerrainGenerator.Instance.TrySampleFast(new float2(transform.position.x, transform.position.z), out float height))
+        {
+            transform.position = new Vector3(transform.position.x, Mathf.Lerp(transform.position.y, height, 5f * Time.deltaTime), transform.position.z);
+        }
+
+        if (TerrainGenerator.Instance.TrySampleFast(new float2(cameraTransform.position.x, cameraTransform.position.z), out height))
+        {
+            if (cameraTransform.position.y <= height + minHeight)
+            {
+                cameraTransform.position = new Vector3(cameraTransform.position.x, height + minHeight, cameraTransform.position.z);
+            }
+        }
+
         if (ConnectionManager.ClientWorld != null && Time.timeSinceLevelLoad > 5f)
         {
             PlayerPositionSystemClient.GetInstance(ConnectionManager.ClientWorld.Unmanaged).CurrentPosition = cameraTransform.position;

@@ -146,6 +146,9 @@ public static partial class DebugEx
 #endif
     }
 
+    public static void DrawBoxAligned(float3 start, float3 size, Color color, float duration = 0f, bool depthTest = true)
+        => DrawBox(start + size * 0.5f, size, color, duration, depthTest);
+
     public static void DrawBox(AABB aabb, Color color, float duration = 0f, bool depthTest = true)
         => DrawBox(aabb.Center, aabb.Size, color, duration, depthTest);
 
@@ -198,6 +201,15 @@ public static partial class DebugEx
         Debug.DrawLine(position - up, position + up, color, duration, depthTest);
         Debug.DrawLine(position - right, position + right, color, duration, depthTest);
         Debug.DrawLine(position - forward, position + forward, color, duration, depthTest);
+#endif
+    }
+
+    public static void DrawTriangle(float3 a, float3 b, float3 c, Color color, float duration = 0f, bool depthTest = true)
+    {
+#if UNITY_EDITOR && EDITOR_DEBUG
+        Debug.DrawLine(a, b, color, duration, depthTest);
+        Debug.DrawLine(b, c, color, duration, depthTest);
+        Debug.DrawLine(c, a, color, duration, depthTest);
 #endif
     }
 

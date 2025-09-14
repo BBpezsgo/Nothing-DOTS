@@ -93,6 +93,14 @@ public class SelectionManager : Singleton<SelectionManager>
             }
         }
 
+        //{
+        //    UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
+        //    if (TerrainCollisionSystem.Raycast(ray.origin, ray.direction, 1000f, out float3 hitPoint))
+        //    {
+        //        DebugEx.DrawPoint(hitPoint, 1f, Color.white, 10f);
+        //    }
+        //}
+
         // {
         //     Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
         //     if (Ground.Raycast(ray, out float distance))
@@ -116,7 +124,7 @@ public class SelectionManager : Singleton<SelectionManager>
         _selectionStart = default;
 
         UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
-        if (!Ground.Raycast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), out float distance))
+        if (!WorldRaycast(ray, out float distance))
         { return; }
 
         _selectionStart = ray.GetPoint(distance);
@@ -323,7 +331,7 @@ public class SelectionManager : Singleton<SelectionManager>
     void ShowUnitCommandsUI()
     {
         UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
-        if (!Ground.Raycast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), out float distance))
+        if (!WorldRaycast(ray, out float distance))
         { return; }
 
         _unitCommandUIWorldPosition = ray.GetPoint(distance);
@@ -543,11 +551,19 @@ public class SelectionManager : Singleton<SelectionManager>
         _selected.Clear();
     }
 
-    bool RayCast(UnityEngine.Ray ray, uint layer, out Hit hit)
+    static bool WorldRaycast(UnityEngine.Ray ray, out float distance)
+    {
+        return TerrainGenerator.Instance.Raycast(ray.origin, ray.direction, 1000f, out distance);
+        //return Ground.Raycast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), out distance);
+    }
+
+    static bool RayCast(UnityEngine.Ray ray, uint layer, out Hit hit)
     {
         Vector3 start = ray.origin;
         Vector3 end = ray.GetPoint(200f);
         NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
-        return QuadrantRayCast.RayCast(map, new Ray(start, end, layer), out hit);
+        if (!QuadrantRayCast.RayCast(map, new Ray(start, end, layer), out hit)) return false;
+        if (WorldRaycast(ray, out float worldHitDistance) && hit.Distance > worldHitDistance + 5f) return false;
+        return true;
     }
 }
