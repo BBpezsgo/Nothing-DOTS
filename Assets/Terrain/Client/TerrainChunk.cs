@@ -1,4 +1,5 @@
 ﻿using System;
+using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Profiling;
 using UnityEngine;
@@ -23,6 +24,7 @@ public class TerrainChunk
     int PreviousLODIndex1 = -1;
     //int PreviousLODIndex2 = -1;
     readonly float MaxViewDistanceSqr;
+    public bool FeaturesGenerated;
 
     readonly HeightMapSettings HeightMapSettings;
     readonly TextureSettings TextureSettings;
@@ -207,6 +209,17 @@ public class TerrainChunk
             MeshObject.SetActive(visible);
             OnVisibilityChanged.Invoke(this, visible);
         }
+    }
+
+    public void GenerateFeatures(in TerrainFeatures terrainFeatures, ref EntityCommandBuffer commandBuffer)
+    {
+        FeaturesGenerated = true;
+        TerrainSystemServer.GenerateChunkFeatures(
+            Coord,
+            HeightMap,
+            in terrainFeatures,
+            ref commandBuffer
+        );
     }
 }
 

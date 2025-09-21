@@ -5,6 +5,7 @@ using Unity.Burst;
 using System;
 using Unity.Jobs;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Transforms;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -68,6 +69,7 @@ partial struct TerrainSystemServer : ISystem
         if (Queue.Length == 0) return;
 
         NativeHeightMapSettings heightMapSettings = SystemAPI.GetSingleton<NativeHeightMapSettings>();
+        TerrainFeatures terrainFeatures = SystemAPI.GetSingleton<TerrainFeatures>();
 
         NativeArray<NativeArray<float>> results = new(Queue.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < results.Length; i++)
@@ -81,8 +83,20 @@ partial struct TerrainSystemServer : ISystem
             Queue = Queue.AsReadOnly(),
             HeightMapSettings = heightMapSettings,
         };
-        JobHandle handle = task.Schedule(Queue.Length, 4);
+        JobHandle handle = task.ScheduleParallel(Queue.Length, 4, default);
         handle.Complete();
+
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+
+        for (int i = 0; i < Queue.Length; i++)
+        {
+            GenerateChunkFeatures(
+                Queue[i],
+                results[i],
+                in terrainFeatures,
+                ref commandBuffer
+            );
+        }
 
         for (int i = 0; i < results.Length; i++)
         {
@@ -99,6 +113,32 @@ partial struct TerrainSystemServer : ISystem
         Hashset.Clear();
         Queue.Clear();
         results.Dispose();
+    }
+
+    [BurstCompile]
+    public static void GenerateChunkFeatures(
+        in int2 chunkCoord,
+        in ReadOnlySpan<float> heightmap,
+        in TerrainFeatures terrainFeatures,
+        ref EntityCommandBuffer commandBuffer)
+    {
+        float2 chunkOrigin = ChunkToWorld(chunkCoord);
+        Unity.Mathematics.Random random = Unity.Mathematics.Random.CreateFromIndex((uint)math.abs(chunkCoord.x) + (uint)math.abs(chunkCoord.y));
+        int n = random.NextInt(1, 8);
+        for (int j = 0; j < n; j++)
+        {
+            int2 dataCoord = random.NextInt2(default, new int2(NumVertsPerLine - 1));
+            float2 randomPosition = DataToWorld(dataCoord) + chunkOrigin + random.NextFloat2(new float2(-cellSize / 2, -cellSize / 2), new float2(cellSize / 2, cellSize / 2));
+            float height = Sample(heightmap, randomPosition, chunkCoord, dataCoord, out float3 normal);
+            Entity newResource = commandBuffer.Instantiate(terrainFeatures.ResourcePrefab);
+            float3 p = new(
+                randomPosition.x,
+                height,
+                randomPosition.y
+            );
+            commandBuffer.SetComponent(newResource, LocalTransform.FromPosition(p));
+            DebugEx.DrawSphere(p, 5f, Color.red, 1000f);
+        }
     }
 
     [BurstCompile]
@@ -226,7 +266,7 @@ partial struct TerrainSystemServer : ISystem
 }
 
 [BurstCompile(CompileSynchronously = true)]
-partial struct TerrainGeneratorJobServer : IJobParallelFor
+partial struct TerrainGeneratorJobServer : IJobFor
 {
     [ReadOnly] public NativeArray<int2>.ReadOnly Queue;
     [NativeDisableContainerSafetyRestriction] public NativeArray<NativeArray<float>>.ReadOnly Result;

@@ -232,13 +232,42 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         return false;
     }
 
+    // FIXME: Bruh
+    static void Bruh(ref bool b, ref EntityCommandBuffer commandBuffer, ref TerrainFeatures terrainFeatures)
+    {
+        if (!b && ConnectionManager.ClientWorld is not null)
+        {
+            //EntityQuery q1 = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(new ComponentType[]{
+            //    new(typeof(EndSimulationEntityCommandBufferSystem.Singleton), ComponentType.AccessMode.ReadWrite)
+            //});
+            commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp); // q1.GetSingletonRW<EndSimulationEntityCommandBufferSystem.Singleton>().ValueRW.CreateCommandBuffer(ConnectionManager.ClientWorld.Unmanaged);
+            //q1.Dispose();
+
+            EntityQuery q2 = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(new ComponentType[]{
+                new(typeof(TerrainFeatures), ComponentType.AccessMode.ReadOnly)
+            });
+            terrainFeatures = q2.GetSingleton<TerrainFeatures>();
+            q2.Dispose();
+            b = true;
+        }
+    }
+
     void UpdateVisibleChunks()
     {
+        bool b = default;
+        EntityCommandBuffer entityCommandBuffer = default;
+        TerrainFeatures terrainFeatures = default;
+
         HashSet<int2> alreadyUpdatedChunkCoords = new();
         for (int i = VisibleTerrainChunks.Count - 1; i >= 0; i--)
         {
             alreadyUpdatedChunkCoords.Add(VisibleTerrainChunks[i].Coord);
             VisibleTerrainChunks[i].UpdateTerrainChunk();
+            if (!VisibleTerrainChunks[i].FeaturesGenerated)
+            {
+                Bruh(ref b, ref entityCommandBuffer, ref terrainFeatures);
+                VisibleTerrainChunks[i].GenerateFeatures(in terrainFeatures, ref entityCommandBuffer);
+            }
         }
 
         int currentChunkCoordX = Mathf.RoundToInt(ViewerPosition.x / MeshWorldSize);
@@ -249,17 +278,29 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
             for (int xOffset = -ChunksVisibleInViewDst; xOffset <= ChunksVisibleInViewDst; xOffset++)
             {
                 int2 viewedChunkCoord = new(currentChunkCoordX + xOffset, currentChunkCoordY + yOffset);
+
                 if (alreadyUpdatedChunkCoords.Contains(viewedChunkCoord)) continue;
 
-                if (TerrainChunks.ContainsKey(viewedChunkCoord))
+                if (TerrainChunks.TryGetValue(viewedChunkCoord, out TerrainChunk? chunk))
                 {
-                    TerrainChunks[viewedChunkCoord].UpdateTerrainChunk();
+                    chunk.UpdateTerrainChunk();
+                    if (!chunk.FeaturesGenerated)
+                    {
+                        Bruh(ref b, ref entityCommandBuffer, ref terrainFeatures);
+                        chunk.GenerateFeatures(in terrainFeatures, ref entityCommandBuffer);
+                    }
                 }
                 else
                 {
                     CreateChunk(viewedChunkCoord);
                 }
             }
+        }
+
+        if (b)
+        {
+            entityCommandBuffer.Playback(ConnectionManager.ClientWorld!.EntityManager);
+            entityCommandBuffer.Dispose();
         }
     }
 
