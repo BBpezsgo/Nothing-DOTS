@@ -227,20 +227,20 @@ partial class FileChunkManagerSystem : SystemBase
 
     public FileStatus GetRequestStatus(FileId fileId)
     {
-        Entity databaseEntity = SystemAPI.GetSingletonEntity<BufferedFiles>();
-        // FIXME: this will crash
-        using NativeArray<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(databaseEntity, true).ToNativeArray(Allocator.TempJob);
-
-        for (int i = fileHeaders.Length - 1; i >= 0; i--)
+        if (Requests.Any(v => v.File == fileId))
         {
-            BufferedReceivingFile header = fileHeaders[i];
-            if (header.FileName != fileId.Name) continue;
-            if (header.Source != fileId.Source) continue;
-
-            if (header.Kind == FileResponseStatus.NotFound)
-            { return FileStatus.NotFound; }
-
             return FileStatus.Receiving;
+        }
+
+        if (RemoteFiles.TryGetValue(fileId, out RemoteFile status))
+        {
+            return status.Kind switch
+            {
+                FileResponseStatus.OK => FileStatus.Received,
+                FileResponseStatus.NotFound => FileStatus.NotFound,
+                FileResponseStatus.NotChanged => FileStatus.Received,
+                _ => throw new UnreachableException(),
+            };
         }
 
         return FileStatus.NotRequested;
