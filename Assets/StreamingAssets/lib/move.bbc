@@ -6,17 +6,17 @@ export void StopMoving()
     Vehicle.InputForward = (i8)0;
 }
 
-export void MoveTo(f32 targetX, f32 targetY)
+export void MoveTo(f32 targetX, f32 targetZ)
 {
-    float2 forward = GPS.Forward;
-    float2 position = GPS.Position;
+    float2 forward = new float2(GPS.Forward.x, GPS.Forward.z);
+    float2 position = new float2(GPS.Position.x, GPS.Position.z);
 
     float2 dirMove;
     dirMove.x = targetX - position.x;
-    dirMove.y = targetY - position.y;
+    dirMove.y = targetZ - position.y;
     Normalise(&dirMove);
 
-    f32 d = Distance(position, new float2(targetX, targetY));
+    f32 d = Distance(position, new float2(targetX, targetZ));
 
     f32 t1 = Cross(forward, dirMove);
     f32 t2 = Dot(forward, dirMove);

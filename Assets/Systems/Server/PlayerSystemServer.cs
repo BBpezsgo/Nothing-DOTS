@@ -23,10 +23,10 @@ public partial struct PlayerSystemServer : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        if (!SystemAPI.TryGetSingletonBuffer(out DynamicBuffer<BufferedSpawn> spawns, false)) return;
 
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
         PrefabDatabase prefabs = SystemAPI.GetSingleton<PrefabDatabase>();
-        var spawns = SystemAPI.GetSingletonBuffer<BufferedSpawn>(false);
 
         foreach (var (id, entity) in
             SystemAPI.Query<RefRO<NetworkId>>()

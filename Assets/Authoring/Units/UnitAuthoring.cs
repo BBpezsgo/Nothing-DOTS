@@ -4,6 +4,8 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Unit")]
 public class UnitAuthoring : MonoBehaviour
 {
+    [SerializeField] int Team;
+
     class Baker : Baker<UnitAuthoring>
     {
         public override void Bake(UnitAuthoring authoring)
@@ -12,7 +14,10 @@ public class UnitAuthoring : MonoBehaviour
             AddComponent<Unit>(entity, new());
             AddComponent<SelectableUnit>(entity);
             AddComponent<EntityWithInfoUI>(entity);
-            AddComponent<UnitTeam>(entity);
+            AddComponent<UnitTeam>(entity, new()
+            {
+                Team = authoring.Team,
+            });
             AddComponent<Vehicle>(entity);
         }
     }

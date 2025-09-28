@@ -1,0 +1,272 @@
+using "api.bbc";
+
+const f32 G = 9.82f;
+const f32 PROJECTILE_V = 40f;
+const f32 PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
+const f32 HEIGHT_OFFSET = 0;
+
+f32 CalculateAngle(f32 targetDistance)
+{
+    float a = (G * targetDistance) / PROJECTILE_V2;
+    if (a < -1f || a > 1f)
+    {
+        return -0.785398f;
+    }
+    else
+    {
+        return -0.5f * Asin(a);
+    }
+}
+
+f32 CalculateAngle(f32 targetDistance, f32 height)
+{
+    f32 discriminant = (
+        (PROJECTILE_V2 * PROJECTILE_V2) -
+        (G * (G * targetDistance * targetDistance + ((HEIGHT_OFFSET + height) * 2f * PROJECTILE_V2)))
+    );
+
+    if (discriminant < 0f)
+    {
+        return -0.785398f;
+    }
+    else if (1)
+    {
+        return Atan(
+            (PROJECTILE_V2 + _Sqrt(discriminant)) /
+            (G * targetDistance)
+        ) - (PI * 0.5f);
+    }
+    else
+    {
+        return Atan(
+            (PROJECTILE_V2 - _Sqrt(discriminant)) /
+            (G * targetDistance)
+        ) - (PI * 0.5f);
+    }
+}
+
+u8 CalculateAngle(f32 targetDistance, f32 height, f32* angle)
+{
+    f32 discriminant = (
+        (PROJECTILE_V2 * PROJECTILE_V2) -
+        (G * (G * targetDistance * targetDistance + (height * 2f * PROJECTILE_V2)))
+    );
+
+    if (discriminant < 0f)
+    {
+        return (u8)0;
+    }
+    else if (1)
+    {
+        *angle = Atan(
+            (PROJECTILE_V2 + _Sqrt(discriminant)) /
+            (G * targetDistance)
+        ) - (PI * 0.5f);
+        return (u8)1;
+    }
+    else
+    {
+        *angle = Atan(
+            (PROJECTILE_V2 - _Sqrt(discriminant)) /
+            (G * targetDistance)
+        ) - (PI * 0.5f);
+        return (u8)1;
+    }
+}
+
+f32 CalculateRotation(float2 target)
+{
+    float2 targetDirection = Normalised(target);
+    f32 targetAngle = Atan2(targetDirection.y, targetDirection.x);
+    if (targetAngle < 0f) { targetAngle += TAU; }
+    if (targetAngle >= TAU) { targetAngle -= TAU; }
+    return targetAngle;
+}
+
+export u8 TargetAt(float2 target, float2* targetedPosition)
+{
+    if (target.x == 0f &&
+        target.y == 0f)
+    {
+        return (u8)0;
+    }
+
+    if (targetedPosition.x != target.x ||
+        targetedPosition.y != target.y)
+    {
+        *targetedPosition = target;
+        target.y -= 0.2f;
+
+        CombatTurret.TurretTargetRotation = CalculateRotation(target);
+
+        f32 targetDistance = Magnitude(target);
+        // targetDistance -= Cos(CombatTurret.TurretCurrentAngle) * 2.5f;
+        // f32 height = Sin(CombatTurret.TurretCurrentAngle) * 2.5f;
+
+        CombatTurret.TurretTargetAngle = CalculateAngle(targetDistance);
+    }
+
+    f32 diff1 = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
+    f32 diff2 = Abs(CombatTurret.TurretCurrentAngle - CombatTurret.TurretTargetAngle);
+
+    if ((diff1 < 0.1f || TAU - diff1 < 0.1f) && (diff2 < 0.01f || TAU - diff2 < 0.01f))
+    {
+        return (u8)1;
+    }
+
+    return (u8)0;
+}
+
+const float ProjectileV = 40f;
+const float ProjectileV2 = ProjectileV * ProjectileV;
+const float ProjectileV4 = ProjectileV2 * ProjectileV2;
+
+u8 SolveBallisticArc(float3 selfWorldPosition, float3 targetPosition, float3* shootDirection)
+{
+    float3 diff = targetPosition - selfWorldPosition;
+    float groundDistance = _Sqrt(diff.x * diff.x + diff.z * diff.z);
+
+    float root = ProjectileV4 - G * (G * groundDistance * groundDistance + 2.0 * diff.y * ProjectileV2);
+
+    if (root < 0) return (u8)0;
+
+    root = _Sqrt(root);
+    float gx = G * groundDistance;
+
+    float lowAng = Atan2(ProjectileV2 - root, gx);
+    //float highAng = Atan2(ProjectileV2 + root, gx);
+
+    float3 groundDir = new float3(diff.x, 0f, diff.z) / groundDistance;
+    *shootDirection = groundDir * _Cos(lowAng) + new float3(0.0, 1.0, 0.0) * _Sin(lowAng);
+
+    return (u8)1;
+}
+
+export u8 TargetAt(float3 target, float3* targetedPosition)
+{
+    if (target.x == 0f &&
+        target.z == 0f)
+    {
+        return (u8)0;
+    }
+
+    float3 targetLocal = target;
+    ToLocal(&targetLocal);
+
+    if (targetedPosition.x != targetLocal.x ||
+        targetedPosition.z != targetLocal.z)
+    {
+        float3 result;
+        if (!SolveBallisticArc(GPS.Position + (ToGlobalD(new float3(0.0, 1.0, 0.0)) * 0.5), target, &result))
+        {
+            return (u8)0;
+        }
+
+        ToLocalD(&result);
+
+        float yaw = Atan2(result.z, result.x);
+        float pitch = -Asin(result.y);
+
+        CombatTurret.TurretTargetRotation = yaw;
+        CombatTurret.TurretTargetAngle = pitch;
+
+        *targetedPosition = targetLocal;
+    }
+
+    f32 diff1 = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
+    f32 diff2 = Abs(CombatTurret.TurretCurrentAngle - CombatTurret.TurretTargetAngle);
+
+    if ((diff1 < 0.1f || TAU - diff1 < 0.1f) && (diff2 < 0.01f || TAU - diff2 < 0.01f))
+    {
+        return (u8)1;
+    }
+
+    return (u8)0;
+}
+
+export u8 TargetAtSimple(float2 target, float2* targetedPosition)
+{
+    if (target.x == 0f &&
+        target.y == 0f)
+    {
+        return (u8)0;
+    }
+
+    if (targetedPosition.x != target.x ||
+        targetedPosition.y != target.y)
+    {
+        *targetedPosition = target;
+        target.y -= 0.2f;
+
+        CombatTurret.TurretTargetRotation = CalculateRotation(target);
+
+        CombatTurret.TurretTargetAngle = 0.00001f; // TODO: fix this
+    }
+
+    f32 diff = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
+
+    if (diff < 0.1f || TAU - diff < 0.1f)
+    {
+        return (u8)1;
+    }
+
+    return (u8)0;
+}
+
+export u8 TargetAtSimple(float3 target, float3* targetedPosition)
+{
+    if (target.x == 0f &&
+        target.z == 0f)
+    {
+        return (u8)0;
+    }
+
+    ToLocal(&target);
+
+    if (targetedPosition.x != target.x ||
+        targetedPosition.z != target.z)
+    {
+        *targetedPosition = target;
+
+        float3 targetDirection3 = Normalised(target);
+        f32 targetAngle = Atan2(targetDirection3.z, targetDirection3.x);
+        if (targetAngle < 0f) { targetAngle += TAU; }
+        if (targetAngle >= TAU) { targetAngle -= TAU; }
+        CombatTurret.TurretTargetRotation = targetAngle;
+
+        float horizontalDist = _Sqrt(targetDirection3.x * targetDirection3.x + targetDirection3.z * targetDirection3.z);
+        float pitch = Atan2(targetDirection3.y, horizontalDist) * -1;
+
+        CombatTurret.TurretTargetAngle = pitch;
+    }
+
+    f32 diff1 = Abs(CombatTurret.TurretCurrentRotation - CombatTurret.TurretTargetRotation);
+
+    if ((diff1 < 0.1f || TAU - diff1 < 0.1f))
+    {
+        return (u8)1;
+    }
+
+    return (u8)0;
+}
+
+export void ShootAt(float2 target, float2* targetedPosition)
+{
+    CombatTurret.InputShoot = TargetAt(target, targetedPosition);
+}
+
+export void ShootAt(float3 target, float3* targetedPosition)
+{
+    CombatTurret.InputShoot = TargetAt(target, targetedPosition);
+    PrintLine(CombatTurret.InputShoot);
+}
+
+export void ShootAtSimple(float2 target, float2* targetedPosition)
+{
+    CombatTurret.InputShoot = TargetAtSimple(target, targetedPosition);
+}
+
+export void ShootAtSimple(float3 target, float3* targetedPosition)
+{
+    CombatTurret.InputShoot = TargetAtSimple(target, targetedPosition);
+}

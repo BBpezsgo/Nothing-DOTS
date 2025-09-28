@@ -64,18 +64,18 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
             UpdateVisibleChunks();
         }
 
-        foreach (var item in TerrainChunks)
-        {
-            float2 p = TerrainSystemServer.ChunkToWorld(item.Value.Coord);
-            for (int i = 0; i < item.Value.LodMeshes.Length; i++)
-            {
-                if (item.Value.LodMeshes[i].Mesh != null ||
-                    item.Value.LodMeshes[i].Texture != null)
-                {
-                    DebugEx.DrawBoxAligned(new float3(p.x, item.Value.LodMeshes.Length - i, p.y), new float3(TerrainSystemServer.MeshWorldSize, 0f, TerrainSystemServer.MeshWorldSize), Color.green, 0f, false);
-                }
-            }
-        }
+        //foreach (var item in TerrainChunks)
+        //{
+        //    float2 p = TerrainSystemServer.ChunkToWorld(item.Value.Coord);
+        //    for (int i = 0; i < item.Value.LodMeshes.Length; i++)
+        //    {
+        //        if (item.Value.LodMeshes[i].Mesh != null ||
+        //            item.Value.LodMeshes[i].Texture != null)
+        //        {
+        //            DebugEx.DrawBoxAligned(new float3(p.x, item.Value.LodMeshes.Length - i, p.y), new float3(TerrainSystemServer.MeshWorldSize, 0f, TerrainSystemServer.MeshWorldSize), Color.green, 0f, false);
+        //        }
+        //    }
+        //}
     }
 
     void CreateChunk(int2 chunkCoord)

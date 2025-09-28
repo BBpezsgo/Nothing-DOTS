@@ -20,22 +20,26 @@ public partial struct UnitRadarSystem : ISystem
             SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>, RefRO<LocalToWorld>>()
             .WithAll<Radar>())
         {
-            float3 direction = processor.ValueRO.RadarRequest;
+            float2 direction = processor.ValueRO.RadarRequest;
             if (direction.Equals(default)) continue;
-            direction = localTransform.ValueRO.TransformDirection(direction);
+
+            float3 direction3 = localTransform.ValueRO.TransformDirection(new float3(direction.x, 0f, direction.y));
+            direction = math.normalize(new float2(direction3.x, direction3.z));
+            float2 position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
+
             processor.ValueRW.RadarRequest = default;
 
             processor.ValueRW.RadarLED.Blink();
 
             const float offset = 0f;
 
-            float3 rayStart = transform.ValueRO.Position + (direction * offset);
-            float3 rayEnd = transform.ValueRO.Position + (direction * (Radar.RadarRadius - offset));
+            float2 rayStart = position + (direction * offset);
+            float2 rayEnd = position + (direction * (Radar.RadarRadius - offset));
 
-            Ray ray = new(rayStart, rayEnd, Layers.BuildingOrUnit);
+            Ray2 ray = new(rayStart, rayEnd, Layers.BuildingOrUnit);
 
 #if DEBUG_LINES
-            Debug.DrawLine(rayStart, rayEnd, Color.white, 1f);
+            Debug.DrawLine(new UnityEngine.Vector3(rayStart.x, 0f, rayStart.y), new UnityEngine.Vector3(rayEnd.x, 0f, rayEnd.y), Color.white, 1f);
 #endif
 
             if (!QuadrantRayCast.RayCast(map, ray, out Hit hit))
@@ -44,10 +48,12 @@ public partial struct UnitRadarSystem : ISystem
                 return;
             }
 
-            float distance = math.distance(ray.GetPoint(hit.Distance), rayStart) + offset;
+            var p = ray.GetPoint(hit.Distance);
+
+            float distance = math.distance(p, rayStart) + offset;
 
 #if DEBUG_LINES
-            DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 1f, Color.white, 1f, false);
+            DebugEx.DrawPoint(new float3(p.x, 0f, p.y), 1f, Color.white, 1f, false);
 #endif
 
             if (distance > Radar.RadarRadius) distance = float.NaN;

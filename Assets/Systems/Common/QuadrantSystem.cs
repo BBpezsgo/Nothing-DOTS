@@ -121,6 +121,18 @@ public struct Cell : IEquatable<Cell>
         );
     }
 
+    [BurstCompile]
+    public static void ToGrid(in float2 worldPosition, out Cell position)
+    {
+        float2 fixedWorldPosition = worldPosition;
+        if (worldPosition.x < 0f) fixedWorldPosition.x += -Size;
+        if (worldPosition.y < 0f) fixedWorldPosition.y += -Size;
+        position = new(
+            (int)(fixedWorldPosition.x / Size),
+            (int)(fixedWorldPosition.y / Size)
+        );
+    }
+
     public static float2 ToGridF(float3 worldPosition) => new(
         math.clamp(worldPosition.x / Size, short.MinValue, short.MaxValue),
         math.clamp(worldPosition.z / Size, short.MinValue, short.MaxValue)
@@ -132,6 +144,15 @@ public struct Cell : IEquatable<Cell>
         position = new(
             math.clamp(worldPosition.x / Size, short.MinValue, short.MaxValue),
             math.clamp(worldPosition.z / Size, short.MinValue, short.MaxValue)
+        );
+    }
+
+    [BurstCompile]
+    public static void ToGridF(in float2 worldPosition, out float2 position)
+    {
+        position = new(
+            math.clamp(worldPosition.x / Size, short.MinValue, short.MaxValue),
+            math.clamp(worldPosition.y / Size, short.MinValue, short.MaxValue)
         );
     }
 

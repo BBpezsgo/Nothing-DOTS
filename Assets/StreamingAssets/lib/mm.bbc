@@ -1,0 +1,83 @@
+struct MappedMemory_Vehicle
+{
+    i8 InputForward;
+    i8 InputSteer;
+}
+
+struct MappedMemory_CombatTurret
+{
+    u8 InputShoot;
+    f32 TurretTargetRotation;
+    f32 TurretTargetAngle;
+    f32 TurretCurrentRotation;
+    f32 TurretCurrentAngle;
+}
+
+struct MappedMemory_Extractor
+{
+    u8 InputExtract;
+}
+
+struct MappedMemory_Transporter
+{
+    u8 LoadDirection;
+    i32 CurrentLoad;
+}
+
+struct MappedMemory_Radar
+{
+    f32 RadarDirection;
+    f32 RadarResponse;
+}
+
+struct MappedMemory_GPS
+{
+    float3 Position;
+    float3 Forward;
+}
+
+struct MappedMemory_Pendrive
+{
+    u8 IsPlugged;
+}
+
+struct MappedMemory_Facility
+{
+    u8 Signal;
+    TechnologyHash* HashLocation;
+}
+
+export alias TechnologyHash u8[30];
+
+
+const int TotalMemorySize = 2048;
+const int HeapSize = 512;
+const int StackSize = 1024;
+
+const int UserMemorySize = StackSize + HeapSize;
+const int MappedMemoryStart = UserMemorySize;
+const int MappedMemorySize = TotalMemorySize - UserMemorySize;
+
+const int GenericModulesSize = sizeof(MappedMemory_GPS) + sizeof(MappedMemory_Pendrive) + sizeof(MappedMemory_Radar) + sizeof(MappedMemory_Vehicle);
+
+
+export const MappedMemory_GPS*            GPS =             MappedMemoryStart + 0;
+export const MappedMemory_Pendrive*       Pendrive =        MappedMemoryStart + sizeof(MappedMemory_GPS);
+export const MappedMemory_Radar*          Radar =           MappedMemoryStart + sizeof(MappedMemory_GPS) + sizeof(MappedMemory_Pendrive);
+export const MappedMemory_Vehicle*        Vehicle =         MappedMemoryStart + sizeof(MappedMemory_GPS) + sizeof(MappedMemory_Pendrive) + sizeof(MappedMemory_Radar);
+
+export const MappedMemory_CombatTurret*   CombatTurret =    MappedMemoryStart + GenericModulesSize;
+export const MappedMemory_Extractor*      Extractor =       MappedMemoryStart + GenericModulesSize;
+export const MappedMemory_Transporter*    Transporter =     MappedMemoryStart + GenericModulesSize;
+export const MappedMemory_Facility*       Facility =        MappedMemoryStart + GenericModulesSize;
+
+
+*Vehicle = new MappedMemory_Vehicle;
+*CombatTurret = new MappedMemory_CombatTurret;
+*Extractor = new MappedMemory_Extractor;
+*Transporter = new MappedMemory_Transporter;
+*Radar = new MappedMemory_Radar;
+*GPS = new MappedMemory_GPS;
+*Pendrive = new MappedMemory_Pendrive;
+*Facility = new MappedMemory_Facility;
+

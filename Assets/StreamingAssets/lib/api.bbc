@@ -1,73 +1,5 @@
 using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
-
-const int MappedMemoryStart = 1536;
-
-struct MappedMemory_Vehicle
-{
-    i8 InputForward;
-    i8 InputSteer;
-}
-export const MappedMemory_Vehicle* Vehicle = MappedMemoryStart + 25;
-*Vehicle = new MappedMemory_Vehicle;
-
-struct MappedMemory_CombatTurret
-{
-    u8 InputShoot;
-    f32 TurretTargetRotation;
-    f32 TurretTargetAngle;
-    f32 TurretCurrentRotation;
-    f32 TurretCurrentAngle;
-}
-export const MappedMemory_CombatTurret* CombatTurret = MappedMemoryStart + 27;
-*CombatTurret = new MappedMemory_CombatTurret;
-
-struct MappedMemory_Extractor
-{
-    u8 InputExtract;
-}
-export const MappedMemory_Extractor* Extractor = MappedMemoryStart + 27;
-*Extractor = new MappedMemory_Extractor;
-
-struct MappedMemory_Transporter
-{
-    u8 LoadDirection;
-    i32 CurrentLoad;
-}
-export const MappedMemory_Transporter* Transporter = MappedMemoryStart + 27;
-*Transporter = new MappedMemory_Transporter;
-
-struct MappedMemory_Radar
-{
-    f32 RadarDirection;
-    f32 RadarResponse;
-}
-export const MappedMemory_Radar* Radar = MappedMemoryStart + 17;
-*Radar = new MappedMemory_Radar;
-
-struct MappedMemory_GPS
-{
-    float2 Position;
-    float2 Forward;
-}
-export const MappedMemory_GPS* GPS = MappedMemoryStart + 0;
-*GPS = new MappedMemory_GPS;
-
-struct MappedMemory_Pendrive
-{
-    u8 IsPlugged;
-}
-export const MappedMemory_Pendrive* Pendrive = MappedMemoryStart + 16;
-*Pendrive = new MappedMemory_Pendrive;
-
-export alias TechnologyHash u8[30];
-
-struct MappedMemory_Facility
-{
-    u8 Signal;
-    TechnologyHash* HashLocation;
-}
-export const MappedMemory_Facility* Facility = MappedMemoryStart + 27;
-*Facility = new MappedMemory_Facility;
+using "mm.bbc";
 
 export void Print(float2 v)
 {
@@ -114,6 +46,8 @@ export const u8 WHITE = (u8)0b111;
 [External("atan2")] export f32 Atan2(f32 y, f32 x);
 [External("sin")] export f32 Sin(f32 v);
 [External("cos")] export f32 Cos(f32 v);
+[External("sin")] export f32 _Sin(f32 v);
+[External("cos")] export f32 _Cos(f32 v);
 [External("tan")] export f32 Tan(f32 v);
 [External("asin")] export f32 Asin(f32 v);
 [External("acos")] export f32 Acos(f32 v);
@@ -170,6 +104,33 @@ export void ToGlobal(byte2* point)
 [External("toglobal")] export void ToGlobal(float3* point);
 [External("tolocal")] export void ToLocal(float3* point);
 
+[External("toglobald")] export void ToGlobalD(float3* direction);
+[External("tolocald")] export void ToLocalD(float3* direction);
+
+export float3 ToLocal(float3 point)
+{
+    ToLocal(&point);
+    return point;
+}
+
+export float3 ToGlobal(float3 point)
+{
+    ToGlobal(&point);
+    return point;
+}
+
+export float3 ToLocalD(float3 direction)
+{
+    ToLocalD(&direction);
+    return direction;
+}
+
+export float3 ToGlobalD(float3 direction)
+{
+    ToGlobalD(&direction);
+    return direction;
+}
+
 export void ToGlobal(float2* point)
 {
     float3 _p = new float3(point.x, 0f, point.y);
@@ -213,27 +174,6 @@ export inline void ldebug_label(float2 localPosition, string text)
 }
 
 [External("dequeue_command")] export int dequeue_command(any* data);
-
-// export f32 Atan2(f32 x, f32 y) { return 0f; }
-// export f32 Sin(f32 v) { return 0f; }
-// export f32 Cos(f32 v) { return 0f; }
-// export f32 Tan(f32 v) { return 0f; }
-// export f32 Asin(f32 v) { return 0f; }
-// export f32 Acos(f32 v) { return 0f; }
-// export f32 Atan(f32 v) { return 0f; }
-// export f32 _Sqrt(f32 v) { return 0f; }
-// export i32 _Random() { return 0; }
-// 
-// export void send(any* buffer, i32 length, f32 direction, f32 angle) { }
-// export i32 receive(any* buffer, i32 length, f32* direction) { return 0; }
-// export f32 radar(i32* metadata) { return 0f; }
-// 
-// export void ToGlobal(float3* point) { }
-// export void ToLocal(float3* point) { }
-// export f32 time() { return 0f; }
-// 
-// export void debug(float3 position, i32 color) { }
-// export void ldebug(float3 localPosition, i32 color) { }
 
 [External("gui_create")] void gui_create(any* ptr);
 [External("gui_update")] void gui_update(any* ptr);

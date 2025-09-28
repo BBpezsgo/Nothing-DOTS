@@ -130,8 +130,11 @@ unsafe partial class ProcessorSourceSystem : SystemBase
                         if (!field.Attributes.TryGetAttribute("Context", out LanguageCore.Parser.AttributeUsage? attribute)) continue;
                         switch (attribute.Parameters[0].Value)
                         {
-                            case "position":
-                                parameterTypes.Add(UnitCommandParameter.Position);
+                            case "position2":
+                                parameterTypes.Add(UnitCommandParameter.Position2);
+                                break;
+                            case "position3":
+                                parameterTypes.Add(UnitCommandParameter.Position3);
                                 break;
                             default:
                                 ok = false;

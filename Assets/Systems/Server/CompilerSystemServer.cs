@@ -323,11 +323,22 @@ public partial class CompilerSystemServer : SystemBase
 
                 switch (attribute.Parameters[0].Value)
                 {
-                    case "position":
+                    case "position2":
                     {
-                        if (field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new())) != sizeof(float2))
+                        int size =field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new()));
+                        if (size != sizeof(float2))
                         {
-                            error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float2)} (a 2D float vector)");
+                            error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float2)} (a 2D float vector) (type {field.Type} has a size of {size} bytes)");
+                            return false;
+                        }
+                        break;
+                    }
+                    case "position3":
+                    {
+                        int size =field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new()));
+                        if (size != sizeof(float3))
+                        {
+                            error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float3)} (a 3D float vector) (type {field.Type} has a size of {size} bytes)");
                             return false;
                         }
                         break;
@@ -354,6 +365,8 @@ public partial class CompilerSystemServer : SystemBase
         {
             IExternalFunction[] externalFunctions = ProcessorAPI.GenerateManagedExternalFunctions();
 
+            Debug.Log($"Compiling {sourceUri} ...");
+
             compiled = StatementCompiler.CompileFile(
                 sourceUri.ToString(),
                 new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
@@ -367,6 +380,8 @@ public partial class CompilerSystemServer : SystemBase
                 },
                 source.Diagnostics
             );
+
+            Debug.Log($"Generating {sourceUri} ...");
 
             generated = CodeGeneratorForMain.Generate(
                 compiled,
@@ -383,6 +398,8 @@ public partial class CompilerSystemServer : SystemBase
                 null,
                 source.Diagnostics
             );
+
+            Debug.Log($"{sourceUri} done");
         }
         catch (LanguageException exception)
         {

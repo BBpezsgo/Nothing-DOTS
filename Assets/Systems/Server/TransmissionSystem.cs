@@ -31,7 +31,7 @@ unsafe partial struct TransmissionSystem : ISystem
         processorComponentQ.Update(ref state);
 
         foreach (var (processor, transform, entity) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalToWorld>>()
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>>()
             .WithEntityAccess())
         {
             if (processor.ValueRW.OutgoingTransmissions.Length == 0) continue;
@@ -43,17 +43,27 @@ unsafe partial struct TransmissionSystem : ISystem
 
             processor.ValueRW.NetworkSendLED.Blink();
 
-            float2 position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
+            float2 direction = transmission.Direction;
+            float2 position = new(transmission.Source.x, transmission.Source.z);
+            float3 direction3 = transform.ValueRO.TransformDirection(new float3(direction.x, 0f, direction.y));
+            direction = math.normalize(new float2(direction3.x, direction3.z));
 
 #if DEBUG_LINES
-            if (!transmission.Direction.Equals(float3.zero))
+            if (!transmission.Direction.Equals(default))
             {
+                Debug.DrawLine(
+                    transmission.Source,
+                    direction3 * Unit.TransmissionRadius,
+                    Color.cyan,
+                    1f,
+                    false
+                );
                 DebugEx.DrawFOV(
                     transmission.Source,
-                    transmission.Direction,
+                    direction3,
                     transmission.Angle,
                     Unit.TransmissionRadius,
-                    Color.white,
+                    Color.cyan,
                     1f,
                     false);
             }
@@ -62,7 +72,7 @@ unsafe partial struct TransmissionSystem : ISystem
                 DebugEx.DrawSphere(
                     transmission.Source,
                     Unit.TransmissionRadius,
-                    Color.white,
+                    Color.cyan,
                     1f,
                     false);
             }
@@ -75,23 +85,30 @@ unsafe partial struct TransmissionSystem : ISystem
                 for (int z = -diff; z <= diff; z++)
                 {
                     Cell p = grid + new Cell(x, z);
+
+                    if (!map.TryGetValue(p.key, out NativeList<QuadrantEntity> cell)) continue;
+                    if (cell.Length == 0) continue;
+
                     /*
                     using (var marker = _CellVisibilityCheck.Auto())
                     {
-                        if (PointSquareDistance(position, Cell.TL(p), Cell.BR(p)) + 3 f > Unit.TransmissionRadius)
+                        if (PointSquareDistance(position, Cell.TL(p), Cell.BR(p)) + 3f > Unit.TransmissionRadius)
                         {
+                            Cell.Draw(p, Color.gray3, 1f);
                             continue;
                         }
-                        else if (!transmission.Direction.Equals(float3.zero))
-                        {
-                            if ((x != 0 || z != 0) && !IsSquareVisible(
+                        else if (!transmission.Direction.Equals(default) &&
+                            (x != 0 || z != 0) &&
+                            !IsSquareVisible(
                                 position,
-                                new float2(transmission.Direction.x, transmission.Direction.z),
+                                direction,
                                 transmission.Angle,
                                 Cell.TL(p),
                                 Cell.BR(p),
                                 Unit.TransmissionRadius))
-                            { continue; }
+                        {
+                            Cell.Draw(p, Color.gray3, 1f);
+                            continue;
                         }
                     }
                     */
@@ -100,28 +117,31 @@ unsafe partial struct TransmissionSystem : ISystem
                     Cell.Draw(p, 1f);
 #endif
 
-                    if (!map.TryGetValue(p.key, out NativeList<QuadrantEntity> cell)) continue;
-
                     using (var marker = _CellOperation.Auto())
                     {
                         for (int i = 0; i < cell.Length; i++)
                         {
                             if (cell[i].Entity == entity) continue;
 
-                            float3 entityLocalPosition = cell[i].Position;
-                            entityLocalPosition.x = cell[i].Position.x - transform.ValueRO.Position.x;
-                            entityLocalPosition.y = 0f;
-                            entityLocalPosition.z = cell[i].Position.z - transform.ValueRO.Position.z;
+                            float2 entityLocalPosition = new float2(cell[i].Position.x, cell[i].Position.z) - position;
 
                             float entityDistanceSq = math.lengthsq(entityLocalPosition);
-                            if (entityDistanceSq > (Unit.TransmissionRadius * Unit.TransmissionRadius)) continue;
-
-                            if (!transmission.Direction.Equals(float3.zero))
+                            if (entityDistanceSq > (Unit.TransmissionRadius * Unit.TransmissionRadius))
                             {
-                                float dot = math.abs(math.dot(transmission.Direction, math.normalize(entityLocalPosition)));
+#if DEBUG_LINES
+                                DebugEx.DrawSphere(cell[i].Position, 1f, Color.red, 1f, false);
+#endif
+                                continue;
+                            }
+
+                            if (!transmission.Direction.Equals(float2.zero))
+                            {
+                                float dot = math.abs(math.dot(direction, math.normalize(entityLocalPosition)));
                                 if (dot < transmission.CosAngle)
                                 {
-                                    // Debug.Log(string.Format("{0} > {1}", dot, transmission.CosAngle));
+#if DEBUG_LINES
+                                    DebugEx.DrawSphere(cell[i].Position, 1f, Color.orange, 1f, false);
+#endif
                                     continue;
                                 }
                             }
@@ -130,9 +150,13 @@ unsafe partial struct TransmissionSystem : ISystem
                             if (!other.IsValid) continue;
                             if (other.ValueRO.SourceFile == default) continue;
 
+#if DEBUG_LINES
+                            DebugEx.DrawSphere(cell[i].Position, 1f, Color.cyan, 1f, false);
+#endif
+
                             other.ValueRW.NetworkReceiveLED.Blink();
 
-                            ref var transmissions = ref other.ValueRW.IncomingTransmissions;
+                            ref FixedList128Bytes<BufferedUnitTransmission> transmissions = ref other.ValueRW.IncomingTransmissions;
 
                             if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
                             transmissions.Add(new()

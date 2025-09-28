@@ -62,13 +62,13 @@ public struct MappedMemory_Radar
 }
 
 /// <summary>
-/// Size: 16
+/// Size: 24
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct MappedMemory_GPS
 {
-    public float2 Position;
-    public float2 Forward;
+    public float3 Position;
+    public float3 Forward;
 }
 
 /// <summary>
@@ -99,12 +99,14 @@ public struct MappedMemory_Facility
 public struct MappedMemory
 {
     [FieldOffset(0)] public MappedMemory_GPS GPS;
-    [FieldOffset(16)] public MappedMemory_Pendrive Pendrive;
-    [FieldOffset(17)] public MappedMemory_Radar Radar;
-    [FieldOffset(25)] public MappedMemory_Vehicle Vehicle;
+    [FieldOffset(24)] public MappedMemory_Pendrive Pendrive;
+    [FieldOffset(25)] public MappedMemory_Radar Radar;
+    [FieldOffset(33)] public MappedMemory_Vehicle Vehicle;
 
-    [FieldOffset(27)] public MappedMemory_CombatTurret CombatTurret;
-    [FieldOffset(27)] public MappedMemory_Extractor Extractor;
-    [FieldOffset(27)] public MappedMemory_Transporter Transporter;
-    [FieldOffset(27)] public MappedMemory_Facility Facility;
+    const int GenericModulesSize = 35;
+
+    [FieldOffset(GenericModulesSize)] public MappedMemory_CombatTurret CombatTurret;
+    [FieldOffset(GenericModulesSize)] public MappedMemory_Extractor Extractor;
+    [FieldOffset(GenericModulesSize)] public MappedMemory_Transporter Transporter;
+    [FieldOffset(GenericModulesSize)] public MappedMemory_Facility Facility;
 }

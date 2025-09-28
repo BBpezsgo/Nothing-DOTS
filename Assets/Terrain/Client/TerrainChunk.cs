@@ -97,14 +97,14 @@ public class TerrainChunk
 		}
 		*/
 
-		for (int i = 0; i < data.Length; i++)
-		{
-			if (data[i] != 0f)
-			{
-				Debug.Log(data[i]);
-				break;
-			}
-		}
+		//for (int i = 0; i < data.Length; i++)
+		//{
+		//	if (data[i] != 0f)
+		//	{
+		//		Debug.Log(data[i]);
+		//		break;
+		//	}
+		//}
 
 		return (data, width, height);
 	}

@@ -11,9 +11,9 @@ public struct BufferedUnitTransmissionOutgoing : IBufferElementData
     /// </summary>
     public required float3 Source;
     /// <summary>
-    /// Direction in world space
+    /// XZ direction in local space
     /// </summary>
-    public required float3 Direction;
+    public required float2 Direction;
     public required float Angle;
     public required float CosAngle;
     public required FixedList32Bytes<byte> Data;

@@ -5,7 +5,8 @@ using Unity.NetCode;
 
 public enum UnitCommandParameter : byte
 {
-    Position,
+    Position2,
+    Position3,
 }
 
 [BurstCompile]

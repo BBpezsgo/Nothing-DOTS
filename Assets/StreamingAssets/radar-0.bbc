@@ -1,5 +1,5 @@
-using "api.bbc";
-using "protocol.bbc";
+using "lib/api.bbc";
+using "lib/protocol.bbc";
 
 void Receive()
 {
@@ -93,11 +93,11 @@ void PerformRadar()
     {
         prevRadarDistance = radarDistance;
 
-        float2 point;
+        float3 point;
         point.x = Cos(Radar.RadarDirection);
-        point.y = Sin(Radar.RadarDirection);
+        point.z = Sin(Radar.RadarDirection);
         point.x *= radarDistance;
-        point.y *= radarDistance;
+        point.z *= radarDistance;
         ToGlobal(&point);
 
         Unit enemy;
@@ -138,23 +138,22 @@ while (1)
         }
         else
         {
-            float2 p = (&enemies).Raw()[i].Position;
-            ToLocal(&p);
+            float3 p = (&enemies).Raw()[i].Position;
             if (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
                 if (time() >= (&enemies).Raw()[i].NotifiedAt + 5f)
                 {
                     EnemyNotificationPacket notificationPacket;
                     notificationPacket.Header = ENEMY_HEADER;
-                    notificationPacket.Position = (&enemies).Raw()[i].Position;
+                    notificationPacket.Position = p;
                     send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
                     (&enemies).Raw()[i].NotifiedAt = time();
                 }
-                ldebug(p, RED);
+                debug(p, RED);
             }
             elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
             {
-                ldebug(p, YELLOW);
+                debug(p, YELLOW);
             }
             TrySendVerificationRequest(&(&enemies).Raw()[i]);
         }

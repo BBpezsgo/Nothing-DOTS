@@ -137,7 +137,7 @@ partial struct TerrainSystemServer : ISystem
                 randomPosition.y
             );
             commandBuffer.SetComponent(newResource, LocalTransform.FromPosition(p));
-            DebugEx.DrawSphere(p, 5f, Color.red, 1000f);
+            //DebugEx.DrawSphere(p, 5f, Color.red, 1000f);
         }
     }
 
@@ -204,15 +204,15 @@ partial struct TerrainSystemServer : ISystem
 
         float2 dataPos00 = ChunkToWorld(chunkCoord) + DataToWorld(dataCoord);
 
-        Debug.DrawLine(
-            new UnityEngine.Vector3(position.x, 0f, position.y),
-            new UnityEngine.Vector3(position.x, 100f, position.y),
-            Color.white,
-            100f,
-            true
-        );
+        //Debug.DrawLine(
+        //    new UnityEngine.Vector3(position.x, 0f, position.y),
+        //    new UnityEngine.Vector3(position.x, 100f, position.y),
+        //    Color.white,
+        //    100f,
+        //    true
+        //);
 
-        DebugEx.DrawPoint(new(dataPos00.x, h00, dataPos00.y), 0.2f, Color.magenta, 100f, false);
+        //DebugEx.DrawPoint(new(dataPos00.x, h00, dataPos00.y), 0.2f, Color.magenta, 100f, false);
 
         if (dataCoord.x >= NumVertsPerLine - 1 || dataCoord.y >= NumVertsPerLine - 1)
         {
@@ -225,9 +225,9 @@ partial struct TerrainSystemServer : ISystem
 
         float2 dataPos11 = ChunkToWorld(chunkCoord) + DataToWorld(dataCoord + new int2(1, 1));
 
-        DebugEx.DrawPoint(new(dataPos11.x, h10, dataPos00.y), 0.2f, Color.red, 100f, false);
-        DebugEx.DrawPoint(new(dataPos00.x, h01, dataPos11.y), 0.2f, Color.blue, 100f, false);
-        DebugEx.DrawPoint(new(dataPos11.x, h11, dataPos11.y), 0.2f, Color.white, 100f, false);
+        //DebugEx.DrawPoint(new(dataPos11.x, h10, dataPos00.y), 0.2f, Color.red, 100f, false);
+        //DebugEx.DrawPoint(new(dataPos00.x, h01, dataPos11.y), 0.2f, Color.blue, 100f, false);
+        //DebugEx.DrawPoint(new(dataPos11.x, h11, dataPos11.y), 0.2f, Color.white, 100f, false);
 
         float dx = (position.x - dataPos00.x) / (dataPos11.x - dataPos00.x);
         float dz = (position.y - dataPos00.y) / (dataPos11.y - dataPos00.y);
@@ -238,11 +238,11 @@ partial struct TerrainSystemServer : ISystem
             float3 v1 = new(dataPos11.x, h10, dataPos00.y);
             float3 v2 = new(dataPos11.x, h11, dataPos11.y);
 
-            DebugEx.DrawTriangle(
-                v0,
-                v1,
-                v2,
-                Color.gray, 100f, false);
+            //DebugEx.DrawTriangle(
+            //    v0,
+            //    v1,
+            //    v2,
+            //    Color.gray, 100f, false);
 
             normal = math.normalize(math.cross(v1 - v0, v2 - v0));
             return (1 - dx) * h00 + (dx - dz) * h10 + dz * h11;
@@ -253,11 +253,11 @@ partial struct TerrainSystemServer : ISystem
             float3 v1 = new(dataPos11.x, h11, dataPos11.y);
             float3 v2 = new(dataPos00.x, h01, dataPos11.y);
 
-            DebugEx.DrawTriangle(
-                v0,
-                v1,
-                v2,
-                Color.white, 100f, false);
+            //DebugEx.DrawTriangle(
+            //    v0,
+            //    v1,
+            //    v2,
+            //    Color.white, 100f, false);
 
             normal = math.normalize(math.cross(v1 - v0, v2 - v0));
             return (1 - dz) * h00 + dx * h11 + (dz - dx) * h01;

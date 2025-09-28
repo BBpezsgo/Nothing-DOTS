@@ -1,0 +1,79 @@
+using "lib/turret.bbc";
+using "lib/api.bbc";
+using "lib/protocol.bbc";
+
+[UnitCommand(1, "Attack at")]
+struct CommandAttackAt
+{
+    [Context("position3")] float3 position;
+}
+
+const int MaxCommandDataSize = 24;
+
+void Receive()
+{
+    u8[MaxPacketLength] v;
+    f32 direction;
+
+    while (1)
+    {
+        i32 receivedLength = receive(&v, MaxPacketLength, &direction);
+        if (!receivedLength) { break; }
+
+        if (v[0] == (u8)REQUEST_HEADER &&
+            receivedLength == sizeof(VerificationRequestPacket))
+        {
+            VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
+
+            VerificationResponsePacket responsePacket = new VerificationResponsePacket;
+            responsePacket.Header = (u8)RESPONSE_HEADER;
+
+            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            {
+                responsePacket.Position = GPS.Position;
+                debug(packet.Position, CYAN);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction);
+            }
+        }
+    }
+}
+
+float3 targetedPosition = new float3;
+float3 currentTarget = new float3;
+f32 turretLastUseTime = 0f;
+
+PrintLine("Started ...");
+
+Print("Forward: ");
+PrintLine(ToLocal(GPS.Position + GPS.Forward));
+
+while (1)
+{
+    //Print('.');
+    Receive();
+
+    byte[MaxCommandDataSize] _command;
+
+    int commandId = dequeue_command(&_command);
+
+    if (commandId == 1)
+    {
+        CommandAttackAt* command = &_command as CommandAttackAt*;
+        currentTarget = command.position;
+        Print("Target: ");
+        PrintLine(currentTarget);
+    }
+
+    if (currentTarget.x != 0f &&
+        currentTarget.z != 0f)
+    {
+        turretLastUseTime = time();
+        ShootAt(currentTarget, &targetedPosition);
+        debug(currentTarget, 0b100);
+    }
+    else if (time() - turretLastUseTime > 5f)
+    {
+        CombatTurret.TurretTargetRotation = 0f;
+        CombatTurret.TurretTargetAngle = 0f;
+    }
+}

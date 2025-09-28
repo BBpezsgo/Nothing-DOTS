@@ -81,9 +81,9 @@ struct Processor : IComponentData
     public FixedList128Bytes<char> InputKey;
 
     /// <summary>
-    /// Direction in local space
+    /// XZ direction in local space
     /// </summary>
-    public float3 RadarRequest;
+    public float2 RadarRequest;
     public float RadarResponse;
 
     [GhostField] public FixedString128Bytes StdOutBuffer;

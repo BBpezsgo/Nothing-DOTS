@@ -41,7 +41,9 @@ static unsafe class ProcessorAPI
 
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.ToGlobal).Value, Environment.Prefix + 1, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.ToLocal).Value, Environment.Prefix + 2, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.Time).Value, Environment.Prefix + 3, 0, ExternalFunctionGenerator.SizeOf<float>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.ToGlobalD).Value, Environment.Prefix + 3, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.ToLocalD).Value, Environment.Prefix + 4, ExternalFunctionGenerator.SizeOf<int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Environment.Time).Value, Environment.Prefix + 5, 0, ExternalFunctionGenerator.SizeOf<float>(), default));
 
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Debug.Line).Value, Debug.Prefix + 1, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default));
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Debug.LineL).Value, Debug.Prefix + 2, ExternalFunctionGenerator.SizeOf<float3, byte>(), 0, default));
@@ -89,7 +91,10 @@ static unsafe class ProcessorAPI
 
             new ExternalFunctionStub(Environment.Prefix + 1,       "toglobal", ExternalFunctionGenerator.SizeOf<int>(), 0),
             new ExternalFunctionStub(Environment.Prefix + 2,       "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
-            ExternalFunctionSync.Create(Environment.Prefix + 3,    "time", _time),
+            new ExternalFunctionStub(Environment.Prefix + 3,       "toglobald", ExternalFunctionGenerator.SizeOf<int>(), 0),
+            new ExternalFunctionStub(Environment.Prefix + 4,       "tolocald", ExternalFunctionGenerator.SizeOf<int>(), 0),
+
+            ExternalFunctionSync.Create(Environment.Prefix + 5,    "time", _time),
 
             new ExternalFunctionStub(Debug.Prefix + 1,             "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
             new ExternalFunctionStub(Debug.Prefix + 2,             "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
@@ -258,13 +263,13 @@ static unsafe class ProcessorAPI
             if (bufferPtr == 0) throw new Exception($"Passed buffer pointer is null");
             if (bufferPtr < 0 || bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Passed buffer pointer is invalid");
 
-            float3 direction;
+            float2 direction;
             if (angle != 0f)
             {
-                direction.x = math.cos(directionAngle);
-                direction.y = 0f;
-                direction.z = math.sin(directionAngle);
-                direction = scope->EntityRef.LocalTransform.ValueRO.TransformDirection(direction);
+                direction = new(
+                    math.cos(directionAngle),
+                    math.sin(directionAngle)
+                );
             }
             else
             {
@@ -314,8 +319,7 @@ static unsafe class ProcessorAPI
 
             if (directionPtr > 0)
             {
-                float3 transformed = scope->EntityRef.LocalTransform.ValueRO.InverseTransformPoint(first.Source);
-                transformed = math.normalize(transformed);
+                float3 transformed = math.normalize(scope->EntityRef.LocalTransform.ValueRO.InverseTransformPoint(first.Source));
                 Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
                 memory.Set(directionPtr, math.atan2(transformed.z, transformed.x));
             }
@@ -401,7 +405,8 @@ static unsafe class ProcessorAPI
                     (color & 0b010) != 0 ? 1f : 0f,
                     (color & 0b001) != 0 ? 1f : 0f
                 ),
-                DebugLineDuration);
+                DebugLineDuration,
+                false);
 #endif
         }
 
@@ -437,7 +442,8 @@ static unsafe class ProcessorAPI
                     (color & 0b010) != 0 ? 1f : 0f,
                     (color & 0b001) != 0 ? 1f : 0f
                 ),
-                DebugLineDuration);
+                DebugLineDuration,
+                false);
 #endif
         }
 
@@ -514,7 +520,7 @@ static unsafe class ProcessorAPI
 #endif
 
             int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-            if (ptr <= 0 || ptr <= 0) return;
+            if (ptr <= 0) return;
 
             FunctionScope* scope = (FunctionScope*)_scope;
             Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
@@ -533,13 +539,51 @@ static unsafe class ProcessorAPI
 #endif
 
             int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
-            if (ptr <= 0 || ptr <= 0) return;
+            if (ptr <= 0) return;
 
             FunctionScope* scope = (FunctionScope*)_scope;
             Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
             float3 point = memory.Get<float3>(ptr);
             RefRO<LocalTransform> transform = scope->EntityRef.LocalTransform;
             float3 transformed = transform.ValueRO.InverseTransformPoint(point);
+            memory.Set(ptr, transformed);
+        }
+
+        [BurstCompile]
+        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+        public static void ToGlobalD(nint _scope, nint arguments, nint returnValue)
+        {
+#if UNITY_PROFILER
+            using ProfilerMarker.AutoScope marker = MarkerToGlobal.Auto();
+#endif
+
+            int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+            if (ptr <= 0) return;
+
+            FunctionScope* scope = (FunctionScope*)_scope;
+            Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
+            float3 direction = memory.Get<float3>(ptr);
+            RefRO<LocalTransform> transform = scope->EntityRef.LocalTransform;
+            float3 transformed = transform.ValueRO.TransformDirection(direction);
+            memory.Set(ptr, transformed);
+        }
+
+        [BurstCompile]
+        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+        public static void ToLocalD(nint _scope, nint arguments, nint returnValue)
+        {
+#if UNITY_PROFILER
+            using ProfilerMarker.AutoScope marker = MarkerToLocal.Auto();
+#endif
+
+            int ptr = ExternalFunctionGenerator.TakeParameters<int>(arguments);
+            if (ptr <= 0) return;
+
+            FunctionScope* scope = (FunctionScope*)_scope;
+            Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
+            float3 direction = memory.Get<float3>(ptr);
+            RefRO<LocalTransform> transform = scope->EntityRef.LocalTransform;
+            float3 transformed = transform.ValueRO.InverseTransformDirection(direction);
             memory.Set(ptr, transformed);
         }
 
@@ -575,13 +619,11 @@ static unsafe class ProcessorAPI
 
             MappedMemory* mapped = (MappedMemory*)((nint)scope->ProcessorRef.Memory + Processor.MappedMemoryStart);
 
-            float3 direction;
-            direction.x = math.cos(mapped->Radar.RadarDirection);
-            direction.y = 0f;
-            direction.z = math.sin(mapped->Radar.RadarDirection);
-
             scope->EntityRef.Processor.ValueRW.RadarResponse = 0f;
-            scope->EntityRef.Processor.ValueRW.RadarRequest = direction;
+            scope->EntityRef.Processor.ValueRW.RadarRequest = new float2(
+                math.cos(mapped->Radar.RadarDirection),
+                math.sin(mapped->Radar.RadarDirection)
+            );
         }
     }
 

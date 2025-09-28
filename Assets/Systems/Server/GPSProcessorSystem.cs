@@ -14,8 +14,8 @@ partial struct GPSProcessorSystem : ISystem
         {
             ref MappedMemory mapped = ref processor.ValueRW.Memory.MappedMemory;
 
-            mapped.GPS.Position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
-            mapped.GPS.Forward = new(transform.ValueRO.Forward.x, transform.ValueRO.Forward.z);
+            mapped.GPS.Position = transform.ValueRO.Position;
+            mapped.GPS.Forward = transform.ValueRO.Forward;
         }
     }
 }

@@ -60,11 +60,18 @@ public partial struct UnitCommandReceiver : ISystem
                             BufferedUnitCommandDefinition commandDefinition = commandDefinitions[i];
                             switch (((UnitCommandParameter*)&commandDefinition.Parameters)[j])
                             {
-                                case UnitCommandParameter.Position:
+                                case UnitCommandParameter.Position2:
                                     {
                                         dataPtr.Set(new float2(command.ValueRO.WorldPosition.x, command.ValueRO.WorldPosition.z));
                                         dataPtr += sizeof(float2);
                                         dataLength += sizeof(float2);
+                                        break;
+                                    }
+                                case UnitCommandParameter.Position3:
+                                    {
+                                        dataPtr.Set(command.ValueRO.WorldPosition);
+                                        dataPtr += sizeof(float3);
+                                        dataLength += sizeof(float3);
                                         break;
                                     }
                                 default:

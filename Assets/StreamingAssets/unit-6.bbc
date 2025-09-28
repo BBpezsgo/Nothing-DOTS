@@ -1,18 +1,18 @@
-using "turret.bbc";
-using "move.bbc";
-using "api.bbc";
-using "protocol.bbc";
+using "lib/turret.bbc";
+using "lib/move.bbc";
+using "lib/api.bbc";
+using "lib/protocol.bbc";
 
 [UnitCommand(1, "Attack at")]
 struct CommandAttackAt
 {
-    [Context("position")] float2 position;
+    [Context("position3")] float3 position;
 }
 
 [UnitCommand(2, "Move to")]
 struct CommandMoveTo
 {
-    [Context("position")] float2 position;
+    [Context("position2")] float2 position;
 }
 
 const int MaxCommandDataSize = 8;
@@ -83,6 +83,8 @@ void Receive()
             unit.Expires = time() + 5f;
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
+            Print("E ");
+            PrintLine(unit.Position);
             UpdateUnit(&enemies, unit);
         }
         else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
@@ -102,7 +104,7 @@ void Receive()
     }
 }
 
-int UnitIndexAt(List<Unit>* units, float2 position)
+int UnitIndexAt(List<Unit>* units, float3 position)
 {
     for (int i = 0; i < units.Length(); i++)
     {
@@ -112,7 +114,7 @@ int UnitIndexAt(List<Unit>* units, float2 position)
     return -1;
 }
 
-int UnitIndexAt(List<Unit>* units, float2 position, float* distanceSqr)
+int UnitIndexAt(List<Unit>* units, float3 position, float* distanceSqr)
 {
     for (int i = 0; i < units.Length(); i++)
     {
@@ -164,7 +166,7 @@ void UpdateUnit(List<Unit>* units, Unit unit)
     }
 }
 
-void RemoveUnitAt(List<Unit>* units, float2 unit)
+void RemoveUnitAt(List<Unit>* units, float3 unit)
 {
     u8 isNotDone = true;
     for (int i = 0; isNotDone && i < units.Length(); i++)
@@ -180,15 +182,16 @@ void RemoveUnitAt(List<Unit>* units, float2 unit)
 
 struct Unit
 {
-    float2 Position;
+    float3 Position;
     f32 Recorded;
     f32 Expires;
     f32 VerificationSentAt;
     u8 PositionRecords;
 }
 
-float2 targetedPosition = new float2;
-float2 currentTarget = new float2;
+float3 targetedPosition = new float3;
+float3 currentTarget = new float3;
+float3 currentUserTarget = new float3;
 List<Unit> enemies = new List<Unit>(4);
 List<Unit> allies = new List<Unit>(4);
 float2 currentDestination = new float2;
@@ -201,7 +204,7 @@ while (1)
 {
     Receive();
 
-    currentTarget = new float2;
+    currentTarget = new float3;
     shouldShoot = false;
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
@@ -209,42 +212,53 @@ while (1)
         if (time() >= (&enemies).Raw()[i].Expires)
         {
             (&enemies).SwapBack(i);
+            PrintLine("E exp");
         }
         else
         {
-            float2 p = (&enemies).Raw()[i].Position;
+            float3 p = (&enemies).Raw()[i].Position;
             ToLocal(&p);
 
-            float2 norm = Normalised(p);
+            PrintLine("E check...");
+            float3 norm = Normalised(p);
+            PrintLine(norm);
             Radar.RadarDirection = Atan2(norm.y, norm.x);
             f32 radarDistance = radar();
             bool destroyed = radarDistance <= 0f;
             if (!destroyed)
             {
-                float2 p2 = norm * radarDistance;
+                PrintLine("E alive?");
+                float3 p2 = norm * radarDistance;
                 if (DistanceSqr(p, p2) > DistanceThresholdSq)
                 {
+                    PrintLine("E alive!");
                     destroyed = true;
                 }
             }
 
             if (destroyed)
             {
+                PrintLine("E destroyed");
                 (&enemies).SwapBack(i);
             }
             elseif (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
-                ldebug(p, RED);
+                PrintLine("E 2 ..");
+                ToGlobal(&p);
+                debug(p, RED);
                 currentTarget = p;
                 shouldShoot = true;
             }
             else if (time() >= (&enemies).Raw()[i].Recorded + 1f)
             {
-                ldebug(p, YELLOW);
+                PrintLine("E 1 ..");
+                ToGlobal(&p);
+                debug(p, YELLOW);
                 currentTarget = p;
             }
             else
             {
+                PrintLine("E 0 ..");
                 ldebug(p, YELLOW);
             }
         }
@@ -258,7 +272,7 @@ while (1)
         }
         else
         {
-            float2 p = (&allies).Raw()[i].Position;
+            float3 p = (&allies).Raw()[i].Position;
             debug(p, GREEN);
         }
     }
@@ -270,19 +284,24 @@ while (1)
     if (commandId == 1)
     {
         CommandAttackAt* command = &_command as CommandAttackAt*;
-        currentTarget = command.position;
-        currentDestination = new float2;
-        ToLocal(&currentTarget);
+        currentUserTarget = command.position;
+        currentDestination = new float3;
     }
     else if (commandId == 2)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
-        currentTarget = new float2;
+        currentUserTarget = new float3;
         currentDestination = command.position;
     }
 
+    if (currentUserTarget.x || currentUserTarget.z)
+    {
+        currentTarget = currentUserTarget;
+        shouldShoot = true;
+    }
+
     if (currentTarget.x != 0f &&
-        currentTarget.y != 0f)
+        currentTarget.z != 0f)
     {
         turretLastUseTime = time();
         if (shouldShoot)
