@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -32,6 +33,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
     [NotNull] Button? ui_ButtonSelect = default;
     [NotNull] Button? ui_ButtonCompile = default;
+    [NotNull] Button? ui_ButtonHotReload = default;
     [NotNull] Button? ui_ButtonHalt = default;
     [NotNull] Button? ui_ButtonReset = default;
     [NotNull] Button? ui_ButtonContinue = default;
@@ -102,6 +104,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_inputSourcePath = ui.rootVisualElement.Q<TextField>("input-source-path");
         ui_ButtonSelect = ui.rootVisualElement.Q<Button>("button-select");
         ui_ButtonCompile = ui.rootVisualElement.Q<Button>("button-compile");
+        ui_ButtonHotReload = ui.rootVisualElement.Q<Button>("button-hotreload");
         ui_ButtonHalt = ui.rootVisualElement.Q<Button>("button-halt");
         ui_ButtonReset = ui.rootVisualElement.Q<Button>("button-reset");
         ui_ButtonContinue = ui.rootVisualElement.Q<Button>("button-continue");
@@ -168,6 +171,38 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             {
                 Source = ui_inputSourcePath.value,
                 Entity = ghostInstance,
+                IsHotReload = false,
+            });
+
+            _scheduledSource = ui_inputSourcePath.value;
+        });
+
+        ui_ButtonHotReload.clickable = new Clickable(() =>
+        {
+            World world = ConnectionManager.ClientOrDefaultWorld;
+
+            if (world.IsServer())
+            {
+                Debug.LogError($"Not implemented");
+                return;
+            }
+
+            string file =
+                string.IsNullOrWhiteSpace(FileChunkManagerSystem.BasePath)
+                ? ui_inputSourcePath.value
+                : Path.Combine(FileChunkManagerSystem.BasePath, ui_inputSourcePath.value);
+
+            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            {
+                typeof(SendRpcCommandRequest),
+                typeof(SetProcessorSourceRequestRpc),
+            });
+            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+            world.EntityManager.SetComponentData(entity, new SetProcessorSourceRequestRpc()
+            {
+                Source = ui_inputSourcePath.value,
+                Entity = ghostInstance,
+                IsHotReload = true,
             });
 
             _scheduledSource = ui_inputSourcePath.value;
@@ -251,6 +286,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     void BeginFileSelection()
     {
         ui_ButtonCompile.SetEnabled(false);
+        ui_ButtonHotReload.SetEnabled(false);
         ui_ButtonHalt.SetEnabled(false);
         ui_ButtonReset.SetEnabled(false);
         ui_ButtonSelect.SetEnabled(false);
@@ -260,6 +296,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     void EndFileSelection()
     {
         ui_ButtonCompile.SetEnabled(true);
+        ui_ButtonHotReload.SetEnabled(true);
         ui_ButtonSelect.SetEnabled(true);
         ui_ButtonHalt.SetEnabled(true);
         ui_ButtonReset.SetEnabled(true);
@@ -287,8 +324,6 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 EndFileSelection();
             };
         });
-
-        _terminal = null;
 
         if (Input.GetKeyDown(KeyCode.Q))
         {
@@ -326,10 +361,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
+        _terminalBuilder.Append(processor.StdOutBuffer.ToString());
         SerializableDictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
         if (processor.SourceFile == default || !compiledSources.TryGetValue(processor.SourceFile, out CompiledSource? source))
         {
-            _terminal = null;
             if (_scheduledSource != null)
             {
                 ui_progressCompilation.title = "Scheduled ...";
@@ -421,11 +456,6 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
             if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
             {
-                const int progressBarWidth = 10;
-
-                int progressBarFilledWidth = math.clamp((int)(source.Progress * progressBarWidth), 0, progressBarWidth);
-                int progressBarEmptyWidth = progressBarWidth - progressBarFilledWidth;
-
                 ui_scrollProgresses.SyncList(source.SubFiles.ToArray(), ProgressItem, (file, element, recycled) =>
                 {
                     ProgressBar progressBar = element.Q<ProgressBar>();
@@ -451,7 +481,6 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             {
                 case CompilationStatus.Secuedued:
                     {
-                        _terminal = null;
                         if (float.IsNaN(source.Progress))
                         {
                             ui_progressCompilation.title = "Compilation soon ...";
@@ -461,12 +490,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     }
                 case CompilationStatus.Compiling:
                     {
-                        _terminal = null;
                         break;
                     }
                 case CompilationStatus.Compiled:
                     {
-                        _terminal = null;
                         ui_progressCompilation.title = "Compiled";
                         ui_progressCompilation.value = 1f;
                         SetProgressStatus(null);
@@ -482,7 +509,6 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                             _terminal ??= new TerminalEmulator(ui_labelTerminal);
                             _terminal.Update();
                             _requestedTabSwitch = Tab.Terminal;
-                            _terminalBuilder.Append(processor.StdOutBuffer.ToString());
 
                             switch (processor.Signal)
                             {
@@ -592,45 +618,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         {
                             ui_progressCompilation.title = "Compile failed";
                             SetProgressStatus("error");
-                            _terminal = null;
 
                             _requestedTabSwitch = Tab.Diagnostics;
-
-                            /*
-                            foreach (Diagnostic item in source.Diagnostics.Diagnostics)
-                            {
-                                if (item.Level is
-                                    DiagnosticsLevel.Hint or
-                                    DiagnosticsLevel.OptimizationNotice or
-                                    DiagnosticsLevel.Information)
-                                { continue; }
-
-                                _terminalBuilder.AppendLine(item.ToString());
-                                (string SourceCode, string Arrows)? arrows = item.GetArrows(new ISourceProvider[]
-                                {
-                                    new NetcodeSourceProviderOffline(),
-                                });
-                                if (arrows.HasValue)
-                                {
-                                    _terminalBuilder.AppendLine(arrows.Value.SourceCode);
-                                    _terminalBuilder.AppendLine(arrows.Value.Arrows);
-                                }
-                            }
-                            foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext)
-                            {
-                                _terminalBuilder.AppendLine(item.ToString());
-                            }
-                            */
                         }
                         break;
                     }
                 case CompilationStatus.None:
-                default:
-                    {
-                        _terminal = null;
-                        _terminalBuilder.AppendLine("???");
-                        break;
-                    }
+                default: throw new UnreachableException();
             }
         }
 
@@ -662,6 +656,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         {
             ui_ButtonSelect.clickable = null;
             ui_ButtonCompile.clickable = null;
+            ui_ButtonHotReload.clickable = null;
             ui_ButtonHalt.clickable = null;
             ui_ButtonReset.clickable = null;
             ui_ButtonContinue.clickable = null;

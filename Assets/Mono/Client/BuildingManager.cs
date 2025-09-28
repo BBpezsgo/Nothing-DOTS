@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
@@ -9,10 +10,17 @@ using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
+[Serializable]
+class BuildingPlaceholderItem
+{
+    [NotNull] public string? Name = default;
+    [NotNull] public GameObject? Prefab = default;
+}
+
 public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUICleanup
 {
     BufferedBuilding SelectedBuilding = default;
-    [SerializeField, NotNull] GameObject? BuildingHologramPrefab = default;
+    [SerializeField, NotNull] List<BuildingPlaceholderItem> Holograms = new();
     [SerializeField, ReadOnly, NotNull] GameObject? BuildingHologram = default;
 
     [SerializeField, NotNull] Material? HologramMaterial = default;
@@ -37,8 +45,8 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
     void OnKeyEsc()
     {
         SelectedBuilding = default;
-        if (BuildingHologram != null)
-        { BuildingHologram.SetActive(false); }
+        if (BuildingHologram != null) Destroy(BuildingHologram);
+        BuildingHologram = null;
 
         if (BuildingUI.gameObject.activeSelf)
         {
@@ -109,7 +117,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
 
         SelectedBuilding = building;
         if (BuildingHologram != null)
-        { ApplyHologram(BuildingHologram, SelectedBuilding); }
+        { ApplyHologram(BuildingHologram); }
     }
 
     void Update()
@@ -118,7 +126,10 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         {
             SelectedBuilding = default;
             if (BuildingHologram != null)
-            { BuildingHologram.SetActive(false); }
+            {
+                Destroy(BuildingHologram);
+                BuildingHologram = null;
+            }
 
             if (BuildingUI.gameObject.activeSelf)
             {
@@ -148,8 +159,8 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             if (SelectedBuilding.Prefab != Entity.Null)
             {
                 SelectedBuilding = default;
-                if (BuildingHologram != null)
-                { BuildingHologram.SetActive(false); }
+                if (BuildingHologram != null) Destroy(BuildingHologram);
+                BuildingHologram = null;
             }
             else
             {
@@ -177,25 +188,24 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         if (SelectedBuilding.Prefab == Entity.Null)
         {
             if (BuildingHologram != null)
-            { BuildingHologram.SetActive(false); }
+            {
+                Destroy(BuildingHologram);
+                BuildingHologram = null;
+            }
             return;
         }
 
-        if (BuildingHologram == null)
+        if (BuildingHologram != null)
         {
-            BuildingHologram = Instantiate(BuildingHologramPrefab, transform);
-            ApplyHologram(BuildingHologram, SelectedBuilding);
+            Destroy(BuildingHologram);
         }
-        else if (!BuildingHologram.activeSelf)
-        {
-            BuildingHologram.SetActive(true);
-            ApplyHologram(BuildingHologram, SelectedBuilding);
-        }
+
+        BuildingHologram = Instantiate(Holograms.First(v => SelectedBuilding.Name.Equals(v.Name)).Prefab, transform);
+
 
         UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Mouse.current.position.value);
-        Plane plane = new(Vector3.up, Vector3.zero);
 
-        if (!plane.Raycast(ray, out float distance))
+        if (!SelectionManager.WorldRaycast(ray, out float distance))
         { return; }
 
         Vector3 position = ray.GetPoint(distance);
@@ -204,6 +214,12 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         if (Input.GetKey(KeyCode.LeftControl))
         { position = new Vector3(math.round(position.x), position.y, math.round(position.z)); }
 
+        Vector3 v = BuildingHologram.transform.position - position;
+        if (TerrainGenerator.Instance.TrySample(new float2(position.x, position.z), out float h, out float3 n, false))
+        {
+            position.y = h;
+            transform.rotation = TerrainCollisionSystem.AlignPreserveYawExact(transform.rotation, n);
+        }
         BuildingHologram.transform.position = position;
 
         var map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
@@ -211,8 +227,10 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
 
         IsValidPosition = !Collision.Intersect(
             map,
-            placeholderCollider, position,
-            out _, out _);
+            placeholderCollider,
+            position,
+            out _,
+            out _);
 
         MeshRenderer[] renderers = BuildingHologram.GetComponentsInChildren<MeshRenderer>();
 
@@ -226,7 +244,8 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             SelectedBuilding = default;
-            BuildingHologram.SetActive(false);
+            if (BuildingHologram != null) Destroy(BuildingHologram);
+            BuildingHologram = null;
             IsValidPosition = false;
             return;
         }
@@ -268,16 +287,15 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         world.EntityManager.SetComponentData(entity, request);
     }
 
-    static void ApplyHologram(GameObject hologram, BufferedBuilding buildingPrefab)
+    static void ApplyHologram(GameObject hologram)
     {
         GameObject hologramModels = GetHologramModelGroup(hologram);
         hologramModels.transform.SetPositionAndRotation(default, Quaternion.identity);
 
-        List<MeshRenderer> renderers = new();
-        renderers.AddRange(hologram.GetComponentsInChildren<MeshRenderer>());
-
-        for (int i = 0; i < renderers.Count; i++)
-        { renderers[i].materials = new Material[] { Instantiate(Instance.HologramMaterial) }; }
+        foreach (MeshRenderer v in hologram.GetComponentsInChildren<MeshRenderer>())
+        {
+            v.materials = new Material[] { Instantiate(Instance.HologramMaterial) };
+        }
     }
 
     static GameObject GetHologramModelGroup(GameObject hologram)
@@ -303,7 +321,7 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
     {
         SelectedBuilding = default;
         ui.gameObject.SetActive(false);
-        if (BuildingHologram != null)
-        { BuildingHologram.SetActive(false); }
+        if (BuildingHologram != null) Destroy(BuildingHologram);
+        BuildingHologram = null;
     }
 }

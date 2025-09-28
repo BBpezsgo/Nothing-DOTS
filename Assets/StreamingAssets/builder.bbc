@@ -1,39 +1,21 @@
-using "turret.bbc";
-using "move.bbc";
-using "api.bbc";
+using "lib/turret.bbc";
+using "lib/move.bbc";
+using "lib/api.bbc";
+using "lib/protocol.bbc";
 
 [UnitCommand(1, "Build at")]
 struct CommandBuildAt
 {
-    [Context("position")] float2 position;
+    [Context("position3")] float3 position;
 }
 
 [UnitCommand(2, "Move to")]
 struct CommandMoveTo
 {
-    [Context("position")] float2 position;
-}
-
-const int MaxPacketLength = 9 + 1;
-const u8 REQUEST_HEADER = 0b_11110000;
-const u8 RESPONSE_HEADER = 0b_01111000;
-
-struct VerificationRequestPacket
-{
-    byte Header;
-    float2 Position;
-}
-
-struct VerificationResponsePacket
-{
-    byte Header;
-    float2 Position;
+    [Context("position3")] float3 position;
 }
 
 const int MaxCommandDataSize = 8;
-
-const f32 DistanceThreshold = 2f;
-const f32 DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
 
 void Receive()
 {
@@ -64,9 +46,10 @@ void Receive()
     }
 }
 
-float2 currentDestination = new float2;
-float2 currentBuildAt = new float2;
-float2 targetedPosition = new float2;
+float3 currentDestination = new float3;
+float3 currentBuildAt = new float3;
+float3 targetedPosition = new float3;
+f32 turretLastUseTime = 0f;
 
 while (1)
 {
@@ -80,37 +63,41 @@ while (1)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
         currentBuildAt = command.position;
-        currentDestination = new float2;
+        currentDestination = new float3;
     }
     else if (commandId == 2)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
-        currentBuildAt = new float2;
+        currentBuildAt = new float3;
         currentDestination = command.position;
     }
 
     if (currentDestination.x != 0f &&
-        currentDestination.y != 0f)
+        currentDestination.z != 0f)
     {
-        MoveTo(currentDestination.x, currentDestination.y);
+        MoveTo(currentDestination.x, currentDestination.z);
     }
 
     if (currentBuildAt.x != 0f &&
-        currentBuildAt.y != 0f)
+        currentBuildAt.z != 0f)
     {
+        turretLastUseTime = time();
         float d = DistanceSqr(GPS.Position, currentBuildAt);
         if (d < 3f * 3f)
         {
             StopMoving();
 
-            float2 currentBuildAtLocal = currentBuildAt;
-            ToLocal(&currentBuildAtLocal);
-            ShootAtSimple(currentBuildAtLocal, &targetedPosition);
-            ldebug(currentBuildAtLocal, WHITE);
+            ShootAtSimple(currentBuildAt, &targetedPosition);
+            debug(currentBuildAt, WHITE);
         }
         else
         {
-            MoveTo(currentBuildAt.x, currentBuildAt.y);
+            MoveTo(currentBuildAt.x, currentBuildAt.z);
         }
+    }
+    else if (time() - turretLastUseTime > 5f)
+    {
+        CombatTurret.TurretTargetRotation = 0f;
+        CombatTurret.TurretTargetAngle = 0f;
     }
 }

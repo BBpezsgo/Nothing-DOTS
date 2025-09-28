@@ -551,7 +551,7 @@ public class SelectionManager : Singleton<SelectionManager>
         _selected.Clear();
     }
 
-    static bool WorldRaycast(UnityEngine.Ray ray, out float distance)
+    public static bool WorldRaycast(UnityEngine.Ray ray, out float distance)
     {
         return TerrainGenerator.Instance.Raycast(ray.origin, ray.direction, 1000f, out distance);
         //return Ground.Raycast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), out distance);

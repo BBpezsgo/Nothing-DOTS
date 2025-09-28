@@ -9,6 +9,13 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 partial struct TerrainCollisionSystem : ISystem
 {
+    [BurstCompile]
+    public static quaternion AlignPreserveYawExact(quaternion rotation, float3 terrainNormal)
+    {
+        return AlignPreserveYawExact(rotation.ToEuler().y, terrainNormal);
+    }
+
+    [BurstCompile]
     public static quaternion AlignPreserveYawExact(float yawRadians, float3 terrainNormal)
     {
         float3 N = math.normalizesafe(terrainNormal, new float3(0f, 1f, 0f));
@@ -46,11 +53,7 @@ partial struct TerrainCollisionSystem : ISystem
             { continue; }
 
             transform.ValueRW.Position.y = h;
-
-            float3 euler = transform.ValueRO.Rotation.ToEuler();
-            float yaw = euler.y;
-
-            transform.ValueRW.Rotation = AlignPreserveYawExact(yaw, normal);
+            transform.ValueRW.Rotation = AlignPreserveYawExact(transform.ValueRO.Rotation, normal);
 
             terrainUnit.ValueRW.LastPosition = new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
         }

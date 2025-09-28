@@ -164,7 +164,7 @@ export u8 TargetAt(float3 target, float3* targetedPosition)
 
         ToLocalD(&result);
 
-        float yaw = Atan2(result.z, result.x);
+        float yaw = Atan2(result.x, result.z);
         float pitch = -Asin(result.y);
 
         CombatTurret.TurretTargetRotation = yaw;
@@ -229,7 +229,7 @@ export u8 TargetAtSimple(float3 target, float3* targetedPosition)
         *targetedPosition = target;
 
         float3 targetDirection3 = Normalised(target);
-        f32 targetAngle = Atan2(targetDirection3.z, targetDirection3.x);
+        f32 targetAngle = Atan2(targetDirection3.x, targetDirection3.z);
         if (targetAngle < 0f) { targetAngle += TAU; }
         if (targetAngle >= TAU) { targetAngle -= TAU; }
         CombatTurret.TurretTargetRotation = targetAngle;
@@ -258,7 +258,6 @@ export void ShootAt(float2 target, float2* targetedPosition)
 export void ShootAt(float3 target, float3* targetedPosition)
 {
     CombatTurret.InputShoot = TargetAt(target, targetedPosition);
-    PrintLine(CombatTurret.InputShoot);
 }
 
 export void ShootAtSimple(float2 target, float2* targetedPosition)

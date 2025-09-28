@@ -29,6 +29,7 @@ public class CompiledSource : IInspect<CompiledSource>
     public readonly FileId SourceFile;
     public long CompiledVersion;
     public long LatestVersion;
+    public long HotReloadVersion;
     public CompilationStatus Status;
 
     public float Progress;
@@ -49,6 +50,7 @@ public class CompiledSource : IInspect<CompiledSource>
         FileId sourceFile,
         long compiledVersion,
         long latestVersion,
+        long hotReloadVersion,
         CompilationStatus status,
         float progress,
         bool isSuccess,
@@ -59,6 +61,7 @@ public class CompiledSource : IInspect<CompiledSource>
         SourceFile = sourceFile;
         CompiledVersion = compiledVersion;
         LatestVersion = latestVersion;
+        HotReloadVersion = hotReloadVersion;
         Progress = progress;
         IsSuccess = isSuccess;
         Code = code;
@@ -73,6 +76,7 @@ public class CompiledSource : IInspect<CompiledSource>
         sourceFile,
         default,
         latestVersion,
+        default,
         CompilationStatus.Secuedued,
         0,
         false,
@@ -85,6 +89,7 @@ public class CompiledSource : IInspect<CompiledSource>
         rpc.FileName,
         rpc.CompiledVersion,
         rpc.LatestVersion,
+        default,
         rpc.Status,
         rpc.Progress,
         rpc.IsSuccess,
@@ -287,7 +292,6 @@ public partial class CompilerSystemServer : SystemBase
         Uri sourceUri = file.ToUri();
         if (EnableLogging) Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Compilation started for \"{sourceUri}\" ...");
 
-        source.IsSuccess = false;
         source.Diagnostics = new DiagnosticsCollection();
         source.Status = CompilationStatus.Compiling;
         source.StatusChanged = true;
@@ -403,6 +407,7 @@ public partial class CompilerSystemServer : SystemBase
         }
         catch (LanguageException exception)
         {
+            source.IsSuccess = false;
             source.Diagnostics.Add(new Diagnostic(
                 DiagnosticsLevel.Error,
                 exception.Message,
@@ -413,6 +418,7 @@ public partial class CompilerSystemServer : SystemBase
         }
         catch (LanguageExceptionWithoutContext exception)
         {
+            source.IsSuccess = false;
             source.Diagnostics.Add(new DiagnosticWithoutContext(
                 DiagnosticsLevel.Error,
                 exception.Message
@@ -424,6 +430,7 @@ public partial class CompilerSystemServer : SystemBase
             source.Status = CompilationStatus.Compiled;
             source.Compiled = compiled;
             source.Generated = generated;
+            Debug.Log($"Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
             source.CompiledVersion = source.LatestVersion;
             source.IsSuccess = false;
             source.DebugInformation = new CompiledDebugInformation(null);
@@ -438,6 +445,7 @@ public partial class CompilerSystemServer : SystemBase
             source.Status = CompilationStatus.Compiled;
             source.Compiled = compiled;
             source.Generated = generated;
+            Debug.Log($"Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
             source.CompiledVersion = source.LatestVersion;
             source.IsSuccess = true;
             source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);

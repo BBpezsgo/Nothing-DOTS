@@ -212,38 +212,31 @@ while (1)
         if (time() >= (&enemies).Raw()[i].Expires)
         {
             (&enemies).SwapBack(i);
-            PrintLine("E exp");
         }
         else
         {
             float3 p = (&enemies).Raw()[i].Position;
             ToLocal(&p);
 
-            PrintLine("E check...");
             float3 norm = Normalised(p);
-            PrintLine(norm);
             Radar.RadarDirection = Atan2(norm.y, norm.x);
             f32 radarDistance = radar();
             bool destroyed = radarDistance <= 0f;
             if (!destroyed)
             {
-                PrintLine("E alive?");
                 float3 p2 = norm * radarDistance;
                 if (DistanceSqr(p, p2) > DistanceThresholdSq)
                 {
-                    PrintLine("E alive!");
                     destroyed = true;
                 }
             }
 
             if (destroyed)
             {
-                PrintLine("E destroyed");
                 (&enemies).SwapBack(i);
             }
             elseif (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
-                PrintLine("E 2 ..");
                 ToGlobal(&p);
                 debug(p, RED);
                 currentTarget = p;
@@ -251,14 +244,12 @@ while (1)
             }
             else if (time() >= (&enemies).Raw()[i].Recorded + 1f)
             {
-                PrintLine("E 1 ..");
                 ToGlobal(&p);
                 debug(p, YELLOW);
                 currentTarget = p;
             }
             else
             {
-                PrintLine("E 0 ..");
                 ldebug(p, YELLOW);
             }
         }

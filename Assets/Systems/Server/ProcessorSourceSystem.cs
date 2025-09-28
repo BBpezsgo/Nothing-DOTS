@@ -73,13 +73,18 @@ unsafe partial class ProcessorSourceSystem : SystemBase
 
                 if (compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
                 {
-                    if (EnableLogging) Debug.Log(string.Format("[Server] Update source file {0}", command.ValueRO.Source));
+                    if (EnableLogging) Debug.Log(string.Format("[Server] Update source file {0} ({1} -> {2})", command.ValueRO.Source, source.LatestVersion, source.LatestVersion + 1));
                     source.LatestVersion++;
+                    if (command.ValueRO.IsHotReload)
+                    {
+                        source.HotReloadVersion = source.LatestVersion;
+                    }
                 }
                 else
                 {
                     if (EnableLogging) Debug.Log(string.Format("[Server] Creating new source file {0}", command.ValueRO.Source));
                     compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);
+                    processor.ValueRW.CompiledSourceVersion = 0;
                 }
 
                 break;
@@ -91,7 +96,11 @@ unsafe partial class ProcessorSourceSystem : SystemBase
         {
             if (processor.ValueRO.SourceFile == default)
             {
-                instructions.Clear();
+                if (!instructions.IsEmpty)
+                {
+                    if (EnableLogging) Debug.Log("[Server] Disposing instructions (source file is null)");
+                    instructions.Clear();
+                }
                 continue;
             }
 
@@ -99,20 +108,36 @@ unsafe partial class ProcessorSourceSystem : SystemBase
             {
                 if (EnableLogging) Debug.Log(string.Format("[Server] Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
                 compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);
-                instructions.Clear();
+                processor.ValueRW.CompiledSourceVersion = 0;
+                if (!instructions.IsEmpty)
+                {
+                    if (EnableLogging) Debug.Log("[Server] Disposing instructions (new source made)");
+                    instructions.Clear();
+                }
                 continue;
             }
 
             if (!source.Code.HasValue)
             {
-                instructions.Clear();
+                if (!instructions.IsEmpty)
+                {
+                    if (EnableLogging) Debug.Log("[Server] Disposing instructions (source has no instructions)");
+                    instructions.Clear();
+                }
                 continue;
             }
 
             if (processor.ValueRO.CompiledSourceVersion != source.CompiledVersion)
             {
-                if (EnableLogging) Debug.Log("[Server] New source version avaliable, reloading processor ...");
-                ResetProcessor(processor);
+                if (source.HotReloadVersion == source.CompiledVersion)
+                {
+                    if (EnableLogging) Debug.Log(string.Format("[Server] New source version avaliable ({0} -> {1}), HOT RELOAD!!!", processor.ValueRO.CompiledSourceVersion, source.CompiledVersion));
+                }
+                else
+                {
+                    if (EnableLogging) Debug.Log(string.Format("[Server] New source version avaliable ({0} -> {1}), reloading processor ...", processor.ValueRO.CompiledSourceVersion, source.CompiledVersion));
+                    ResetProcessor(processor);
+                }
                 processor.ValueRW.CompiledSourceVersion = source.CompiledVersion;
 
                 commandDefinitions.Clear();
@@ -147,7 +172,6 @@ unsafe partial class ProcessorSourceSystem : SystemBase
                     commandDefinitions.Add(new(structAttribute.Parameters[0].GetInt(), structAttribute.Parameters[1].Value, parameterTypes));
                 }
 
-                instructions.Clear();
                 NativeArray<BufferedInstruction> code = source.Code.Value.Reinterpret<BufferedInstruction>();
                 instructions.CopyFrom(code);
 
@@ -163,15 +187,17 @@ unsafe partial class ProcessorSourceSystem : SystemBase
 
             if (!source.IsSuccess)
             {
-                instructions.Clear();
+                if (!instructions.IsEmpty)
+                {
+                    if (EnableLogging) Debug.Log("[Server] Disposing instructions (source has errors)");
+                    instructions.Clear();
+                }
             }
         }
     }
 
     public static void ResetProcessor(RefRW<Processor> processor)
     {
-        processor.ValueRW.StdOutBuffer.Clear();
-
         ProcessorState processorState_ = new(
             ProcessorSystemServer.BytecodeInterpreterSettings,
             default,
@@ -180,6 +206,8 @@ unsafe partial class ProcessorSourceSystem : SystemBase
             default
         );
         processorState_.Setup();
+
+        processor.ValueRW.StdOutBuffer.Clear();
         processor.ValueRW.Registers = processorState_.Registers;
         processor.ValueRW.Signal = processorState_.Signal;
         processor.ValueRW.Crash = processorState_.Crash;

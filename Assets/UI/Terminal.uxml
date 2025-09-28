@@ -1,6 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" editor-extension-mode="False">
-    <ui:Template name="TerminalDiagnosticsItem" src="project://database/Assets/UI/TerminalDiagnosticsItem.uxml?fileID=9197481963319205126&amp;guid=a1e4e6549353cff66b9c74b990c63867&amp;type=3#TerminalDiagnosticsItem" />
     <ui:Template name="TerminalFileItem" src="project://database/Assets/UI/TerminalFileItem.uxml?fileID=9197481963319205126&amp;guid=f38b8fac42e49f32f9b892e445389217&amp;type=3#TerminalFileItem" />
+    <ui:Template name="TerminalDiagnosticsItem" src="project://database/Assets/UI/TerminalDiagnosticsItem.uxml?fileID=9197481963319205126&amp;guid=a1e4e6549353cff66b9c74b990c63867&amp;type=3#TerminalDiagnosticsItem" />
     <Style src="project://database/Assets/UI/Style.uss?fileID=7433441132597879392&amp;guid=c2d58f7c49026b5c192353093602f48b&amp;type=3#Style" />
     <ui:VisualElement style="flex-grow: 1;">
         <ui:VisualElement>
@@ -29,6 +29,7 @@
                 <ui:TextField name="input-source-path" />
                 <ui:VisualElement style="flex-direction: row;">
                     <ui:Button text="Select" name="button-select" style="flex-grow: 1;" />
+                    <ui:Button text="Hot Reload" name="button-hotreload" style="flex-grow: 1;" />
                     <ui:Button text="Compile" name="button-compile" style="flex-grow: 1;" />
                 </ui:VisualElement>
                 <ui:ScrollView name="scroll-files" style="flex-grow: 1;">

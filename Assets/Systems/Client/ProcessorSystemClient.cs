@@ -25,7 +25,6 @@ partial struct ProcessorSystemClient : ISystem
         EntityCommandBuffer commandBuffer = default;
 
         _emissionColorQ.Update(ref state);
-        float now = MonoTime.Now;
 
         foreach (RefRW<Processor> processor in
             SystemAPI.Query<RefRW<Processor>>())

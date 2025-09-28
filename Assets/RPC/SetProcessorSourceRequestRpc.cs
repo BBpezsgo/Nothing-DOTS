@@ -7,4 +7,5 @@ public struct SetProcessorSourceRequestRpc : IRpcCommand
 {
     public required FixedString64Bytes Source;
     public required GhostInstance Entity;
+    public required bool IsHotReload;
 }

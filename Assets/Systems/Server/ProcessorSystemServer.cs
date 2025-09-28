@@ -332,11 +332,11 @@ partial struct ProcessorJob : IJobEntity
     {
         //using var _1 = __ProcessorJobOuter.Auto();
 
-        if (processor.ValueRO.SourceFile == default)
-        {
-            processor.ValueRW.StatusLED.Status = 0;
-            return;
-        }
+        //if (processor.ValueRO.SourceFile == default)
+        //{
+        //    processor.ValueRW.StatusLED.Status = 0;
+        //    return;
+        //}
 
         if (code.IsEmpty)
         {
