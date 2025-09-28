@@ -274,6 +274,7 @@ GameObject:
   - component: {fileID: 5430231555759092071}
   - component: {fileID: 6042829474613714896}
   - component: {fileID: 2953213178387853888}
+  - component: {fileID: -8951910059105892476}
   m_Layer: 8
   m_Name: FacilityPlaceholder
   m_TagString: Untagged
@@ -331,12 +332,14 @@ MonoBehaviour:
   SupportedGhostModes: 3
   OptimizationMode: 1
   Importance: 1
+  MaxSendRate: 0
   prefabId: 3f27b3a68cc387992993113347980461
   HasOwner: 1
   SupportAutoCommandTarget: 1
   TrackInterpolationDelay: 0
   GhostGroup: 0
   UsePreSerialization: 0
+  UseSingleBaseline: 0
   RollbackPredictedSpawnedGhostState: 0
   RollbackPredictionOnStructuralChanges: 1
 --- !u!114 &1839914663627238299
@@ -409,6 +412,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3.0244799, y: 1.3556004, z: 3.2479405}
   m_Center: {x: 0.49775982, y: 0.6778003, z: 0.38602948}
+--- !u!114 &-8951910059105892476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7887398088158380673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a34d8fa7b716431598edabd9c399b05e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8097288086009753353
 GameObject:
   m_ObjectHideFlags: 0

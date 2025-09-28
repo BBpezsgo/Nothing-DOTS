@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 6905483753670050396}
   - component: {fileID: 1800227550995558781}
   - component: {fileID: 4071649569041009695}
+  - component: {fileID: -5014564730154132850}
   m_Layer: 6
   m_Name: Facility
   m_TagString: Untagged
@@ -214,6 +215,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   RelevancyRadius: 50
+--- !u!114 &-5014564730154132850
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9140697471898167478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a34d8fa7b716431598edabd9c399b05e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &6070396115500586433
 PrefabInstance:
   m_ObjectHideFlags: 0

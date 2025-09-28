@@ -446,6 +446,7 @@ GameObject:
   - component: {fileID: 2107221268040212801}
   - component: {fileID: 8861876680046240549}
   - component: {fileID: 8450691796580038655}
+  - component: {fileID: 6846629685641974364}
   m_Layer: 8
   m_Name: FactoryPlaceholder
   m_TagString: Untagged
@@ -515,12 +516,14 @@ MonoBehaviour:
   SupportedGhostModes: 3
   OptimizationMode: 1
   Importance: 1
+  MaxSendRate: 0
   prefabId: 909745eafff209d91931d0b46b89c759
   HasOwner: 1
   SupportAutoCommandTarget: 1
   TrackInterpolationDelay: 0
   GhostGroup: 0
   UsePreSerialization: 0
+  UseSingleBaseline: 0
   RollbackPredictedSpawnedGhostState: 0
   RollbackPredictionOnStructuralChanges: 1
 --- !u!114 &6744120952312713541
@@ -581,3 +584,15 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3.528996, y: 1.2949005, z: 3.3413317}
   m_Center: {x: -0.37085986, y: 0.64745027, z: -0.64341915}
+--- !u!114 &6846629685641974364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7887398088158380673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a34d8fa7b716431598edabd9c399b05e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
