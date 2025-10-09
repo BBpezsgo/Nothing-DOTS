@@ -1,10 +1,11 @@
 ﻿using System;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Profiling;
 using UnityEngine;
 
-public class TerrainChunk
+public class TerrainChunk : IDisposable
 {
     readonly Action<TerrainChunk, bool> OnVisibilityChanged;
     public readonly int2 Coord;
@@ -20,7 +21,7 @@ public class TerrainChunk
     readonly float[] DetailLevels;
     public readonly LODMesh[] LodMeshes;
 
-    public float[]? HeightMap;
+    public NativeArray<float> HeightMap;
     int PreviousLODIndex1 = -1;
     //int PreviousLODIndex2 = -1;
     readonly float MaxViewDistanceSqr;
@@ -122,17 +123,19 @@ public class TerrainChunk
         MeshObject.transform.parent = parent;
         MeshObject.SetActive(false);
 
-        ThreadedDataRequester.RequestData(() =>
-        {
-            return HeightMapGenerator.GenerateHeightMap(TerrainSystemServer.NumVertsPerLine, TerrainSystemServer.NumVertsPerLine, HeightMapSettings.heightMultiplier, NoiseSampleOffset, in HeightMapSettings.noiseSettings);
-        }, OnHeightMapReceived);
-    }
-
-    public void OnHeightMapReceived(float[] heightMapObject)
-    {
-        HeightMap = heightMapObject;
-
-        UpdateTerrainChunk();
+        ThreadedDataRequester.RequestData(
+            () =>
+            {
+                NativeArray<float> heightMap = new(TerrainSystemServer.NumVertsPerLine * TerrainSystemServer.NumVertsPerLine, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                HeightMapGenerator.GenerateHeightMap(ref heightMap, TerrainSystemServer.NumVertsPerLine, TerrainSystemServer.NumVertsPerLine, HeightMapSettings.heightMultiplier, NoiseSampleOffset, in HeightMapSettings.noiseSettings, Allocator.TempJob);
+                return heightMap;
+            },
+            heightMap =>
+            {
+                HeightMap = heightMap;
+                UpdateTerrainChunk();
+            }
+        );
     }
 
     static readonly ProfilerMarker _markerBase = new("Terrain.TerrainChunk.UpdateTerrainChunk");
@@ -143,7 +146,7 @@ public class TerrainChunk
 
     public void UpdateTerrainChunk()
     {
-        if (HeightMap is null) return;
+        if (!HeightMap.IsCreated) return;
         if (MeshObject == null) return;
 
         using var _ = _markerBase.Auto();
@@ -182,7 +185,7 @@ public class TerrainChunk
                 else if (!lodMesh.HasRequestedMesh)
                 {
                     using var _1 = _markerRequestMesh.Auto();
-                    lodMesh.RequestMesh(HeightMap);
+                    lodMesh.RequestMesh(HeightMap.AsReadOnly());
                 }
             }
 
@@ -211,15 +214,20 @@ public class TerrainChunk
         }
     }
 
-    public void GenerateFeatures(in TerrainFeatures terrainFeatures, ref EntityCommandBuffer commandBuffer)
+    public void GenerateFeatures(in TerrainFeaturePrefabs terrainFeatures, ref EntityCommandBuffer commandBuffer)
     {
         FeaturesGenerated = true;
         TerrainSystemServer.GenerateChunkFeatures(
             Coord,
-            HeightMap,
+            HeightMap.AsReadOnly(),
             in terrainFeatures,
             ref commandBuffer
         );
+    }
+
+    public void Dispose()
+    {
+        HeightMap.Dispose();
     }
 }
 
@@ -243,7 +251,7 @@ public class LODMesh
     {
         using var _ = _markerCreateMesh.Auto();
 
-        Mesh.MeshDataArray meshDataArray = meshData.CreateNativeMesh(Unity.Collections.Allocator.Temp);
+        Mesh.MeshDataArray meshDataArray = meshData.CreateNativeMesh(Allocator.Temp);
         meshData.Dispose();
 
         Mesh = new();
@@ -257,12 +265,12 @@ public class LODMesh
         UpdateCallback();
     }
 
-    public void RequestMesh(float[] heightMap)
+    public void RequestMesh(NativeArray<float>.ReadOnly heightMap)
     {
         HasRequestedMesh = true;
         ThreadedDataRequester.RequestData(() =>
         {
-            return MeshGenerator.GenerateTerrainMesh(heightMap, TerrainSystemServer.NumVertsPerLine, LOD, Unity.Collections.Allocator.TempJob);
+            return MeshGenerator.GenerateTerrainMesh(heightMap, TerrainSystemServer.NumVertsPerLine, LOD, Allocator.TempJob);
         }, OnMeshDataReceived);
     }
 
@@ -271,7 +279,7 @@ public class LODMesh
     {
         using var _ = _markerCreateTexture.Auto();
 
-        int size = (int)MathF.Sqrt(pixels.Length);
+        int size = (int)math.sqrt(pixels.Length);
         Texture2D texture = new(size, size, TextureFormat.RGBA32, false, false, true)
         {
             wrapMode = TextureWrapMode.Clamp,

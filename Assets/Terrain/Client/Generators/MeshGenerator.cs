@@ -10,7 +10,7 @@ public static class MeshGenerator
 {
     static readonly ProfilerMarker _marker = new("Terrain.MeshGenerator");
 
-    public static MeshData GenerateTerrainMesh(float[] heightMap, int heightMapWidth, int levelOfDetail, Allocator allocator = Allocator.Temp)
+    public static MeshData GenerateTerrainMesh(in NativeArray<float>.ReadOnly heightMap, int heightMapWidth, int levelOfDetail, Allocator allocator = Allocator.Temp)
     {
         using var _ = _marker.Auto();
 

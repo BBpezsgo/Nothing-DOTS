@@ -2,7 +2,7 @@
 using Unity.Entities;
 
 [BurstCompile]
-public struct TerrainFeatures : IComponentData
+public struct TerrainFeaturePrefabs : IComponentData
 {
     public Entity ResourcePrefab;
 }

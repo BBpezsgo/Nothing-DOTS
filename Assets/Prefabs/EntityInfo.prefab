@@ -408,6 +408,9 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
+  Bounds:
+    m_Center: {x: 0, y: 0, z: 0}
+    m_Extent: {x: 0, y: 0, z: 0}
   SelectionStatus: 0
   IsVisible: 0
   Team: 0

@@ -1,7 +1,9 @@
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
+[UpdateAfter(typeof(TransformSystemGroup))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial class EntityInfoUISystem : SystemBase
 {
@@ -18,7 +20,7 @@ public partial class EntityInfoUISystem : SystemBase
 
         if (_canvas == null)
         {
-            foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (Canvas canvas in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (canvas.name != "EntityInfoUICanvas") continue;
                 _canvas = canvas.transform;
@@ -39,12 +41,18 @@ public partial class EntityInfoUISystem : SystemBase
 #endif
 
             GameObject uiPrefab = SystemAPI.ManagedAPI.GetSingleton<UIPrefabs>().EntityInfo;
-            Unity.Mathematics.float3 spawnPosition = transform.ValueRO.Position;
+            float3 spawnPosition = transform.ValueRO.Position;
             GameObject newUi = Object.Instantiate(uiPrefab, spawnPosition, Quaternion.identity, _canvas);
+            var comp = newUi.GetComponent<EntityInfoUI>();
+
+            if (SystemAPI.HasComponent<MeshBounds>(entity))
+            {
+                comp.Bounds = SystemAPI.GetComponent<MeshBounds>(entity).Bounds;
+            }
 
             commandBuffer.AddComponent<EntityInfoUIReference>(entity, new()
             {
-                Value = newUi.GetComponent<EntityInfoUI>(),
+                Value = comp,
             });
 
             break;
@@ -78,7 +86,8 @@ public partial class EntityInfoUISystem : SystemBase
         foreach (var (uiRef, transform) in
             SystemAPI.Query<EntityInfoUIReference, RefRO<LocalTransform>>())
         {
-            uiRef.Value.WorldPosition = transform.ValueRO.Position;
+            uiRef.Value.Position = transform.ValueRO.Position;
+            uiRef.Value.Rotation = transform.ValueRO.Rotation;
         }
 
         foreach (var (uiRef, unitTeam, selectable) in

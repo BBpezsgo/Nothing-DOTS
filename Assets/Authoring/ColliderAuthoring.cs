@@ -18,6 +18,25 @@ public class ColliderAuthoring : MonoBehaviour
                 return;
             }
 
+            Bounds bounds = default;
+            static void ExtendBounds(ref Bounds bounds, GameObject gameObject)
+            {
+                foreach (MeshRenderer renderer in gameObject.GetComponents<MeshRenderer>())
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+                foreach (Transform child in gameObject.transform)
+                {
+                    ExtendBounds(ref bounds, child.gameObject);
+                }
+            }
+            ExtendBounds(ref bounds, authoring.gameObject);
+
+            AddComponent<MeshBounds>(entity, new()
+            {
+                Bounds = bounds,
+            });
+
             switch (collider)
             {
                 case UnityEngine.SphereCollider v:

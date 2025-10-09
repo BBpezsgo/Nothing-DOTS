@@ -2,17 +2,17 @@
 using Unity.Entities;
 using UnityEngine;
 
-[AddComponentMenu("Authoring/Terrain Features")]
-public class TerrainFeaturesAuthoring : MonoBehaviour
+[AddComponentMenu("Authoring/Terrain Feature Prefabs")]
+public class TerrainFeaturePrefabsAuthoring : MonoBehaviour
 {
     [SerializeField, NotNull] GameObject? ResourcePrefab = null;
 
-    class Baker : Baker<TerrainFeaturesAuthoring>
+    class Baker : Baker<TerrainFeaturePrefabsAuthoring>
     {
-        public override void Bake(TerrainFeaturesAuthoring authoring)
+        public override void Bake(TerrainFeaturePrefabsAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent<TerrainFeatures>(entity, new()
+            AddComponent<TerrainFeaturePrefabs>(entity, new()
             {
                 ResourcePrefab = GetEntity(authoring.ResourcePrefab, TransformUsageFlags.Dynamic),
             });

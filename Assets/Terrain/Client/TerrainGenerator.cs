@@ -1,12 +1,14 @@
-﻿using UnityEngine;
+﻿#define _RAYCAST_DEBUG
+
+using UnityEngine;
 using System.Collections.Generic;
 using System;
-using NaughtyAttributes;
 using Unity.Profiling;
 using Unity.Mathematics;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using Unity.NetCode;
+using Unity.Collections;
 
 public class TerrainGenerator : Singleton<TerrainGenerator>
 {
@@ -28,7 +30,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
     float2 ViewerPositionOld;
 
     float MeshWorldSize;
-    [SerializeField, ReadOnly] int ChunksVisibleInViewDst;
+    [SerializeField, NaughtyAttributes.ReadOnly] int ChunksVisibleInViewDst;
 
     readonly Dictionary<int2, TerrainChunk> TerrainChunks = new();
     readonly List<TerrainChunk> VisibleTerrainChunks = new();
@@ -92,15 +94,15 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         CreateChunk(chunkCoord);
     }
 
-    public bool TryGetHeightmap(int2 chunkCoord, bool queue, [NotNullWhen(true)] out float[]? heightMap)
+    public bool TryGetHeightmap(int2 chunkCoord, bool queue, [NotNullWhen(true)] out NativeArray<float>.ReadOnly heightMap)
     {
-        heightMap = null;
+        heightMap = default;
 
         if (TerrainChunks.TryGetValue(chunkCoord, out TerrainChunk? chunk))
         {
-            if (chunk.HeightMap is null) return false;
+            if (!chunk.HeightMap.IsCreated) return false;
 
-            heightMap = chunk.HeightMap;
+            heightMap = chunk.HeightMap.AsReadOnly();
             return true;
         }
 
@@ -111,26 +113,19 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         return false;
     }
 
-    public bool TrySample(float2 position, out float height, out float3 normal, bool neighbours = false)
+    public bool TrySample(float2 position, out float height, out float3 normal)
     {
-        int2 chunkCoord = TerrainSystemServer.WorldToChunk(position + new float2(TerrainSystemServer.DataPointWorldSize, TerrainSystemServer.DataPointWorldSize) * 0.5f);
+        TerrainSystemServer.WorldToChunk(position + new float2(TerrainSystemServer.DataPointWorldSize, TerrainSystemServer.DataPointWorldSize) * 0.5f, out int2 chunkCoord);
 
-        if (!TryGetHeightmap(chunkCoord, true, out float[]? heightmap))
+        if (!TryGetHeightmap(chunkCoord, true, out var heightmap))
         {
-            if (neighbours)
-            {
-                TryGenerate(chunkCoord + new int2(+1, 0));
-                TryGenerate(chunkCoord + new int2(-1, 0));
-                TryGenerate(chunkCoord + new int2(0, +1));
-                TryGenerate(chunkCoord + new int2(0, -1));
-            }
-
             height = default;
             normal = new float3(0f, 1f, 0f);
             return false;
         }
 
-        int2 dataCoord = TerrainSystemServer.WorldToData(position - TerrainSystemServer.ChunkToWorld(chunkCoord));
+        TerrainSystemServer.ChunkToWorld(chunkCoord, out float2 chunkPosition);
+        TerrainSystemServer.WorldToData(position - chunkPosition, out int2 dataCoord);
         if (dataCoord.x < 0 || dataCoord.y < 0 || dataCoord.x >= TerrainSystemServer.NumVertsPerLine || dataCoord.y >= TerrainSystemServer.NumVertsPerLine)
         {
             throw new IndexOutOfRangeException($"{dataCoord.x} {dataCoord.y} (/ {TerrainSystemServer.NumVertsPerLine} {TerrainSystemServer.NumVertsPerLine})");
@@ -142,25 +137,41 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         return true;
     }
 
-    public bool TrySampleFast(float2 position, out float height, bool neighbours = false)
+    public bool TrySample(float2 position, out float height)
     {
-        int2 chunkCoord = TerrainSystemServer.WorldToChunk(position + new float2(TerrainSystemServer.DataPointWorldSize * 0.5f, TerrainSystemServer.DataPointWorldSize * 0.5f));
+        TerrainSystemServer.WorldToChunk(position + new float2(TerrainSystemServer.DataPointWorldSize, TerrainSystemServer.DataPointWorldSize) * 0.5f, out int2 chunkCoord);
 
-        if (!TryGetHeightmap(chunkCoord, true, out float[]? heightmap))
+        if (!TryGetHeightmap(chunkCoord, true, out var heightmap))
         {
-            if (neighbours)
-            {
-                TryGenerate(chunkCoord + new int2(+1, 0));
-                TryGenerate(chunkCoord + new int2(-1, 0));
-                TryGenerate(chunkCoord + new int2(0, +1));
-                TryGenerate(chunkCoord + new int2(0, -1));
-            }
-
             height = default;
             return false;
         }
 
-        int2 dataCoord = TerrainSystemServer.WorldToData(position - TerrainSystemServer.ChunkToWorld(chunkCoord));
+        TerrainSystemServer.ChunkToWorld(chunkCoord, out float2 chunkPosition);
+        TerrainSystemServer.WorldToData(position - chunkPosition, out int2 dataCoord);
+        if (dataCoord.x < 0 || dataCoord.y < 0 || dataCoord.x >= TerrainSystemServer.NumVertsPerLine || dataCoord.y >= TerrainSystemServer.NumVertsPerLine)
+        {
+            throw new IndexOutOfRangeException($"{dataCoord.x} {dataCoord.y} (/ {TerrainSystemServer.NumVertsPerLine} {TerrainSystemServer.NumVertsPerLine})");
+        }
+
+        height = TerrainSystemServer.Sample(heightmap, position, chunkCoord, dataCoord);
+
+        //Debug.DrawRay(new float3(position.x, height, position.y), normal, Color.blue, 1000f);
+        return true;
+    }
+
+    public bool TrySampleFast(float2 position, out float height)
+    {
+        TerrainSystemServer.WorldToChunk(position + new float2(TerrainSystemServer.DataPointWorldSize * 0.5f, TerrainSystemServer.DataPointWorldSize * 0.5f), out int2 chunkCoord);
+
+        if (!TryGetHeightmap(chunkCoord, true, out var heightmap))
+        {
+            height = default;
+            return false;
+        }
+
+        TerrainSystemServer.ChunkToWorld(chunkCoord, out float2 chunkPosition);
+        TerrainSystemServer.WorldToData(position - chunkPosition, out int2 dataCoord);
         if (dataCoord.x < 0 || dataCoord.y < 0 || dataCoord.x >= TerrainSystemServer.NumVertsPerLine || dataCoord.y >= TerrainSystemServer.NumVertsPerLine)
         {
             throw new IndexOutOfRangeException($"{dataCoord.x} {dataCoord.y} (/ {TerrainSystemServer.NumVertsPerLine} {TerrainSystemServer.NumVertsPerLine})");
@@ -172,16 +183,16 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         return true;
     }
 
-    public bool Raycast(float3 origin, float3 direction, float maxDistance, out float distance)
+    public bool RaycastFast(float3 origin, float3 direction, float maxDistance, out float distance)
     {
-        int gx = (int)MathF.Floor(origin.x / TerrainSystemServer.cellSize);
-        int gz = (int)MathF.Floor(origin.z / TerrainSystemServer.cellSize);
+        int gx = (int)math.floor(origin.x / TerrainSystemServer.cellSize);
+        int gz = (int)math.floor(origin.z / TerrainSystemServer.cellSize);
 
         int stepX = direction.x > 0 ? 1 : -1;
         int stepZ = direction.z > 0 ? 1 : -1;
 
-        float tDeltaX = MathF.Abs(TerrainSystemServer.cellSize / direction.x);
-        float tDeltaZ = MathF.Abs(TerrainSystemServer.cellSize / direction.z);
+        float tDeltaX = math.abs(TerrainSystemServer.cellSize / direction.x);
+        float tDeltaZ = math.abs(TerrainSystemServer.cellSize / direction.z);
 
         float nextBoundaryX = (gx + (stepX > 0 ? 1 : 0)) * TerrainSystemServer.cellSize;
         float nextBoundaryZ = (gz + (stepZ > 0 ? 1 : 0)) * TerrainSystemServer.cellSize;
@@ -200,12 +211,30 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
             float worldX = gx * TerrainSystemServer.cellSize;
             float worldZ = gz * TerrainSystemServer.cellSize;
 
-            int2 chunkCoord = TerrainSystemServer.WorldToChunk(new float2(worldX + TerrainSystemServer.DataPointWorldSize * 0.5f, worldZ + TerrainSystemServer.DataPointWorldSize * 0.5f));
+            TerrainSystemServer.WorldToChunk(new float2(worldX + TerrainSystemServer.DataPointWorldSize * 0.5f, worldZ + TerrainSystemServer.DataPointWorldSize * 0.5f), out int2 chunkCoord);
 
-            if (TryGetHeightmap(chunkCoord, false, out float[]? heightmap))
+            TerrainSystemServer.ChunkToWorld(chunkCoord, out var chunkPosition00);
+            TerrainSystemServer.ChunkToWorld(chunkCoord + new int2(1, 1), out var chunkPosition11);
+
+            DebugEx.DrawBoxAligned(
+                new float3(
+                    chunkPosition00.x,
+                    0f,
+                    chunkPosition00.y
+                ),
+                new float3(
+                    chunkPosition11.x,
+                    0f,
+                    chunkPosition11.y
+                ),
+                Color.white, 0.5f, false);
+
+            if (TryGetHeightmap(chunkCoord, false, out var heightmap))
             {
-                int2 dataCoord = TerrainSystemServer.WorldToData(new float2(worldX, worldZ) - TerrainSystemServer.ChunkToWorld(chunkCoord));
+                TerrainSystemServer.WorldToData(new float2(worldX, worldZ) - chunkPosition00, out int2 dataCoord);
                 float height = heightmap[dataCoord.x + dataCoord.y * TerrainSystemServer.NumVertsPerLine];
+
+                DebugEx.DrawPoint(new float3(worldX, height, worldZ), 0.4f, Color.white, 0.5f, false);
 
                 if (origin.y + direction.y * traveled <= height)
                 {
@@ -232,40 +261,226 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         return false;
     }
 
-    // FIXME: Bruh
-    static void Bruh(ref bool b, ref EntityCommandBuffer commandBuffer, ref TerrainFeatures terrainFeatures)
+    public bool Raycast(float3 origin, float3 direction, float maxDistance, out float distance, out float3 normal)
     {
-        if (!b && ConnectionManager.ClientWorld is not null)
-        {
-            //EntityQuery q1 = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(new ComponentType[]{
-            //    new(typeof(EndSimulationEntityCommandBufferSystem.Singleton), ComponentType.AccessMode.ReadWrite)
-            //});
-            commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp); // q1.GetSingletonRW<EndSimulationEntityCommandBufferSystem.Singleton>().ValueRW.CreateCommandBuffer(ConnectionManager.ClientWorld.Unmanaged);
-            //q1.Dispose();
+#if RAYCAST_DEBUG
+        const float DebugLineTime = 0f;
+#endif
 
-            EntityQuery q2 = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(new ComponentType[]{
-                new(typeof(TerrainFeatures), ComponentType.AccessMode.ReadOnly)
-            });
-            terrainFeatures = q2.GetSingleton<TerrainFeatures>();
-            q2.Dispose();
-            b = true;
+        int gx = (int)math.floor(origin.x / TerrainSystemServer.DataPointWorldSize);
+        int gz = (int)math.floor(origin.z / TerrainSystemServer.DataPointWorldSize);
+
+        int stepX = direction.x > 0 ? 1 : -1;
+        int stepZ = direction.z > 0 ? 1 : -1;
+
+        float tDeltaX = math.abs(TerrainSystemServer.DataPointWorldSize / direction.x);
+        float tDeltaZ = math.abs(TerrainSystemServer.DataPointWorldSize / direction.z);
+
+        float nextBoundaryX = (gx + (stepX > 0 ? 1 : 0)) * TerrainSystemServer.DataPointWorldSize;
+        float nextBoundaryZ = (gz + (stepZ > 0 ? 1 : 0)) * TerrainSystemServer.DataPointWorldSize;
+
+        float tMaxX = (direction.x != 0)
+            ? (nextBoundaryX - origin.x) / direction.x
+            : float.PositiveInfinity;
+        float tMaxZ = (direction.z != 0)
+            ? (nextBoundaryZ - origin.z) / direction.z
+            : float.PositiveInfinity;
+
+        float traveled = 0f;
+
+        while (traveled <= maxDistance)
+        {
+            float worldX = gx * TerrainSystemServer.DataPointWorldSize;
+            float worldZ = (gz + 1) * TerrainSystemServer.DataPointWorldSize;
+
+            TerrainSystemServer.WorldToChunk(new float2(worldX, worldZ), out int2 chunkCoord);
+
+#if RAYCAST_DEBUG
+            DebugEx.DrawBoxAligned(
+                TerrainSystemServer.ChunkToWorld(chunkCoord).FlatTo3D(),
+                new float2(TerrainSystemServer.MeshWorldSize).FlatTo3D(),
+                Color.white, DebugLineTime, false);
+
+            DebugEx.DrawPoint(new float3(worldX, 0f, worldZ), 0.5f, Color.white, DebugLineTime, false);
+#endif
+
+            if (TryGetHeightmap(chunkCoord, false, out var heightmap))
+            {
+                int2 dataCoord = TerrainSystemServer.WorldToData(new float2(worldX, worldZ) - TerrainSystemServer.ChunkToWorld(chunkCoord));
+                float h00 = heightmap[dataCoord.x + dataCoord.y * TerrainSystemServer.NumVertsPerLine];
+
+#if RAYCAST_DEBUG
+                DebugEx.DrawBoxAligned(
+                    (TerrainSystemServer.ChunkToWorld(chunkCoord) + TerrainSystemServer.DataToWorld(dataCoord)).FlatTo3D(),
+                    new float2(TerrainSystemServer.DataPointWorldSize).FlatTo3D(),
+                    Color.gray, DebugLineTime, false);
+#endif
+
+                if (dataCoord.x < TerrainSystemServer.NumVertsPerLine - 1 && dataCoord.y < TerrainSystemServer.NumVertsPerLine - 1)
+                {
+                    float2 dataPos00 = TerrainSystemServer.ChunkToWorld(chunkCoord) + TerrainSystemServer.DataToWorld(dataCoord);
+
+                    float h01 = heightmap[dataCoord.x + (dataCoord.y + 1) * TerrainSystemServer.NumVertsPerLine];
+                    float h10 = heightmap[dataCoord.x + 1 + dataCoord.y * TerrainSystemServer.NumVertsPerLine];
+                    float h11 = heightmap[dataCoord.x + 1 + (dataCoord.y + 1) * TerrainSystemServer.NumVertsPerLine];
+
+                    float2 dataPos11 = TerrainSystemServer.ChunkToWorld(chunkCoord) + TerrainSystemServer.DataToWorld(dataCoord + new int2(1, 1));
+
+                    {
+                        float3 v0 = new(dataPos00.x, h00, dataPos00.y);
+                        float3 v1 = new(dataPos11.x, h10, dataPos00.y);
+                        float3 v2 = new(dataPos11.x, h11, dataPos11.y);
+
+                        if (Utils.ray_intersects_triangle(
+                            origin,
+                            direction,
+                            new float3x3(v0, v1, v2),
+                            out float t
+                        ))
+                        {
+#if RAYCAST_DEBUG
+                            DebugEx.DrawTriangle(v0, v1, v2, Color.red, DebugLineTime, false);
+                            DebugEx.DrawPoint(origin + direction * t, 0.5f, Color.red, DebugLineTime, false);
+#endif
+                            distance = t;
+                            normal = math.normalize(math.cross(v1 - v0, v2 - v0));
+                            return distance < maxDistance;
+                        }
+                        else
+                        {
+#if RAYCAST_DEBUG
+                            DebugEx.DrawTriangle(v0, v1, v2, Color.white, DebugLineTime, false);
+#endif
+                        }
+                    }
+
+                    {
+                        float3 v0 = new(dataPos00.x, h00, dataPos00.y);
+                        float3 v2 = new(dataPos11.x, h11, dataPos11.y);
+                        float3 v1 = new(dataPos00.x, h01, dataPos11.y);
+
+                        if (Utils.ray_intersects_triangle(
+                            origin,
+                            direction,
+                            new float3x3(v0, v1, v2),
+                            out float t
+                        ))
+                        {
+#if RAYCAST_DEBUG
+                            DebugEx.DrawTriangle(v0, v1, v2, Color.red, DebugLineTime, false);
+                            DebugEx.DrawPoint(origin + direction * t, 0.5f, Color.red, DebugLineTime, false);
+#endif
+                            distance = t;
+                            normal = math.normalize(math.cross(v2 - v0, v1 - v0));
+                            return distance < maxDistance;
+                        }
+                        else
+                        {
+#if RAYCAST_DEBUG
+                            DebugEx.DrawTriangle(v0, v1, v2, Color.white, DebugLineTime, false);
+#endif
+                        }
+                    }
+                }
+
+                //if (origin.y + direction.y * traveled <= h00)
+                //{
+                //    distance = traveled;
+                //    DebugEx.DrawPoint(origin + direction * distance, 0.5f, Color.red, DebugLineTime, false);
+                //    return true;
+                //}
+            }
+
+            if (tMaxX < tMaxZ)
+            {
+                traveled = tMaxX;
+                tMaxX += tDeltaX;
+#if RAYCAST_DEBUG
+                Debug.DrawLine(
+                    (new float2(gx, gz) * TerrainSystemServer.DataPointWorldSize).FlatTo3D(),
+                    (new float2(gx + stepX, gz) * TerrainSystemServer.DataPointWorldSize).FlatTo3D(),
+                    Color.white,
+                    DebugLineTime,
+                    false
+                );
+#endif
+                gx += stepX;
+            }
+            else
+            {
+                traveled = tMaxZ;
+                tMaxZ += tDeltaZ;
+#if RAYCAST_DEBUG
+                Debug.DrawLine(
+                    (new float2(gx, gz) * TerrainSystemServer.DataPointWorldSize).FlatTo3D(),
+                    (new float2(gx, gz + stepZ) * TerrainSystemServer.DataPointWorldSize).FlatTo3D(),
+                    Color.white,
+                    DebugLineTime,
+                    false
+                );
+#endif
+                gz += stepZ;
+            }
         }
+
+        distance = default;
+        normal = default;
+        return false;
+    }
+
+    static bool GetTerrainFeatureDeps(ref bool gotDeps, ref EntityCommandBuffer commandBuffer, ref TerrainFeaturePrefabs terrainFeatures)
+    {
+        if (gotDeps || ConnectionManager.ClientWorld is null) return gotDeps;
+
+        bool ok = true;
+
+        EntityQuery q1 = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(new ComponentType[]
+        {
+            ComponentType.ReadWrite<EndSimulationEntityCommandBufferSystem.Singleton>()
+        });
+        if (q1.TryGetSingletonRW(out RefRW<EndSimulationEntityCommandBufferSystem.Singleton> s1))
+        {
+            commandBuffer = s1.ValueRW.CreateCommandBuffer(ConnectionManager.ClientWorld.Unmanaged);
+        }
+        else
+        {
+            ok = false;
+        }
+        q1.Dispose();
+
+        //commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+
+        EntityQuery q2 = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(new ComponentType[]
+        {
+            ComponentType.ReadOnly<TerrainFeaturePrefabs>()
+        });
+        if (q2.TryGetSingleton(out TerrainFeaturePrefabs s2))
+        {
+            terrainFeatures = s2;
+        }
+        else
+        {
+            ok = false;
+        }
+        q2.Dispose();
+
+        gotDeps = ok;
+        return ok;
     }
 
     void UpdateVisibleChunks()
     {
-        bool b = default;
+        bool gotDeps = default;
         EntityCommandBuffer entityCommandBuffer = default;
-        TerrainFeatures terrainFeatures = default;
+        TerrainFeaturePrefabs terrainFeatures = default;
 
         HashSet<int2> alreadyUpdatedChunkCoords = new();
         for (int i = VisibleTerrainChunks.Count - 1; i >= 0; i--)
         {
             alreadyUpdatedChunkCoords.Add(VisibleTerrainChunks[i].Coord);
             VisibleTerrainChunks[i].UpdateTerrainChunk();
-            if (!VisibleTerrainChunks[i].FeaturesGenerated)
+            if (!VisibleTerrainChunks[i].FeaturesGenerated && GetTerrainFeatureDeps(ref gotDeps, ref entityCommandBuffer, ref terrainFeatures))
             {
-                Bruh(ref b, ref entityCommandBuffer, ref terrainFeatures);
                 VisibleTerrainChunks[i].GenerateFeatures(in terrainFeatures, ref entityCommandBuffer);
             }
         }
@@ -284,9 +499,8 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
                 if (TerrainChunks.TryGetValue(viewedChunkCoord, out TerrainChunk? chunk))
                 {
                     chunk.UpdateTerrainChunk();
-                    if (!chunk.FeaturesGenerated)
+                    if (!chunk.FeaturesGenerated && GetTerrainFeatureDeps(ref gotDeps, ref entityCommandBuffer, ref terrainFeatures))
                     {
-                        Bruh(ref b, ref entityCommandBuffer, ref terrainFeatures);
                         chunk.GenerateFeatures(in terrainFeatures, ref entityCommandBuffer);
                     }
                 }
@@ -295,12 +509,6 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
                     CreateChunk(viewedChunkCoord);
                 }
             }
-        }
-
-        if (b)
-        {
-            entityCommandBuffer.Playback(ConnectionManager.ClientWorld!.EntityManager);
-            entityCommandBuffer.Dispose();
         }
     }
 

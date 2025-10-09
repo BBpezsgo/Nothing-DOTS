@@ -41,7 +41,8 @@ public class CameraControl : Singleton<CameraControl>
         get
         {
             if ((!Mouse.current.middleButton.isPressed || !Keyboard.current.shiftKey.isPressed) &&
-                !Mouse.current.middleButton.wasReleasedThisFrame) return false;
+                !Mouse.current.middleButton.wasReleasedThisFrame)
+            { return false; }
             if (UI.IsMouseHandled) return false;
             return (
                 Mouse.current.position.ReadValue() - startDragScreen
@@ -54,7 +55,8 @@ public class CameraControl : Singleton<CameraControl>
         get
         {
             if ((!Mouse.current.middleButton.isPressed || !Keyboard.current.ctrlKey.isPressed) &&
-                !Mouse.current.middleButton.wasReleasedThisFrame) return false;
+                !Mouse.current.middleButton.wasReleasedThisFrame)
+            { return false; }
             if (UI.IsMouseHandled) return false;
             return (
                 Mouse.current.position.ReadValue() - startDragZoomScreen
@@ -120,12 +122,12 @@ public class CameraControl : Singleton<CameraControl>
         UpdateCameraZoom();
         UpdateBasePosition();
 
-        if (TerrainGenerator.Instance.TrySampleFast(new float2(transform.position.x, transform.position.z), out float height))
+        if (TerrainGenerator.Instance.TrySample(new float2(transform.position.x, transform.position.z), out float height))
         {
             transform.position = new Vector3(transform.position.x, Mathf.Lerp(transform.position.y, height, 5f * Time.deltaTime), transform.position.z);
         }
 
-        if (TerrainGenerator.Instance.TrySampleFast(new float2(cameraTransform.position.x, cameraTransform.position.z), out height))
+        if (TerrainGenerator.Instance.TrySample(new float2(cameraTransform.position.x, cameraTransform.position.z), out height))
         {
             if (cameraTransform.position.y <= height + minHeight)
             {

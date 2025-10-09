@@ -17,7 +17,7 @@ partial struct TerrainSystemServer : ISystem
     public const float meshScale = 10f;
     public const bool useFlatShading = false;
 
-    public const float cellSize = meshScale / (NumVertsPerLine - 1);
+    public const float cellSize = (NumVertsPerLine - 3) * meshScale / (NumVertsPerLine - 1);
 
     public const int NumVertsPerLine = 72 + 1;
     //    0 switch
@@ -36,7 +36,7 @@ partial struct TerrainSystemServer : ISystem
 
     public static readonly float MeshWorldSize = (NumVertsPerLine - 3) * meshScale;
 
-    public static readonly float DataPointWorldSize = 1f / (NumVertsPerLine - 3) * MeshWorldSize;
+    public static readonly float DataPointWorldSize = MeshWorldSize / (NumVertsPerLine - 3);
 
     NativeHashMap<int2, NativeArray<float>.ReadOnly> Heightmaps;
     NativeList<int2> Queue;
@@ -69,7 +69,7 @@ partial struct TerrainSystemServer : ISystem
         if (Queue.Length == 0) return;
 
         NativeHeightMapSettings heightMapSettings = SystemAPI.GetSingleton<NativeHeightMapSettings>();
-        TerrainFeatures terrainFeatures = SystemAPI.GetSingleton<TerrainFeatures>();
+        TerrainFeaturePrefabs terrainFeatures = SystemAPI.GetSingleton<TerrainFeaturePrefabs>();
 
         NativeArray<NativeArray<float>> results = new(Queue.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < results.Length; i++)
@@ -92,7 +92,7 @@ partial struct TerrainSystemServer : ISystem
         {
             GenerateChunkFeatures(
                 Queue[i],
-                results[i],
+                results[i].AsReadOnly(),
                 in terrainFeatures,
                 ref commandBuffer
             );
@@ -118,18 +118,19 @@ partial struct TerrainSystemServer : ISystem
     [BurstCompile]
     public static void GenerateChunkFeatures(
         in int2 chunkCoord,
-        in ReadOnlySpan<float> heightmap,
-        in TerrainFeatures terrainFeatures,
+        in NativeArray<float>.ReadOnly heightmap,
+        in TerrainFeaturePrefabs terrainFeatures,
         ref EntityCommandBuffer commandBuffer)
     {
-        float2 chunkOrigin = ChunkToWorld(chunkCoord);
+        ChunkToWorld(chunkCoord, out float2 chunkOrigin);
         Unity.Mathematics.Random random = Unity.Mathematics.Random.CreateFromIndex((uint)math.abs(chunkCoord.x) + (uint)math.abs(chunkCoord.y));
         int n = random.NextInt(1, 8);
         for (int j = 0; j < n; j++)
         {
             int2 dataCoord = random.NextInt2(default, new int2(NumVertsPerLine - 1));
-            float2 randomPosition = DataToWorld(dataCoord) + chunkOrigin + random.NextFloat2(new float2(-cellSize / 2, -cellSize / 2), new float2(cellSize / 2, cellSize / 2));
-            float height = Sample(heightmap, randomPosition, chunkCoord, dataCoord, out float3 normal);
+            DataToWorld(dataCoord, out float2 randomPosition);
+            randomPosition += chunkOrigin + random.NextFloat2(new float2(-cellSize / 2, -cellSize / 2), new float2(cellSize / 2, cellSize / 2));
+            float height = Sample(heightmap, randomPosition, chunkCoord, dataCoord);
             Entity newResource = commandBuffer.Instantiate(terrainFeatures.ResourcePrefab);
             float3 p = new(
                 randomPosition.x,
@@ -142,10 +143,18 @@ partial struct TerrainSystemServer : ISystem
     }
 
     [BurstCompile]
-    public static float2 ChunkToWorld(int2 chunkCoord) => (float2)chunkCoord * MeshWorldSize;
+    public static void ChunkToWorld(in int2 chunkCoord, out float2 worldPosition)
+        => worldPosition = (float2)chunkCoord * MeshWorldSize;
+
+    public static float2 ChunkToWorld(int2 chunkCoord)
+        => (float2)chunkCoord * MeshWorldSize;
 
     [BurstCompile]
-    public static int2 WorldToChunk(float2 worldPosition) => (int2)math.round(worldPosition / MeshWorldSize);
+    public static void WorldToChunk(in float2 worldPosition, out int2 chunkCoord)
+        => chunkCoord = (int2)math.round(worldPosition / MeshWorldSize);
+
+    public static int2 WorldToChunk(float2 worldPosition)
+        => (int2)math.round(worldPosition / MeshWorldSize);
 
     static readonly float2 _topLeft = new float2(-1, 1) * MeshWorldSize / 2f;
 
@@ -153,20 +162,64 @@ partial struct TerrainSystemServer : ISystem
     /// Chunk relative world to data coord
     /// </summary>
     [BurstCompile]
-    public static int2 WorldToData(float2 pos)
-        => (int2)((pos - _topLeft) * new float2(1f, -1f) / MeshWorldSize * (NumVertsPerLine - 3)) + new int2(1, 1);
+    public static void WorldToData(in float2 worldPosition, out int2 dataCoord)
+        => dataCoord = (int2)((worldPosition - _topLeft) * new float2(1f, -1f) / MeshWorldSize * (NumVertsPerLine - 3)) + new int2(1, 1);
+
+    /// <summary>
+    /// Chunk relative world to data coord
+    /// </summary>
+    public static int2 WorldToData(float2 worldPosition)
+        => (int2)((worldPosition - _topLeft) * new float2(1f, -1f) / MeshWorldSize * (NumVertsPerLine - 3)) + new int2(1, 1);
 
     /// <summary>
     /// Data coord to chunk relative world
     /// </summary>
     [BurstCompile]
-    public static float2 DataToWorld(int2 pos)
-        => _topLeft + new float2(pos.x - 1, pos.y - 1) / (NumVertsPerLine - 3) * new float2(1f, -1f) * MeshWorldSize;
+    public static void DataToWorld(in int2 dataCoord, out float2 worldPosition)
+        => worldPosition = _topLeft + new float2(dataCoord.x - 1, dataCoord.y - 1) / (NumVertsPerLine - 3) * new float2(1f, -1f) * MeshWorldSize;
+
+    /// <summary>
+    /// Data coord to chunk relative world
+    /// </summary>
+    public static float2 DataToWorld(int2 dataCoord)
+        => _topLeft + new float2(dataCoord.x - 1, dataCoord.y - 1) / (NumVertsPerLine - 3) * new float2(1f, -1f) * MeshWorldSize;
 
     [BurstCompile]
-    public bool TrySample(float2 position, out float height, out float3 normal, bool neighbours = false)
+    public bool TrySample(in float2 position, out float height, bool neighbours = false)
     {
-        int2 chunkCoord = WorldToChunk(position + new float2(DataPointWorldSize, DataPointWorldSize) * 0.5f);
+        WorldToChunk(position + new float2(DataPointWorldSize, DataPointWorldSize) * 0.5f, out int2 chunkCoord);
+
+        if (!Heightmaps.TryGetValue(chunkCoord, out NativeArray<float>.ReadOnly heightmap))
+        {
+            if (Hashset.Add(chunkCoord)) Queue.Add(chunkCoord);
+            if (neighbours)
+            {
+                if (Hashset.Add(chunkCoord + new int2(+1, 0))) Queue.Add(chunkCoord + new int2(+1, 0));
+                if (Hashset.Add(chunkCoord + new int2(-1, 0))) Queue.Add(chunkCoord + new int2(-1, 0));
+                if (Hashset.Add(chunkCoord + new int2(0, +1))) Queue.Add(chunkCoord + new int2(0, +1));
+                if (Hashset.Add(chunkCoord + new int2(0, -1))) Queue.Add(chunkCoord + new int2(0, -1));
+            }
+
+            height = default;
+            return false;
+        }
+
+        ChunkToWorld(chunkCoord, out float2 chunkPosition);
+        WorldToData(position - chunkPosition, out int2 dataCoord);
+        if (dataCoord.x < 0 || dataCoord.y < 0 || dataCoord.x >= NumVertsPerLine || dataCoord.y >= NumVertsPerLine)
+        {
+            throw new IndexOutOfRangeException($"{dataCoord.x} {dataCoord.y} (/ {NumVertsPerLine} {NumVertsPerLine})");
+        }
+
+        height = Sample(heightmap, position, chunkCoord, dataCoord);
+
+        return true;
+    }
+
+    [BurstCompile]
+    public bool TrySample(in float2 position, out float height, out float3 normal, bool neighbours = false)
+    {
+        WorldToChunk(position + new float2(DataPointWorldSize, DataPointWorldSize) * 0.5f, out int2 chunkCoord);
 
         if (!Heightmaps.TryGetValue(chunkCoord, out NativeArray<float>.ReadOnly heightmap))
         {
@@ -184,7 +237,8 @@ partial struct TerrainSystemServer : ISystem
             return false;
         }
 
-        int2 dataCoord = WorldToData(position - ChunkToWorld(chunkCoord));
+        ChunkToWorld(chunkCoord, out float2 chunkPosition);
+        WorldToData(position - chunkPosition, out int2 dataCoord);
         if (dataCoord.x < 0 || dataCoord.y < 0 || dataCoord.x >= NumVertsPerLine || dataCoord.y >= NumVertsPerLine)
         {
             throw new IndexOutOfRangeException($"{dataCoord.x} {dataCoord.y} (/ {NumVertsPerLine} {NumVertsPerLine})");
@@ -196,13 +250,81 @@ partial struct TerrainSystemServer : ISystem
     }
 
     [BurstCompile]
-    public static float Sample(in ReadOnlySpan<float> heightmap, float2 position, int2 chunkCoord, int2 dataCoord, out float3 normal)
+    public bool TrySample(in float2 aabbMin, in float2 aabbMax, out float height, out float3 normal)
+    {
+        normal = default;
+        height = default;
+
+        if (!TrySample(new float2(aabbMin.x, aabbMin.y), out float h, out float3 n, false)) return false;
+        height += h;
+        normal += n;
+
+        if (!TrySample(new float2(aabbMin.x, aabbMax.y), out h, out n, false)) return false;
+        height += h;
+        normal += n;
+
+        if (!TrySample(new float2(aabbMax.x, aabbMin.y), out h, out n, false)) return false;
+        height += h;
+        normal += n;
+
+        if (!TrySample(new float2(aabbMax.x, aabbMax.y), out h, out n, false)) return false;
+        height += h;
+        normal += n;
+
+        height /= 4;
+        normal = math.normalizesafe(normal, new float3(0f, 1f, 0f));
+        if (normal.y < 0f) normal = -normal;
+
+        return true;
+    }
+
+    [BurstCompile]
+    public static float Sample(in NativeArray<float>.ReadOnly heightmap, in float2 position, in int2 chunkCoord, in int2 dataCoord)
+    {
+        float h00 = heightmap[dataCoord.x + dataCoord.y * NumVertsPerLine];
+
+        ChunkToWorld(chunkCoord, out var chunkPosition);
+        DataToWorld(dataCoord, out var dataPosition00);
+
+        float2 dataPos00 = chunkPosition + dataPosition00;
+
+        if (dataCoord.x >= NumVertsPerLine - 1 || dataCoord.y >= NumVertsPerLine - 1)
+        {
+            return h00;
+        }
+
+        float h11 = heightmap[dataCoord.x + 1 + (dataCoord.y + 1) * NumVertsPerLine];
+
+        DataToWorld(dataCoord + new int2(1, 1), out var dataPosition11);
+
+        float2 dataPos11 = chunkPosition + dataPosition11;
+
+        float dx = (position.x - dataPos00.x) / (dataPos11.x - dataPos00.x);
+        float dz = (position.y - dataPos00.y) / (dataPos11.y - dataPos00.y);
+
+        if (dz < dx)
+        {
+            float h10 = heightmap[dataCoord.x + 1 + dataCoord.y * NumVertsPerLine];
+            return (1 - dx) * h00 + (dx - dz) * h10 + dz * h11;
+        }
+        else
+        {
+            float h01 = heightmap[dataCoord.x + (dataCoord.y + 1) * NumVertsPerLine];
+            return (1 - dz) * h00 + dx * h11 + (dz - dx) * h01;
+        }
+    }
+
+    [BurstCompile]
+    public static float Sample(in NativeArray<float>.ReadOnly heightmap, in float2 position, in int2 chunkCoord, in int2 dataCoord, out float3 normal)
     {
         normal = new float3(0f, 1f, 0f);
 
         float h00 = heightmap[dataCoord.x + dataCoord.y * NumVertsPerLine];
 
-        float2 dataPos00 = ChunkToWorld(chunkCoord) + DataToWorld(dataCoord);
+        ChunkToWorld(chunkCoord, out var chunkPosition);
+        DataToWorld(dataCoord, out var dataPosition00);
+
+        float2 dataPos00 = chunkPosition + dataPosition00;
 
         //Debug.DrawLine(
         //    new UnityEngine.Vector3(position.x, 0f, position.y),
@@ -219,11 +341,13 @@ partial struct TerrainSystemServer : ISystem
             return h00;
         }
 
+        DataToWorld(dataCoord + new int2(1, 1), out float2 dataPosition11);
+
         float h01 = heightmap[dataCoord.x + (dataCoord.y + 1) * NumVertsPerLine];
         float h10 = heightmap[dataCoord.x + 1 + dataCoord.y * NumVertsPerLine];
         float h11 = heightmap[dataCoord.x + 1 + (dataCoord.y + 1) * NumVertsPerLine];
 
-        float2 dataPos11 = ChunkToWorld(chunkCoord) + DataToWorld(dataCoord + new int2(1, 1));
+        float2 dataPos11 = chunkPosition + dataPosition11;
 
         //DebugEx.DrawPoint(new(dataPos11.x, h10, dataPos00.y), 0.2f, Color.red, 100f, false);
         //DebugEx.DrawPoint(new(dataPos00.x, h01, dataPos11.y), 0.2f, Color.blue, 100f, false);
@@ -263,6 +387,67 @@ partial struct TerrainSystemServer : ISystem
             return (1 - dz) * h00 + dx * h11 + (dz - dx) * h01;
         }
     }
+
+    public bool Raycast(in float3 origin, in float3 direction, float maxDistance, out float distance)
+    {
+        int gx = (int)math.floor(origin.x / cellSize);
+        int gz = (int)math.floor(origin.z / cellSize);
+
+        int stepX = direction.x > 0 ? 1 : -1;
+        int stepZ = direction.z > 0 ? 1 : -1;
+
+        float tDeltaX = math.abs(cellSize / direction.x);
+        float tDeltaZ = math.abs(cellSize / direction.z);
+
+        float nextBoundaryX = (gx + (stepX > 0 ? 1 : 0)) * cellSize;
+        float nextBoundaryZ = (gz + (stepZ > 0 ? 1 : 0)) * cellSize;
+
+        float tMaxX = (direction.x != 0)
+            ? (nextBoundaryX - origin.x) / direction.x
+            : float.PositiveInfinity;
+        float tMaxZ = (direction.z != 0)
+            ? (nextBoundaryZ - origin.z) / direction.z
+            : float.PositiveInfinity;
+
+        float traveled = 0f;
+
+        while (traveled <= maxDistance)
+        {
+            float worldX = gx * cellSize;
+            float worldZ = gz * cellSize;
+
+            WorldToChunk(new float2(worldX + DataPointWorldSize * 0.5f, worldZ + DataPointWorldSize * 0.5f), out int2 chunkCoord);
+
+            if (Heightmaps.TryGetValue(chunkCoord, out NativeArray<float>.ReadOnly heightmap))
+            {
+                ChunkToWorld(chunkCoord, out float2 chunkPosition);
+                WorldToData(new float2(worldX, worldZ) - chunkPosition, out int2 dataCoord);
+                float height = heightmap[dataCoord.x + dataCoord.y * NumVertsPerLine];
+
+                if (origin.y + direction.y * traveled <= height)
+                {
+                    distance = traveled;
+                    return true;
+                }
+            }
+
+            if (tMaxX < tMaxZ)
+            {
+                traveled = tMaxX;
+                tMaxX += tDeltaX;
+                gx += stepX;
+            }
+            else
+            {
+                traveled = tMaxZ;
+                tMaxZ += tDeltaZ;
+                gz += stepZ;
+            }
+        }
+
+        distance = default;
+        return false;
+    }
 }
 
 [BurstCompile(CompileSynchronously = true)]
@@ -278,6 +463,7 @@ partial struct TerrainGeneratorJobServer : IJobFor
         int2 coord = Queue[index];
         float2 noiseOffset = new float2(coord.x, coord.y) * TerrainSystemServer.MeshWorldSize / TerrainSystemServer.meshScale;
         //Debug.Log(string.Format("Generating chunk at {0} {1}", coord.x, coord.y));
-        HeightMapGenerator.GenerateHeightMap(Result[index].AsSpan(), TerrainSystemServer.NumVertsPerLine, TerrainSystemServer.NumVertsPerLine, HeightMapSettings.heightMultiplier, noiseOffset, in HeightMapSettings.noiseSettings);
+        NativeArray<float> chunk = Result[index];
+        HeightMapGenerator.GenerateHeightMap(ref chunk, TerrainSystemServer.NumVertsPerLine, TerrainSystemServer.NumVertsPerLine, HeightMapSettings.heightMultiplier, noiseOffset, in HeightMapSettings.noiseSettings, Allocator.Temp);
     }
 }

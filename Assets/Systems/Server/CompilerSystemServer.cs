@@ -190,8 +190,8 @@ public partial class CompilerSystemServer : SystemBase
         {
             Entity request = commandBuffer.CreateEntity(EntityManager.CreateArchetype(stackalloc ComponentType[]
             {
-                typeof(CompilerStatusRpc),
-                typeof(SendRpcCommandRequest),
+                ComponentType.ReadWrite<CompilerStatusRpc>(),
+                ComponentType.ReadWrite<SendRpcCommandRequest>(),
             }));
             commandBuffer.SetComponent<CompilerStatusRpc>(request, new()
             {
@@ -211,8 +211,8 @@ public partial class CompilerSystemServer : SystemBase
 
         EntityArchetype substatusRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
-            typeof(CompilerSubstatusRpc),
-            typeof(SendRpcCommandRequest),
+            ComponentType.ReadWrite<CompilerSubstatusRpc>(),
+            ComponentType.ReadWrite<SendRpcCommandRequest>(),
         });
 
         foreach (var subfile in source.SubFiles)
@@ -236,8 +236,8 @@ public partial class CompilerSystemServer : SystemBase
     {
         EntityArchetype analysticsRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
-            typeof(CompilationAnalysticsRpc),
-            typeof(SendRpcCommandRequest),
+            ComponentType.ReadWrite<CompilationAnalysticsRpc>(),
+            ComponentType.ReadWrite<SendRpcCommandRequest>(),
         });
 
         // .ToArray() because the collection can be modified somewhere idk

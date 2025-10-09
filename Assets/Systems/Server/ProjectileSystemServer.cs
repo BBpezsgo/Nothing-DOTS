@@ -22,6 +22,7 @@ partial struct ProjectileSystemServer : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        TerrainSystemServer terrainSystem = TerrainSystemServer.GetInstance(state.WorldUnmanaged);
 
         damageQ.Update(ref state);
         var map = QuadrantSystem.GetMap(ref state);
@@ -42,15 +43,22 @@ partial struct ProjectileSystemServer : ISystem
             }
 
             Ray ray = new(lastPosition, newPosition, Layers.BuildingOrUnit);
+            DynamicBuffer<BufferedDamage> damage = default;
 
             Debug.DrawLine(ray.Start, ray.End, Color.Lerp(Color.green, Color.white, 0.5f), 2f);
 
-            if (!QuadrantRayCast.RayCast(map, ray, out Hit hit))
-            { continue; }
+            bool didHitTerrain = terrainSystem.Raycast(ray.Start, ray.Direction, math.distance(lastPosition, newPosition), out float terrainHit);
+            bool didHitUnit = QuadrantRayCast.RayCast(map, ray, out Hit unitHit) && damageQ.TryGetBuffer(unitHit.Entity.Entity, out damage);
 
-            if (damageQ.TryGetBuffer(hit.Entity.Entity, out DynamicBuffer<BufferedDamage> damage))
+            if (didHitTerrain && (!didHitUnit || unitHit.Distance >= terrainHit))
             {
-                DebugEx.DrawPoint(ray.GetPoint(hit.Distance), 0.2f, Color.green, 4f);
+                commandBuffer.DestroyEntity(entity);
+                continue;
+            }
+
+            if (didHitUnit)
+            {
+                DebugEx.DrawPoint(ray.GetPoint(unitHit.Distance), 0.2f, Color.green, 4f);
 
                 damage.Add(new()
                 {

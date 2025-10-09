@@ -10,13 +10,19 @@ using Unity.Transforms;
 partial struct TerrainCollisionSystem : ISystem
 {
     [BurstCompile]
-    public static quaternion AlignPreserveYawExact(quaternion rotation, float3 terrainNormal)
+    public static void AlignPreserveYawExact(ref quaternion rotation, in float3 terrainNormal)
     {
-        return AlignPreserveYawExact(rotation.ToEuler().y, terrainNormal);
+        AlignPreserveYawExact(rotation.ToEuler().y, terrainNormal, out rotation);
     }
 
     [BurstCompile]
-    public static quaternion AlignPreserveYawExact(float yawRadians, float3 terrainNormal)
+    public static void AlignPreserveYawExact(in quaternion rotation, in float3 terrainNormal, out quaternion result)
+    {
+        AlignPreserveYawExact(rotation.ToEuler().y, terrainNormal, out result);
+    }
+
+    [BurstCompile]
+    public static void AlignPreserveYawExact(float yawRadians, in float3 terrainNormal, out quaternion result)
     {
         float3 N = math.normalizesafe(terrainNormal, new float3(0f, 1f, 0f));
 
@@ -35,7 +41,7 @@ partial struct TerrainCollisionSystem : ISystem
 
         float3 right = math.normalize(math.cross(N, forward));
 
-        return new quaternion(new float3x3(right, N, forward));
+        result = new quaternion(new float3x3(right, N, forward));
     }
 
     [BurstCompile]
@@ -53,25 +59,35 @@ partial struct TerrainCollisionSystem : ISystem
             { continue; }
 
             transform.ValueRW.Position.y = h;
-            transform.ValueRW.Rotation = AlignPreserveYawExact(transform.ValueRO.Rotation, normal);
+            AlignPreserveYawExact(ref transform.ValueRW.Rotation, normal);
 
             terrainUnit.ValueRW.LastPosition = new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
         }
 
-        foreach (var (transform, terrainBuilding) in
-            SystemAPI.Query<RefRW<LocalTransform>, RefRW<TerrainBuilding>>())
+        foreach (var (transform, terrainBuilding, collider) in
+            SystemAPI.Query<RefRW<LocalTransform>, RefRW<TerrainBuilding>, RefRO<Collider>>())
         {
             if (terrainBuilding.ValueRO.IsInitialized)
             { continue; }
-            if (!terrainSystem.TrySample(new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.z), out float h, out float3 normal, true))
-            { continue; }
+
+            float h;
+            float3 n;
+
+            if (collider.ValueRO.Type == ColliderType.AABB)
+            {
+                float3 min = transform.ValueRO.Position + collider.ValueRO.AABB.AABB.Min;
+                float3 max = transform.ValueRO.Position + collider.ValueRO.AABB.AABB.Max;
+                if (!terrainSystem.TrySample(new float2(min.x, min.z), new float2(max.x, max.z), out h, out n))
+                { continue; }
+            }
+            else
+            {
+                if (!terrainSystem.TrySample(new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.z), out h, out n, false))
+                { continue; }
+            }
 
             transform.ValueRW.Position.y = h;
-
-            float3 euler = transform.ValueRO.Rotation.ToEuler();
-            float yaw = euler.y;
-
-            transform.ValueRW.Rotation = AlignPreserveYawExact(yaw, normal);
+            AlignPreserveYawExact(ref transform.ValueRW.Rotation, n);
 
             terrainBuilding.ValueRW.IsInitialized = true;
         }

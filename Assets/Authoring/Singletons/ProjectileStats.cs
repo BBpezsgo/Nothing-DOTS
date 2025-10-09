@@ -8,5 +8,6 @@ class ProjectileStats : ScriptableObject
     [SerializeField, NotNull] public GameObject? Prefab = default;
     [SerializeField, Min(0f)] public float Damage = default;
     [SerializeField, Min(0f)] public float Speed = default;
-    [SerializeField] public VisualEffectAsset? ImpactEffect = default;
+    [SerializeField] public VisualEffectAsset? MetalImpactEffect = default;
+    [SerializeField] public VisualEffectAsset? DustImpactEffect = default;
 }

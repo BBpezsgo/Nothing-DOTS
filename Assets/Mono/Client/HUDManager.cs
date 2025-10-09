@@ -3,12 +3,13 @@ using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class HUDManager : MonoBehaviour
+public class HUDManager : Singleton<HUDManager>
 {
     [SerializeField, NotNull] UIDocument? _ui = default;
 
-    [NotNull] Label? _labelResources = default;
-    [NotNull] Label? _labelFps = default;
+    [NotNull] internal Label? _labelResources = default;
+    [NotNull] internal Label? _labelFps = default;
+    [NotNull] internal Label? _labelSelectedUnits = default;
 
     float _refreshAt = default;
     float _maxDeltaTime = default;
@@ -17,6 +18,7 @@ public class HUDManager : MonoBehaviour
     {
         _labelResources = _ui.rootVisualElement.Q<Label>("label-resources");
         _labelFps = _ui.rootVisualElement.Q<Label>("label-fps");
+        _labelSelectedUnits = _ui.rootVisualElement.Q<Label>("label-selected-units");
     }
 
     void Update()

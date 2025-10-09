@@ -5,5 +5,6 @@ public struct Projectile : IComponentData
 {
     public float3 Velocity;
     public float Damage;
-    public int ImpactEffect;
+    public int MetalImpactEffect;
+    public int DustImpactEffect;
 }

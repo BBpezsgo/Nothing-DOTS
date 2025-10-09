@@ -1,3 +1,5 @@
+using System;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -17,6 +19,10 @@ public struct BufferedUnitCommandDefinition : IBufferElementData
     [GhostField] public ushort ParameterCount;
     [GhostField] public FixedBytes62 Parameters;
 
+    public unsafe UnitCommandParameter GetParameter(int index) => ((UnitCommandParameter*)Unsafe.AsPointer(ref Parameters))[index];
+
+    public unsafe ReadOnlySpan<UnitCommandParameter> GetParameters() => new(Unsafe.AsPointer(ref Parameters), ParameterCount);
+
     public unsafe BufferedUnitCommandDefinition(
         int id,
         FixedString32Bytes label,
@@ -32,4 +38,6 @@ public struct BufferedUnitCommandDefinition : IBufferElementData
         }
         this.Parameters = Parameters;
     }
+
+    public override readonly int GetHashCode() => Id;
 }

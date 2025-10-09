@@ -1,18 +1,19 @@
 using System;
+using Unity.Collections;
 using UnityEngine;
 
-public readonly struct NoiseGenerator
+public readonly struct NoiseGeneratorUnmanaged : IDisposable
 {
     readonly Unity.Mathematics.Random Random;
-    readonly Vector2[] OctaveOffsets;
+    readonly NativeArray<Vector2> OctaveOffsets;
     readonly float Scale;
     readonly float Persistance;
     readonly float Lacunarity;
 
-    public NoiseGenerator(uint seed, Vector2 offset, float scale = 1f, int octaves = 8, float persistance = 0.5f, float lacunarity = 2f)
+    public NoiseGeneratorUnmanaged(uint seed, Vector2 offset, float scale = 1f, int octaves = 8, float persistance = 0.5f, float lacunarity = 2f, Allocator allocator = Allocator.Temp)
     {
         Random = new Unity.Mathematics.Random(seed);
-        OctaveOffsets = new Vector2[octaves];
+        OctaveOffsets = new(octaves, allocator, NativeArrayOptions.UninitializedMemory);
         Scale = scale;
         Persistance = persistance;
         Lacunarity = lacunarity;
@@ -23,8 +24,8 @@ public readonly struct NoiseGenerator
         }
     }
 
-    public NoiseGenerator(in NoiseSettings noiseSettings, Vector2 offset = default, uint seed = default)
-     : this(noiseSettings.seed + seed, noiseSettings.offset + offset, noiseSettings.scale, noiseSettings.octaves, noiseSettings.persistance, noiseSettings.lacunarity)
+    public NoiseGeneratorUnmanaged(in NoiseSettings noiseSettings, Vector2 offset = default, uint seed = default, Allocator allocator = Allocator.Temp)
+     : this(noiseSettings.seed + seed, noiseSettings.offset + offset, noiseSettings.scale, noiseSettings.octaves, noiseSettings.persistance, noiseSettings.lacunarity, allocator)
     { }
 
     public float Minimum
@@ -86,5 +87,10 @@ public readonly struct NoiseGenerator
         }
 
         return noiseHeight;
+    }
+
+    public void Dispose()
+    {
+        OctaveOffsets.Dispose();
     }
 }

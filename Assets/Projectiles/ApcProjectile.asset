@@ -15,5 +15,7 @@ MonoBehaviour:
   Prefab: {fileID: 2786101604496490284, guid: 43271472464ab435ea8449499228d966, type: 3}
   Damage: 1
   Speed: 40
-  ImpactEffect: {fileID: 8926484042661614526, guid: 922371f4c0413b2e19aebb0a74861943,
+  MetalImpactEffect: {fileID: 8926484042661614526, guid: 922371f4c0413b2e19aebb0a74861943,
+    type: 3}
+  DustImpactEffect: {fileID: 8926484042661614526, guid: f187d57176b8bc2b598bac872e9e75e1,
     type: 3}

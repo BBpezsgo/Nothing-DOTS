@@ -174,9 +174,9 @@ unsafe partial struct TransmissionSystem : ISystem
     [BurstCompile]
     static float PointSquareDistance(in float2 point, in float2 a, in float2 b)
     {
-        float dx = MathF.Max(MathF.Max(a.x - point.x, point.x - b.x), 0f);
-        float dy = MathF.Max(MathF.Max(a.y - point.y, point.y - b.y), 0f);
-        return MathF.Sqrt(dx * dx + dy * dy);
+        float dx = math.max(math.max(a.x - point.x, point.x - b.x), 0f);
+        float dy = math.max(math.max(a.y - point.y, point.y - b.y), 0f);
+        return math.sqrt(dx * dx + dy * dy);
     }
 
     [BurstCompile]
@@ -196,21 +196,21 @@ unsafe partial struct TransmissionSystem : ISystem
         float2 leftDir;
         float2 rightDir;
         {
-            float cos = MathF.Cos(halfFov);
-            float sin = MathF.Sin(-halfFov);
+            float cos = math.cos(halfFov);
+            float sin = math.sin(-halfFov);
             leftDir = new float2(viewDir.x * cos - viewDir.y * sin, viewDir.x * sin + viewDir.y * cos);
-            sin = MathF.Sin(halfFov);
+            sin = math.sin(halfFov);
             rightDir = new float2(viewDir.x * cos - viewDir.y * sin, viewDir.x * sin + viewDir.y * cos);
         }
 
         float2 leftEnd = viewPos + leftDir * viewRange;
         float2 rightEnd = viewPos + rightDir * viewRange;
 
-        ReadOnlySpan<float2> fovTriangle = stackalloc float2[] {
+        float2x3 fovTriangle = new(
             viewPos,
             leftEnd,
-            rightEnd ,
-        };
+            rightEnd
+        );
 
         for (int i = 0; i < 4; i++)
         {
@@ -222,7 +222,7 @@ unsafe partial struct TransmissionSystem : ISystem
     }
 
     [BurstCompile]
-    static bool SegmentIntersectsTriangle(in float2 p1, in float2 p2, ReadOnlySpan<float2> tri)
+    static bool SegmentIntersectsTriangle(in float2 p1, in float2 p2, in float2x3 tri)
     {
         for (int i = 0; i < 3; i++)
         {
@@ -253,7 +253,7 @@ unsafe partial struct TransmissionSystem : ISystem
         float d11 = math.dot(v1, v1);
 
         float denom = d00 * d11 - d01 * d01;
-        if (MathF.Abs(denom) <= 0.0001f) return false;
+        if (math.abs(denom) <= 0.0001f) return false;
 
         float2 v2 = point - a;
         float d02 = math.dot(v0, v2);

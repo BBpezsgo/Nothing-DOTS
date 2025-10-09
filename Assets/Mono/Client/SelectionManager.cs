@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -9,6 +10,27 @@ using Unity.NetCode;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.UIElements;
+
+class VirtualGhostEntity : IEquatable<VirtualGhostEntity>
+{
+    public readonly Entity Entity;
+    public readonly GhostInstance GhostInstance;
+    public readonly BufferedUnitCommandDefinition[] UnitCommands;
+
+    public VirtualGhostEntity(Entity entity, GhostInstance ghostInstance, BufferedUnitCommandDefinition[] unitCommands)
+    {
+        Entity = entity;
+        GhostInstance = ghostInstance;
+        UnitCommands = unitCommands;
+    }
+
+    public override bool Equals(object? obj) => obj is VirtualGhostEntity other && Equals(other);
+    public bool Equals(VirtualGhostEntity other) => GhostInstance.ghostId == other.GhostInstance.ghostId && GhostInstance.spawnTick == other.GhostInstance.spawnTick;
+    public override int GetHashCode() => HashCode.Combine(GhostInstance.ghostId, GhostInstance.spawnTick);
+
+    public static bool operator ==(VirtualGhostEntity left, VirtualGhostEntity right) => left.Equals(right);
+    public static bool operator !=(VirtualGhostEntity left, VirtualGhostEntity right) => !left.Equals(right);
+}
 
 public class SelectionManager : Singleton<SelectionManager>
 {
@@ -23,10 +45,13 @@ public class SelectionManager : Singleton<SelectionManager>
     bool _isSelectBoxVisible;
     Vector3 _selectionStart = default;
     Vector3 _rightClick = default;
-    HashSet<Entity> _selected = new();
+    HashSet<VirtualGhostEntity> _selected = new();
     HashSet<Entity> _candidates = new();
     Entity _firstHit = Entity.Null;
-    Vector3 _unitCommandUIWorldPosition = default;
+    Vector3 _unitCommandUIWorldPositionData = default;
+    Vector3 _unitCommandUIPosition = default;
+
+    public bool IsUnitCommandsActive => UnitCommandsUI.isActiveAndEnabled;
 
     void SetSelectBoxVisible(bool visible)
     {
@@ -41,6 +66,26 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void Update()
     {
+        if (UnitCommandsUI.isActiveAndEnabled)
+        {
+            if (UIManager.Instance.GrapESC())
+            {
+                HideUnitCommandsUI();
+            }
+            else
+            {
+                DebugEx.DrawPoint(_unitCommandUIPosition, 2f, Color.white);
+
+                Vector3 screenPoint = MainCamera.Camera.WorldToScreenPoint(_unitCommandUIPosition);
+                if (screenPoint.z >= 0f)
+                {
+                    screenPoint.z = 0f;
+                    screenPoint.y = MainCamera.Camera.pixelHeight - screenPoint.y;
+                    UnitCommandsUI.rootVisualElement.transform.position = screenPoint;
+                }
+            }
+        }
+
         if (UI.IsMouseHandled)
         {
             SetSelectBoxVisible(false);
@@ -80,19 +125,6 @@ public class SelectionManager : Singleton<SelectionManager>
 
         UpdateBoxSelect();
 
-        if (UnitCommandsUI.isActiveAndEnabled)
-        {
-            DebugEx.DrawPoint(_unitCommandUIWorldPosition, 2f, Color.white);
-
-            Vector3 screenPoint = MainCamera.Camera.WorldToScreenPoint(_unitCommandUIWorldPosition);
-            if (screenPoint.z >= 0f)
-            {
-                screenPoint.z = 0f;
-                screenPoint.y = MainCamera.Camera.pixelHeight - screenPoint.y;
-                UnitCommandsUI.rootVisualElement.transform.position = screenPoint;
-            }
-        }
-
         //{
         //    UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
         //    if (TerrainCollisionSystem.Raycast(ray.origin, ray.direction, 1000f, out float3 hitPoint))
@@ -115,19 +147,22 @@ public class SelectionManager : Singleton<SelectionManager>
         //         }
         //     }
         // }
+
+        foreach (var item in _candidates)
+        {
+            SetUnitStatus(item, new SelectableUnit() { Status = SelectionStatus.Candidate });
+        }
+
+        foreach (var item in _selected)
+        {
+            SetUnitStatus(item.Entity, new SelectableUnit() { Status = SelectionStatus.Selected });
+        }
     }
 
     void BeginBoxSelect()
     {
-        HideUnitCommandsUI();
-
-        _selectionStart = default;
-
         UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
-        if (!WorldRaycast(ray, out float distance))
-        { return; }
-
-        _selectionStart = ray.GetPoint(distance);
+        _selectionStart = WorldRaycast(ray, out float distance) ? ray.GetPoint(distance) : ray.GetPoint(300f);
     }
 
     void UpdateBoxSelect()
@@ -164,6 +199,8 @@ public class SelectionManager : Singleton<SelectionManager>
             return;
         }
 
+        HideUnitCommandsUI();
+
         float minX = math.min(startPoint.x, endPoint.x);
         float minY = math.min(startPoint.y, endPoint.y);
         float maxX = math.max(startPoint.x, endPoint.x);
@@ -184,6 +221,21 @@ public class SelectionManager : Singleton<SelectionManager>
         SetSelectBoxVisible(true);
     }
 
+    static VirtualGhostEntity CreateVirtualGhostEntity(EntityManager entityManager, Entity entity)
+    {
+        DynamicBuffer<BufferedUnitCommandDefinition> buffer = entityManager.GetBuffer<BufferedUnitCommandDefinition>(entity);
+        BufferedUnitCommandDefinition[] commands = new BufferedUnitCommandDefinition[buffer.Length];
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            commands[i] = buffer[i];
+        }
+        return new VirtualGhostEntity(
+            entity,
+            entityManager.GetComponentData<GhostInstance>(entity),
+            commands
+        );
+    }
+
     void FinishBoxSelect()
     {
         if (!Input.GetKey(KeyCode.LeftShift)) ClearSelection();
@@ -201,16 +253,18 @@ public class SelectionManager : Singleton<SelectionManager>
             return;
         }
 
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+
         if (Vector2.Distance(startPoint, endPoint) < BoxSelectDistanceThreshold)
         {
             if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
-            Entity selectableHit = hit.Entity.Entity;
-            if (GetUnitStatus(selectableHit).Status == SelectionStatus.Selected &&
+            VirtualGhostEntity virtualGhostEntity = CreateVirtualGhostEntity(entityManager, hit.Entity.Entity);
+            if (GetUnitStatus(virtualGhostEntity.Entity).Status == SelectionStatus.Selected &&
                 _selected.Count > 0 &&
                 Input.GetKey(KeyCode.LeftShift))
-            { DeselectUnit(selectableHit); }
+            { DeselectUnit(virtualGhostEntity); }
             else
-            { SelectUnit(selectableHit, SelectionStatus.Selected); }
+            { SelectUnit(virtualGhostEntity, SelectionStatus.Selected); }
             return;
         }
 
@@ -227,7 +281,10 @@ public class SelectionManager : Singleton<SelectionManager>
         );
 
         foreach (Entity unit in UnitsInRect(rect))
-        { SelectUnit(unit, SelectionStatus.Selected); }
+        {
+            VirtualGhostEntity virtualGhostEntity = CreateVirtualGhostEntity(entityManager, unit);
+            SelectUnit(virtualGhostEntity, SelectionStatus.Selected);
+        }
     }
 
     void BeginUnitAction()
@@ -243,98 +300,117 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void FinishUnitAction()
     {
-        if (_selected.Count > 0)
-        {
-            _firstHit = Entity.Null;
-            ShowUnitCommandsUI();
-            return;
-        }
-
         Entity firstHit = _firstHit;
         _firstHit = Entity.Null;
 
-        if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
-        Entity selectableHit = hit.Entity.Entity;
-
-        if (!IsMine(selectableHit)) return;
-
-        if (selectableHit != firstHit) return;
-
-        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-
-        if (entityManager.HasComponent<Factory>(selectableHit))
+        if (RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit) && hit.Entity.Entity == firstHit)
         {
-            UIManager.Instance.OpenUI(UIManager.Instance.Factory)
-                .Setup(FactoryManager.Instance, selectableHit)
-                .Setup(TerminalManager.Instance, selectableHit);
-            return;
+            if (OpenEntityUI(hit.Entity.Entity))
+            {
+                return;
+            }
         }
 
-        if (entityManager.HasComponent<Facility>(selectableHit))
+        if (_selected.Count > 0)
         {
-            UIManager.Instance.OpenUI(UIManager.Instance.Facility)
-                .Setup(FacilityManager.Instance, selectableHit)
-                .Setup(TerminalManager.Instance, selectableHit);
-            return;
-        }
-
-        if (entityManager.HasComponent<Unit>(selectableHit))
-        {
-            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
-                .Setup(TerminalManager.Instance, selectableHit);
-            return;
-        }
-
-        if (entityManager.HasComponent<Builder>(selectableHit))
-        {
-            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
-                .Setup(TerminalManager.Instance, selectableHit);
-            return;
-        }
-
-        if (entityManager.HasComponent<CoreComputer>(selectableHit))
-        {
-            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
-                .Setup(TerminalManager.Instance, selectableHit);
-            return;
-        }
-
-        if (entityManager.HasComponent<Transporter>(selectableHit))
-        {
-            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
-                .Setup(TerminalManager.Instance, selectableHit);
-            return;
-        }
-
-        if (entityManager.HasComponent<Extractor>(selectableHit))
-        {
-            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
-                .Setup(TerminalManager.Instance, selectableHit);
-            return;
-        }
-
-        if (entityManager.HasComponent<Pendrive>(selectableHit))
-        {
-            UIManager.Instance.OpenUI(UIManager.Instance.DiskDrive)
-                .Setup(DiskDriveManager.Instance, selectableHit);
-            return;
-        }
-
-        if (entityManager.HasComponent<Building>(selectableHit))
-        {
-            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
-                .Setup(TerminalManager.Instance, selectableHit);
+            ShowUnitCommandsUI();
             return;
         }
     }
 
+    bool OpenEntityUI(Entity entity)
+    {
+        if (!IsMine(entity)) return false;
+
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+
+        if (entityManager.HasComponent<Factory>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Factory)
+                .Setup(FactoryManager.Instance, entity)
+                .Setup(TerminalManager.Instance, entity);
+            return true;
+        }
+
+        if (entityManager.HasComponent<Facility>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Facility)
+                .Setup(FacilityManager.Instance, entity)
+                .Setup(TerminalManager.Instance, entity);
+            return true;
+        }
+
+        if (entityManager.HasComponent<Unit>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, entity);
+            return true;
+        }
+
+        if (entityManager.HasComponent<Builder>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, entity);
+            return true;
+        }
+
+        if (entityManager.HasComponent<CoreComputer>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, entity);
+            return true;
+        }
+
+        if (entityManager.HasComponent<Transporter>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, entity);
+            return true;
+        }
+
+        if (entityManager.HasComponent<Extractor>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, entity);
+            return true;
+        }
+
+        if (entityManager.HasComponent<Pendrive>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.DiskDrive)
+                .Setup(DiskDriveManager.Instance, entity);
+            return true;
+        }
+
+        if (entityManager.HasComponent<Building>(entity))
+        {
+            UIManager.Instance.OpenUI(UIManager.Instance.Unit)
+                .Setup(TerminalManager.Instance, entity);
+            return true;
+        }
+
+        return false;
+    }
+
+    static bool TryGetUnitCommands(EntityManager entityManager, Entity selected, out DynamicBuffer<BufferedUnitCommandDefinition> commands)
+    {
+        commands = default;
+
+        if (!entityManager.Exists(selected)) return false;
+        if (!entityManager.HasBuffer<BufferedUnitCommandDefinition>(selected)) return false;
+
+        commands = entityManager.GetBuffer<BufferedUnitCommandDefinition>(selected);
+        return true;
+    }
+
     void ShowUnitCommandsUI()
     {
-        UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
-        if (!WorldRaycast(ray, out float distance))
-        { return; }
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
-        _unitCommandUIWorldPosition = ray.GetPoint(distance);
+        UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
+        _unitCommandUIWorldPositionData = WorldRaycast(ray, out float distance) ? ray.GetPoint(distance) : default;
+        _unitCommandUIPosition = _unitCommandUIWorldPositionData == default ? ray.GetPoint(300) : _unitCommandUIWorldPositionData;
+
         UnitCommandsUI.gameObject.SetActive(true);
 
         UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
@@ -343,39 +419,38 @@ public class SelectionManager : Singleton<SelectionManager>
         VisualElement container = UnitCommandsUI.rootVisualElement.Q("container-unit-commands");
         container.Clear();
 
-        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-
-        foreach (Entity selected in _selected)
+        foreach (VirtualGhostEntity selected in _selected)
         {
-            if (!entityManager.Exists(selected)) continue;
-            if (!entityManager.HasBuffer<BufferedUnitCommandDefinition>(selected)) continue;
+            if (!entityManager.Exists(selected.Entity)) continue;
+            if (!entityManager.HasBuffer<BufferedUnitCommandDefinition>(selected.Entity)) continue;
 
-            DynamicBuffer<BufferedUnitCommandDefinition> commands = entityManager.GetBuffer<BufferedUnitCommandDefinition>(selected);
+            DynamicBuffer<BufferedUnitCommandDefinition> commands = entityManager.GetBuffer<BufferedUnitCommandDefinition>(selected.Entity);
 
             for (int i = 0; i < commands.Length; i++)
             {
-                string name = commands[i].Label.ToString();
-                int id = commands[i].Id;
-                bool added = false;
+                BufferedUnitCommandDefinition command = commands[i];
 
-                foreach (VisualElement? existingItemUi in container.Children())
+                if (_unitCommandUIWorldPositionData == default && command.GetParameters().ToArray().Any(v => v is UnitCommandParameter.Position2 or UnitCommandParameter.Position3))
                 {
-                    if (existingItemUi.userData is string _name &&
-                        _name == name)
-                    {
-                        added = true;
-                        break;
-                    }
+                    // Position not avaliable, skipping
+                    continue;
                 }
 
-                if (added) continue;
+                VisualElement? added = container.Children().FirstOrDefault(v =>
+                {
+                    (BufferedUnitCommandDefinition, int) d = ((BufferedUnitCommandDefinition, int))v.userData;
+                    return d.Item1.Id == command.Id && d.Item1.Label == command.Label;
+                });
 
-                TemplateContainer itemUi = UnitCommandItemUI.Instantiate();
-                itemUi.Q<Button>("unit-command-name").text = $"#{id} {name}";
+                string name = command.Label.ToString();
+                int id = command.Id;
+
+                VisualElement itemUi = added ?? UnitCommandItemUI.Instantiate();
+                itemUi.Q<Button>("unit-command-name").text = $"#{id} {name}{(added is null ? null : $" ({(((BufferedUnitCommandDefinition, int))added.userData).Item2 + 1})")}";
                 itemUi.Q<Button>("unit-command-name").clicked += () => HandleUnitCommandClick(id);
-                itemUi.userData = name;
+                itemUi.userData = (command, added is null ? 1 : (((BufferedUnitCommandDefinition, int))added.userData).Item2 + 1);
 
-                container.Add(itemUi);
+                if (added is null) container.Add(itemUi);
             }
         }
 
@@ -389,7 +464,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void HandleUnitCommandClick(int commandId)
     {
-        DebugEx.DrawPoint(_unitCommandUIWorldPosition, 2f, Color.magenta, 10f);
+        DebugEx.DrawPoint(_unitCommandUIWorldPositionData, 2f, Color.magenta, 10f);
 
         StartCoroutine(SendUnitCommandClick(commandId));
     }
@@ -397,7 +472,7 @@ public class SelectionManager : Singleton<SelectionManager>
     IEnumerator SendUnitCommandClick(int commandId)
     {
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-        Entity[] yeah = _selected.ToArray();
+        VirtualGhostEntity[] yeah = _selected.ToArray();
         EntityArchetype commandRequestArchetype = entityManager.CreateArchetype(stackalloc ComponentType[]
         {
             typeof(SendRpcCommandRequest),
@@ -405,18 +480,16 @@ public class SelectionManager : Singleton<SelectionManager>
         });
 
         // int i = 0;
-        foreach (Entity selected in yeah)
+        foreach (VirtualGhostEntity selected in yeah)
         {
             yield return null;
-            if (!entityManager.Exists(selected)) continue;
             Entity entity = entityManager.CreateEntity(commandRequestArchetype);
-            GhostInstance ghostInstance = entityManager.GetComponentData<GhostInstance>(selected);
             entityManager.SetComponentData(entity, new UnitCommandRequestRpc()
             {
-                Entity = ghostInstance,
+                Entity = selected.GhostInstance,
                 CommandId = commandId,
 
-                WorldPosition = _unitCommandUIWorldPosition,
+                WorldPosition = _unitCommandUIWorldPositionData,
             });
             // if (UnitCommandsUI.rootVisualElement != null)
             // {
@@ -445,7 +518,8 @@ public class SelectionManager : Singleton<SelectionManager>
             if (point.x < rect.xMin ||
                 point.y < rect.yMin ||
                 point.x > rect.xMax ||
-                point.y > rect.yMax) continue;
+                point.y > rect.yMax)
+            { continue; }
             result.Add(selectableEntity);
         }
         return result.ToArray();
@@ -477,7 +551,8 @@ public class SelectionManager : Singleton<SelectionManager>
     void SetUnitStatus(Entity unit, SelectableUnit status)
     {
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit) ||
-            !ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<SelectableUnit>(unit)) return;
+            !ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<SelectableUnit>(unit))
+        { return; }
         ConnectionManager.ClientOrDefaultWorld.EntityManager.SetComponentData<SelectableUnit>(unit, status);
     }
 
@@ -520,47 +595,50 @@ public class SelectionManager : Singleton<SelectionManager>
         _candidates.Clear();
     }
 
-    void SelectUnit(Entity unit, SelectionStatus status)
+    void SelectUnit(VirtualGhostEntity unit, SelectionStatus status)
     {
-        if (!IsMine(unit)) return;
-        SetUnitStatus(unit, new()
+        if (!IsMine(unit.Entity)) return;
+        SetUnitStatus(unit.Entity, new()
         {
             Status = status,
         });
         _selected.Add(unit);
+        HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
     }
 
-    void DeselectUnit(Entity unit)
+    void DeselectUnit(VirtualGhostEntity unit)
     {
-        SetUnitStatus(unit, new()
+        SetUnitStatus(unit.Entity, new()
         {
             Status = SelectionStatus.None,
         });
         _selected.Remove(unit);
+        HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
     }
 
     void ClearSelection()
     {
-        foreach (Entity unit in _selected)
+        foreach (VirtualGhostEntity unit in _selected)
         {
-            SetUnitStatus(unit, new()
+            SetUnitStatus(unit.Entity, new()
             {
                 Status = SelectionStatus.None,
             });
         }
         _selected.Clear();
+        HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
     }
 
     public static bool WorldRaycast(UnityEngine.Ray ray, out float distance)
     {
-        return TerrainGenerator.Instance.Raycast(ray.origin, ray.direction, 1000f, out distance);
+        return TerrainGenerator.Instance.Raycast(ray.origin, ray.direction, 300f, out distance, out _);
         //return Ground.Raycast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), out distance);
     }
 
     static bool RayCast(UnityEngine.Ray ray, uint layer, out Hit hit)
     {
         Vector3 start = ray.origin;
-        Vector3 end = ray.GetPoint(200f);
+        Vector3 end = ray.GetPoint(300f);
         NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
         if (!QuadrantRayCast.RayCast(map, new Ray(start, end, layer), out hit)) return false;
         if (WorldRaycast(ray, out float worldHitDistance) && hit.Distance > worldHitDistance + 5f) return false;

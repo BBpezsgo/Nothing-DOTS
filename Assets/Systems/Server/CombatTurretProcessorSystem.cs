@@ -22,8 +22,8 @@ partial struct CombatTurretProcessorSystem : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
         EntityArchetype shootRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
-            typeof(ShootRpc),
-            typeof(SendRpcCommandRequest),
+            ComponentType.ReadWrite<ShootRpc>(),
+            ComponentType.ReadWrite<SendRpcCommandRequest>(),
         });
 
         foreach (var (processor, turret) in
@@ -70,7 +70,8 @@ partial struct CombatTurretProcessorSystem : ISystem
                 {
                     Velocity = velocity,
                     Damage = projectiles[projectileIndex].Damage,
-                    ImpactEffect = projectiles[projectileIndex].ImpactEffect,
+                    MetalImpactEffect = projectiles[projectileIndex].MetalImpactEffect,
+                    DustImpactEffect = projectiles[projectileIndex].DustImpactEffect,
                 });
 
                 if (turret.ValueRO.ShootEffect != -1)

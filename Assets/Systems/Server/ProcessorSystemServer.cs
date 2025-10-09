@@ -177,8 +177,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
         EntityArchetype rpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
-            typeof(SendRpcCommandRequest),
-            typeof(DebugLineRpc),
+            ComponentType.ReadWrite<SendRpcCommandRequest>(),
+            ComponentType.ReadWrite<DebugLineRpc>(),
         });
 
         foreach (var (player, lines, labels) in

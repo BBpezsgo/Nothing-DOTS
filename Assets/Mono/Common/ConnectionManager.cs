@@ -136,12 +136,17 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
     public IEnumerator StartHostAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname)
     {
+        Debug.Log($"START HOST ({endpoint})");
+
         SetInputEnabled(false);
 
+        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
 
+        Debug.Log($" -> NetcodeBootstrap.CreateServer({endpoint})");
         yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint));
 
+        Debug.Log($" -> DefaultGameObjectInjectionWorld()");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
         using (EntityQuery driverQ = ServerWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
@@ -149,9 +154,12 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
             endpoint = driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.GetLocalEndPoint();
         }
 
+        Debug.Log($" -> endpoint = {endpoint}");
+
+        Debug.Log($" -> NetcodeBootstrap.CreateClient({endpoint})");
         yield return StartCoroutine(NetcodeBootstrap.CreateClient(endpoint));
 
-        Debug.Log($"Set nickname to {nickname}");
+        Debug.Log($" -> Set nickname to {nickname}");
         PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
 
         SetInputEnabled(true);
@@ -164,15 +172,20 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
     public IEnumerator StartClientAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname)
     {
+        Debug.Log($"START CLIENT ({endpoint})");
+
         SetInputEnabled(false);
 
+        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
 
+        Debug.Log($" -> NetcodeBootstrap.CreateClient({endpoint})");
         yield return StartCoroutine(NetcodeBootstrap.CreateClient(endpoint));
 
+        Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ClientWorld!;
 
-        Debug.Log($"Set nickname to {nickname}");
+        Debug.Log($" -> Set nickname to {nickname}");
         PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
 
         SetInputEnabled(true);
@@ -181,18 +194,24 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
     public IEnumerator StartServerAsync(NetworkEndpoint endpoint)
     {
+        Debug.Log($"START SERVER ({endpoint})");
+
         SetInputEnabled(false);
 
+        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
 
+        Debug.Log($" -> NetcodeBootstrap.CreateServer({endpoint})");
         yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint));
 
+        Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
         SetInputEnabled(true);
         UI.gameObject.SetActive(false);
 
 #if UNITY_EDITOR && EDITOR_DEBUG
+        Debug.Log($" -> SetupManager.Instance.Setup()");
         if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
 #endif
     }

@@ -33,7 +33,9 @@ public class EntityInfoUI : MonoBehaviour
     [ReadOnly] public float TransporterLoadPercent = default;
     [ReadOnly] public float TransporterProgressPercent = default;
     [ReadOnly] public float ExtractorProgressPercent = default;
-    [ReadOnly] public float3 WorldPosition = default;
+    [ReadOnly] public float3 Position = default;
+    [ReadOnly] public quaternion Rotation = default;
+    [ReadOnly] public Bounds Bounds = default;
     [ReadOnly] public SelectionStatus SelectionStatus = default;
 
     [ReadOnly] public bool IsVisible = default;

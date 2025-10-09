@@ -213,6 +213,15 @@ public static partial class DebugEx
 #endif
     }
 
+    public static void DrawTriangle(float3x3 tri, Color color, float duration = 0f, bool depthTest = true)
+    {
+#if UNITY_EDITOR && EDITOR_DEBUG
+        Debug.DrawLine(tri.c0, tri.c1, color, duration, depthTest);
+        Debug.DrawLine(tri.c1, tri.c2, color, duration, depthTest);
+        Debug.DrawLine(tri.c2, tri.c0, color, duration, depthTest);
+#endif
+    }
+
     public static void DrawRectangle(float3 start, float3 end, Color color, float duration = 0f, bool depthTest = true)
     {
 #if UNITY_EDITOR && EDITOR_DEBUG

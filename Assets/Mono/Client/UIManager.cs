@@ -95,7 +95,7 @@ public class UIManager : Singleton<UIManager>
 
     public bool GrapESC()
     {
-        if (_escGrabbed || !_escPressed) return false;
+        if (_escGrabbed || !Input.GetKeyDown(KeyCode.Escape)) return false;
         _escGrabbed = true;
         return true;
     }

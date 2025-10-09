@@ -20,7 +20,7 @@ public partial struct TurretShootingSystemClient : ISystem
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
         EntityArchetype visualEffectSpawnArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
-            typeof(VisualEffectSpawn),
+            ComponentType.ReadWrite<VisualEffectSpawn>(),
         });
 
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
@@ -44,7 +44,8 @@ public partial struct TurretShootingSystemClient : ISystem
             {
                 Velocity = command.ValueRO.Velocity,
                 Damage = projectiles[command.ValueRO.ProjectileIndex].Damage,
-                ImpactEffect = projectiles[command.ValueRO.ProjectileIndex].ImpactEffect,
+                MetalImpactEffect = projectiles[command.ValueRO.ProjectileIndex].MetalImpactEffect,
+                DustImpactEffect = projectiles[command.ValueRO.ProjectileIndex].DustImpactEffect,
             });
 
             if (command.ValueRO.VisualEffectIndex >= 0)

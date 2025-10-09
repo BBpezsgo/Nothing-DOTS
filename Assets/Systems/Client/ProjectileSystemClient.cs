@@ -1,9 +1,7 @@
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-[BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
@@ -17,11 +15,10 @@ partial struct ProjectileSystemClient : ISystem
         DamageQ = state.GetBufferLookup<BufferedDamage>(true);
         VisualEffectSpawnArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
-            typeof(VisualEffectSpawn),
+            ComponentType.ReadWrite<VisualEffectSpawn>(),
         });
     }
 
-    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
@@ -47,24 +44,52 @@ partial struct ProjectileSystemClient : ISystem
 
             Ray ray = new(lastPosition, newPosition, Layers.BuildingOrUnit);
 
-            if (!QuadrantRayCast.RayCast(map, ray, out var hit))
-            { continue; }
+            bool didHitTerrain = TerrainGenerator.Instance.Raycast(ray.Start, ray.Direction, math.distance(lastPosition, newPosition), out float terrainHit, out float3 normal);
+            bool didHitUnit = QuadrantRayCast.RayCast(map, ray, out Hit unitHit) && DamageQ.HasBuffer(unitHit.Entity.Entity);
 
-            if (DamageQ.HasBuffer(hit.Entity.Entity))
+            float distance;
+            bool metalHit;
+
+            if (didHitTerrain && (!didHitUnit || unitHit.Distance >= terrainHit))
             {
-                if (projectile.ValueRO.ImpactEffect != -1)
-                {
-                    Entity visualEffectSpawn = commandBuffer.CreateEntity(VisualEffectSpawnArchetype);
-                    commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
-                    {
-                        Position = ray.GetPoint(hit.Distance),
-                        Rotation = quaternion.LookRotation(math.normalizesafe(-projectile.ValueRW.Velocity), new float3(0f, 1f, 0f)),
-                        Index = projectile.ValueRO.ImpactEffect,
-                    });
-                }
-                commandBuffer.DestroyEntity(entity);
-                continue;
+                distance = terrainHit;
+                metalHit = false;
+                goto hit;
             }
+
+            if (didHitUnit)
+            {
+                distance = unitHit.Distance;
+                normal = math.normalizesafe(-projectile.ValueRW.Velocity);
+                metalHit = true;
+                goto hit;
+            }
+
+            continue;
+        hit:
+            int effect;
+
+            if (metalHit)
+            {
+                effect = projectile.ValueRO.MetalImpactEffect;
+            }
+            else
+            {
+                effect = projectile.ValueRO.DustImpactEffect;
+            }
+
+            if (effect != -1)
+            {
+                Entity visualEffectSpawn = commandBuffer.CreateEntity(VisualEffectSpawnArchetype);
+                commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
+                {
+                    Position = ray.GetPoint(distance),
+                    Rotation = quaternion.LookRotation(normal, new float3(0f, 1f, 0f)),
+                    Index = effect,
+                });
+            }
+
+            commandBuffer.DestroyEntity(entity);
         }
 
         // EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();

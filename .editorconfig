@@ -16,3 +16,18 @@ dotnet_diagnostic.IDE0048.severity = suggestion
 
 # IDE0011: Add braces
 csharp_prefer_braces = when_multiline
+
+# IDE0058: Expression value is never used
+dotnet_diagnostic.IDE0058.severity = silent
+
+# IDE0046: Convert to conditional expression
+dotnet_diagnostic.IDE0046.severity = silent
+
+# IDE0251: Make member 'readonly'
+dotnet_diagnostic.IDE0251.severity = suggestion
+
+# IDE0008: Use explicit type
+dotnet_diagnostic.IDE0008.severity = suggestion
+
+# IDE0001: Name can be simplified
+dotnet_diagnostic.IDE0001.severity = silent

@@ -1,5 +1,5 @@
-﻿using System;
-using Unity.Burst;
+﻿using Unity.Burst;
+using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Profiling;
 
@@ -9,33 +9,28 @@ public static class HeightMapGenerator
     static readonly ProfilerMarker _marker = new("Terrain.HeightMapGenerator");
 
     [BurstCompile]
-    public static void GenerateHeightMap(in Span<float> values, int width, int height, float heightMultiplier, in NoiseGenerator noiseGenerator)
+    public static void GenerateHeightMap(ref NativeArray<float> values, int width, int height, float heightMultiplier, in NoiseGeneratorUnmanaged noiseGenerator)
     {
         using var _ = _marker.Auto();
+
+        float v;
 
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                ref float v = ref values[x + y * width];
                 v = noiseGenerator.Sample(x, y);
                 v *= v * heightMultiplier;
+                values[x + y * width] = v;
             }
         }
     }
 
     [BurstCompile]
-    public static void GenerateHeightMap(in Span<float> values, int width, int height, float heightMultiplier, float2 offset, in NoiseSettings noiseSettings)
+    public static void GenerateHeightMap(ref NativeArray<float> values, int width, int height, float heightMultiplier, in float2 offset, in NoiseSettings noiseSettings, Allocator allocator)
     {
-        NoiseGenerator noiseGenerator = new(noiseSettings, offset);
-        GenerateHeightMap(values, width, height, heightMultiplier, in noiseGenerator);
-    }
-
-    public static float[] GenerateHeightMap(int width, int height, float heightMultiplier, float2 offset, in NoiseSettings noiseSettings)
-    {
-        float[] values = new float[width * height];
-        NoiseGenerator noiseGenerator = new(noiseSettings, offset);
-        GenerateHeightMap(values, width, height, heightMultiplier, in noiseGenerator);
-        return values;
+        NoiseGeneratorUnmanaged noiseGenerator = new(noiseSettings, offset, allocator: allocator);
+        GenerateHeightMap(ref values, width, height, heightMultiplier, in noiseGenerator);
+        noiseGenerator.Dispose();
     }
 }

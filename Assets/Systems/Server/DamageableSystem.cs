@@ -13,8 +13,8 @@ public partial struct DamageableSystem : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
         EntityArchetype visualEffectRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
-            typeof(VisualEffectRpc),
-            typeof(SendRpcCommandRequest ),
+            ComponentType.ReadWrite<VisualEffectRpc>(),
+            ComponentType.ReadWrite<SendRpcCommandRequest>(),
         });
 
         foreach (var (damageable, damages, transform, entity) in

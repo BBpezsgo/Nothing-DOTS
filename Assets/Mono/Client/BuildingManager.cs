@@ -215,10 +215,11 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         { position = new Vector3(math.round(position.x), position.y, math.round(position.z)); }
 
         Vector3 v = BuildingHologram.transform.position - position;
-        if (TerrainGenerator.Instance.TrySample(new float2(position.x, position.z), out float h, out float3 n, false))
+        if (TerrainGenerator.Instance.TrySample(new float2(position.x, position.z), out float h, out float3 n))
         {
             position.y = h;
-            transform.rotation = TerrainCollisionSystem.AlignPreserveYawExact(transform.rotation, n);
+            TerrainCollisionSystem.AlignPreserveYawExact(transform.rotation, n, out quaternion rotation);
+            transform.rotation = rotation;
         }
         BuildingHologram.transform.position = position;
 

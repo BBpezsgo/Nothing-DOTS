@@ -57,11 +57,16 @@ public partial struct UnitCommandReceiver : ISystem
                         int dataLength = 0;
                         for (int j = 0; j < commandDefinitions[i].ParameterCount; j++)
                         {
-                            BufferedUnitCommandDefinition commandDefinition = commandDefinitions[i];
-                            switch (((UnitCommandParameter*)&commandDefinition.Parameters)[j])
+                            switch (commandDefinitions[i].GetParameter(j))
                             {
                                 case UnitCommandParameter.Position2:
                                     {
+                                        if (command.ValueRO.WorldPosition.Equals(default))
+                                        {
+                                            Debug.LogWarning("[Server] Position data not provided");
+                                            goto failed;
+                                        }
+
                                         dataPtr.Set(new float2(command.ValueRO.WorldPosition.x, command.ValueRO.WorldPosition.z));
                                         dataPtr += sizeof(float2);
                                         dataLength += sizeof(float2);
@@ -69,6 +74,12 @@ public partial struct UnitCommandReceiver : ISystem
                                     }
                                 case UnitCommandParameter.Position3:
                                     {
+                                        if (command.ValueRO.WorldPosition.Equals(default))
+                                        {
+                                            Debug.LogWarning("[Server] Position data not provided");
+                                            goto failed;
+                                        }
+
                                         dataPtr.Set(command.ValueRO.WorldPosition);
                                         dataPtr += sizeof(float3);
                                         dataLength += sizeof(float3);
@@ -83,7 +94,10 @@ public partial struct UnitCommandReceiver : ISystem
                             processor.ValueRW.CommandQueue.RemoveAt(0);
                             Debug.LogWarning("[Server] Too much commands");
                         }
+
                         processor.ValueRW.CommandQueue.Add(new UnitCommandRequest(command.ValueRO.CommandId, (ushort)dataLength, data));
+
+                    failed:
                         break;
                     }
                 }

@@ -1,9 +1,9 @@
 {
   "dependencies": {
     "com.andrewraphaellukasik.segments": "https://github.com/andrew-raphael-lukasik/segments.git#upm",
-    "com.banszky.bblang": "file:/home/BB/Projects/BBLang/Core/Unity",
+    "com.banszky.bblang": "file:/home/bb/Projects/BBLang/Core/Unity",
     "com.dbrizov.naughtyattributes": "https://github.com/dbrizov/NaughtyAttributes.git#upm",
-    "com.github-glitchenzo.nugetforunity": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity",
+    "com.unity.2d.sprite": "1.0.0",
     "com.unity.editorcoroutines": "1.0.0",
     "com.unity.entities.graphics": "1.4.12",
     "com.unity.ext.nunit": "2.0.5",

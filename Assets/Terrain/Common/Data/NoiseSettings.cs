@@ -1,6 +1,7 @@
+using System;
 using UnityEngine;
 
-[System.Serializable]
+[Serializable]
 public struct NoiseSettings
 {
     public float scale;
@@ -9,11 +10,12 @@ public struct NoiseSettings
     [Range(0, 1)] public float persistance;
     public float lacunarity;
 
-    public int seed;
+    [Min(1)] public uint seed;
     public Vector2 offset;
 
     public void Reset()
     {
+        seed = 1;
         scale = 50;
         octaves = 6;
         persistance = .6f;
@@ -22,6 +24,7 @@ public struct NoiseSettings
 
     public void ValidateValues()
     {
+        seed = Math.Max(seed, 1);
         scale = Mathf.Max(scale, 0.01f);
         octaves = Mathf.Max(octaves, 1);
         lacunarity = Mathf.Max(lacunarity, 1);

@@ -15,23 +15,30 @@ partial struct DebugLinesClientSystem : ISystem
         state.RequireForUpdate<DebugLinesSettings>();
     }
 
-    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         if (!SystemAPI.TryGetSingleton(out NetworkId networkId)) return;
 
-        if (!Batches.IsCreated)
-        {
-            DebugLinesSettings settings = SystemAPI.ManagedAPI.GetSingleton<DebugLinesSettings>();
-            NativeArray<Entity> _batches = new(settings.Materials.Length, Allocator.Persistent);
-            for (int i = 0; i < settings.Materials.Length; i++)
-            {
-                Segments.Core.Create(out Entity v, settings.Materials[i]);
-                _batches[i] = v;
-            }
-            Batches = _batches.AsReadOnly();
-        }
+        if (!Batches.IsCreated) Batches = CreateBatches();
 
+        UpdateLines(ref state, in networkId);
+    }
+
+    NativeArray<Entity>.ReadOnly CreateBatches()
+    {
+        DebugLinesSettings settings = SystemAPI.ManagedAPI.GetSingleton<DebugLinesSettings>();
+        NativeArray<Entity> _batches = new(settings.Materials.Length, Allocator.Persistent);
+        for (int i = 0; i < settings.Materials.Length; i++)
+        {
+            Segments.Core.Create(out Entity v, settings.Materials[i]);
+            _batches[i] = v;
+        }
+        return _batches.AsReadOnly();
+    }
+
+    [BurstCompile]
+    void UpdateLines(ref SystemState state, in NetworkId networkId)
+    {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
         NativeArray<DynamicBuffer<Unity.Mathematics.float3x2>> batches = new(Batches.Length, Allocator.Temp);
 
@@ -70,5 +77,7 @@ partial struct DebugLinesClientSystem : ISystem
             }
             break;
         }
+
+        batches.Dispose();
     }
 }

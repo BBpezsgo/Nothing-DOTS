@@ -3,13 +3,17 @@
 /Temp
 /UserSettings
 /Build
-*.csproj
-*.sln
-*.meta
-/Packages/packages-lock.json
+/.direnv
+
 /Assets/Packages
 /Assets/SceneDependencyCache
 /Assets/Thirdparty
 /Assets/Utils/Editor
 /Assets/TextMesh Pro
 /Assets/Samples
+
+/Packages/packages-lock.json
+
+*.csproj
+*.sln
+*.meta
