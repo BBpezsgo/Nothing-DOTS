@@ -13,7 +13,7 @@ const int MaxCommandDataSize = 24;
 void Receive()
 {
     u8[MaxPacketLength] v;
-    f32 direction;
+    float3 direction;
 
     while (1)
     {
@@ -32,7 +32,7 @@ void Receive()
             {
                 responsePacket.Position = GPS.Position;
                 debug(packet.Position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
         }
     }

@@ -224,7 +224,7 @@ void SendVerificationRequest(Unit* unit)
     packet.Position = point;
 
     // ToLocal(&point);
-    // float distance = _Sqrt(point.x * point.x + point.y * point.y);
+    // float distance = Sqrt(point.x * point.x + point.y * point.y);
     // Normalise(&point);
     // float angle = Atan2(point.y, point.x);
 

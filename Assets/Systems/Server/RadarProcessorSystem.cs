@@ -19,15 +19,17 @@ partial struct RadarProcessorSystem : ISystem
 
             if (!float.IsFinite(mapped.Radar.RadarDirection)) continue;
 
-            RefRW<LocalTransform> radarTransform = SystemAPI.GetComponentRW<LocalTransform>(radar.ValueRO.Transform);
-            // const float speed = 720f;
             quaternion target = quaternion.EulerXYZ(
                 0f,
                 -mapped.Radar.RadarDirection + math.PIHALF,
                 0f);
+            RefRW<LocalTransform> radarTransform = SystemAPI.GetComponentRW<LocalTransform>(radar.ValueRO.Transform);
+
+            // const float speed = 720f;
             // Utils.RotateTowards(ref radarTransform.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
             radarTransform.ValueRW.Rotation = target;
-            mapped.Radar.RadarResponse = processor.ValueRW.RadarResponse;
+
+            mapped.Radar.RadarResponse = processor.ValueRO.RadarResponse;
         }
     }
 }

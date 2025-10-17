@@ -1,4 +1,4 @@
-export const int MaxPacketLength = 13 + 1;
+export const int MaxPacketLength = 16 + 1;
 export const u8 REQUEST_HEADER           = 0b_11110000;
 export const u8 RESPONSE_HEADER          = 0b_01111000;
 export const u8 ENEMY_HEADER             = 0b_00111100;
@@ -6,6 +6,9 @@ export const u8 INDIRECT_RESPONSE_HEADER = 0b_00011110;
 
 export const f32 DistanceThreshold = 2f;
 export const f32 DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
+
+export const f32 DistanceThresholdLarge = 5f;
+export const f32 DistanceThresholdLargeSq = DistanceThresholdLarge * DistanceThresholdLarge;
 
 export struct VerificationRequestPacket
 {
@@ -60,13 +63,17 @@ export void SendVerificationRequest(Unit* unit)
 
     if (1)
     {
-        ToLocal(&point);
-        //float distance = _Sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
-        Normalise(&point);
-        float angle = Atan2(point.z, point.x);
+        Print("O-VER ");
+        Print(point);
+        PrintLine();
 
-        send(&packet as u8[]*, sizeof(VerificationRequestPacket), angle);
+        ToLocal(&point);
         ldebug(point, BLUE);
+        float distance = Sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
+        Normalise(&point);
+        float angle = 2f * Atan(3f / (2 * distance));
+
+        send(&packet as u8[]*, sizeof(VerificationRequestPacket), &point, angle);
     }
     else
     {
@@ -139,7 +146,7 @@ export void UpdateUnit(List<Unit>* units, Unit unit)
     }
 }
 
-export void SetUnit(List<Unit>* units, Unit unit)
+export int SetUnit(List<Unit>* units, Unit unit)
 {
     int existing = UnitIndexAt(units, unit.Position);
     if (existing == -1)
@@ -148,9 +155,11 @@ export void SetUnit(List<Unit>* units, Unit unit)
         {
             PrintLine("Too many units");
             units.Raw()[0] = unit;
+            existing = 0;
         }
         else
         {
+            existing = units.Length();
             units.Add(unit);
         }
     }
@@ -158,6 +167,7 @@ export void SetUnit(List<Unit>* units, Unit unit)
     {
         units[existing] = unit;
     }
+    return existing;
 }
 
 export void RemoveUnitAt(List<Unit>* units, float3 unit)

@@ -20,7 +20,7 @@ const int MaxCommandDataSize = 8;
 void Receive()
 {
     u8[MaxPacketLength] v;
-    f32 direction;
+    float3 direction;
 
     while (1)
     {
@@ -40,7 +40,7 @@ void Receive()
             {
                 debug(packet.Position, CYAN);
 
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
         }
     }

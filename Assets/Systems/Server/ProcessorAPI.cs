@@ -258,23 +258,13 @@ static unsafe class ProcessorAPI
 
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            (int bufferPtr, int length, float directionAngle, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, float, float>(arguments);
+            (int bufferPtr, int length, int directionPtr, float angle) = ExternalFunctionGenerator.TakeParameters<int, int, int, float>(arguments);
             if (length <= 0 || length >= 30) throw new Exception("Passed buffer length must be in range [0,30] inclusive");
             if (bufferPtr == 0) throw new Exception($"Passed buffer pointer is null");
             if (bufferPtr < 0 || bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Passed buffer pointer is invalid");
 
-            float2 direction;
-            if (angle != 0f)
-            {
-                direction = new(
-                    math.cos(directionAngle),
-                    math.sin(directionAngle)
-                );
-            }
-            else
-            {
-                direction = default;
-            }
+            Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
+            float3 direction = angle != 0f && directionPtr > 0 && directionPtr < memory.Length ? memory.Get<float3>(directionPtr) : default;
             float cosAngle = math.abs(math.cos(angle));
 
             FixedList32Bytes<byte> data = new();
@@ -284,7 +274,7 @@ static unsafe class ProcessorAPI
             { scope->EntityRef.Processor.ValueRW.OutgoingTransmissions.RemoveAt(0); }
             scope->EntityRef.Processor.ValueRW.OutgoingTransmissions.Add(new()
             {
-                Source = scope->EntityRef.WorldTransform.ValueRO.Position,
+                Source = scope->EntityRef.LocalTransform.ValueRO.Position,
                 Direction = direction,
                 Data = data,
                 CosAngle = cosAngle,
@@ -321,7 +311,7 @@ static unsafe class ProcessorAPI
             {
                 float3 transformed = math.normalize(scope->EntityRef.LocalTransform.ValueRO.InverseTransformPoint(first.Source));
                 Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
-                memory.Set(directionPtr, math.atan2(transformed.z, transformed.x));
+                memory.Set(directionPtr, transformed);
             }
 
             if (copyLength >= first.Data.Length)
@@ -374,7 +364,7 @@ static unsafe class ProcessorAPI
 
         static readonly ProfilerMarker MarkerDebug = new("ProcessorSystemServer.External.debug");
 
-        const float DebugLineDuration = 0.5f;
+        const float DebugLineDuration = 1f;
 
         [BurstCompile]
         [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
@@ -422,8 +412,7 @@ static unsafe class ProcessorAPI
 
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            RefRO<LocalTransform> transform = scope->EntityRef.LocalTransform;
-            float3 transformed = transform.ValueRO.TransformPoint(position);
+            float3 transformed = scope->EntityRef.LocalTransform.ValueRO.TransformPoint(position);
 
             if (scope->DebugLines.ListData->Length + 1 < scope->DebugLines.ListData->Capacity) scope->DebugLines.AddNoResize(new(
                 scope->EntityRef.Team.ValueRO.Team,
@@ -619,7 +608,7 @@ static unsafe class ProcessorAPI
 
             MappedMemory* mapped = (MappedMemory*)((nint)scope->ProcessorRef.Memory + Processor.MappedMemoryStart);
 
-            scope->EntityRef.Processor.ValueRW.RadarResponse = 0f;
+            scope->EntityRef.Processor.ValueRW.RadarResponse = default;
             scope->EntityRef.Processor.ValueRW.RadarRequest = new float2(
                 math.cos(mapped->Radar.RadarDirection),
                 math.sin(mapped->Radar.RadarDirection)

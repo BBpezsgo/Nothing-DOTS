@@ -6,14 +6,11 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct BufferedUnitTransmissionOutgoing : IBufferElementData
 {
-    /// <summary>
-    /// Position in world space
-    /// </summary>
     public required float3 Source;
     /// <summary>
-    /// XZ direction in local space
+    /// Direction in local space
     /// </summary>
-    public required float2 Direction;
+    public required float3 Direction;
     public required float Angle;
     public required float CosAngle;
     public required FixedList32Bytes<byte> Data;

@@ -546,7 +546,11 @@ ProgressBar Label {
 }
 
 .server-message Label {
-    color: rgb(255, 255, 0);
+    color: rgb(255, 214, 77);
+}
+
+.system-message Label {
+    color: rgb(102, 167, 204);
 }
 
 .player-message Label {
@@ -622,4 +626,26 @@ ProgressBar Label {
     -unity-background-image-tint-color: rgb(209, 209, 209);
     width: 14px;
     height: 14px;
+}
+
+.chat-message {
+    transition-property: all, opacity;
+    transition-duration: 0s, 1s;
+    transition-timing-function: ease, ease;
+    transition-delay: 0s, 0s;
+    opacity: 1;
+}
+
+.chat-message.old {
+    opacity: 0;
+}
+
+.chat-message.very-old {
+    display: none;
+}
+
+.show .chat-message {
+    opacity: 1;
+    display: flex;
+    transition-duration: 0s, 0s;
 }

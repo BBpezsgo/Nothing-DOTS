@@ -35,7 +35,7 @@ unsafe partial struct TransmissionSystem : ISystem
             .WithEntityAccess())
         {
             if (processor.ValueRW.OutgoingTransmissions.Length == 0) continue;
-            var transmission = processor.ValueRW.OutgoingTransmissions[0];
+            BufferedUnitTransmissionOutgoing transmission = processor.ValueRW.OutgoingTransmissions[0];
             processor.ValueRW.OutgoingTransmissions.RemoveAt(0);
 
             NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(state.WorldUnmanaged);
@@ -43,24 +43,20 @@ unsafe partial struct TransmissionSystem : ISystem
 
             processor.ValueRW.NetworkSendLED.Blink();
 
-            float2 direction = transmission.Direction;
-            float2 position = new(transmission.Source.x, transmission.Source.z);
-            float3 direction3 = transform.ValueRO.TransformDirection(new float3(direction.x, 0f, direction.y));
-            direction = math.normalize(new float2(direction3.x, direction3.z));
-
 #if DEBUG_LINES
             if (!transmission.Direction.Equals(default))
             {
+                float3 globalDirection = transform.ValueRO.TransformDirection(transmission.Direction);
                 Debug.DrawLine(
                     transmission.Source,
-                    direction3 * Unit.TransmissionRadius,
+                    globalDirection * Unit.TransmissionRadius,
                     Color.cyan,
                     1f,
                     false
                 );
                 DebugEx.DrawFOV(
                     transmission.Source,
-                    direction3,
+                    globalDirection,
                     transmission.Angle,
                     Unit.TransmissionRadius,
                     Color.cyan,
@@ -123,10 +119,9 @@ unsafe partial struct TransmissionSystem : ISystem
                         {
                             if (cell[i].Entity == entity) continue;
 
-                            float2 entityLocalPosition = new float2(cell[i].Position.x, cell[i].Position.z) - position;
+                            float3 entityLocalPosition = transform.ValueRO.InverseTransformPoint(cell[i].Position);
 
-                            float entityDistanceSq = math.lengthsq(entityLocalPosition);
-                            if (entityDistanceSq > (Unit.TransmissionRadius * Unit.TransmissionRadius))
+                            if (math.lengthsq(entityLocalPosition) > (Unit.TransmissionRadius * Unit.TransmissionRadius))
                             {
 #if DEBUG_LINES
                                 DebugEx.DrawSphere(cell[i].Position, 1f, Color.red, 1f, false);
@@ -134,12 +129,14 @@ unsafe partial struct TransmissionSystem : ISystem
                                 continue;
                             }
 
-                            if (!transmission.Direction.Equals(float2.zero))
+                            if (!transmission.Direction.Equals(default))
                             {
-                                float dot = math.abs(math.dot(direction, math.normalize(entityLocalPosition)));
+                                float dot = math.abs(math.dot(transmission.Direction, math.normalize(entityLocalPosition)));
                                 if (dot < transmission.CosAngle)
                                 {
 #if DEBUG_LINES
+                                    //Debug.DrawLine(transmission.Source, cell[i].Position, Color.orange, 1f, false);
+                                    //Debug.Log($"{dot} ({math.dot(transmission.Direction, math.normalize(entityLocalPosition))}) < {transmission.CosAngle} entity: {entity} origin: {transmission.Source}");
                                     DebugEx.DrawSphere(cell[i].Position, 1f, Color.orange, 1f, false);
 #endif
                                     continue;

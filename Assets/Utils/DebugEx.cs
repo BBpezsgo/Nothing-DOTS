@@ -242,7 +242,7 @@ public static partial class DebugEx
         for (float i = -angle; i <= angle; i += step)
         {
             float currentAngle = directionAngle + i;
-            float3 point = new(math.cos(currentAngle), 0f, math.sin(currentAngle));
+            float3 point = new(math.cos(currentAngle), direction.y, math.sin(currentAngle));
             point *= distance;
             Debug.DrawLine(prevPoint, point, color, duration, depthTest);
             prevPoint = point;

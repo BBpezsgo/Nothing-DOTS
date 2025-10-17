@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Entities;
@@ -7,6 +9,20 @@ using UnityEngine.UIElements;
 
 public class ChatManager : Singleton<ChatManager>
 {
+    readonly struct ChatMessage
+    {
+        public readonly int Sender;
+        public readonly string Message;
+        public readonly DateTimeOffset Time;
+
+        public ChatMessage(int sender, string message, DateTimeOffset time)
+        {
+            Sender = sender;
+            Message = message;
+            Time = time;
+        }
+    }
+
     [SerializeField, NotNull] UIDocument? _ui = default;
 
     [SerializeField, NotNull] VisualTreeAsset? _chatMessageTemplate = default;
@@ -15,6 +31,7 @@ public class ChatManager : Singleton<ChatManager>
     [NotNull] Button? _buttonSend = default;
     [NotNull] VisualElement? _containerMessages = default;
     [NotNull] VisualElement? _containerInput = default;
+    readonly List<ChatMessage> _chatMessages = new();
 
     void Start()
     {
@@ -31,17 +48,26 @@ public class ChatManager : Singleton<ChatManager>
 
     void Update()
     {
-        if (!UIManager.Instance.AnyUIVisible && Input.GetKeyDown(KeyCode.Return))
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        foreach (VisualElement child in _containerMessages.Children())
         {
-            if (_containerInput.style.display == DisplayStyle.None)
-            {
-                _containerInput.style.display = DisplayStyle.Flex;
-                _inputMessage.Focus();
-            }
-            else
-            {
-                _containerInput.style.display = DisplayStyle.None;
-            }
+            ChatMessage message = (ChatMessage)child.userData;
+            child.EnableInClassList("old", (now - message.Time).TotalSeconds > 3);
+            child.EnableInClassList("very-old", (now - message.Time).TotalSeconds > 4);
+        }
+
+        if (!(Input.GetKeyDown(KeyCode.Return) && !UIManager.Instance.AnyUIVisible && !SelectionManager.Instance.IsUnitCommandsActive)) return;
+
+        if (_containerInput.style.display == DisplayStyle.None)
+        {
+            _containerInput.style.display = DisplayStyle.Flex;
+            _inputMessage.Focus();
+            _containerMessages.EnableInClassList("show", true);
+        }
+        else
+        {
+            _containerInput.style.display = DisplayStyle.None;
+            _containerMessages.EnableInClassList("show", false);
         }
     }
 
@@ -55,33 +81,43 @@ public class ChatManager : Singleton<ChatManager>
 
     public void AppendChatMessageElement(int sender, string message)
     {
-        TemplateContainer instance = _chatMessageTemplate.Instantiate();
+        _chatMessages.Add(new ChatMessage(sender, message, DateTimeOffset.UtcNow));
+        RefreshChatContainer();
+    }
 
-        if (sender == 0)
+    void RefreshChatContainer()
+    {
+        _containerMessages.SyncList(_chatMessages, _chatMessageTemplate, (item, element, reuse) =>
         {
-            instance.Q<Label>("label-message").text = $"{message}";
-            instance.AddToClassList("server-message");
-        }
-        else
-        {
-            EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-            using EntityQuery playersQ = entityManager.CreateEntityQuery(typeof(Player));
-            using NativeArray<Player> players = playersQ.ToComponentDataArray<Player>(Allocator.Temp);
+            element.EnableInClassList("server-message", item.Sender == 0);
+            element.EnableInClassList("system-message", item.Sender == -1);
+            element.EnableInClassList("player-message", item.Sender > 0);
+            element.userData = item;
 
-            string senderDisplayName = sender.ToString();
-
-            for (int i = 0; i < players.Length; i++)
+            if (item.Sender > 0)
             {
-                if (players[i].ConnectionId != sender) continue;
-                senderDisplayName = players[i].Nickname.ToString();
-                break;
+                EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+                using EntityQuery playersQ = entityManager.CreateEntityQuery(typeof(Player));
+                using NativeArray<Player> players = playersQ.ToComponentDataArray<Player>(Allocator.Temp);
+
+                string? senderDisplayName = null;
+
+                for (int i = 0; i < players.Length; i++)
+                {
+                    if (players[i].ConnectionId != item.Sender) continue;
+                    senderDisplayName = players[i].Nickname.ToString();
+                    break;
+                }
+
+                senderDisplayName ??= $"Client#{item.Sender}";
+
+                element.Q<Label>("label-message").text = $"<{senderDisplayName}> {item.Message}";
             }
-
-            instance.Q<Label>("label-message").text = $"<{senderDisplayName}> {message}";
-            instance.AddToClassList("player-message");
-        }
-
-        _containerMessages.Add(instance);
+            else
+            {
+                element.Q<Label>("label-message").text = item.Message;
+            }
+        });
     }
 
     void SendChatMessage(string message)

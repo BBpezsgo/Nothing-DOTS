@@ -1,5 +1,6 @@
 using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
 using "mm.bbc";
+using "utils.bbc";
 
 export void Print(float2 v)
 {
@@ -44,44 +45,55 @@ export const u8 YELLOW = (u8)0b110;
 export const u8 WHITE = (u8)0b111;
 
 [External("atan2")] export f32 Atan2(f32 y, f32 x);
-[External("sin")] export f32 Sin(f32 v);
-[External("cos")] export f32 Cos(f32 v);
-[External("sin")] export f32 _Sin(f32 v);
-[External("cos")] export f32 _Cos(f32 v);
 [External("tan")] export f32 Tan(f32 v);
 [External("asin")] export f32 Asin(f32 v);
 [External("acos")] export f32 Acos(f32 v);
 [External("atan")] export f32 Atan(f32 v);
-[External("sqrt")] export f32 _Sqrt(f32 v);
 [External("random")] export i32 _Random();
 
-[External("send")] export void send(any* buffer, i32 length, f32 direction, f32 angle);
+[External("send")] export void send(any* buffer, i32 length, float3* direction, f32 angle);
 
-export inline void send(any* buffer, i32 length, f32 direction)
+export inline void send(any* buffer, i32 length, float3 direction, f32 angle)
+{
+    send(buffer, length, &direction, angle);
+}
+
+export inline void send(any* buffer, i32 length, float3* direction)
 {
     send(buffer, length, direction, 0.1f);
 }
 
-export inline void send(any* buffer, i32 length)
+export inline void send(any* buffer, i32 length, float3 direction)
 {
-    send(buffer, length, 0f, 0f);
+    send(buffer, length, &direction, 0.1f);
 }
 
-[External("receive")] export i32 receive(any* buffer, i32 length, f32* direction);
+export inline void send(any* buffer, i32 length)
+{
+    send(buffer, length, (float3*)0, 0f);
+}
+
+[External("receive")] export i32 receive(any* buffer, i32 length, float3* direction);
 [External("radar")] void _radar();
 
-export f32 radar()
+export float3 radar()
 {
-    Radar.RadarResponse = 0f;
+    Radar.RadarResponse.x = 0f;
+    Radar.RadarResponse.y = 0f;
+    Radar.RadarResponse.z = 0f;
+
     _radar();
-    while (!(Radar.RadarResponse as int))
+
+    while (empty(Radar.RadarResponse))
     {
 
     }
-    if (Radar.RadarResponse.IsNaN())
+
+    if (IsNaN(Radar.RadarResponse.x) || IsNaN(Radar.RadarResponse.y) || IsNaN(Radar.RadarResponse.z))
     {
-        Radar.RadarResponse = 0f;
+        return new float3;
     }
+
     return Radar.RadarResponse;
 }
 
@@ -277,6 +289,11 @@ export struct UIImage
         this.Image[y * this.ImageWidth + x] = ColorTo255(r, g, b);
     }
 
+    export void Fill(int r, int g, int b)
+    {
+        Fill(ColorTo255(r, g, b));
+    }
+
     export void Set(int x, int y, u8 color)
     {
         if (x < 0) x = 0;
@@ -284,6 +301,15 @@ export struct UIImage
         if (y < 0) y = 0;
         else if (y >= this.ImageHeight) y = (int)this.ImageHeight;
         this.Image[y * this.ImageWidth + x] = color;
+    }
+
+    export void Fill(u8 color)
+    {
+        int l = (int)this.ImageWidth * (int)this.ImageHeight;
+        for (int i = 0; i < l; i++)
+        {
+            this.Image[i] = color;
+        }
     }
 
     export inline void Update()

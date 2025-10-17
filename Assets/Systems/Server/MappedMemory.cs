@@ -52,13 +52,13 @@ public struct MappedMemory_Transporter
 }
 
 /// <summary>
-/// Size: 8
+/// Size: 16
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct MappedMemory_Radar
 {
     public f32 RadarDirection;
-    public f32 RadarResponse;
+    public float3 RadarResponse;
 }
 
 /// <summary>
@@ -101,9 +101,9 @@ public struct MappedMemory
     [FieldOffset(0)] public MappedMemory_GPS GPS;
     [FieldOffset(24)] public MappedMemory_Pendrive Pendrive;
     [FieldOffset(25)] public MappedMemory_Radar Radar;
-    [FieldOffset(33)] public MappedMemory_Vehicle Vehicle;
+    [FieldOffset(41)] public MappedMemory_Vehicle Vehicle;
 
-    const int GenericModulesSize = 35;
+    const int GenericModulesSize = 43;
 
     [FieldOffset(GenericModulesSize)] public MappedMemory_CombatTurret CombatTurret;
     [FieldOffset(GenericModulesSize)] public MappedMemory_Extractor Extractor;

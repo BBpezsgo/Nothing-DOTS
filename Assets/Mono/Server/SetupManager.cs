@@ -52,28 +52,53 @@ public class SetupManager : Singleton<SetupManager>
     {
         World world = ConnectionManager.ServerOrDefaultWorld;
 
-        using EntityQuery unitDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(UnitDatabase));
-        if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity buildingDatabase))
+        DynamicBuffer<BufferedUnit> units;
+        DynamicBuffer<BufferedBuilding> buildings;
+
+        using (EntityQuery unitDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(UnitDatabase)))
         {
-            Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
-            return;
+            if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
+            {
+                Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
+                return;
+            }
+            units = world.EntityManager.GetBuffer<BufferedUnit>(unitDatabase, true);
         }
 
-        DynamicBuffer<BufferedUnit> units = world.EntityManager.GetBuffer<BufferedUnit>(buildingDatabase, true);
+        using (EntityQuery buildingDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(BuildingDatabase)))
+        {
+            if (!buildingDatabaseQ.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
+            {
+                Debug.LogWarning($"Failed to get {nameof(BuildingDatabase)} entity singleton");
+                return;
+            }
+            buildings = world.EntityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
+        }
 
         if (SpawnExactUnits)
         {
             foreach (UnitSetup unitSetup in Units)
             {
-                BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
+                Entity prefab;
 
-                if (unit.Prefab == Entity.Null)
+                BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
+                BufferedBuilding building = buildings.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
+
+                if (unit.Prefab != Entity.Null)
+                {
+                    prefab = unit.Prefab;
+                }
+                else if (building.Prefab != Entity.Null)
+                {
+                    prefab = building.Prefab;
+                }
+                else
                 {
                     Debug.LogWarning($"Prefab \"{unitSetup.Prefab.name}\" not found");
                     continue;
                 }
 
-                Entity newUnit = world.EntityManager.Instantiate(unit.Prefab);
+                Entity newUnit = world.EntityManager.Instantiate(prefab);
                 world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(new float3(unitSetup.Spawn.x, PositionY, unitSetup.Spawn.y)));
                 world.EntityManager.SetComponentData(newUnit, new Processor()
                 {
@@ -249,6 +274,14 @@ public class SetupManager : Singleton<SetupManager>
             foreach (Vector2 position in GetPositions())
             {
                 Gizmos.DrawSphere(new Vector3(position.x, 0.5f, position.y), UnitRadius);
+            }
+        }
+
+        if (SpawnExactUnits)
+        {
+            for (int i = 0; i < Units.Length; i++)
+            {
+                Gizmos.DrawSphere(new Vector3(Units[i].Spawn.x, 0.5f, Units[i].Spawn.y), 1f);
             }
         }
     }

@@ -84,7 +84,7 @@ struct Processor : IComponentData
     /// XZ direction in local space
     /// </summary>
     public float2 RadarRequest;
-    public float RadarResponse;
+    public float3 RadarResponse;
 
     [GhostField] public FixedString128Bytes StdOutBuffer;
 

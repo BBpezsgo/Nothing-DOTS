@@ -32,14 +32,14 @@ f32 CalculateAngle(f32 targetDistance, f32 height)
     else if (1)
     {
         return Atan(
-            (PROJECTILE_V2 + _Sqrt(discriminant)) /
+            (PROJECTILE_V2 + Sqrt(discriminant)) /
             (G * targetDistance)
         ) - (PI * 0.5f);
     }
     else
     {
         return Atan(
-            (PROJECTILE_V2 - _Sqrt(discriminant)) /
+            (PROJECTILE_V2 - Sqrt(discriminant)) /
             (G * targetDistance)
         ) - (PI * 0.5f);
     }
@@ -59,7 +59,7 @@ u8 CalculateAngle(f32 targetDistance, f32 height, f32* angle)
     else if (1)
     {
         *angle = Atan(
-            (PROJECTILE_V2 + _Sqrt(discriminant)) /
+            (PROJECTILE_V2 + Sqrt(discriminant)) /
             (G * targetDistance)
         ) - (PI * 0.5f);
         return (u8)1;
@@ -67,7 +67,7 @@ u8 CalculateAngle(f32 targetDistance, f32 height, f32* angle)
     else
     {
         *angle = Atan(
-            (PROJECTILE_V2 - _Sqrt(discriminant)) /
+            (PROJECTILE_V2 - Sqrt(discriminant)) /
             (G * targetDistance)
         ) - (PI * 0.5f);
         return (u8)1;
@@ -124,20 +124,20 @@ const float ProjectileV4 = ProjectileV2 * ProjectileV2;
 u8 SolveBallisticArc(float3 selfWorldPosition, float3 targetPosition, float3* shootDirection)
 {
     float3 diff = targetPosition - selfWorldPosition;
-    float groundDistance = _Sqrt(diff.x * diff.x + diff.z * diff.z);
+    float groundDistance = Sqrt(diff.x * diff.x + diff.z * diff.z);
 
     float root = ProjectileV4 - G * (G * groundDistance * groundDistance + 2.0 * diff.y * ProjectileV2);
 
     if (root < 0) return (u8)0;
 
-    root = _Sqrt(root);
+    root = Sqrt(root);
     float gx = G * groundDistance;
 
     float lowAng = Atan2(ProjectileV2 - root, gx);
     //float highAng = Atan2(ProjectileV2 + root, gx);
 
     float3 groundDir = new float3(diff.x, 0f, diff.z) / groundDistance;
-    *shootDirection = groundDir * _Cos(lowAng) + new float3(0.0, 1.0, 0.0) * _Sin(lowAng);
+    *shootDirection = groundDir * Cos(lowAng) + new float3(0.0, 1.0, 0.0) * Sin(lowAng);
 
     return (u8)1;
 }
@@ -234,7 +234,7 @@ export u8 TargetAtSimple(float3 target, float3* targetedPosition)
         if (targetAngle >= TAU) { targetAngle -= TAU; }
         CombatTurret.TurretTargetRotation = targetAngle;
 
-        float horizontalDist = _Sqrt(targetDirection3.x * targetDirection3.x + targetDirection3.z * targetDirection3.z);
+        float horizontalDist = Sqrt(targetDirection3.x * targetDirection3.x + targetDirection3.z * targetDirection3.z);
         float pitch = Atan2(targetDirection3.y, horizontalDist) * -1;
 
         CombatTurret.TurretTargetAngle = pitch;

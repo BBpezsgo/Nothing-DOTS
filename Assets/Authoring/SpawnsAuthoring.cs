@@ -25,6 +25,18 @@ public class SpawnsAuthoring : MonoBehaviour
     }
 #endif
 
+    void OnDrawGizmos()
+    {
+        for (int i = 0; i < Spawns.Length; i++)
+        {
+            Gizmos.color = Color.gray;
+            Gizmos.DrawWireCube(
+                new Vector3(Spawns[i].x, 0f, Spawns[i].z),
+                new Vector3(2f, 1f, 2f)
+            );
+        }
+    }
+
     class Baker : Baker<SpawnsAuthoring>
     {
         public override void Bake(SpawnsAuthoring authoring)

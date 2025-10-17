@@ -1,54 +1,18 @@
-using "api.bbc";
+using "lib/api.bbc";
+using "lib/protocol.bbc";
 
 [UnitCommand(1, "Attack at")]
 struct CommandAttackAt
 {
-    [Context("position")] float2 position;
-}
-
-const int MaxPacketLength         = 13 + 1;
-const u8 REQUEST_HEADER           = 0b_11110000;
-const u8 RESPONSE_HEADER          = 0b_01111000;
-const u8 ENEMY_HEADER             = 0b_00111100;
-const u8 INDIRECT_RESPONSE_HEADER = 0b_00011110;
-
-struct VerificationRequestPacket
-{
-    byte Header;
-    float2 Position;
-}
-
-struct VerificationResponsePacket
-{
-    byte Header;
-    float2 Position;
-}
-
-struct IndirectVerificationResponsePacket
-{
-    byte Header;
-    float2 Position;
-    float Expires;
-}
-
-struct EnemyNotificationPacket
-{
-    byte Header;
-    float2 Position;
+    [Context("position3")] float3 position;
 }
 
 const int MaxCommandDataSize = 8;
 
-const f32 DistanceThreshold = 2f;
-const f32 DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
-
-const f32 DistanceThresholdLarge = 5f;
-const f32 DistanceThresholdLargeSq = DistanceThresholdLarge * DistanceThresholdLarge;
-
 void Receive()
 {
     u8[MaxPacketLength] v;
-    f32 direction;
+    float3 direction;
 
     while (1)
     {
@@ -67,7 +31,7 @@ void Receive()
             {
                 responsePacket.Position = packet.Position;
                 debug(packet.Position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction, 0.1f);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
             else
             {
@@ -80,7 +44,7 @@ void Receive()
                         indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.Position = (&allies).Raw()[i].Position;
                         indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
-                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), direction, 0.1f);
+                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction, 0.1f);
                         return;
                     }
                 }
@@ -127,89 +91,15 @@ void Receive()
     }
 }
 
-int UnitIndexAt(List<Unit>* units, float2 position)
-{
-    for (int i = 0; i < units.Length(); i++)
-    {
-        if (DistanceSqr(units.Raw()[i].Position, position) < DistanceThresholdSq)
-        { return i; }
-    }
-    return -1;
-}
-
-void UpdateUnit(List<Unit>* units, Unit unit)
-{
-    int existing = UnitIndexAt(units, unit.Position);
-    if (existing == -1)
-    {
-        if (units.Length() >= 4)
-        {
-            PrintLine("Too many units");
-            units.Raw()[0] = unit;
-        }
-        else
-        {
-            units.Add(unit);
-        }
-    }
-    else
-    {
-        unit.Position.x = (units.Raw()[existing].Position.x + unit.Position.x) * 0.5f;
-        unit.Position.y = (units.Raw()[existing].Position.y + unit.Position.y) * 0.5f;
-        units[existing] = unit;
-    }
-}
-
-void RemoveUnitAt(List<Unit>* units, float2 unit)
-{
-    u8 isNotDone = true;
-    for (int i = 0; isNotDone && i < units.Length(); i++)
-    {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
-        if (distanceSqr < DistanceThresholdSq)
-        {
-            isNotDone = false;
-            units.Remove(i);
-        }
-    }
-}
-
-void TrySendVerificationRequest(Unit* unit)
-{
-    if (unit.VerificationSentAt + 1f < time())
-    {
-        SendVerificationRequest(unit);
-    }
-}
-
-void SendVerificationRequest(Unit* unit)
-{
-    float2 point = unit.Position;
-
-    VerificationRequestPacket packet = new VerificationRequestPacket;
-    packet.Header = (u8)REQUEST_HEADER;
-    packet.Position = point;
-
-    // send(&v, sizeof(VerificationRequestPacket), Radar.RadarDirection, Asin(1.2f / radarDistance));
-    send(&packet as u8[]*, sizeof(VerificationRequestPacket));
-
-    debug(point, BLUE);
-
-    unit.VerificationSentAt = time();
-}
-
-struct Unit
-{
-    float2 Position;
-    f32 Recorded;
-    f32 Expires;
-    f32 VerificationSentAt;
-}
-
 List<Unit> enemies = new List<Unit>(4);
 List<Unit> allies = new List<Unit>(4);
 
 UIImage _minimap = new UIImage((i16)22, (i16)22);
+_minimap.Width = 100;
+_minimap.Height = 100;
+_minimap.X = 10;
+_minimap.Y = 10;
+
 const float MinimapScale = 1f;
 
 PrintLine("Started ...");
@@ -217,6 +107,10 @@ PrintLine("Started ...");
 while (1)
 {
     Receive();
+
+    (&_minimap).Fill((u8)0);
+
+    (&_minimap).Set(new float2(11f, 11f), (u8)0b_111_111_11);
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
     {
@@ -227,12 +121,12 @@ while (1)
         else
         {
             TrySendVerificationRequest(&(&enemies).Raw()[i]);
-            float2 p = (&enemies).Raw()[i].Position;
+            float3 p = (&enemies).Raw()[i].Position;
             ToLocal(&p);
             if (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
                 ldebug(p, RED);
-                (&_minimap).Set((p * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)0b_111_000_00);
+                (&_minimap).Set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)0b_111_000_00);
                 PrintLine(p.x);
             }
         }
@@ -247,10 +141,10 @@ while (1)
         }
         else
         {
-            float2 p = (&allies).Raw()[i].Position;
+            float3 p = (&allies).Raw()[i].Position;
             debug(p, GREEN);
             ToLocal(&p);
-            (&_minimap).Set((p * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)0b_000_111_00);
+            (&_minimap).Set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)0b_000_111_00);
         }
     }
 
@@ -266,7 +160,7 @@ while (1)
         EnemyNotificationPacket notificationPacket;
         notificationPacket.Header = ENEMY_HEADER;
         notificationPacket.Position = command.position;
-        send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket), 0f, 0f);
+        send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
     }
 
     (&_minimap).Update();

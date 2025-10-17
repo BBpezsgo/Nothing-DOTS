@@ -388,7 +388,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             {
                 container.SyncList(
                     diagnostics
-                        .Where(v => v.Level != DiagnosticsLevel.OptimizationNotice)
+                        .Where(v => v.Level is not DiagnosticsLevel.OptimizationNotice and not DiagnosticsLevel.FailedOptimization)
                         .ToArray(),
                     DiagnosticsItem,
                     (item, element, recycled) =>
@@ -405,6 +405,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                             DiagnosticsLevel.Information => new StyleBackground(DiagnosticsInfoIcon),
                             DiagnosticsLevel.Hint => new StyleBackground(DiagnosticsHintIcon),
                             DiagnosticsLevel.OptimizationNotice => new StyleBackground(DiagnosticsOptimizationNoticeIcon),
+                            DiagnosticsLevel.FailedOptimization => new StyleBackground(DiagnosticsWarningIcon),
                             _ => new StyleBackground(DiagnosticsInfoIcon),
                         };
 

@@ -15,12 +15,18 @@ struct CommandMoveTo
     [Context("position2")] float2 position;
 }
 
+[UnitCommand(3, "Stop")]
+struct CommandStop
+{
+    
+}
+
 const int MaxCommandDataSize = 8;
 
 void Receive()
 {
     u8[MaxPacketLength] v;
-    f32 direction;
+    float3 direction;
 
     while (1)
     {
@@ -35,11 +41,16 @@ void Receive()
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
             responsePacket.Header = (u8)RESPONSE_HEADER;
 
+            Print("I-REQ ");
+            Print(packet.Position);
+            PrintLine();
+
             if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
             {
+                PrintLine(" M");
                 responsePacket.Position = GPS.Position;
                 debug(packet.Position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
             else
             {
@@ -48,11 +59,12 @@ void Receive()
                     f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
+                        PrintLine(" K");
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
                         indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.Position = (&allies).Raw()[i].Position;
                         indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
-                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), direction);
+                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                         return;
                     }
                 }
@@ -62,6 +74,10 @@ void Receive()
                  receivedLength == sizeof(VerificationResponsePacket))
         {
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
+
+            Print("I-RES ");
+            Print(packet.Position);
+            PrintLine();
 
             Unit unit;
             unit.Position = packet.Position;
@@ -83,7 +99,8 @@ void Receive()
             unit.Expires = time() + 5f;
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
-            Print("E ");
+
+            Print("I-E ");
             PrintLine(unit.Position);
             UpdateUnit(&enemies, unit);
         }
@@ -91,6 +108,10 @@ void Receive()
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
         {
             IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
+
+            Print("I-RES ");
+            Print(packet.Position);
+            PrintLine();
 
             Unit unit;
             unit.Position = packet.Position;
@@ -220,16 +241,8 @@ while (1)
 
             float3 norm = Normalised(p);
             Radar.RadarDirection = Atan2(norm.y, norm.x);
-            f32 radarDistance = radar();
-            bool destroyed = radarDistance <= 0f;
-            if (!destroyed)
-            {
-                float3 p2 = norm * radarDistance;
-                if (DistanceSqr(p, p2) > DistanceThresholdSq)
-                {
-                    destroyed = true;
-                }
-            }
+            float3 radarPoint = radar();
+            bool destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
 
             if (destroyed)
             {
@@ -284,6 +297,11 @@ while (1)
         currentUserTarget = new float3;
         currentDestination = command.position;
     }
+    else if (commandId == 3)
+    {
+        currentUserTarget = new float3;
+        currentDestination = new float3;
+    }
 
     if (currentUserTarget.x || currentUserTarget.z)
     {
@@ -314,5 +332,9 @@ while (1)
         currentDestination.y != 0f)
     {
         MoveTo(currentDestination.x, currentDestination.y);
+    }
+    else
+    {
+        StopMoving();
     }
 }

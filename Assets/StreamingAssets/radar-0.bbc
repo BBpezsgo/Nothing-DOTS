@@ -4,7 +4,7 @@ using "lib/protocol.bbc";
 void Receive()
 {
     u8[MaxPacketLength] v;
-    f32 direction;
+    float3 direction;
 
     while (1)
     {
@@ -16,14 +16,19 @@ void Receive()
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
+            Print("I-REQ ");
+            Print(packet.Position);
+            PrintLine();
+
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
             responsePacket.Header = (u8)RESPONSE_HEADER;
 
             if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
             {
+                Print(" M");
                 responsePacket.Position = GPS.Position;
                 debug(packet.Position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), direction);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
             else
             {
@@ -32,11 +37,12 @@ void Receive()
                     f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
+                        Print(" K");
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
                         indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.Position = (&allies).Raw()[i].Position;
                         indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
-                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), direction);
+                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                         return;
                     }
                 }
@@ -47,6 +53,10 @@ void Receive()
         {
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
 
+            Print("I-RES ");
+            Print(packet.Position);
+            PrintLine();
+
             Unit unit;
             unit.Position = packet.Position;
             unit.Recorded = time();
@@ -54,12 +64,34 @@ void Receive()
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
             RemoveUnitAt(&enemies, unit.Position);
-            SetUnit(&allies, unit);
+            int j = SetUnit(&allies, unit);
+
+            for (int i = 0; i < (&allies).Length(); i++)
+            {
+                if (i != j)
+                {
+                    direction = (&allies).Raw()[i].Position;
+                    ToLocal(&direction);
+                    Normalise(&direction);
+
+                    PrintLine("NTFY");
+
+                    IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
+                    indirectResponsePacket.Header = INDIRECT_RESPONSE_HEADER;
+                    indirectResponsePacket.Position = packet.Position;
+                    indirectResponsePacket.Expires = unit.Expires;
+                    send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
+                }
+            }
         }
         else if (v[0] == (u8)ENEMY_HEADER &&
                  receivedLength == sizeof(EnemyNotificationPacket))
         {
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
+
+            Print("I-E ");
+            Print(packet.Position);
+            PrintLine();
 
             Unit unit;
             unit.Position = packet.Position;
@@ -73,6 +105,10 @@ void Receive()
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
         {
             IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
+
+            Print("I-RES ");
+            Print(packet.Position);
+            PrintLine();
 
             Unit unit;
             unit.Position = packet.Position;
@@ -88,27 +124,35 @@ void Receive()
 
 void PerformRadar()
 {
-    f32 radarDistance = radar();
-    if (radarDistance > 0f)
+    float3 radarPoint = radar();
+    if (!empty(radarPoint))
     {
-        prevRadarDistance = radarDistance;
+        prevRadarDistance = length(radarPoint);
 
-        float3 point;
-        point.x = Cos(Radar.RadarDirection);
-        point.z = Sin(Radar.RadarDirection);
-        point.x *= radarDistance;
-        point.z *= radarDistance;
-        ToGlobal(&point);
+        ToGlobal(&radarPoint);
 
-        Unit enemy;
-        enemy.Recorded = time();
-        enemy.Expires = time() + 12f;
-        enemy.Position = point;
-        enemy.PositionRecords = 1;
-        SendVerificationRequest(&enemy);
-        UpdateUnit(&enemies, enemy);
+        if (UnitIndexAt(&allies, radarPoint) != -1)
+        {
+            Print('.');
+            Print(radarPoint);
+            PrintLine();
+        }
+        else
+        {
+            Print('!');
+            Print(radarPoint);
+            PrintLine();
+
+            Unit enemy;
+            enemy.Recorded = time();
+            enemy.Expires = time() + 12f;
+            enemy.Position = radarPoint;
+            enemy.PositionRecords = 1;
+            SendVerificationRequest(&enemy);
+            UpdateUnit(&enemies, enemy);
+        }
     }
-    if (radarDistance == 0f)
+    else
     {
         prevRadarDistance = 0f;
     }
@@ -139,22 +183,23 @@ while (1)
         else
         {
             float3 p = (&enemies).Raw()[i].Position;
-            if (time() >= (&enemies).Raw()[i].Recorded + 4f)
-            {
-                if (time() >= (&enemies).Raw()[i].NotifiedAt + 5f)
-                {
-                    EnemyNotificationPacket notificationPacket;
-                    notificationPacket.Header = ENEMY_HEADER;
-                    notificationPacket.Position = p;
-                    send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
-                    (&enemies).Raw()[i].NotifiedAt = time();
-                }
-                debug(p, RED);
-            }
-            elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
-            {
-                debug(p, YELLOW);
-            }
+            //if (time() >= (&enemies).Raw()[i].Recorded + 4f)
+            //{
+            //    if (time() >= (&enemies).Raw()[i].NotifiedAt + 5f)
+            //    {
+            //        EnemyNotificationPacket notificationPacket;
+            //        notificationPacket.Header = ENEMY_HEADER;
+            //        notificationPacket.Position = p;
+            //        send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
+            //        (&enemies).Raw()[i].NotifiedAt = time();
+            //    }
+            //    debug(p, RED);
+            //}
+            //elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
+            //{
+            //    debug(p, YELLOW);
+            //}
+            PrintLine("CHK");
             TrySendVerificationRequest(&(&enemies).Raw()[i]);
         }
     }
@@ -164,6 +209,7 @@ while (1)
         j = (j + 1) % (&allies).Length();
         if (time() >= (&allies).Raw()[j].Expires)
         {
+            PrintLine("RTH");
             TrySendVerificationRequest(&(&allies).Raw()[j]);
             (&allies).SwapBack(j);
         }

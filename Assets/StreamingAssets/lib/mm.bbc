@@ -27,7 +27,7 @@ struct MappedMemory_Transporter
 struct MappedMemory_Radar
 {
     f32 RadarDirection;
-    f32 RadarResponse;
+    float3 RadarResponse;
 }
 
 struct MappedMemory_GPS
@@ -61,15 +61,15 @@ const int MappedMemorySize = TotalMemorySize - UserMemorySize;
 const int GenericModulesSize = sizeof(MappedMemory_GPS) + sizeof(MappedMemory_Pendrive) + sizeof(MappedMemory_Radar) + sizeof(MappedMemory_Vehicle);
 
 
-export const MappedMemory_GPS*            GPS =             MappedMemoryStart + 0;
-export const MappedMemory_Pendrive*       Pendrive =        MappedMemoryStart + sizeof(MappedMemory_GPS);
-export const MappedMemory_Radar*          Radar =           MappedMemoryStart + sizeof(MappedMemory_GPS) + sizeof(MappedMemory_Pendrive);
-export const MappedMemory_Vehicle*        Vehicle =         MappedMemoryStart + sizeof(MappedMemory_GPS) + sizeof(MappedMemory_Pendrive) + sizeof(MappedMemory_Radar);
+[MSILIncompatible] export const MappedMemory_GPS*            GPS =             MappedMemoryStart + 0;
+[MSILIncompatible] export const MappedMemory_Pendrive*       Pendrive =        MappedMemoryStart + sizeof(MappedMemory_GPS);
+[MSILIncompatible] export const MappedMemory_Radar*          Radar =           MappedMemoryStart + sizeof(MappedMemory_GPS) + sizeof(MappedMemory_Pendrive);
+[MSILIncompatible] export const MappedMemory_Vehicle*        Vehicle =         MappedMemoryStart + sizeof(MappedMemory_GPS) + sizeof(MappedMemory_Pendrive) + sizeof(MappedMemory_Radar);
 
-export const MappedMemory_CombatTurret*   CombatTurret =    MappedMemoryStart + GenericModulesSize;
-export const MappedMemory_Extractor*      Extractor =       MappedMemoryStart + GenericModulesSize;
-export const MappedMemory_Transporter*    Transporter =     MappedMemoryStart + GenericModulesSize;
-export const MappedMemory_Facility*       Facility =        MappedMemoryStart + GenericModulesSize;
+[MSILIncompatible] export const MappedMemory_CombatTurret*   CombatTurret =    MappedMemoryStart + GenericModulesSize;
+[MSILIncompatible] export const MappedMemory_Extractor*      Extractor =       MappedMemoryStart + GenericModulesSize;
+[MSILIncompatible] export const MappedMemory_Transporter*    Transporter =     MappedMemoryStart + GenericModulesSize;
+[MSILIncompatible] export const MappedMemory_Facility*       Facility =        MappedMemoryStart + GenericModulesSize;
 
 
 *Vehicle = new MappedMemory_Vehicle;
