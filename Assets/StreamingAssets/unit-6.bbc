@@ -232,6 +232,7 @@ while (1)
     {
         if (time() >= (&enemies).Raw()[i].Expires)
         {
+            PrintLine("#E-OLD");
             (&enemies).SwapBack(i);
         }
         else

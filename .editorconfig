@@ -34,3 +34,6 @@ dotnet_diagnostic.IDE0001.severity = silent
 
 # IDE0061: Use block body for local function
 csharp_style_expression_bodied_local_functions = when_on_single_line
+
+# IDE0022: Use block body for method
+csharp_style_expression_bodied_methods = when_on_single_line

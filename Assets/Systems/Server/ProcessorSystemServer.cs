@@ -131,10 +131,10 @@ unsafe partial struct ProcessorSystemServer : ISystem
     public ref struct EntityRef
     {
         public required Entity Entity;
-        public required RefRW<Processor> Processor;
-        public required RefRO<LocalToWorld> WorldTransform;
-        public required RefRO<LocalTransform> LocalTransform;
-        public required RefRO<UnitTeam> Team;
+        public required Processor* Processor;
+        public required LocalToWorld WorldTransform;
+        public required LocalTransform LocalTransform;
+        public required UnitTeam Team;
     }
 
     [BurstCompile]
@@ -155,7 +155,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
     void ISystem.OnCreate(ref SystemState state)
     {
-        state.RequireForUpdate<WorldLabelSettings>();
+        //state.RequireForUpdate<WorldLabelSettings>();
 
         NativeList<ExternalFunctionScopedSync> _scopedExternalFunctions = new(Allocator.Temp);
         ProcessorAPI.GenerateExternalFunctions(ref _scopedExternalFunctions);
@@ -322,30 +322,24 @@ partial struct ProcessorJob : IJobEntity
 
     [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(
-        RefRW<Processor> processor,
-        RefRO<UnitTeam> team,
-        RefRO<LocalToWorld> worldTransform,
-        RefRO<LocalTransform> localTransform,
-        DynamicBuffer<BufferedInstruction> code,
-        DynamicBuffer<BufferedGeneratedFunction> generatedFunctions,
+        ref Processor processor,
+        in UnitTeam team,
+        in LocalToWorld worldTransform,
+        in LocalTransform localTransform,
         Entity entity)
     {
         //using var _1 = __ProcessorJobOuter.Auto();
 
-        //if (processor.ValueRO.SourceFile == default)
-        //{
-        //    processor.ValueRW.StatusLED.Status = 0;
-        //    return;
-        //}
-
-        if (code.IsEmpty)
+        if (!processor.Source.Code.IsCreated)
         {
-            processor.ValueRW.StatusLED.Status = 0;
+            processor.StatusLED.Status = 0;
             return;
         }
 
-        MappedMemory* mapped = (MappedMemory*)((nint)Unsafe.AsPointer(ref processor.ValueRW.Memory) + Processor.MappedMemoryStart);
-        mapped->Pendrive.IsPlugged = processor.ValueRW.PluggedPendrive.Entity != Entity.Null;
+        NativeArray<byte> memory = new(Processor.TotalMemorySize, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+        memory.CopyFrom(new Span<byte>(Unsafe.AsPointer(ref processor.Memory), Processor.TotalMemorySize).ToArray());
+
+        processor.Memory.MappedMemory.Pendrive.IsPlugged = processor.PluggedPendrive.Entity != Entity.Null;
 
         ProcessorSystemServer.FunctionScope scope = new()
         {
@@ -354,7 +348,7 @@ partial struct ProcessorJob : IJobEntity
             UIElements = uiElements,
             ProcessorRef = new ProcessorSystemServer.ProcessorRef()
             {
-                Memory = Unsafe.AsPointer(ref processor.ValueRW.Memory),
+                Memory = memory.GetUnsafePtr(),
                 Crash = null,
                 Registers = null,
                 Signal = null,
@@ -362,7 +356,7 @@ partial struct ProcessorJob : IJobEntity
             EntityRef = new ProcessorSystemServer.EntityRef()
             {
                 Entity = entity,
-                Processor = processor,
+                Processor = (Processor*)Unsafe.AsPointer(ref processor),
                 WorldTransform = worldTransform,
                 LocalTransform = localTransform,
                 Team = team,
@@ -370,7 +364,7 @@ partial struct ProcessorJob : IJobEntity
             CommandBuffer = commandBuffer,
         };
 
-        NativeList<ExternalFunctionScopedSync> scopedExternalFunctions = new(this.scopedExternalFunctions.Length + generatedFunctions.Length, Allocator.Temp);
+        NativeList<ExternalFunctionScopedSync> scopedExternalFunctions = new(this.scopedExternalFunctions.Length + processor.Source.GeneratedFunctions.Length, Allocator.Temp);
 
         for (int i = 0; i < this.scopedExternalFunctions.Length; i++)
         {
@@ -384,21 +378,23 @@ partial struct ProcessorJob : IJobEntity
             scopedExternalFunctions.GetUnsafePtr()[scopedExternalFunctions.Length - 1].Scope = (nint)(void*)&scope;
         }
 
-        for (int i = 0; i < generatedFunctions.Length; i++)
+        int start = scopedExternalFunctions.Length;
+        if (processor.Source.GeneratedFunctions.IsCreated)
         {
-            scopedExternalFunctions.Add(generatedFunctions[i].V);
+            scopedExternalFunctions.AddRange(processor.Source.GeneratedFunctions.Ptr, processor.Source.GeneratedFunctions.Length);
         }
 
         ProcessorState processorState = new(
             ProcessorSystemServer.BytecodeInterpreterSettings,
-            processor.ValueRW.Registers,
-            new Span<byte>(Unsafe.AsPointer(ref processor.ValueRW.Memory), Processor.TotalMemorySize),
-            new ReadOnlySpan<Instruction>(code.GetUnsafeReadOnlyPtr(), code.Length),
-            scopedExternalFunctions.AsReadOnly()
+            processor.Registers,
+            memory,
+            processor.Source.Code.AsSpan(),
+            scopedExternalFunctions.AsArray().AsSpan()
         )
         {
-            Signal = processor.ValueRO.Signal,
-            Crash = processor.ValueRO.Crash,
+            Signal = processor.Signal,
+            Crash = processor.Crash,
+            HotFunctions = processor.HotFunctions,
         };
 
         scope.ProcessorRef.Crash = &processorState.Crash;
@@ -411,9 +407,9 @@ partial struct ProcessorJob : IJobEntity
             {
                 if (processorState.Signal != Signal.None)
                 {
-                    if (!processor.ValueRO.SignalNotified)
+                    if (!processor.SignalNotified)
                     {
-                        processor.ValueRW.SignalNotified = true;
+                        processor.SignalNotified = true;
                         switch (processorState.Signal)
                         {
                             case Signal.UserCrash:
@@ -439,14 +435,14 @@ partial struct ProcessorJob : IJobEntity
                     }
                     break;
                 }
-                processor.ValueRW.SignalNotified = false;
+                processor.SignalNotified = false;
 
-                if (processor.ValueRO.IsKeyRequested)
+                if (processor.IsKeyRequested)
                 {
-                    if (processor.ValueRO.InputKey.Length == 0) break;
-                    char key = processor.ValueRW.InputKey[0];
-                    processor.ValueRW.InputKey.RemoveAt(0);
-                    processor.ValueRW.IsKeyRequested = false;
+                    if (processor.InputKey.Length == 0) break;
+                    char key = processor.InputKey[0];
+                    processor.InputKey.RemoveAt(0);
+                    processor.IsKeyRequested = false;
                     processorState.Pop(2);
                     processorState.Push(key.AsBytes());
                 }
@@ -455,10 +451,20 @@ partial struct ProcessorJob : IJobEntity
             }
         }
 
-        processor.ValueRW.Registers = processorState.Registers;
-        processor.ValueRW.Signal = processorState.Signal;
-        processor.ValueRW.Crash = processorState.Crash;
-        processor.ValueRW.StatusLED.Status = processorState.Signal == Signal.None ? 1 : 2;
+        if (processor.Source.GeneratedFunctions.IsCreated)
+        {
+            for (int i = start; i < scopedExternalFunctions.Length; i++)
+            {
+                processor.Source.GeneratedFunctions.Ptr[i - start].Flags = scopedExternalFunctions[i].Flags;
+            }
+        }
+
+        processor.Memory = *(ProcessorMemory*)memory.GetUnsafePtr();
+        processor.Registers = processorState.Registers;
+        processor.Signal = processorState.Signal;
+        processor.Crash = processorState.Crash;
+        processor.HotFunctions = processorState.HotFunctions;
+        processor.StatusLED.Status = processorState.Signal == Signal.None ? 1 : 2;
 
         scopedExternalFunctions.Dispose();
     }

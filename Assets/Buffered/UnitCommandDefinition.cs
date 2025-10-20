@@ -2,8 +2,6 @@ using System;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Entities;
-using Unity.NetCode;
 
 public enum UnitCommandParameter : byte
 {
@@ -12,18 +10,18 @@ public enum UnitCommandParameter : byte
 }
 
 [BurstCompile]
-public struct BufferedUnitCommandDefinition : IBufferElementData
+public struct UnitCommandDefinition
 {
-    [GhostField] public int Id;
-    [GhostField] public FixedString32Bytes Label;
-    [GhostField] public ushort ParameterCount;
-    [GhostField] public FixedBytes62 Parameters;
+    public int Id;
+    public FixedString32Bytes Label;
+    public ushort ParameterCount;
+    public FixedBytes62 Parameters;
 
     public unsafe UnitCommandParameter GetParameter(int index) => ((UnitCommandParameter*)Unsafe.AsPointer(ref Parameters))[index];
 
     public unsafe ReadOnlySpan<UnitCommandParameter> GetParameters() => new(Unsafe.AsPointer(ref Parameters), ParameterCount);
 
-    public unsafe BufferedUnitCommandDefinition(
+    public unsafe UnitCommandDefinition(
         int id,
         FixedString32Bytes label,
         FixedList64Bytes<UnitCommandParameter> parameters)

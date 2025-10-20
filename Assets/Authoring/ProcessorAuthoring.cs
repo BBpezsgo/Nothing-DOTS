@@ -58,9 +58,6 @@ class ProcessorAuthoring : MonoBehaviour
                 SourceFile = authoring.Script is null ? default : new FileId(authoring.Script, NetcodeEndPoint.Server),
 #endif
             });
-            AddBuffer<BufferedInstruction>(entity);
-            AddBuffer<BufferedGeneratedFunction>(entity);
-            AddBuffer<BufferedUnitCommandDefinition>(entity);
         }
     }
 }

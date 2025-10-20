@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using LanguageCore;
@@ -40,13 +41,14 @@ public class CompiledSource : IInspect<CompiledSource>
 
     public NativeArray<Instruction>? Code;
     public NativeArray<ExternalFunctionScopedSync>? GeneratedFunction;
+    public NativeArray<UnitCommandDefinition>? UnitCommandDefinitions;
     public CompiledDebugInformation DebugInformation;
     public DiagnosticsCollection Diagnostics;
     public CompilerResult Compiled;
     public BBLangGeneratorResult Generated;
     public Dictionary<FileId, ProgressRecord<(int Current, int Total)>> SubFiles;
 
-    CompiledSource(
+    public CompiledSource(
         FileId sourceFile,
         long compiledVersion,
         long latestVersion,
@@ -55,6 +57,7 @@ public class CompiledSource : IInspect<CompiledSource>
         float progress,
         bool isSuccess,
         NativeArray<Instruction>? code,
+        NativeArray<UnitCommandDefinition>? unitCommandDefinitions,
         CompiledDebugInformation debugInformation,
         DiagnosticsCollection diagnostics)
     {
@@ -65,38 +68,13 @@ public class CompiledSource : IInspect<CompiledSource>
         Progress = progress;
         IsSuccess = isSuccess;
         Code = code;
+        UnitCommandDefinitions = unitCommandDefinitions;
         DebugInformation = debugInformation;
         Diagnostics = diagnostics;
         Status = status;
         Compiled = CompilerResult.MakeEmpty(sourceFile.ToUri());
         SubFiles = new();
     }
-
-    public static CompiledSource Empty(FileId sourceFile, long latestVersion) => new(
-        sourceFile,
-        default,
-        latestVersion,
-        default,
-        CompilationStatus.Secuedued,
-        0,
-        false,
-        default,
-        default,
-        new DiagnosticsCollection()
-    );
-
-    public static CompiledSource FromRpc(CompilerStatusRpc rpc) => new(
-        rpc.FileName,
-        rpc.CompiledVersion,
-        rpc.LatestVersion,
-        default,
-        rpc.Status,
-        rpc.Progress,
-        rpc.IsSuccess,
-        default,
-        default,
-        new DiagnosticsCollection()
-    );
 
     public CompiledSource OnGUI(Rect rect, CompiledSource value)
     {
@@ -109,11 +87,6 @@ public class CompiledSource : IInspect<CompiledSource>
         return value;
     }
 }
-
-//#if UNITY_EDITOR
-//[UnityEditor.CustomPropertyDrawer(typeof(SerializableDictionary<FileId, CompiledSource>))]
-//public class _Drawer1 : DictionaryDrawer<FileId, CompiledSource> { }
-//#endif
 
 public partial class CompilerSystemServer : SystemBase
 {
@@ -129,46 +102,49 @@ public partial class CompilerSystemServer : SystemBase
 
         foreach ((FileId file, CompiledSource source) in CompiledSources)
         {
-            switch (source.Status)
+            lock (source)
             {
-                case CompilationStatus.None:
-                    break;
-                case CompilationStatus.Secuedued:
-                    source.Status = CompilationStatus.Compiling;
-                    _tasks.Add(Task.Factory.StartNew(static v => CompileSourceTask(((FileId, bool, CompiledSource))v), (file, false, CompiledSources[file]))
-                        .ContinueWith(task =>
-                        {
-                            if (task.IsFaulted)
-                            { Debug.LogException(task.Exception); }
-                            else if (task.IsCanceled)
-                            { Debug.LogError($"[{nameof(CompilerSystemServer)}]: Compilation task cancelled"); }
-                        }));
-                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
-                    SendCompilationStatus(source, commandBuffer);
-                    break;
-                case CompilationStatus.Compiling:
-                    break;
-                case CompilationStatus.Compiled:
-                    source.Status = CompilationStatus.Done;
-
-                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
-                    SendCompilationStatus(source, commandBuffer);
-                    SendDiagnostics(source, commandBuffer);
-                    break;
-                case CompilationStatus.Done:
-                    if (source.CompiledVersion < source.LatestVersion)
-                    {
-                        Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
-                        source.Status = CompilationStatus.Secuedued;
+                switch (source.Status)
+                {
+                    case CompilationStatus.None:
+                        break;
+                    case CompilationStatus.Secuedued:
+                        source.Status = CompilationStatus.Compiling;
+                        _tasks.Add(Task.Factory.StartNew(static v => CompileSourceTask(((FileId, bool, CompiledSource))v), (file, false, source))
+                            .ContinueWith(task =>
+                            {
+                                if (task.IsFaulted)
+                                { Debug.LogException(task.Exception); }
+                                else if (task.IsCanceled)
+                                { Debug.LogError($"[{nameof(CompilerSystemServer)}]: Compilation task cancelled"); }
+                            }));
                         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                         SendCompilationStatus(source, commandBuffer);
-                    }
-                    break;
-            }
-            if (source.StatusChanged && source.LastStatusSync + 0.5d < SystemAPI.Time.ElapsedTime)
-            {
-                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
-                SendCompilationStatus(source, commandBuffer);
+                        break;
+                    case CompilationStatus.Compiling:
+                        break;
+                    case CompilationStatus.Compiled:
+                        source.Status = CompilationStatus.Done;
+
+                        if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+                        SendCompilationStatus(source, commandBuffer);
+                        SendDiagnostics(source, commandBuffer);
+                        break;
+                    case CompilationStatus.Done:
+                        if (source.CompiledVersion < source.LatestVersion)
+                        {
+                            Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Source version changed ({source.CompiledVersion} -> {source.LatestVersion}), recompiling \"{source.SourceFile}\"");
+                            source.Status = CompilationStatus.Secuedued;
+                            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+                            SendCompilationStatus(source, commandBuffer);
+                        }
+                        break;
+                }
+                if (source.StatusChanged && source.LastStatusSync + 0.5d < SystemAPI.Time.ElapsedTime)
+                {
+                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+                    SendCompilationStatus(source, commandBuffer);
+                }
             }
         }
     }
@@ -201,12 +177,47 @@ public partial class CompilerSystemServer : SystemBase
                 IsSuccess = source.IsSuccess,
                 CompiledVersion = source.CompiledVersion,
                 LatestVersion = source.LatestVersion,
+                UnitCommands = source.UnitCommandDefinitions?.Length ?? 0,
             });
             commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
             {
                 TargetConnection = source.SourceFile.Source.GetEntity(),
             });
             if (EnableLogging) Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
+        }
+
+        if (source.IsSuccess && source.UnitCommandDefinitions.HasValue)
+        {
+            EntityArchetype unitCommandRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
+            {
+                ComponentType.ReadWrite<UnitCommandDefinitionRpc>(),
+                ComponentType.ReadWrite<SendRpcCommandRequest>(),
+            });
+
+            FixedList64Bytes<UnitCommandParameter> parameters = new();
+
+            for (int i = 0; i < source.UnitCommandDefinitions.Value.Length; i++)
+            {
+                UnitCommandDefinition item = source.UnitCommandDefinitions.Value[i];
+                Entity request = commandBuffer.CreateEntity(unitCommandRpcArchetype);
+                unsafe
+                {
+                    parameters.Clear();
+                    parameters.AddRange(&item.Parameters, item.ParameterCount);
+                }
+                commandBuffer.SetComponent<UnitCommandDefinitionRpc>(request, new()
+                {
+                    FileName = source.SourceFile,
+                    Index = i,
+                    Id = item.Id,
+                    Label = item.Label,
+                    Parameters = parameters,
+                });
+                commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
+                {
+                    TargetConnection = source.SourceFile.Source.GetEntity(),
+                });
+            }
         }
 
         EntityArchetype substatusRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
@@ -292,9 +303,12 @@ public partial class CompilerSystemServer : SystemBase
         Uri sourceUri = file.ToUri();
         if (EnableLogging) Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Compilation started for \"{sourceUri}\" ...");
 
-        source.Diagnostics = new DiagnosticsCollection();
-        source.Status = CompilationStatus.Compiling;
-        source.StatusChanged = true;
+        lock (source)
+        {
+            source.Diagnostics = new DiagnosticsCollection();
+            source.Status = CompilationStatus.Compiling;
+            source.StatusChanged = true;
+        }
 
         List<ProgressRecord<(int, int)>> progresses = new();
 
@@ -403,62 +417,132 @@ public partial class CompilerSystemServer : SystemBase
                 source.Diagnostics
             );
 
+            using (StreamWriter stringWriter = new($"/home/bb/Projects/BBLang/Core/out-{DateTime.Now:O}-{file.Name.ToString().Replace('/', '_')}.bbc"))
+            {
+                stringWriter.WriteLine(compiled.Stringify());
+                if (!generated.ILGeneratorBuilders.IsDefault)
+                {
+                    foreach (string builder in generated.ILGeneratorBuilders)
+                    {
+                        stringWriter.WriteLine(builder);
+                    }
+                }
+            }
+
             Debug.Log($"{sourceUri} done");
         }
         catch (LanguageException exception)
         {
-            source.IsSuccess = false;
-            source.Diagnostics.Add(new Diagnostic(
-                DiagnosticsLevel.Error,
-                exception.Message,
-                exception.Position,
-                exception.File,
-                null
-            ));
+            lock (source)
+            {
+                source.IsSuccess = false;
+                source.Diagnostics.Add(new Diagnostic(
+                    DiagnosticsLevel.Error,
+                    exception.Message,
+                    exception.Position,
+                    exception.File,
+                    null
+                ));
+            }
         }
         catch (LanguageExceptionWithoutContext exception)
         {
-            source.IsSuccess = false;
-            source.Diagnostics.Add(new DiagnosticWithoutContext(
-                DiagnosticsLevel.Error,
-                exception.Message
-            ));
+            lock (source)
+            {
+                source.IsSuccess = false;
+                source.Diagnostics.Add(new DiagnosticWithoutContext(
+                    DiagnosticsLevel.Error,
+                    exception.Message
+                ));
+            }
         }
 
         if (source.Diagnostics.HasErrors)
         {
-            source.Status = CompilationStatus.Compiled;
-            source.Compiled = compiled;
-            source.Generated = generated;
-            Debug.Log($"Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
-            source.CompiledVersion = source.LatestVersion;
-            source.IsSuccess = false;
-            source.DebugInformation = new CompiledDebugInformation(null);
-            source.Code?.Dispose();
-            source.Code = default;
-            source.GeneratedFunction?.Dispose();
-            source.GeneratedFunction = default;
-            source.Progress = float.NaN;
+            lock (source)
+            {
+                source.Status = CompilationStatus.Compiled;
+                source.Compiled = compiled;
+                source.Generated = generated;
+                Debug.Log($"Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
+                source.CompiledVersion = source.LatestVersion;
+                source.IsSuccess = false;
+
+                source.DebugInformation = new CompiledDebugInformation(null);
+                source.Code?.Dispose();
+                source.Code = default;
+                source.GeneratedFunction?.Dispose();
+                source.GeneratedFunction = default;
+                source.UnitCommandDefinitions?.Dispose();
+                source.UnitCommandDefinitions = default;
+
+                source.Progress = float.NaN;
+            }
         }
         else
         {
-            source.Status = CompilationStatus.Compiled;
-            source.Compiled = compiled;
-            source.Generated = generated;
-            Debug.Log($"Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
-            source.CompiledVersion = source.LatestVersion;
-            source.IsSuccess = true;
-            source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
-            source.Code?.Dispose();
-            source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
-            source.GeneratedFunction?.Dispose();
-            source.GeneratedFunction = new NativeArray<ExternalFunctionScopedSync>(generated.GeneratedUnmanagedFunctions.ToArray(), Allocator.Persistent);
-            source.Progress = float.NaN;
+            lock (source)
+            {
+                source.Compiled = compiled;
+                source.Generated = generated;
+                source.DebugInformation = new CompiledDebugInformation(generated.DebugInfo);
+                source.Code?.Dispose();
+                source.Code = new NativeArray<Instruction>(generated.Code.ToArray(), Allocator.Persistent);
+                source.GeneratedFunction?.Dispose();
+                source.GeneratedFunction = new NativeArray<ExternalFunctionScopedSync>(generated.GeneratedUnmanagedFunctions.ToArray(), Allocator.Persistent);
+                source.UnitCommandDefinitions?.Dispose();
+                List<UnitCommandDefinition> commandDefinitions = new();
+                foreach (CompiledStruct @struct in source.Compiled.Structs)
+                {
+                    if (!@struct.Attributes.TryGetAttribute("UnitCommand", out AttributeUsage? structAttribute))
+                    { continue; }
+
+                    FixedList32Bytes<UnitCommandParameter> parameterTypes = new();
+                    bool ok = true;
+
+                    foreach (CompiledField field in @struct.Fields)
+                    {
+                        if (!field.Attributes.TryGetAttribute("Context", out AttributeUsage? attribute)) continue;
+                        switch (attribute.Parameters[0].Value)
+                        {
+                            case "position2":
+                                parameterTypes.Add(UnitCommandParameter.Position2);
+                                break;
+                            case "position3":
+                                parameterTypes.Add(UnitCommandParameter.Position3);
+                                break;
+                            default:
+                                ok = false;
+                                break;
+                        }
+                    }
+
+                    if (!ok) continue;
+
+                    commandDefinitions.Add(new(structAttribute.Parameters[0].GetInt(), structAttribute.Parameters[1].Value, parameterTypes));
+                }
+                source.UnitCommandDefinitions = new(commandDefinitions.ToArray(), Allocator.Persistent);
+
+                source.Status = CompilationStatus.Compiled;
+                Debug.Log($"Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
+                source.CompiledVersion = source.LatestVersion;
+                source.IsSuccess = true;
+                source.Progress = float.NaN;
+            }
         }
     }
 
-    public void AddEmpty(FileId file, long latestVersion)
-    {
-        CompiledSources.Add(file, CompiledSource.Empty(file, latestVersion));
-    }
+    public void AddEmpty(FileId file, long latestVersion) => CompiledSources.Add(file, new(
+        file,
+        default,
+        latestVersion,
+        default,
+        CompilationStatus.Secuedued,
+        0,
+        false,
+        default,
+        default,
+        default,
+        new DiagnosticsCollection()
+    ));
 }

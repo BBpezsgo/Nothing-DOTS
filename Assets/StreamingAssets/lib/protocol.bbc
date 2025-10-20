@@ -105,7 +105,7 @@ export int UnitIndexAt(List<Unit>* units, float3 position, float* distanceSqr)
     return -1;
 }
 
-export void UpdateUnit(List<Unit>* units, Unit unit)
+export int UpdateUnit(List<Unit>* units, Unit unit)
 {
     float distanceSqr = 0f;
     int existing = UnitIndexAt(units, unit.Position, &distanceSqr);
@@ -117,6 +117,7 @@ export void UpdateUnit(List<Unit>* units, Unit unit)
         }
         else
         {
+            existing = units.Length();
             units.Add(unit);
         }
     }
@@ -144,6 +145,7 @@ export void UpdateUnit(List<Unit>* units, Unit unit)
     {
         units[existing] = unit;
     }
+    return existing;
 }
 
 export int SetUnit(List<Unit>* units, Unit unit)

@@ -225,7 +225,7 @@ static unsafe class ProcessorAPI
 
             char output = arguments.To<char>();
             if (output == '\r') return;
-            ((FunctionScope*)_scope)->EntityRef.Processor.ValueRW.StdOutBuffer.AppendShift(output);
+            ((FunctionScope*)_scope)->EntityRef.Processor->StdOutBuffer.AppendShift(output);
         }
 
         [BurstCompile]
@@ -236,7 +236,7 @@ static unsafe class ProcessorAPI
             // using ProfilerMarker.AutoScope marker = _ExternalMarker_stdout.Auto();
 #endif
 
-            ((FunctionScope*)_scope)->EntityRef.Processor.ValueRW.IsKeyRequested = true;
+            ((FunctionScope*)_scope)->EntityRef.Processor->IsKeyRequested = true;
         }
     }
 
@@ -270,11 +270,11 @@ static unsafe class ProcessorAPI
             FixedList32Bytes<byte> data = new();
             data.AddRange((byte*)((nint)scope->ProcessorRef.Memory + bufferPtr), length);
 
-            if (scope->EntityRef.Processor.ValueRW.OutgoingTransmissions.Length >= scope->EntityRef.Processor.ValueRW.OutgoingTransmissions.Capacity)
-            { scope->EntityRef.Processor.ValueRW.OutgoingTransmissions.RemoveAt(0); }
-            scope->EntityRef.Processor.ValueRW.OutgoingTransmissions.Add(new()
+            if (scope->EntityRef.Processor->OutgoingTransmissions.Length >= scope->EntityRef.Processor->OutgoingTransmissions.Capacity)
+            { scope->EntityRef.Processor->OutgoingTransmissions.RemoveAt(0); }
+            scope->EntityRef.Processor->OutgoingTransmissions.Add(new()
             {
-                Source = scope->EntityRef.LocalTransform.ValueRO.Position,
+                Source = scope->EntityRef.LocalTransform.Position,
                 Direction = direction,
                 Data = data,
                 CosAngle = cosAngle,
@@ -298,7 +298,7 @@ static unsafe class ProcessorAPI
 
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            ref FixedList128Bytes<BufferedUnitTransmission> received = ref scope->EntityRef.Processor.ValueRW.IncomingTransmissions; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
+            ref FixedList128Bytes<BufferedUnitTransmission> received = ref scope->EntityRef.Processor->IncomingTransmissions; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
             if (received.Length == 0) return;
 
             BufferedUnitTransmission first = received[0];
@@ -309,7 +309,7 @@ static unsafe class ProcessorAPI
 
             if (directionPtr > 0)
             {
-                float3 transformed = math.normalize(scope->EntityRef.LocalTransform.ValueRO.InverseTransformPoint(first.Source));
+                float3 transformed = math.normalize(scope->EntityRef.LocalTransform.InverseTransformPoint(first.Source));
                 Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
                 memory.Set(directionPtr, transformed);
             }
@@ -345,7 +345,7 @@ static unsafe class ProcessorAPI
 
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            ref FixedList128Bytes<UnitCommandRequest> queue = ref scope->EntityRef.Processor.ValueRW.CommandQueue; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
+            ref FixedList128Bytes<UnitCommandRequest> queue = ref scope->EntityRef.Processor->CommandQueue; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
             if (queue.Length == 0) return;
 
             UnitCommandRequest first = queue[0];
@@ -379,16 +379,16 @@ static unsafe class ProcessorAPI
             FunctionScope* scope = (FunctionScope*)_scope;
 
             if (scope->DebugLines.ListData->Length + 1 < scope->DebugLines.ListData->Capacity) scope->DebugLines.AddNoResize(new(
-                scope->EntityRef.Team.ValueRO.Team,
+                scope->EntityRef.Team.Team,
                 new BufferedLine(new float3x2(
-                    scope->EntityRef.WorldTransform.ValueRO.Position,
+                    scope->EntityRef.WorldTransform.Position,
                     position
                 ), color, MonoTime.Now + DebugLineDuration)
             ));
 
 #if DEBUG_LINES
             UnityEngine.Debug.DrawLine(
-                scope->EntityRef.WorldTransform.ValueRO.Position,
+                scope->EntityRef.WorldTransform.Position,
                 position,
                 new Color(
                     (color & 0b100) != 0 ? 1f : 0f,
@@ -412,19 +412,19 @@ static unsafe class ProcessorAPI
 
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            float3 transformed = scope->EntityRef.LocalTransform.ValueRO.TransformPoint(position);
+            float3 transformed = scope->EntityRef.LocalTransform.TransformPoint(position);
 
             if (scope->DebugLines.ListData->Length + 1 < scope->DebugLines.ListData->Capacity) scope->DebugLines.AddNoResize(new(
-                scope->EntityRef.Team.ValueRO.Team,
+                scope->EntityRef.Team.Team,
                 new BufferedLine(new float3x2(
-                    scope->EntityRef.WorldTransform.ValueRO.Position,
+                    scope->EntityRef.WorldTransform.Position,
                     transformed
                 ), color, MonoTime.Now + DebugLineDuration)
             ));
 
 #if DEBUG_LINES
             UnityEngine.Debug.DrawLine(
-                scope->EntityRef.WorldTransform.ValueRO.Position,
+                scope->EntityRef.WorldTransform.Position,
                 transformed,
                 new Color(
                     (color & 0b100) != 0 ? 1f : 0f,
@@ -457,7 +457,7 @@ static unsafe class ProcessorAPI
             }
 
             if (scope->WorldLabels.ListData->Length + 1 < scope->WorldLabels.ListData->Capacity) scope->WorldLabels.AddNoResize(new(
-                scope->EntityRef.Team.ValueRO.Team,
+                scope->EntityRef.Team.Team,
                 new BufferedWorldLabel(position, 0b111, text, MonoTime.Now + DebugLineDuration)
             ));
         }
@@ -482,10 +482,10 @@ static unsafe class ProcessorAPI
                 text.Append(c);
             }
 
-            float3 transformed = scope->EntityRef.LocalTransform.ValueRO.TransformPoint(position);
+            float3 transformed = scope->EntityRef.LocalTransform.TransformPoint(position);
 
             if (scope->WorldLabels.ListData->Length + 1 < scope->WorldLabels.ListData->Capacity) scope->WorldLabels.AddNoResize(new(
-                scope->EntityRef.Team.ValueRO.Team,
+                scope->EntityRef.Team.Team,
                 new BufferedWorldLabel(transformed, 0b111, text, MonoTime.Now + DebugLineDuration)
             ));
         }
@@ -514,8 +514,7 @@ static unsafe class ProcessorAPI
             FunctionScope* scope = (FunctionScope*)_scope;
             Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
             float3 point = memory.Get<float3>(ptr);
-            RefRO<LocalTransform> transform = scope->EntityRef.LocalTransform;
-            float3 transformed = transform.ValueRO.TransformPoint(point);
+            float3 transformed = scope->EntityRef.LocalTransform.TransformPoint(point);
             memory.Set(ptr, transformed);
         }
 
@@ -533,8 +532,7 @@ static unsafe class ProcessorAPI
             FunctionScope* scope = (FunctionScope*)_scope;
             Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
             float3 point = memory.Get<float3>(ptr);
-            RefRO<LocalTransform> transform = scope->EntityRef.LocalTransform;
-            float3 transformed = transform.ValueRO.InverseTransformPoint(point);
+            float3 transformed = scope->EntityRef.LocalTransform.InverseTransformPoint(point);
             memory.Set(ptr, transformed);
         }
 
@@ -552,8 +550,7 @@ static unsafe class ProcessorAPI
             FunctionScope* scope = (FunctionScope*)_scope;
             Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
             float3 direction = memory.Get<float3>(ptr);
-            RefRO<LocalTransform> transform = scope->EntityRef.LocalTransform;
-            float3 transformed = transform.ValueRO.TransformDirection(direction);
+            float3 transformed = scope->EntityRef.LocalTransform.TransformDirection(direction);
             memory.Set(ptr, transformed);
         }
 
@@ -571,8 +568,7 @@ static unsafe class ProcessorAPI
             FunctionScope* scope = (FunctionScope*)_scope;
             Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
             float3 direction = memory.Get<float3>(ptr);
-            RefRO<LocalTransform> transform = scope->EntityRef.LocalTransform;
-            float3 transformed = transform.ValueRO.InverseTransformDirection(direction);
+            float3 transformed = scope->EntityRef.LocalTransform.InverseTransformDirection(direction);
             memory.Set(ptr, transformed);
         }
 
@@ -608,8 +604,8 @@ static unsafe class ProcessorAPI
 
             MappedMemory* mapped = (MappedMemory*)((nint)scope->ProcessorRef.Memory + Processor.MappedMemoryStart);
 
-            scope->EntityRef.Processor.ValueRW.RadarResponse = default;
-            scope->EntityRef.Processor.ValueRW.RadarRequest = new float2(
+            scope->EntityRef.Processor->RadarResponse = default;
+            scope->EntityRef.Processor->RadarRequest = new float2(
                 math.cos(mapped->Radar.RadarDirection),
                 math.sin(mapped->Radar.RadarDirection)
             );
@@ -638,7 +634,7 @@ static unsafe class ProcessorAPI
                 for (int i = 0; i < scope->UIElements.ListData->Length; i++)
                 {
                     if ((*scope->UIElements.ListData)[i].Value.Id != id) continue;
-                    if ((*scope->UIElements.ListData)[i].Owner != scope->EntityRef.Team.ValueRO.Team) continue;
+                    if ((*scope->UIElements.ListData)[i].Owner != scope->EntityRef.Team.Team) continue;
                     exists = true;
                     break;
                 }
@@ -652,7 +648,7 @@ static unsafe class ProcessorAPI
                 case UserUIElementType.Label:
                     char* text = (char*)&ptr->Label.Text;
                     scope->UIElements.AddNoResize(new(
-                        scope->EntityRef.Team.ValueRO.Team,
+                        scope->EntityRef.Team.Team,
                         *ptr = new UserUIElement()
                         {
                             IsDirty = true,
@@ -670,7 +666,7 @@ static unsafe class ProcessorAPI
                     break;
                 case UserUIElementType.Image:
                     scope->UIElements.AddNoResize(new(
-                        scope->EntityRef.Team.ValueRO.Team,
+                        scope->EntityRef.Team.Team,
                         *ptr = new UserUIElement()
                         {
                             IsDirty = true,
@@ -704,7 +700,7 @@ static unsafe class ProcessorAPI
             for (int i = 0; i < scope->UIElements.ListData->Length; i++)
             {
                 if ((*scope->UIElements.ListData)[i].Value.Id != id) continue;
-                if ((*scope->UIElements.ListData)[i].Owner != scope->EntityRef.Team.ValueRO.Team) continue;
+                if ((*scope->UIElements.ListData)[i].Owner != scope->EntityRef.Team.Team) continue;
                 (*scope->UIElements.ListData)[i] = default;
                 break;
             }
@@ -723,13 +719,13 @@ static unsafe class ProcessorAPI
             {
                 ref OwnedData<UserUIElement> uiElement = ref (*scope->UIElements.ListData).Ptr[i];
                 if (uiElement.Value.Id != ptr->Id) continue;
-                if (uiElement.Owner != scope->EntityRef.Team.ValueRO.Team) continue;
+                if (uiElement.Owner != scope->EntityRef.Team.Team) continue;
                 switch (ptr->Type)
                 {
                     case UserUIElementType.Label:
                         char* text = (char*)&ptr->Label.Text;
                         uiElement = new OwnedData<UserUIElement>(
-                            scope->EntityRef.Team.ValueRO.Team,
+                            scope->EntityRef.Team.Team,
                             *ptr = new UserUIElement()
                             {
                                 IsDirty = true,
@@ -743,7 +739,7 @@ static unsafe class ProcessorAPI
                         break;
                     case UserUIElementType.Image:
                         uiElement = new OwnedData<UserUIElement>(
-                            scope->EntityRef.Team.ValueRO.Team,
+                            scope->EntityRef.Team.Team,
                             *ptr = new UserUIElement()
                             {
                                 IsDirty = true,
@@ -773,7 +769,7 @@ static unsafe class ProcessorAPI
         public static void TryPlug(nint _scope, nint arguments, nint returnValue)
         {
             FunctionScope* scope = (FunctionScope*)_scope;
-            scope->EntityRef.Processor.ValueRW.PendrivePlugRequested = true;
+            scope->EntityRef.Processor->PendrivePlugRequested = true;
         }
 
         [BurstCompile]
@@ -781,7 +777,7 @@ static unsafe class ProcessorAPI
         public static void TryUnplug(nint _scope, nint arguments, nint returnValue)
         {
             FunctionScope* scope = (FunctionScope*)_scope;
-            scope->EntityRef.Processor.ValueRW.PendriveUnplugRequested = true;
+            scope->EntityRef.Processor->PendriveUnplugRequested = true;
         }
 
         [BurstCompile]
@@ -791,14 +787,14 @@ static unsafe class ProcessorAPI
             (int source, int destination, int length) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            if (scope->EntityRef.Processor.ValueRW.PluggedPendrive.Entity == Entity.Null || source < 0 || source >= 1024 || destination <= 0 || length <= 0 || length > 1024)
+            if (scope->EntityRef.Processor->PluggedPendrive.Entity == Entity.Null || source < 0 || source >= 1024 || destination <= 0 || length <= 0 || length > 1024)
             {
                 returnValue.Set(0);
                 return;
             }
 
-            scope->EntityRef.Processor.ValueRW.PluggedPendrive.Pendrive.Span.Slice(source, length).CopyTo(scope->ProcessorRef.MemorySpan[destination..]);
-            scope->EntityRef.Processor.ValueRW.USBLED.Blink();
+            scope->EntityRef.Processor->PluggedPendrive.Pendrive.Span.Slice(source, length).CopyTo(scope->ProcessorRef.MemorySpan[destination..]);
+            scope->EntityRef.Processor->USBLED.Blink();
 
             returnValue.Set(1);
         }
@@ -810,21 +806,15 @@ static unsafe class ProcessorAPI
             (int source, int destination, int length) = ExternalFunctionGenerator.TakeParameters<int, int, int>(arguments);
             FunctionScope* scope = (FunctionScope*)_scope;
 
-            if (!scope->EntityRef.Processor.IsValid)
+            if (scope->EntityRef.Processor->PluggedPendrive.Entity == Entity.Null || destination < 0 || destination >= 1024 || source <= 0 || length <= 0 || length > 1024)
             {
                 returnValue.Set(0);
                 return;
             }
 
-            if (scope->EntityRef.Processor.ValueRW.PluggedPendrive.Entity == Entity.Null || destination < 0 || destination >= 1024 || source <= 0 || length <= 0 || length > 1024)
-            {
-                returnValue.Set(0);
-                return;
-            }
-
-            scope->ProcessorRef.MemorySpan.Slice(source, length).CopyTo(scope->EntityRef.Processor.ValueRW.PluggedPendrive.Pendrive.Span[destination..]);
-            scope->EntityRef.Processor.ValueRW.PluggedPendrive.Write = true;
-            scope->EntityRef.Processor.ValueRW.USBLED.Blink();
+            scope->ProcessorRef.MemorySpan.Slice(source, length).CopyTo(scope->EntityRef.Processor->PluggedPendrive.Pendrive.Span[destination..]);
+            scope->EntityRef.Processor->PluggedPendrive.Write = true;
+            scope->EntityRef.Processor->USBLED.Blink();
 
             returnValue.Set(1);
         }
@@ -853,7 +843,7 @@ static unsafe class ProcessorAPI
 
             for (int i = 0; i < players.Length; i++)
             {
-                if (players[i].Team != scope->EntityRef.Team.ValueRO.Team) continue;
+                if (players[i].Team != scope->EntityRef.Team.Team) continue;
                 requestPlayer = (playerEntities[i], players[i]);
                 break;
             }
@@ -873,7 +863,7 @@ static unsafe class ProcessorAPI
 
             for (int i = 0; i < buildings.Length; i++)
             {
-                if (buildings[i].Name == command.ValueRO.BuildingName)
+                if (buildings[i].Name == command.BuildingName)
                 {
                     building = buildings[i];
                     break;
@@ -882,7 +872,7 @@ static unsafe class ProcessorAPI
 
             if (building.Prefab == Entity.Null)
             {
-                Debug.LogWarning($"Building \"{command.ValueRO.BuildingName}\" not found in the database");
+                Debug.LogWarning($"Building \"{command.BuildingName}\" not found in the database");
                 continue;
             }
 
@@ -912,19 +902,19 @@ static unsafe class ProcessorAPI
             foreach (var _player in
                 SystemAPI.Query<RefRW<Player>>())
             {
-                if (_player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                if (_player.ConnectionId != networkId.Value) continue;
                 _player.ValueRW.Resources -= building.RequiredResources;
                 break;
             }
 
-            Entity newEntity = BuildingSystemServer.PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
+            Entity newEntity = BuildingSystemServer.PlaceBuilding(commandBuffer, building, command.Position);
             commandBuffer.SetComponent<UnitTeam>(newEntity, new()
             {
                 Team = requestPlayer.Player.Team,
             });
             commandBuffer.SetComponent<GhostOwner>(newEntity, new()
             {
-                NetworkId = networkId.ValueRO.Value,
+                NetworkId = networkId.Value,
             });
 
             returnValue.Set(0);

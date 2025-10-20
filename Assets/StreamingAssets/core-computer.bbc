@@ -73,7 +73,21 @@ void Receive()
             unit.Recorded = 0f;
             unit.Expires = time() + 5f;
             unit.VerificationSentAt = time();
-            UpdateUnit(&enemies, unit);
+            int j = UpdateUnit(&enemies, unit);
+
+            for (int i = 0; i < (&allies).Length(); i++)
+            {
+                if (i != j)
+                {
+                    direction = (&allies).Raw()[i].Position;
+                    ToLocal(&direction);
+                    Normalise(&direction);
+
+                    PrintLine("NTFY");
+
+                    send(&packet as u8[]*, sizeof(EnemyNotificationPacket), &direction);
+                }
+            }
         }
         else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
@@ -99,6 +113,7 @@ _minimap.Width = 100;
 _minimap.Height = 100;
 _minimap.X = 10;
 _minimap.Y = 10;
+(&_minimap).Update();
 
 const float MinimapScale = 1f;
 
@@ -108,25 +123,25 @@ while (1)
 {
     Receive();
 
-    (&_minimap).Fill((u8)0);
-
+    (&_minimap).Fill((u8)1);
     (&_minimap).Set(new float2(11f, 11f), (u8)0b_111_111_11);
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
     {
-        if (time() >= (&enemies).Raw()[i].Expires)
+        Unit* enemy = &(&enemies).Raw()[i];
+        if (time() >= enemy.Expires)
         {
             (&enemies).Remove(i);
         }
         else
         {
-            TrySendVerificationRequest(&(&enemies).Raw()[i]);
-            float3 p = (&enemies).Raw()[i].Position;
+            TrySendVerificationRequest(enemy);
+            float3 p = enemy.Position;
             ToLocal(&p);
-            if (time() >= (&enemies).Raw()[i].Recorded + 4f)
+            if (time() >= enemy.Recorded + 4f)
             {
                 ldebug(p, RED);
-                (&_minimap).Set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)0b_111_000_00);
+                (&_minimap).Set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)((int)(0b_111 * Max(0f, enemy.Expires - time()) / 10f) << 5));
                 PrintLine(p.x);
             }
         }
@@ -134,17 +149,18 @@ while (1)
 
     for (int i = (&allies).Length() - 1; i >= 0; i--)
     {
-        if (time() >= (&allies).Raw()[i].Expires)
+        Unit* ally = &(&allies).Raw()[i];
+        if (time() >= ally.Expires)
         {
-            TrySendVerificationRequest(&(&allies).Raw()[i]);
+            TrySendVerificationRequest(ally);
             (&allies).Remove(i);
         }
         else
         {
-            float3 p = (&allies).Raw()[i].Position;
+            float3 p = ally.Position;
             debug(p, GREEN);
             ToLocal(&p);
-            (&_minimap).Set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)0b_000_111_00);
+            (&_minimap).Set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)((int)(0b_111 * Max(0f, ally.Expires - time()) / 10f) << 2));
         }
     }
 

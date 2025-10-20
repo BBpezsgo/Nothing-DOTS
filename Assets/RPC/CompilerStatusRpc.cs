@@ -10,4 +10,5 @@ public struct CompilerStatusRpc : IRpcCommand
     public required bool IsSuccess;
     public required long CompiledVersion;
     public required long LatestVersion;
+    public required int UnitCommands;
 }

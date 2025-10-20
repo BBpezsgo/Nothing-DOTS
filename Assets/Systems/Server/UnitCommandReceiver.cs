@@ -1,6 +1,7 @@
 using System;
 using LanguageCore.Runtime;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
@@ -36,8 +37,8 @@ public partial struct UnitCommandReceiver : ISystem
                 continue;
             }
 
-            foreach (var (ghostInstance, processor, team, commandDefinitions) in
-                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, RefRO<UnitTeam>, DynamicBuffer<BufferedUnitCommandDefinition>>())
+            foreach (var (ghostInstance, processor, team) in
+                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, RefRO<UnitTeam>>())
             {
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
@@ -48,11 +49,13 @@ public partial struct UnitCommandReceiver : ISystem
                     break;
                 }
 
+                ReadOnlySpan<UnitCommandDefinition> commandDefinitions = processor.ValueRO.Source.UnitCommandDefinitions.AsSpan();
+
                 for (int i = 0; i < commandDefinitions.Length; i++)
                 {
                     if (commandDefinitions[i].Id == command.ValueRO.CommandId)
                     {
-                        Unity.Collections.FixedBytes30 data = default;
+                        FixedBytes30 data = default;
                         nint dataPtr = (nint)(&data);
                         int dataLength = 0;
                         for (int j = 0; j < commandDefinitions[i].ParameterCount; j++)

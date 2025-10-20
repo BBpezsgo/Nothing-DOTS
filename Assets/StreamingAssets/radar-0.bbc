@@ -183,22 +183,22 @@ while (1)
         else
         {
             float3 p = (&enemies).Raw()[i].Position;
-            //if (time() >= (&enemies).Raw()[i].Recorded + 4f)
-            //{
-            //    if (time() >= (&enemies).Raw()[i].NotifiedAt + 5f)
-            //    {
-            //        EnemyNotificationPacket notificationPacket;
-            //        notificationPacket.Header = ENEMY_HEADER;
-            //        notificationPacket.Position = p;
-            //        send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
-            //        (&enemies).Raw()[i].NotifiedAt = time();
-            //    }
-            //    debug(p, RED);
-            //}
-            //elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
-            //{
-            //    debug(p, YELLOW);
-            //}
+            if (time() >= (&enemies).Raw()[i].Recorded + 4f)
+            {
+                if (time() >= (&enemies).Raw()[i].NotifiedAt + 5f)
+                {
+                    EnemyNotificationPacket notificationPacket;
+                    notificationPacket.Header = ENEMY_HEADER;
+                    notificationPacket.Position = p;
+                    send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
+                    (&enemies).Raw()[i].NotifiedAt = time();
+                }
+                debug(p, RED);
+            }
+            elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
+            {
+                debug(p, YELLOW);
+            }
             PrintLine("CHK");
             TrySendVerificationRequest(&(&enemies).Raw()[i]);
         }

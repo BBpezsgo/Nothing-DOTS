@@ -15,9 +15,9 @@ class VirtualGhostEntity : IEquatable<VirtualGhostEntity>
 {
     public readonly Entity Entity;
     public readonly GhostInstance GhostInstance;
-    public readonly BufferedUnitCommandDefinition[] UnitCommands;
+    public readonly UnitCommandDefinition[] UnitCommands;
 
-    public VirtualGhostEntity(Entity entity, GhostInstance ghostInstance, BufferedUnitCommandDefinition[] unitCommands)
+    public VirtualGhostEntity(Entity entity, GhostInstance ghostInstance, UnitCommandDefinition[] unitCommands)
     {
         Entity = entity;
         GhostInstance = ghostInstance;
@@ -223,12 +223,9 @@ public class SelectionManager : Singleton<SelectionManager>
 
     static VirtualGhostEntity CreateVirtualGhostEntity(EntityManager entityManager, Entity entity)
     {
-        DynamicBuffer<BufferedUnitCommandDefinition> buffer = entityManager.GetBuffer<BufferedUnitCommandDefinition>(entity);
-        BufferedUnitCommandDefinition[] commands = new BufferedUnitCommandDefinition[buffer.Length];
-        for (int i = 0; i < buffer.Length; i++)
-        {
-            commands[i] = buffer[i];
-        }
+        UnitCommandDefinition[] commands = TryGetUnitCommands(entityManager, entity, out ReadOnlySpan<UnitCommandDefinition> buffer)
+            ? buffer.ToArray()
+            : Array.Empty<UnitCommandDefinition>();
         return new VirtualGhostEntity(
             entity,
             entityManager.GetComponentData<GhostInstance>(entity),
@@ -392,14 +389,16 @@ public class SelectionManager : Singleton<SelectionManager>
         return false;
     }
 
-    static bool TryGetUnitCommands(EntityManager entityManager, Entity selected, out DynamicBuffer<BufferedUnitCommandDefinition> commands)
+    static bool TryGetUnitCommands(EntityManager entityManager, Entity selected, out ReadOnlySpan<UnitCommandDefinition> commands)
     {
         commands = default;
 
         if (!entityManager.Exists(selected)) return false;
-        if (!entityManager.HasBuffer<BufferedUnitCommandDefinition>(selected)) return false;
+        if (!entityManager.HasComponent<Processor>(selected)) return false;
+        SerializableDictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
+        if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSource? source)) return false;
 
-        commands = entityManager.GetBuffer<BufferedUnitCommandDefinition>(selected);
+        commands = source.UnitCommandDefinitions.HasValue ? source.UnitCommandDefinitions.Value.AsReadOnlySpan() : ReadOnlySpan<UnitCommandDefinition>.Empty;
         return true;
     }
 
@@ -421,14 +420,11 @@ public class SelectionManager : Singleton<SelectionManager>
 
         foreach (VirtualGhostEntity selected in _selected)
         {
-            if (!entityManager.Exists(selected.Entity)) continue;
-            if (!entityManager.HasBuffer<BufferedUnitCommandDefinition>(selected.Entity)) continue;
-
-            DynamicBuffer<BufferedUnitCommandDefinition> commands = entityManager.GetBuffer<BufferedUnitCommandDefinition>(selected.Entity);
+            if (!TryGetUnitCommands(entityManager, selected.Entity, out var commands)) continue;
 
             for (int i = 0; i < commands.Length; i++)
             {
-                BufferedUnitCommandDefinition command = commands[i];
+                UnitCommandDefinition command = commands[i];
 
                 if (_unitCommandUIWorldPositionData == default && command.GetParameters().ToArray().Any(v => v is UnitCommandParameter.Position2 or UnitCommandParameter.Position3))
                 {
@@ -438,7 +434,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
                 VisualElement? added = container.Children().FirstOrDefault(v =>
                 {
-                    (BufferedUnitCommandDefinition, int) d = ((BufferedUnitCommandDefinition, int))v.userData;
+                    (UnitCommandDefinition, int) d = ((UnitCommandDefinition, int))v.userData;
                     return d.Item1.Id == command.Id && d.Item1.Label == command.Label;
                 });
 
@@ -446,9 +442,9 @@ public class SelectionManager : Singleton<SelectionManager>
                 int id = command.Id;
 
                 VisualElement itemUi = added ?? UnitCommandItemUI.Instantiate();
-                itemUi.Q<Button>("unit-command-name").text = $"#{id} {name}{(added is null ? null : $" ({(((BufferedUnitCommandDefinition, int))added.userData).Item2 + 1})")}";
+                itemUi.Q<Button>("unit-command-name").text = $"#{id} {name}{(added is null ? null : $" ({(((UnitCommandDefinition, int))added.userData).Item2 + 1})")}";
                 itemUi.Q<Button>("unit-command-name").clicked += () => HandleUnitCommandClick(id);
-                itemUi.userData = (command, added is null ? 1 : (((BufferedUnitCommandDefinition, int))added.userData).Item2 + 1);
+                itemUi.userData = (command, added is null ? 1 : (((UnitCommandDefinition, int))added.userData).Item2 + 1);
 
                 if (added is null) container.Add(itemUi);
             }

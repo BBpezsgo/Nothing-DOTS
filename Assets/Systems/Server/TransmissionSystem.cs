@@ -14,6 +14,8 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 unsafe partial struct TransmissionSystem : ISystem
 {
+    public const float TransmissionRadius = 100f;
+
     ComponentLookup<Processor> processorComponentQ;
 
     static readonly ProfilerMarker _CellVisibilityCheck = new(ProfilerCategory.Scripts, "TransmissionSystem.CellVisibilityCheck");
@@ -74,7 +76,7 @@ unsafe partial struct TransmissionSystem : ISystem
             }
 #endif
 
-            int diff = (int)(Unit.TransmissionRadius / Cell.Size * 0.5f + 2f);
+            int diff = (int)(TransmissionRadius / Cell.Size * 0.5f + 2f);
 
             for (int x = -diff; x <= diff; x++)
             {
@@ -121,7 +123,7 @@ unsafe partial struct TransmissionSystem : ISystem
 
                             float3 entityLocalPosition = transform.ValueRO.InverseTransformPoint(cell[i].Position);
 
-                            if (math.lengthsq(entityLocalPosition) > (Unit.TransmissionRadius * Unit.TransmissionRadius))
+                            if (math.lengthsq(entityLocalPosition) > (TransmissionRadius * TransmissionRadius))
                             {
 #if DEBUG_LINES
                                 DebugEx.DrawSphere(cell[i].Position, 1f, Color.red, 1f, false);

@@ -280,18 +280,14 @@ export struct UIImage
         gui_destroy(this._id);
     }
 
-    export void Set(int x, int y, int r, int g, int b)
+    export inline void Set(int x, int y, int r, int g, int b)
     {
-        if (x < 0) x = 0;
-        else if (x >= this.ImageWidth) x = (int)this.ImageWidth;
-        if (y < 0) y = 0;
-        else if (y >= this.ImageHeight) y = (int)this.ImageHeight;
-        this.Image[y * this.ImageWidth + x] = ColorTo255(r, g, b);
+        this.Set(x, y, ColorTo255(r, g, b));
     }
 
-    export void Fill(int r, int g, int b)
+    export inline void Fill(int r, int g, int b)
     {
-        Fill(ColorTo255(r, g, b));
+        this.Fill(ColorTo255(r, g, b));
     }
 
     export void Set(int x, int y, u8 color)

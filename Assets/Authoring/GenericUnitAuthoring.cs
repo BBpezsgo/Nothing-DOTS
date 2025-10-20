@@ -10,6 +10,7 @@ public class GenericUnitAuthoring : MonoBehaviour
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<SelectableUnit>(entity);
+            AddComponent<EntityWithInfoUI>(entity);
         }
     }
 }

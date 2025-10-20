@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using LanguageCore.Runtime;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
@@ -51,6 +52,14 @@ struct ProcessorMemory
     [FieldOffset(Processor.MappedMemoryStart)] public MappedMemory MappedMemory;
 }
 
+[ChunkSerializable]
+struct ProcessorSource
+{
+    public UnsafeList<Instruction>.ReadOnly Code;
+    public UnsafeList<UnitCommandDefinition>.ReadOnly UnitCommandDefinitions;
+    public UnsafeList<ExternalFunctionScopedSync> GeneratedFunctions;
+}
+
 struct Processor : IComponentData
 {
     public const int TotalMemorySize = 2048;
@@ -63,15 +72,18 @@ struct Processor : IComponentData
 
     [GhostField] public FileId SourceFile;
     public long CompiledSourceVersion;
+    public ProcessorSource Source;
 
     public Registers Registers;
     public ProcessorMemory Memory;
-    public FixedList128Bytes<BufferedUnitTransmission> IncomingTransmissions;
-    public FixedList128Bytes<BufferedUnitTransmissionOutgoing> OutgoingTransmissions;
-    public FixedList128Bytes<UnitCommandRequest> CommandQueue;
+    public HotFunctions HotFunctions;
     [GhostField] public int Crash;
     [GhostField] public Signal Signal;
     public bool SignalNotified;
+
+    public FixedList128Bytes<BufferedUnitTransmission> IncomingTransmissions;
+    public FixedList128Bytes<BufferedUnitTransmissionOutgoing> OutgoingTransmissions;
+    public FixedList128Bytes<UnitCommandRequest> CommandQueue;
 
     public bool PendrivePlugRequested;
     public bool PendriveUnplugRequested;

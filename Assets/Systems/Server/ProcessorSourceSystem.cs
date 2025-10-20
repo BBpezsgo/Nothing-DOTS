@@ -1,6 +1,4 @@
-using LanguageCore.Compiler;
 using LanguageCore.Runtime;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
@@ -91,15 +89,15 @@ unsafe partial class ProcessorSourceSystem : SystemBase
             }
         }
 
-        foreach (var (processor, commandDefinitions, instructions, generatedFunctions) in
-            SystemAPI.Query<RefRW<Processor>, DynamicBuffer<BufferedUnitCommandDefinition>, DynamicBuffer<BufferedInstruction>, DynamicBuffer<BufferedGeneratedFunction>>())
+        foreach (var processor in
+            SystemAPI.Query<RefRW<Processor>>())
         {
             if (processor.ValueRO.SourceFile == default)
             {
-                if (!instructions.IsEmpty)
+                if (processor.ValueRW.Source.Code.IsCreated)
                 {
                     if (EnableLogging) Debug.Log("[Server] Disposing instructions (source file is null)");
-                    instructions.Clear();
+                    processor.ValueRW.Source.Code = default;
                 }
                 continue;
             }
@@ -109,20 +107,20 @@ unsafe partial class ProcessorSourceSystem : SystemBase
                 if (EnableLogging) Debug.Log(string.Format("[Server] Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
                 compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);
                 processor.ValueRW.CompiledSourceVersion = 0;
-                if (!instructions.IsEmpty)
+                if (processor.ValueRW.Source.Code.IsCreated)
                 {
                     if (EnableLogging) Debug.Log("[Server] Disposing instructions (new source made)");
-                    instructions.Clear();
+                    processor.ValueRW.Source.Code = default;
                 }
                 continue;
             }
 
             if (!source.Code.HasValue)
             {
-                if (!instructions.IsEmpty)
+                if (processor.ValueRW.Source.Code.IsCreated)
                 {
                     if (EnableLogging) Debug.Log("[Server] Disposing instructions (source has no instructions)");
-                    instructions.Clear();
+                    processor.ValueRW.Source.Code = default;
                 }
                 continue;
             }
@@ -139,58 +137,19 @@ unsafe partial class ProcessorSourceSystem : SystemBase
                     ResetProcessor(processor);
                 }
                 processor.ValueRW.CompiledSourceVersion = source.CompiledVersion;
-
-                commandDefinitions.Clear();
-
-                foreach (CompiledStruct @struct in source.Compiled.Structs)
-                {
-                    if (!@struct.Attributes.TryGetAttribute("UnitCommand", out LanguageCore.Parser.AttributeUsage? structAttribute))
-                    { continue; }
-
-                    FixedList32Bytes<UnitCommandParameter> parameterTypes = new();
-                    bool ok = true;
-
-                    foreach (CompiledField field in @struct.Fields)
-                    {
-                        if (!field.Attributes.TryGetAttribute("Context", out LanguageCore.Parser.AttributeUsage? attribute)) continue;
-                        switch (attribute.Parameters[0].Value)
-                        {
-                            case "position2":
-                                parameterTypes.Add(UnitCommandParameter.Position2);
-                                break;
-                            case "position3":
-                                parameterTypes.Add(UnitCommandParameter.Position3);
-                                break;
-                            default:
-                                ok = false;
-                                break;
-                        }
-                    }
-
-                    if (!ok) continue;
-
-                    commandDefinitions.Add(new(structAttribute.Parameters[0].GetInt(), structAttribute.Parameters[1].Value, parameterTypes));
-                }
-
-                NativeArray<BufferedInstruction> code = source.Code.Value.Reinterpret<BufferedInstruction>();
-                instructions.CopyFrom(code);
-
-                generatedFunctions.Clear();
-                if (source.GeneratedFunction.HasValue)
-                {
-                    NativeArray<BufferedGeneratedFunction> _generatedFunctions = source.GeneratedFunction.Value.Reinterpret<BufferedGeneratedFunction>();
-                    generatedFunctions.CopyFrom(_generatedFunctions);
-                }
+                processor.ValueRW.Source.Code = source.Code.Value.AsUnsafe().AsReadOnly();
+                processor.ValueRW.Source.GeneratedFunctions = source.GeneratedFunction?.AsUnsafe() ?? default;
+                processor.ValueRW.Source.UnitCommandDefinitions = source.UnitCommandDefinitions?.AsUnsafe().AsReadOnly() ?? default;
 
                 continue;
             }
 
             if (!source.IsSuccess)
             {
-                if (!instructions.IsEmpty)
+                if (processor.ValueRW.Source.Code.IsCreated)
                 {
                     if (EnableLogging) Debug.Log("[Server] Disposing instructions (source has errors)");
-                    instructions.Clear();
+                    processor.ValueRW.Source.Code = default;
                 }
             }
         }

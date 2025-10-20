@@ -7,3 +7,22 @@ export inline f32 length(float3 v)
 {
     return Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
+
+template<T>
+export void fill(T[]* buffer, int length, T value)
+{
+    for (int i = 0; i < length; i++)
+    {
+        buffer[i] = value;
+    }
+}
+
+template<T>
+export void fill(T[]* buffer, int start, int length, T value)
+{
+    length += start;
+    for (int i = start; i < length; i++)
+    {
+        buffer[i] = value;
+    }
+}
