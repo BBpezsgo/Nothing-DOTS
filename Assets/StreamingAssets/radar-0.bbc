@@ -129,6 +129,8 @@ void PerformRadar()
     {
         prevRadarDistance = length(radarPoint);
 
+        ldebug_label(radarPoint, "?");
+
         ToGlobal(&radarPoint);
 
         if (UnitIndexAt(&allies, radarPoint) != -1)

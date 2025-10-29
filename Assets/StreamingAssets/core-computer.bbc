@@ -123,7 +123,7 @@ while (1)
 {
     Receive();
 
-    (&_minimap).Fill((u8)1);
+    (&_minimap).Fill((u8)0);
     (&_minimap).Set(new float2(11f, 11f), (u8)0b_111_111_11);
 
     for (int i = (&enemies).Length() - 1; i >= 0; i--)
