@@ -8,7 +8,7 @@ using Unity.NetCode;
 partial struct BufferedFileSenderSystem : ISystem
 {
     const bool DebugLog = false;
-    const int ChunkSendingLimit = 1;
+    const int ChunkSendingLimit = 8;
 
     void ISystem.OnCreate(ref SystemState state)
     {

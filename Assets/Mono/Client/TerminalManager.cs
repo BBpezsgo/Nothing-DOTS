@@ -9,7 +9,6 @@ using LanguageCore;
 using LanguageCore.Runtime;
 using NaughtyAttributes;
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -422,39 +421,6 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             }
             SyncDiagnosticItems(ui_scrollDiagnostics!, source.Diagnostics.Diagnostics);
 
-            if (source.Status != CompilationStatus.Done || !source.IsSuccess)
-            {
-                switch (source.Status)
-                {
-                    case CompilationStatus.None:
-                        break;
-                    case CompilationStatus.Secuedued:
-                        if (source.Status == CompilationStatus.Secuedued &&
-                            !float.IsNaN(source.Progress))
-                        {
-                            ui_progressCompilation.title = "Compiling ...";
-                            ui_progressCompilation.value = 0f;
-                            SetProgressStatus(null);
-                        }
-                        else
-                        {
-                            ui_progressCompilation.title = "Secuedued ...";
-                            ui_progressCompilation.value = 0f;
-                            SetProgressStatus(null);
-                        }
-                        break;
-                    case CompilationStatus.Compiling:
-                        ui_progressCompilation.title = "Compiling ...";
-                        ui_progressCompilation.value = 0f;
-                        SetProgressStatus(null);
-                        break;
-                    case CompilationStatus.Compiled:
-                        break;
-                    case CompilationStatus.Done:
-                        break;
-                }
-            }
-
             if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
             {
                 ui_scrollProgresses.SyncList(source.SubFiles.ToArray(), ProgressItem, (file, element, recycled) =>
@@ -471,9 +437,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     }
                 });
 
-                ui_progressCompilation.title = "Uploading ...";
                 ui_progressCompilation.value = source.Progress;
-                SetProgressStatus(null);
 
                 _requestedTabSwitch = Tab.Progress;
             }
@@ -482,21 +446,31 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             {
                 case CompilationStatus.Secuedued:
                     {
-                        if (float.IsNaN(source.Progress))
-                        {
-                            ui_progressCompilation.title = "Compilation soon ...";
-                            SetProgressStatus(null);
-                        }
+                        ui_progressCompilation.title = "Secuedued ...";
+                        SetProgressStatus(null);
                         break;
                     }
                 case CompilationStatus.Compiling:
                     {
+                        ui_progressCompilation.title = "Compiling ...";
+                        SetProgressStatus(null);
                         break;
                     }
-                case CompilationStatus.Compiled:
+                case CompilationStatus.Uploading:
                     {
-                        ui_progressCompilation.title = "Compiled";
-                        ui_progressCompilation.value = 1f;
+                        ui_progressCompilation.title = "Uploading ...";
+                        SetProgressStatus(null);
+                        break;
+                    }
+                case CompilationStatus.Generating:
+                    {
+                        ui_progressCompilation.title = "Generating ...";
+                        SetProgressStatus(null);
+                        break;
+                    }
+                case CompilationStatus.Generated:
+                    {
+                        ui_progressCompilation.title = "Generated";
                         SetProgressStatus(null);
                         break;
                     }
@@ -504,9 +478,6 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     {
                         if (source.IsSuccess)
                         {
-                            ui_progressCompilation.title = "Running";
-                            ui_progressCompilation.value = 1f;
-                            SetProgressStatus("success");
                             _terminal ??= new TerminalEmulator(ui_labelTerminal);
                             _terminal.Update();
                             _requestedTabSwitch = Tab.Terminal;
@@ -514,6 +485,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                             switch (processor.Signal)
                             {
                                 case Signal.None:
+                                    ui_progressCompilation.title = "Running";
+                                    ui_progressCompilation.value = 1f;
+                                    SetProgressStatus("success");
                                     _memory = null;
                                     _memoryDownloadProgress = null;
                                     // try { _memoryDownloadTask?.Cancel(); } catch { }
@@ -549,7 +523,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     }
                                     break;
                                 case Signal.UserCrash:
-                                    ui_progressCompilation.title = "Crashed";
+                                    ui_progressCompilation.title = "User-crashed";
                                     ui_progressCompilation.value = 1f;
                                     SetProgressStatus("error");
                                     if (_memory is null)
@@ -597,8 +571,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     }
                                     break;
                                 case Signal.StackOverflow:
-                                    ui_progressCompilation.title = "Stack overflow";
+                                    ui_progressCompilation.title = "Crashed";
                                     ui_progressCompilation.value = 1f;
+                                    _terminalBuilder.AppendLine();
+                                    _terminalBuilder.AppendLine($"<color=red>Stack overflow</color>");
                                     SetProgressStatus("error");
                                     break;
                                 case Signal.Halt:
@@ -607,12 +583,21 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     SetProgressStatus("warning");
                                     break;
                                 case Signal.UndefinedExternalFunction:
-                                    ui_progressCompilation.title = "Runtime Error";
+                                    ui_progressCompilation.title = "Crashed";
                                     ui_progressCompilation.value = 1f;
                                     SetProgressStatus("error");
                                     _terminalBuilder.AppendLine();
                                     _terminalBuilder.AppendLine($"<color=red>Undefined external function {processor.Crash}</color>");
                                     break;
+                                case Signal.PointerOutOfRange:
+                                    ui_progressCompilation.title = "Crashed";
+                                    ui_progressCompilation.value = 1f;
+                                    SetProgressStatus("error");
+                                    _terminalBuilder.AppendLine();
+                                    _terminalBuilder.AppendLine($"<color=red>Pointer out of Range</color>");
+                                    break;
+                                default:
+                                    throw new UnreachableException();
                             }
                         }
                         else

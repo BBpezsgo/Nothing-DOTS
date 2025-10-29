@@ -13,6 +13,8 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct UnitRadarSystem : ISystem
 {
+    const float DebugDuration = 3f;
+
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
@@ -38,11 +40,12 @@ public partial struct UnitRadarSystem : ISystem
             float2 rayStart = position + (direction * offset);
             float3 rayStart3 = transform.ValueRO.Position + (new float3(direction.x, 0f, direction.y) * offset);
             float2 rayEnd = position + (direction * (Radar.RadarRadius - offset));
+            float3 rayEnd3 = transform.ValueRO.Position + (new float3(direction.x, 0f, direction.y) * (Radar.RadarRadius - offset));
 
             RadarRay ray = new(localTransform.ValueRO.Position, direction, Radar.RadarRadius - offset, Layers.BuildingOrUnit);
 
 #if DEBUG_LINES
-            Debug.DrawLine(new UnityEngine.Vector3(rayStart.x, 0f, rayStart.y), new UnityEngine.Vector3(rayEnd.x, 0f, rayEnd.y), Color.white, 1f);
+            Debug.DrawLine(rayStart3, rayEnd3, Color.white, DebugDuration);
 #endif
 
             if (!RadarCast(map, ray, out RadarHit hit))
@@ -54,7 +57,7 @@ public partial struct UnitRadarSystem : ISystem
             float distance = math.distance(hit.Point, rayStart3) + offset;
 
 #if DEBUG_LINES
-            DebugEx.DrawPoint(hit.Point, 1f, Color.white, 1f, false);
+            DebugEx.DrawPoint(hit.Point, 1f, Color.white, DebugDuration, false);
 #endif
 
             if (distance > Radar.RadarRadius) processor.ValueRW.RadarResponse = float.NaN;
@@ -136,7 +139,7 @@ public partial struct UnitRadarSystem : ISystem
             );
 
 #if DEBUG_LINES
-            Debug.DrawLine(ray3.Start, ray3.End, Color.white, 1f);
+            Debug.DrawLine(ray3.Start, ray3.End, Color.white, DebugDuration);
 #endif
 
             if (!CollisionSystem.Raycast(
@@ -151,12 +154,12 @@ public partial struct UnitRadarSystem : ISystem
             if (distance > ray.MaxDistance)
             {
 #if DEBUG_LINES
-                DebugEx.DrawPoint(p, 2f, Color.orange, 1f, false);
+                DebugEx.DrawPoint(p, 2f, Color.orange, DebugDuration, false);
 #endif
                 continue;
             }
 
-            hit = new(entities[i], entities[i].Position);
+            hit = new(entities[i], p);
             return true;
         }
 

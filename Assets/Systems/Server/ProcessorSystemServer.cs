@@ -175,10 +175,15 @@ unsafe partial struct ProcessorSystemServer : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-        EntityArchetype rpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
+        EntityArchetype debugLineRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
             ComponentType.ReadWrite<SendRpcCommandRequest>(),
             ComponentType.ReadWrite<DebugLineRpc>(),
+        });
+        EntityArchetype debugLabelRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
+        {
+            ComponentType.ReadWrite<SendRpcCommandRequest>(),
+            ComponentType.ReadWrite<DebugLabelRpc>(),
         });
 
         foreach (var (player, lines, labels) in
@@ -202,7 +207,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
                     if (Utils.Distance(player.ValueRO.Position, debugLines[i].Value.Value) < 50f)
                     {
-                        Entity rpc = commandBuffer.CreateEntity(rpcArchetype);
+                        Entity rpc = commandBuffer.CreateEntity(debugLineRpcArchetype);
                         commandBuffer.SetComponent<SendRpcCommandRequest>(rpc, new()
                         {
                             TargetConnection = connection,
@@ -225,8 +230,40 @@ unsafe partial struct ProcessorSystemServer : ISystem
                     // lines.Add(debugLines[i].Value);
                     // next:;
                 }
+
+                for (int i = 0; i < worldLabels.Length; i++)
+                {
+                    if (worldLabels[i].Owner != player.ValueRO.Team) continue;
+
+                    //if (math.distancesq(player.ValueRO.Position, worldLabels[i].Value.Position) < 50f * 50f)
+                    //{
+                    //    Entity rpc = commandBuffer.CreateEntity(debugLabelRpcArchetype);
+                    //    commandBuffer.SetComponent<SendRpcCommandRequest>(rpc, new()
+                    //    {
+                    //        TargetConnection = connection,
+                    //    });
+                    //    commandBuffer.SetComponent<DebugLabelRpc>(rpc, new()
+                    //    {
+                    //        Text = worldLabels[i].Value.Text,
+                    //        Position = worldLabels[i].Value.Position,
+                    //        Color = worldLabels[i].Value.Color,
+                    //    });
+                    //}
+
+                    for (int j = 0; j < labels.Length; j++)
+                    {
+                        if (math.distancesq(worldLabels[i].Value.Position, labels[j].Position) < 1f)
+                        {
+                            labels.Set(j, worldLabels[i].Value);
+                            goto next;
+                        }
+                    }
+                    labels.Add(worldLabels[i].Value);
+                next:;
+                }
             }
 
+            /*
             for (int i = 0; i < worldLabels.Length; i++)
             {
                 if (worldLabels[i].Owner != player.ValueRO.Team) continue;
@@ -242,6 +279,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 labels.Add(worldLabels[i].Value);
             next:;
             }
+            */
 
             for (int i = 0; i < uiElements.Length; i++)
             {

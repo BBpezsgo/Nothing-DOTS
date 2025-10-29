@@ -20,8 +20,10 @@ public enum CompilationStatus
 {
     None,
     Secuedued,
+    Uploading,
     Compiling,
-    Compiled,
+    Generating,
+    Generated,
     Done,
 }
 
@@ -122,8 +124,10 @@ public partial class CompilerSystemServer : SystemBase
                         SendCompilationStatus(source, commandBuffer);
                         break;
                     case CompilationStatus.Compiling:
+                    case CompilationStatus.Uploading:
+                    case CompilationStatus.Generating:
                         break;
-                    case CompilationStatus.Compiled:
+                    case CompilationStatus.Generated:
                         source.Status = CompilationStatus.Done;
 
                         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
@@ -306,7 +310,7 @@ public partial class CompilerSystemServer : SystemBase
         lock (source)
         {
             source.Diagnostics = new DiagnosticsCollection();
-            source.Status = CompilationStatus.Compiling;
+            source.Status = CompilationStatus.Uploading;
             source.StatusChanged = true;
         }
 
@@ -385,6 +389,12 @@ public partial class CompilerSystemServer : SystemBase
 
             Debug.Log($"Compiling {sourceUri} ...");
 
+            lock (source)
+            {
+                source.Status = CompilationStatus.Uploading;
+                source.StatusChanged = true;
+            }
+
             compiled = StatementCompiler.CompileFile(
                 sourceUri.ToString(),
                 new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
@@ -398,6 +408,12 @@ public partial class CompilerSystemServer : SystemBase
                 },
                 source.Diagnostics
             );
+
+            lock (source)
+            {
+                source.Status = CompilationStatus.Generating;
+                source.StatusChanged = true;
+            }
 
             Debug.Log($"Generating {sourceUri} ...");
 
@@ -461,7 +477,7 @@ public partial class CompilerSystemServer : SystemBase
         {
             lock (source)
             {
-                source.Status = CompilationStatus.Compiled;
+                source.Status = CompilationStatus.Generated;
                 source.Compiled = compiled;
                 source.Generated = generated;
                 Debug.Log($"Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
@@ -523,7 +539,7 @@ public partial class CompilerSystemServer : SystemBase
                 }
                 source.UnitCommandDefinitions = new(commandDefinitions.ToArray(), Allocator.Persistent);
 
-                source.Status = CompilationStatus.Compiled;
+                source.Status = CompilationStatus.Generated;
                 Debug.Log($"Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
                 source.CompiledVersion = source.LatestVersion;
                 source.IsSuccess = true;

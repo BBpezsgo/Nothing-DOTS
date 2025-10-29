@@ -287,6 +287,7 @@ public class SelectionManager : Singleton<SelectionManager>
     void BeginUnitAction()
     {
         _firstHit = Entity.Null;
+        if (_selected.Count > 0 && !Input.GetKey(KeyCode.LeftShift)) return;
 
         if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
         Entity selectableHit = hit.Entity.Entity;
@@ -299,12 +300,14 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         Entity firstHit = _firstHit;
         _firstHit = Entity.Null;
-
-        if (RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit) && hit.Entity.Entity == firstHit)
+        if (_selected.Count == 0 || Input.GetKey(KeyCode.LeftShift))
         {
-            if (OpenEntityUI(hit.Entity.Entity))
+            if (RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit) && hit.Entity.Entity == firstHit)
             {
-                return;
+                if (OpenEntityUI(hit.Entity.Entity))
+                {
+                    return;
+                }
             }
         }
 

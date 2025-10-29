@@ -84,7 +84,7 @@ export float3 radar()
 
     _radar();
 
-    while (empty(Radar.RadarResponse))
+    while (Radar.RadarResponse.x == 0f || Radar.RadarResponse.y == 0f || Radar.RadarResponse.z == 0f)
     {
 
     }
@@ -172,17 +172,17 @@ export inline void ldebug(float2 localPosition, u8 color)
     ldebug(new float3(localPosition.x, 0f, localPosition.y), color);
 }
 
-[External("debug_label")] export void debug_label(float3 position, string text);
-[External("ldebug_label")] export void ldebug_label(float3 localPosition, string text);
+[External("debug_label")] export void debug_label(float3 position, temp string text);
+[External("ldebug_label")] export void ldebug_label(float3 localPosition, temp string text);
 
-export inline void debug_label(float2 position, string text)
+export inline void debug_label(float2 position, temp string text)
 {
-    debug_label(new float3(position.x, 0f, position.y), text);
+    debug_label(new float3(position.x, 0f, position.y), temp text);
 }
 
-export inline void ldebug_label(float2 localPosition, string text)
+export inline void ldebug_label(float2 localPosition, temp string text)
 {
-    ldebug_label(new float3(localPosition.x, 0f, localPosition.y), text);
+    ldebug_label(new float3(localPosition.x, 0f, localPosition.y), temp text);
 }
 
 [External("dequeue_command")] export int dequeue_command(any* data);

@@ -33,7 +33,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
     [SerializeField, NaughtyAttributes.ReadOnly] int ChunksVisibleInViewDst;
 
     readonly Dictionary<int2, TerrainChunk> TerrainChunks = new();
-    readonly List<TerrainChunk> VisibleTerrainChunks = new();
+    readonly List<TerrainChunk?> VisibleTerrainChunks = new();
 
     void Start()
     {
@@ -477,11 +477,18 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         HashSet<int2> alreadyUpdatedChunkCoords = new();
         for (int i = VisibleTerrainChunks.Count - 1; i >= 0; i--)
         {
-            alreadyUpdatedChunkCoords.Add(VisibleTerrainChunks[i].Coord);
-            VisibleTerrainChunks[i].UpdateTerrainChunk();
-            if (!VisibleTerrainChunks[i].FeaturesGenerated && GetTerrainFeatureDeps(ref gotDeps, ref entityCommandBuffer, ref terrainFeatures))
+            TerrainChunk? terrainChunk = VisibleTerrainChunks[i];
+            if (terrainChunk == null)
             {
-                VisibleTerrainChunks[i].GenerateFeatures(in terrainFeatures, ref entityCommandBuffer);
+                VisibleTerrainChunks.RemoveAt(i);
+                continue;
+            }
+
+            alreadyUpdatedChunkCoords.Add(terrainChunk.Coord);
+            terrainChunk.UpdateTerrainChunk();
+            if (!terrainChunk.FeaturesGenerated && GetTerrainFeatureDeps(ref gotDeps, ref entityCommandBuffer, ref terrainFeatures))
+            {
+                terrainChunk.GenerateFeatures(in terrainFeatures, ref entityCommandBuffer);
             }
         }
 
@@ -721,7 +728,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         }
         else
         {
-            VisibleTerrainChunks.Remove(chunk);
+            VisibleTerrainChunks.TryReplace(chunk, null);
         }
     }
 }
