@@ -7,7 +7,7 @@ using UnityEngine;
 public partial class WorldLabelSystemClientSystem : SystemBase
 {
     Transform? _canvas;
-    readonly List<(WorldLabel O, bool Enabled)> _instances = new();
+    readonly List<WorldLabel> _instances = new();
 
     protected override void OnUpdate()
     {
@@ -50,29 +50,33 @@ public partial class WorldLabelSystemClientSystem : SystemBase
 
             for (int i = System.Math.Min(labels.Length, _instances.Count) - 1; i >= 0; i--)
             {
-                if (_instances[i].O.TextMeshPro.text != labels[i].Text) _instances[i].O.TextMeshPro.text = labels[i].Text.ToString();
-                if (!_instances[i].Enabled)
-                {
-                    _instances[i].O.gameObject.SetActive(true);
-                    _instances[i] = (_instances[i].O, true);
-                }
+                WorldLabel value = _instances[i];
+
+                if (value.TextMeshPro.text != labels[i].Text) value.TextMeshPro.text = labels[i].Text.ToString();
+
                 Vector3 screenPoint = MainCamera.Camera.WorldToScreenPoint(labels[i].Position);
+                bool isVisible = screenPoint.z > 0f;
+
+                if (value.gameObject.activeSelf != isVisible)
+                {
+                    value.gameObject.SetActive(isVisible);
+                }
+                if (!isVisible) continue;
+
                 screenPoint.z = 0f;
-                RectTransform transform = _instances[i].O.GetComponent<RectTransform>();
-                transform.anchoredPosition = screenPoint;
+                value.GetComponent<RectTransform>().anchoredPosition = screenPoint;
             }
 
             for (int i = labels.Length; i < _instances.Count; i++)
             {
-                if (!_instances[i].Enabled) continue;
-                _instances[i].O.gameObject.SetActive(false);
-                _instances[i] = (_instances[i].O, false);
+                if (!_instances[i].gameObject.activeSelf) continue;
+                _instances[i].gameObject.SetActive(false);
             }
 
             for (int i = _instances.Count; i < labels.Length; i++)
             {
                 GameObject o = Object.Instantiate(config.Prefab, Vector3.zero, Quaternion.identity, _canvas);
-                _instances.Add((o.GetComponent<WorldLabel>(), true));
+                _instances.Add(o.GetComponent<WorldLabel>());
             }
 
             break;

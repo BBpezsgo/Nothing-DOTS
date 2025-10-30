@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using LanguageCore;
@@ -14,6 +13,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
+using Unity.Profiling;
 using UnityEngine;
 
 public enum CompilationStatus
@@ -143,6 +143,8 @@ public partial class CompilerSystemServer : SystemBase
                             SendCompilationStatus(source, commandBuffer);
                         }
                         break;
+                    default:
+                        throw new UnreachableException();
                 }
                 if (source.StatusChanged && source.LastStatusSync + 0.5d < SystemAPI.Time.ElapsedTime)
                 {
@@ -300,8 +302,14 @@ public partial class CompilerSystemServer : SystemBase
         }
     }
 
+    static readonly ProfilerMarker _markerCompiler = new("Compiler");
+    static readonly ProfilerMarker _markerCompilerCompilation = new("Compiler.Compilation");
+    static readonly ProfilerMarker _markerCompilerGeneration = new("Compiler.Generation");
+
     public static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSource source) args)
     {
+        using ProfilerMarker.AutoScope _m = _markerCompiler.Auto();
+
         (FileId file, bool force, CompiledSource source) = args;
 
         Uri sourceUri = file.ToUri();
@@ -395,19 +403,22 @@ public partial class CompilerSystemServer : SystemBase
                 source.StatusChanged = true;
             }
 
-            compiled = StatementCompiler.CompileFile(
-                sourceUri.ToString(),
-                new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
-                {
-                    UserDefinedAttributes = attributes,
-                    ExternalFunctions = externalFunctions.ToImmutableArray(),
-                    DontOptimize = false,
-                    SourceProviders = ImmutableArray.Create<ISourceProvider>(
-                        new NetcodeSourceProvider(source, progresses, EnableLogging)
-                    ),
-                },
-                source.Diagnostics
-            );
+            using (ProfilerMarker.AutoScope _2 = _markerCompilerCompilation.Auto())
+            {
+                compiled = StatementCompiler.CompileFile(
+                    sourceUri.ToString(),
+                    new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
+                    {
+                        UserDefinedAttributes = attributes,
+                        ExternalFunctions = externalFunctions.ToImmutableArray(),
+                        DontOptimize = false,
+                        SourceProviders = ImmutableArray.Create<ISourceProvider>(
+                            new NetcodeSourceProvider(source, progresses, EnableLogging)
+                        ),
+                    },
+                    source.Diagnostics
+                );
+            }
 
             lock (source)
             {
@@ -417,33 +428,36 @@ public partial class CompilerSystemServer : SystemBase
 
             Debug.Log($"Generating {sourceUri} ...");
 
-            generated = CodeGeneratorForMain.Generate(
-                compiled,
-                new MainGeneratorSettings(MainGeneratorSettings.Default)
-                {
-                    StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
-                    ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
-                    {
-                        AllowCrash = false,
-                        AllowHeap = false,
-                        AllowPointers = true,
-                    },
-                },
-                null,
-                source.Diagnostics
-            );
-
-            using (StreamWriter stringWriter = new($"/home/bb/Projects/BBLang/Core/out-{DateTime.Now:O}-{file.Name.ToString().Replace('/', '_')}.bbc"))
+            using (ProfilerMarker.AutoScope _2 = _markerCompilerGeneration.Auto())
             {
-                stringWriter.WriteLine(compiled.Stringify());
-                if (!generated.ILGeneratorBuilders.IsDefault)
-                {
-                    foreach (string builder in generated.ILGeneratorBuilders)
+                generated = CodeGeneratorForMain.Generate(
+                    compiled,
+                    new MainGeneratorSettings(MainGeneratorSettings.Default)
                     {
-                        stringWriter.WriteLine(builder);
-                    }
-                }
+                        StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
+                        ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
+                        {
+                            AllowCrash = false,
+                            AllowHeap = false,
+                            AllowPointers = true,
+                        },
+                    },
+                    null,
+                    source.Diagnostics
+                );
             }
+
+            //using (StreamWriter stringWriter = new($"/home/bb/Projects/BBLang/Core/out-{DateTime.Now:O}-{file.Name.ToString().Replace('/', '_')}.bbc"))
+            //{
+            //    stringWriter.WriteLine(compiled.Stringify());
+            //    if (!generated.ILGeneratorBuilders.IsDefault)
+            //    {
+            //        foreach (string builder in generated.ILGeneratorBuilders)
+            //        {
+            //            stringWriter.WriteLine(builder);
+            //        }
+            //    }
+            //}
 
             Debug.Log($"{sourceUri} done");
         }
