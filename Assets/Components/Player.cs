@@ -31,4 +31,7 @@ public struct Player : IComponentData
     public bool IsCoreComputerSpawned;
     public Guid Guid;
     public float3 Position;
+    public long PingRequested;
+    public long PingResponded;
+    public int Ping;
 }
