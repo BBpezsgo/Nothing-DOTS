@@ -60,14 +60,9 @@ public partial struct BuildingsSystemClient : ISystem
 
     public static void Refresh(in WorldUnmanaged world)
     {
-        ref BuildingsSystemClient system = ref GetInstance(world);
-        system.Buildings.Clear();
+        GetInstance(world).Buildings.Clear();
 
-        Entity request = world.EntityManager.CreateEntity(stackalloc ComponentType[]
-        {
-            typeof(SendRpcCommandRequest),
-            typeof(BuildingsRequestRpc),
-        });
+        NetcodeUtils.CreateRPC<BuildingsRequestRpc>(world);
 
         Debug.Log("[Client] Request avaliable buildings ...");
     }

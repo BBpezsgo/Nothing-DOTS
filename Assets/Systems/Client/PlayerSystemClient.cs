@@ -55,13 +55,11 @@ public partial struct PlayerSystemClient : ISystem
         {
             if (!_requestSent)
             {
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response);
                 if (_guid == default)
                 {
                     Debug.Log(string.Format("[Client] No player found, registering"));
 
-                    commandBuffer.AddComponent<SessionRegisterRequestRpc>(response, new()
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionRegisterRequestRpc()
                     {
                         Nickname = _nickname,
                     });
@@ -70,7 +68,7 @@ public partial struct PlayerSystemClient : ISystem
                 {
                     Debug.Log(string.Format("[Client] No player found, logging in with {0}", _guid));
 
-                    commandBuffer.AddComponent<SessionLoginRequestRpc>(response, new()
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
                     {
                         Guid = Marshal.As<Guid, FixedBytes16>(_guid),
                     });

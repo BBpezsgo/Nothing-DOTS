@@ -266,26 +266,16 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             }
             else
             {
-                SendPlaceBuildingRequest(new PlaceBuildingRequestRpc()
+                NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new PlaceBuildingRequestRpc()
                 {
                     BuildingName = SelectedBuilding.Name,
                     Position = position,
-                }, ConnectionManager.ClientOrDefaultWorld);
+                });
             }
 
             UIManager.Instance.CloseUI(this);
             return;
         }
-    }
-
-    void SendPlaceBuildingRequest(PlaceBuildingRequestRpc request, World world)
-    {
-        Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
-        {
-            typeof(SendRpcCommandRequest),
-            typeof(PlaceBuildingRequestRpc),
-        });
-        world.EntityManager.SetComponentData(entity, request);
     }
 
     static void ApplyHologram(GameObject hologram)

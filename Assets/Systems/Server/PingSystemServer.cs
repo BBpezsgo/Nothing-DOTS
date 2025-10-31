@@ -19,16 +19,11 @@ partial struct PingSystemServer : ISystem
 
             if (command.ValueRO.Target == 0)
             {
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
-                commandBuffer.AddComponent<PingResponseFinalRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new PingResponseFinalRpc()
                 {
                     Tick = command.ValueRO.Tick,
                     Source = 0,
-                });
+                }, request.ValueRO.SourceConnection);
             }
             else
             {
@@ -37,16 +32,11 @@ partial struct PingSystemServer : ISystem
                     .WithEntityAccess())
                 {
                     if (networkId.ValueRO.Value != command.ValueRO.Target) continue;
-                    Entity response = commandBuffer.CreateEntity();
-                    commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                    {
-                        TargetConnection = connection,
-                    });
-                    commandBuffer.AddComponent<PingRequestForwardRpc>(response, new()
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new PingRequestForwardRpc()
                     {
                         Source = (byte)requestId.ValueRO.Value,
                         Tick = command.ValueRO.Tick,
-                    });
+                    }, connection);
                     break;
                 }
             }
@@ -69,16 +59,11 @@ partial struct PingSystemServer : ISystem
             {
                 if (networkId.ValueRO.Value != command.ValueRO.Target) continue;
 
-                Entity forward = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(forward, new()
-                {
-                    TargetConnection = connection,
-                });
-                commandBuffer.AddComponent<PingResponseFinalRpc>(forward, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new PingResponseFinalRpc()
                 {
                     Tick = command.ValueRO.Tick,
                     Source = (byte)sourceNetworkId.ValueRO.Value,
-                });
+                }, connection);
 
                 break;
             }

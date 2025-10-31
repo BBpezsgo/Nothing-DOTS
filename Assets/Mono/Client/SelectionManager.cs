@@ -470,20 +470,13 @@ public class SelectionManager : Singleton<SelectionManager>
 
     IEnumerator SendUnitCommandClick(int commandId)
     {
-        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         VirtualGhostEntity[] yeah = _selected.ToArray();
-        EntityArchetype commandRequestArchetype = entityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            typeof(SendRpcCommandRequest),
-            typeof(UnitCommandRequestRpc),
-        });
 
         // int i = 0;
         foreach (VirtualGhostEntity selected in yeah)
         {
             yield return null;
-            Entity entity = entityManager.CreateEntity(commandRequestArchetype);
-            entityManager.SetComponentData(entity, new UnitCommandRequestRpc()
+            NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new UnitCommandRequestRpc()
             {
                 Entity = selected.GhostInstance,
                 CommandId = commandId,

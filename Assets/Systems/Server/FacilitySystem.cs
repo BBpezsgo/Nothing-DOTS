@@ -210,15 +210,10 @@ public partial struct FacilitySystem : ISystem
 
             if (playerConnection != Entity.Null)
             {
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = playerConnection,
-                });
-                commandBuffer.AddComponent<ResearchDoneRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ResearchDoneRpc()
                 {
                     Name = finishedResearch.Name,
-                });
+                }, playerConnection);
             }
 
             SystemAPI.GetBuffer<BufferedAcquiredResearch>(playerEntity)

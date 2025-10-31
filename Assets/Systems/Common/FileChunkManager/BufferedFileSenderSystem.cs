@@ -34,8 +34,7 @@ partial struct BufferedFileSenderSystem : ISystem
 
             if (!localFile.HasValue)
             {
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(responseRpcEntity, new FileHeaderResponseRpc()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileHeaderResponseRpc()
                 {
                     Status = FileResponseStatus.NotFound,
                     FileName = command.ValueRO.FileName,
@@ -43,7 +42,6 @@ partial struct BufferedFileSenderSystem : ISystem
                     TotalLength = default,
                     Version = MonoTime.Ticks,
                 });
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
 
                 if (DebugLog) Debug.LogWarning($"File \"{command.ValueRO.FileName}\" does not exists");
                 continue;
@@ -52,8 +50,7 @@ partial struct BufferedFileSenderSystem : ISystem
             if (command.ValueRO.Version != 0 &&
                 command.ValueRO.Version == localFile.Value.Version)
             {
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<FileHeaderResponseRpc>(responseRpcEntity, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileHeaderResponseRpc()
                 {
                     Status = FileResponseStatus.NotChanged,
                     FileName = command.ValueRO.FileName,
@@ -61,7 +58,6 @@ partial struct BufferedFileSenderSystem : ISystem
                     TotalLength = localFile.Value.Data.Length,
                     Version = localFile.Value.Version,
                 });
-                commandBuffer.AddComponent<SendRpcCommandRequest>(responseRpcEntity);
                 continue;
             }
 
@@ -69,8 +65,7 @@ partial struct BufferedFileSenderSystem : ISystem
                 int transactionId = RandomManaged.Shared.Next();
                 int totalLength = localFile.Value.Data.Length;
 
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<FileHeaderResponseRpc>(responseRpcEntity, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileHeaderResponseRpc()
                 {
                     Status = FileResponseStatus.OK,
                     FileName = command.ValueRO.FileName,
@@ -78,7 +73,6 @@ partial struct BufferedFileSenderSystem : ISystem
                     TotalLength = totalLength,
                     Version = localFile.Value.Version,
                 });
-                commandBuffer.AddComponent<SendRpcCommandRequest>(responseRpcEntity);
 
                 sendingFiles.Add(new()
                 {
@@ -107,13 +101,12 @@ partial struct BufferedFileSenderSystem : ISystem
                 if (sendingFiles[i].Destination != ep) continue;
                 if (sendingFiles[i].TransactionId != command.ValueRO.TransactionId) continue;
 
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
                 FileData? file = FileChunkManagerSystem.GetFileData(sendingFiles[i].FileName.ToString());
                 int chunkSize = FileChunkManagerSystem.GetChunkSize(file!.Value.Data.Length, command.ValueRO.ChunkIndex);
                 Span<byte> buffer = file!.Value.Data.AsSpan().Slice(command.ValueRO.ChunkIndex * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)
                 {
-                    commandBuffer.AddComponent(responseRpcEntity, new FileChunkResponseRpc
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileChunkResponseRpc
                     {
                         Status = FileChunkStatus.OK,
                         TransactionId = sendingFiles[i].TransactionId,
@@ -121,7 +114,6 @@ partial struct BufferedFileSenderSystem : ISystem
                         Data = *(FileChunk*)bufferPtr,
                     });
                 }
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
                 found = true;
                 if (DebugLog) Debug.Log($"Sending chunk {command.ValueRO.ChunkIndex} for file {sendingFiles[i].FileName}");
 
@@ -130,15 +122,13 @@ partial struct BufferedFileSenderSystem : ISystem
 
             if (!found)
             {
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(responseRpcEntity, new FileChunkResponseRpc
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileChunkResponseRpc
                 {
                     Status = FileChunkStatus.InvalidFile,
                     TransactionId = default,
                     ChunkIndex = command.ValueRO.ChunkIndex,
                     Data = default,
                 });
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
 
                 if (DebugLog) Debug.LogWarning($"Can't send requested chunk for file {command.ValueRO.TransactionId}: File does not exists");
             }
@@ -214,13 +204,12 @@ partial struct BufferedFileSenderSystem : ISystem
             {
                 if (currentSentChunks[j]) continue;
 
-                Entity responseRpcEntity = commandBuffer.CreateEntity();
                 FileData? file = FileChunkManagerSystem.GetFileData(sendingFiles[i].FileName.ToString());
                 int chunkSize = FileChunkManagerSystem.GetChunkSize(file!.Value.Data.Length, j);
                 Span<byte> buffer = file!.Value.Data.AsSpan().Slice(j * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)
                 {
-                    commandBuffer.AddComponent(responseRpcEntity, new FileChunkResponseRpc
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileChunkResponseRpc
                     {
                         Status = FileChunkStatus.OK,
                         TransactionId = sendingFiles[i].TransactionId,
@@ -228,7 +217,6 @@ partial struct BufferedFileSenderSystem : ISystem
                         Data = *(FileChunk*)bufferPtr,
                     });
                 }
-                commandBuffer.AddComponent(responseRpcEntity, new SendRpcCommandRequest());
 
                 sentChunks.Add(new()
                 {

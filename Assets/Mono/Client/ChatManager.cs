@@ -122,14 +122,7 @@ public class ChatManager : Singleton<ChatManager>
 
     void SendChatMessage(string message)
     {
-        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-
-        Entity entity = entityManager.CreateEntity(stackalloc ComponentType[]
-        {
-            typeof(SendRpcCommandRequest),
-            typeof(ChatMessageRpc),
-        });
-        entityManager.SetComponentData(entity, new ChatMessageRpc()
+        NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new ChatMessageRpc()
         {
             Sender = 0,
             Message = message,

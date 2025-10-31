@@ -27,9 +27,7 @@ public partial struct GoInGameClientSystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.AddComponent<NetworkStreamInGame>(entity);
-            Entity request = commandBuffer.CreateEntity();
-            commandBuffer.AddComponent<GoInGameRpc>(request);
-            commandBuffer.AddComponent<SendRpcCommandRequest>(request);
+            NetcodeUtils.CreateRPC<GoInGameRpc>(commandBuffer, state.WorldUnmanaged);
         }
     }
 }

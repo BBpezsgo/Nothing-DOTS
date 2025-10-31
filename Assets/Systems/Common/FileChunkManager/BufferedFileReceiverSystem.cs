@@ -88,15 +88,10 @@ partial struct BufferedFileReceiverSystem : ISystem
 
             if (!fileFound)
             {
-                Entity requestRpcEneity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(requestRpcEneity, new CloseTransactionRpc
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new CloseTransactionRpc()
                 {
                     TransactionId = command.ValueRO.TransactionId,
-                });
-                commandBuffer.AddComponent(requestRpcEneity, new SendRpcCommandRequest
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
+                }, request.ValueRO.SourceConnection);
                 Debug.LogWarning("Unexpected file chunk, closing transaction ...");
                 continue;
             }
@@ -154,16 +149,11 @@ partial struct BufferedFileReceiverSystem : ISystem
             for (int j = 0; j < receivedChunks.Length; j++)
             {
                 if (receivedChunks[j]) continue;
-                Entity requestRpcEneity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(requestRpcEneity, new FileChunkRequestRpc
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileChunkRequestRpc()
                 {
                     TransactionId = receivingFiles[i].TransactionId,
                     ChunkIndex = j,
-                });
-                commandBuffer.AddComponent(requestRpcEneity, new SendRpcCommandRequest
-                {
-                    TargetConnection = receivingFiles[i].Source.GetEntity(ref state),
-                });
+                }, receivingFiles[i].Source.GetEntity(ref state));
                 if (DebugLog) Debug.Log($"Requesting chunk {j} for file \"{receivingFiles[i].FileName}\"");
                 if (++requested >= ChunkRequestsLimit) break;
             }

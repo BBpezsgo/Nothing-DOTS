@@ -1,7 +1,6 @@
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.NetCode;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
@@ -17,12 +16,7 @@ public partial struct PlayerPositionSystemClient : ISystem
         SyncedPosition = CurrentPosition;
 
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-        Entity rpc = commandBuffer.CreateEntity(state.EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            ComponentType.ReadWrite<SendRpcCommandRequest>(),
-            ComponentType.ReadWrite<PlayerPositionSyncRpc>(),
-        }));
-        commandBuffer.SetComponent<PlayerPositionSyncRpc>(rpc, new()
+        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new PlayerPositionSyncRpc()
         {
             Position = CurrentPosition,
         });

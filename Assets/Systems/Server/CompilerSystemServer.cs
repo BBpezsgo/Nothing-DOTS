@@ -12,7 +12,6 @@ using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.NetCode;
 using Unity.Profiling;
 using UnityEngine;
 
@@ -170,12 +169,7 @@ public partial class CompilerSystemServer : SystemBase
         source.LastStatusSync = SystemAPI.Time.ElapsedTime;
         source.StatusChanged = false;
         {
-            Entity request = commandBuffer.CreateEntity(EntityManager.CreateArchetype(stackalloc ComponentType[]
-            {
-                ComponentType.ReadWrite<CompilerStatusRpc>(),
-                ComponentType.ReadWrite<SendRpcCommandRequest>(),
-            }));
-            commandBuffer.SetComponent<CompilerStatusRpc>(request, new()
+            NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilerStatusRpc()
             {
                 FileName = source.SourceFile,
                 Status = source.Status,
@@ -184,79 +178,47 @@ public partial class CompilerSystemServer : SystemBase
                 CompiledVersion = source.CompiledVersion,
                 LatestVersion = source.LatestVersion,
                 UnitCommands = source.UnitCommandDefinitions?.Length ?? 0,
-            });
-            commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
-            {
-                TargetConnection = source.SourceFile.Source.GetEntity(),
-            });
+            }, source.SourceFile.Source.GetEntity(World.EntityManager));
             if (EnableLogging) Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
         if (source.IsSuccess && source.UnitCommandDefinitions.HasValue)
         {
-            EntityArchetype unitCommandRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
-            {
-                ComponentType.ReadWrite<UnitCommandDefinitionRpc>(),
-                ComponentType.ReadWrite<SendRpcCommandRequest>(),
-            });
-
             FixedList64Bytes<UnitCommandParameter> parameters = new();
 
             for (int i = 0; i < source.UnitCommandDefinitions.Value.Length; i++)
             {
                 UnitCommandDefinition item = source.UnitCommandDefinitions.Value[i];
-                Entity request = commandBuffer.CreateEntity(unitCommandRpcArchetype);
                 unsafe
                 {
                     parameters.Clear();
                     parameters.AddRange(&item.Parameters, item.ParameterCount);
                 }
-                commandBuffer.SetComponent<UnitCommandDefinitionRpc>(request, new()
+                NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new UnitCommandDefinitionRpc()
                 {
                     FileName = source.SourceFile,
                     Index = i,
                     Id = item.Id,
                     Label = item.Label,
                     Parameters = parameters,
-                });
-                commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
-                {
-                    TargetConnection = source.SourceFile.Source.GetEntity(),
-                });
+                }, source.SourceFile.Source.GetEntity(EntityManager));
             }
         }
 
-        EntityArchetype substatusRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            ComponentType.ReadWrite<CompilerSubstatusRpc>(),
-            ComponentType.ReadWrite<SendRpcCommandRequest>(),
-        });
-
         foreach (var subfile in source.SubFiles)
         {
-            Entity request = commandBuffer.CreateEntity(substatusRpcArchetype);
-            commandBuffer.SetComponent<CompilerSubstatusRpc>(request, new()
+            NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilerSubstatusRpc()
             {
                 FileName = source.SourceFile,
                 SubFileName = subfile.Key,
                 CurrentProgress = subfile.Value.Progress.Current,
                 TotalProgress = subfile.Value.Progress.Total,
-            });
-            commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
-            {
-                TargetConnection = source.SourceFile.Source.GetEntity(),
-            });
+            }, source.SourceFile.Source.GetEntity());
         }
     }
 
     void SendDiagnostics(CompiledSource source, EntityCommandBuffer commandBuffer)
     {
-        EntityArchetype analysticsRpcArchetype = EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            ComponentType.ReadWrite<CompilationAnalysticsRpc>(),
-            ComponentType.ReadWrite<SendRpcCommandRequest>(),
-        });
-
         // .ToArray() because the collection can be modified somewhere idk
         foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
@@ -266,8 +228,7 @@ public partial class CompilerSystemServer : SystemBase
             if (item.File is null) continue;
             if (!item.File.TryGetNetcode(out FileId file)) continue;
 
-            Entity request = commandBuffer.CreateEntity(analysticsRpcArchetype);
-            commandBuffer.SetComponent<CompilationAnalysticsRpc>(request, new()
+            NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilationAnalysticsRpc()
             {
                 Source = source.SourceFile,
                 FileName = file,
@@ -275,11 +236,7 @@ public partial class CompilerSystemServer : SystemBase
                 AbsolutePosition = item.Position.AbsoluteRange.ToMutable(),
                 Level = item.Level,
                 Message = item.Message,
-            });
-            commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
-            {
-                TargetConnection = source.SourceFile.Source.GetEntity(),
-            });
+            }, source.SourceFile.Source.GetEntity());
         }
 
         // .ToArray() because the collection can be modified somewhere idk
@@ -288,17 +245,12 @@ public partial class CompilerSystemServer : SystemBase
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}");
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}");
 
-            Entity request = commandBuffer.CreateEntity(analysticsRpcArchetype);
-            commandBuffer.SetComponent<CompilationAnalysticsRpc>(request, new()
+            NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilationAnalysticsRpc()
             {
                 Source = source.SourceFile,
                 Level = item.Level,
                 Message = item.Message,
-            });
-            commandBuffer.SetComponent<SendRpcCommandRequest>(request, new()
-            {
-                TargetConnection = source.SourceFile.Source.GetEntity(),
-            });
+            }, source.SourceFile.Source.GetEntity());
         }
     }
 

@@ -40,15 +40,10 @@ partial struct PingSystemClient : ISystem
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            Entity response = commandBuffer.CreateEntity();
-            commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-            {
-                TargetConnection = request.ValueRO.SourceConnection,
-            });
-            commandBuffer.AddComponent<PingResponseRpc>(response, new()
+            NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new PingResponseRpc()
             {
                 Tick = command.ValueRO.Tick,
-            });
+            }, request.ValueRO.SourceConnection);
         }
 
         foreach (var (request, command, entity) in
@@ -58,16 +53,11 @@ partial struct PingSystemClient : ISystem
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            Entity response = commandBuffer.CreateEntity();
-            commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-            {
-                TargetConnection = request.ValueRO.SourceConnection,
-            });
-            commandBuffer.AddComponent<PingResponseForwardRpc>(response, new()
+            NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new PingResponseForwardRpc()
             {
                 Tick = command.ValueRO.Tick,
                 Target = command.ValueRO.Source,
-            });
+            }, request.ValueRO.SourceConnection);
         }
 
         foreach (var player in
@@ -77,9 +67,7 @@ partial struct PingSystemClient : ISystem
             {
                 if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response);
-                commandBuffer.AddComponent<PingRequestRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new PingRequestRpc()
                 {
                     Target = (byte)player.ValueRO.ConnectionId,
                     Tick = now,

@@ -40,7 +40,7 @@ partial class FileChunkManagerSystem : SystemBase
         for (int i = Requests.Count - 1; i >= 0; i--)
         {
             HandleRequest(
-                ref commandBuffer,
+                commandBuffer,
                 fileHeaders,
                 fileChunks,
                 Requests[i],
@@ -76,7 +76,7 @@ partial class FileChunkManagerSystem : SystemBase
     }
 
     unsafe void HandleRequest(
-        ref EntityCommandBuffer commandBuffer,
+        EntityCommandBuffer commandBuffer,
         DynamicBuffer<BufferedReceivingFile> fileHeaders,
         DynamicBuffer<BufferedReceivingFileChunk> fileChunks,
         FileRequest request,
@@ -176,17 +176,12 @@ partial class FileChunkManagerSystem : SystemBase
         {
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
 
-            Entity rpcEntity = commandBuffer.CreateEntity();
-            commandBuffer.AddComponent(rpcEntity, new FileHeaderRequestRpc()
+            NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new FileHeaderRequestRpc()
             {
                 FileName = request.File.Name,
                 Version = requestCached && RemoteFiles.TryGetValue(request.File, out RemoteFile v) ? v.File.Version : 0,
-            });
-            Entity targetConnection = request.File.Source.GetEntity(World.EntityManager);
-            commandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
-            {
-                TargetConnection = targetConnection,
-            });
+            }, request.File.Source.GetEntity(World.EntityManager));
+
             request.RequestSent();
             if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Sending request for file \"{request.File.ToUri()}\"");
         }
@@ -194,15 +189,10 @@ partial class FileChunkManagerSystem : SystemBase
 
     void CloseRemoteFile(EntityCommandBuffer commandBuffer, FileId fileId)
     {
-        Entity rpcEntity = commandBuffer.CreateEntity();
-        commandBuffer.AddComponent(rpcEntity, new CloseFileRpc()
+        NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CloseFileRpc()
         {
             FileName = fileId.Name,
-        });
-        commandBuffer.AddComponent(rpcEntity, new SendRpcCommandRequest()
-        {
-            TargetConnection = fileId.Source.GetEntity(World.EntityManager),
-        });
+        }, fileId.Source.GetEntity(World.EntityManager));
     }
 
     public bool TryGetRemoteFile(FileId fileId, out RemoteFile remoteFile)

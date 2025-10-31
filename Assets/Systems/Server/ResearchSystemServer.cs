@@ -70,15 +70,10 @@ public partial struct ResearchSystemServer : ISystem
                 }
                 if (alreadyResearched) continue;
 
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
-                commandBuffer.AddComponent<ResearchesResponseRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ResearchesResponseRpc()
                 {
                     Name = _research.ValueRO.Name,
-                });
+                }, request.ValueRO.SourceConnection);
             }
         }
     }

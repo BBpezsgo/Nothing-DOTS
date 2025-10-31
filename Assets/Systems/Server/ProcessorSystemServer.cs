@@ -175,16 +175,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-        EntityArchetype debugLineRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            ComponentType.ReadWrite<SendRpcCommandRequest>(),
-            ComponentType.ReadWrite<DebugLineRpc>(),
-        });
-        EntityArchetype debugLabelRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            ComponentType.ReadWrite<SendRpcCommandRequest>(),
-            ComponentType.ReadWrite<DebugLabelRpc>(),
-        });
 
         foreach (var (player, lines, labels) in
             SystemAPI.Query<RefRO<Player>, DynamicBuffer<BufferedLine>, DynamicBuffer<BufferedWorldLabel>>())
@@ -207,16 +197,11 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
                     if (Utils.Distance(player.ValueRO.Position, debugLines[i].Value.Value) < 50f)
                     {
-                        Entity rpc = commandBuffer.CreateEntity(debugLineRpcArchetype);
-                        commandBuffer.SetComponent<SendRpcCommandRequest>(rpc, new()
-                        {
-                            TargetConnection = connection,
-                        });
-                        commandBuffer.SetComponent<DebugLineRpc>(rpc, new()
+                        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new DebugLineRpc()
                         {
                             Position = debugLines[i].Value.Value,
                             Color = debugLines[i].Value.Color,
-                        });
+                        }, connection);
                     }
 
                     // for (int j = 0; j < lines.Length; j++)
@@ -292,30 +277,20 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 {
                     // Debug.Log(string.Format("[Server] {0} destroyed", uiElements[i]));
 
-                    Entity rpc = commandBuffer.CreateEntity();
-                    commandBuffer.AddComponent<SendRpcCommandRequest>(rpc, new()
-                    {
-                        TargetConnection = connection,
-                    });
-                    commandBuffer.AddComponent<UIElementDestroyRpc>(rpc, new()
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new UIElementDestroyRpc()
                     {
                         Id = uiElements[i].Value.Id,
-                    });
+                    }, connection);
                     uiElements.RemoveAt(i--);
                 }
                 else
                 {
                     // Debug.Log(string.Format("[Server] {0} updated, {1}", uiElements[i], uiElements[i].Value.Label.Text.AsString()));
 
-                    Entity rpc = commandBuffer.CreateEntity();
-                    commandBuffer.AddComponent<SendRpcCommandRequest>(rpc, new()
-                    {
-                        TargetConnection = connection,
-                    });
-                    commandBuffer.AddComponent<UIElementUpdateRpc>(rpc, new()
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new UIElementUpdateRpc()
                     {
                         UIElement = uiElements[i].Value,
-                    });
+                    }, connection);
                     uiElements.AsArray().AsSpan()[i].Value.IsDirty = false;
                 }
             }

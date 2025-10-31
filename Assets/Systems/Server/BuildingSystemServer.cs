@@ -179,15 +179,10 @@ public partial struct BuildingSystemServer : ISystem
                     if (!can) continue;
                 }
 
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
-                commandBuffer.AddComponent<BuildingsResponseRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new BuildingsResponseRpc()
                 {
                     Name = building.Name,
-                });
+                }, request.ValueRO.SourceConnection);
             }
         }
     }

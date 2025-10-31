@@ -60,14 +60,9 @@ public partial struct UnitsSystemClient : ISystem
 
     public static void Refresh(in WorldUnmanaged world)
     {
-        ref UnitsSystemClient system = ref GetInstance(world);
-        system.Units.Clear();
+        GetInstance(world).Units.Clear();
 
-        Entity request = world.EntityManager.CreateEntity(stackalloc ComponentType[]
-        {
-            typeof(SendRpcCommandRequest),
-            typeof(UnitsRequestRpc),
-        });
+        NetcodeUtils.CreateRPC<UnitsRequestRpc>(world);
 
         Debug.Log("[Client] Request avaliable units ...");
     }

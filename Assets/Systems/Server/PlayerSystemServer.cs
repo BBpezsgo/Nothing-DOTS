@@ -62,17 +62,12 @@ public partial struct PlayerSystemServer : ISystem
             if (exists.Item1)
             {
                 Debug.LogWarning("[Server] Already logged in");
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
-                commandBuffer.AddComponent<SessionResponseRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
                     StatusCode = SessionStatusCode.AlreadyLoggedIn,
                     Nickname = exists.Item2.Nickname,
                     Guid = default,
-                });
+                }, request.ValueRO.SourceConnection);
             }
             else
             {
@@ -101,17 +96,12 @@ public partial struct PlayerSystemServer : ISystem
                 Debug.Log("[Server] Player created");
                 ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} connected", command.ValueRO.Nickname));
 
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
-                commandBuffer.AddComponent<SessionResponseRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
                     StatusCode = SessionStatusCode.OK,
                     Guid = Marshal.As<Guid, FixedBytes16>(ref guid),
                     Nickname = command.ValueRO.Nickname,
-                });
+                }, request.ValueRO.SourceConnection);
             }
         }
 
@@ -141,33 +131,23 @@ public partial struct PlayerSystemServer : ISystem
                     ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} reconnected", player.ValueRO.Nickname));
                 }
 
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
-                commandBuffer.AddComponent<SessionResponseRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
                     StatusCode = loggedIn ? SessionStatusCode.AlreadyLoggedIn : SessionStatusCode.OK,
                     Guid = guid,
                     Nickname = player.ValueRO.Nickname,
-                });
+                }, request.ValueRO.SourceConnection);
                 break;
             }
 
             if (!exists)
             {
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
-                commandBuffer.AddComponent<SessionResponseRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
                     StatusCode = SessionStatusCode.InvalidGuid,
                     Guid = guid,
                     Nickname = default,
-                });
+                }, request.ValueRO.SourceConnection);
             }
         }
 

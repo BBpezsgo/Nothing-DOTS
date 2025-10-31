@@ -160,16 +160,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 ? ui_inputSourcePath.value
                 : Path.Combine(FileChunkManagerSystem.BasePath, ui_inputSourcePath.value);
 
-            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
-            {
-                typeof(SendRpcCommandRequest),
-                typeof(SetProcessorSourceRequestRpc),
-            });
-            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-            world.EntityManager.SetComponentData(entity, new SetProcessorSourceRequestRpc()
+            NetcodeUtils.CreateRPC(world.Unmanaged, new SetProcessorSourceRequestRpc()
             {
                 Source = ui_inputSourcePath.value,
-                Entity = ghostInstance,
+                Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
                 IsHotReload = false,
             });
 
@@ -191,16 +185,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 ? ui_inputSourcePath.value
                 : Path.Combine(FileChunkManagerSystem.BasePath, ui_inputSourcePath.value);
 
-            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
-            {
-                typeof(SendRpcCommandRequest),
-                typeof(SetProcessorSourceRequestRpc),
-            });
-            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-            world.EntityManager.SetComponentData(entity, new SetProcessorSourceRequestRpc()
+            NetcodeUtils.CreateRPC(world.Unmanaged, new SetProcessorSourceRequestRpc()
             {
                 Source = ui_inputSourcePath.value,
-                Entity = ghostInstance,
+                Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
                 IsHotReload = true,
             });
 
@@ -217,15 +205,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 return;
             }
 
-            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            NetcodeUtils.CreateRPC(world.Unmanaged, new ProcessorCommandRequestRpc()
             {
-                typeof(SendRpcCommandRequest),
-                typeof(ProcessorCommandRequestRpc),
-            });
-            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-            world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
-            {
-                Entity = ghostInstance,
+                Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
                 Command = ProcessorCommand.Halt,
                 Data = default,
             });
@@ -241,15 +223,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 return;
             }
 
-            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            NetcodeUtils.CreateRPC(world.Unmanaged, new ProcessorCommandRequestRpc()
             {
-                typeof(SendRpcCommandRequest),
-                typeof(ProcessorCommandRequestRpc),
-            });
-            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-            world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
-            {
-                Entity = ghostInstance,
+                Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
                 Command = ProcessorCommand.Reset,
                 Data = default,
             });
@@ -265,15 +241,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 return;
             }
 
-            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            NetcodeUtils.CreateRPC(world.Unmanaged, new ProcessorCommandRequestRpc()
             {
-                typeof(SendRpcCommandRequest),
-                typeof(ProcessorCommandRequestRpc),
-            });
-            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-            world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
-            {
-                Entity = ghostInstance,
+                Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
                 Command = ProcessorCommand.Continue,
                 Data = default,
             });
@@ -503,15 +473,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                         }
                                         else
                                         {
-                                            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+                                            NetcodeUtils.CreateRPC(world.Unmanaged, new ProcessorCommandRequestRpc()
                                             {
-                                                typeof(SendRpcCommandRequest),
-                                                typeof(ProcessorCommandRequestRpc),
-                                            });
-                                            GhostInstance ghostInstance = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-                                            world.EntityManager.SetComponentData(entity, new ProcessorCommandRequestRpc()
-                                            {
-                                                Entity = ghostInstance,
+                                                Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
                                                 Command = ProcessorCommand.Key,
                                                 Data = unchecked((ushort)c),
                                             });

@@ -53,15 +53,10 @@ public partial struct UnitsSystemServer : ISystem
                     if (!can) continue;
                 }
 
-                Entity response = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(response, new()
-                {
-                    TargetConnection = request.ValueRO.SourceConnection,
-                });
-                commandBuffer.AddComponent<UnitsResponseRpc>(response, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new UnitsResponseRpc()
                 {
                     Name = unit.Name,
-                });
+                }, request.ValueRO.SourceConnection);
             }
         }
     }

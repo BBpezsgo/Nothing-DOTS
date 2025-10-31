@@ -1,6 +1,5 @@
 using Unity.Burst;
 using Unity.Entities;
-using Unity.NetCode;
 using Unity.Transforms;
 
 [BurstCompile]
@@ -11,11 +10,6 @@ public partial struct DamageableSystem : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-        EntityArchetype visualEffectRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            ComponentType.ReadWrite<VisualEffectRpc>(),
-            ComponentType.ReadWrite<SendRpcCommandRequest>(),
-        });
 
         foreach (var (damageable, damages, transform, entity) in
             SystemAPI.Query<RefRW<Damageable>, DynamicBuffer<BufferedDamage>, RefRO<LocalToWorld>>()
@@ -25,8 +19,7 @@ public partial struct DamageableSystem : ISystem
             {
                 if ((damageable.ValueRW.Health -= damages[i].Amount) <= 0f)
                 {
-                    Entity request = commandBuffer.CreateEntity(visualEffectRpcArchetype);
-                    commandBuffer.SetComponent<VisualEffectRpc>(request, new()
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new VisualEffectRpc()
                     {
                         Position = transform.ValueRO.Position,
                         Rotation = default,

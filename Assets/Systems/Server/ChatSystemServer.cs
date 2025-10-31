@@ -25,9 +25,7 @@ public partial struct ChatSystemServer : ISystem
                 .WithEntityAccess())
             {
                 if (entity == entity2) continue;
-                Entity rpc = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent<SendRpcCommandRequest>(rpc);
-                commandBuffer.AddComponent<ChatMessageRpc>(rpc, new()
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ChatMessageRpc()
                 {
                     Sender = networkId.ValueRO.Value,
                     Message = command.ValueRO.Message,
@@ -36,25 +34,9 @@ public partial struct ChatSystemServer : ISystem
         }
     }
 
-    public static void SendChatMessage(in EntityManager entityManager, FixedString64Bytes message)
-    {
-        Entity entity = entityManager.CreateEntity(stackalloc ComponentType[]
-        {
-            typeof(SendRpcCommandRequest),
-            typeof(FacilityQueueResearchRequestRpc),
-        });
-        entityManager.SetComponentData(entity, new ChatMessageRpc()
-        {
-            Sender = 0,
-            Message = message,
-        });
-    }
-
     public static void SendChatMessage(in EntityCommandBuffer commandBuffer, FixedString64Bytes message)
     {
-        Entity entity = commandBuffer.CreateEntity();
-        commandBuffer.AddComponent<SendRpcCommandRequest>(entity, new());
-        commandBuffer.AddComponent<ChatMessageRpc>(entity, new()
+        NetcodeUtils.CreateRPC(commandBuffer, ConnectionManager.ClientOrDefaultWorld.Unmanaged, new ChatMessageRpc()
         {
             Sender = 0,
             Message = message,

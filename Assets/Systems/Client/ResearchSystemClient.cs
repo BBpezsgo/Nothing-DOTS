@@ -51,9 +51,7 @@ public partial struct ResearchSystemClient : ISystem
         {
             commandBuffer.DestroyEntity(entity);
 
-            Entity request = commandBuffer.CreateEntity();
-            commandBuffer.AddComponent<SendRpcCommandRequest>(request);
-            commandBuffer.AddComponent<ResearchesRequestRpc>(request);
+            NetcodeUtils.CreateRPC<ResearchesRequestRpc>(commandBuffer, state.WorldUnmanaged);
 
             for (int i = 0; i < AvaliableResearches.Length; i++)
             {
@@ -73,14 +71,9 @@ public partial struct ResearchSystemClient : ISystem
 
     public static void Refresh(in WorldUnmanaged world)
     {
-        ref ResearchSystemClient system = ref GetInstance(world);
-        system.AvaliableResearches.Clear();
+        GetInstance(world).AvaliableResearches.Clear();
 
-        Entity request = world.EntityManager.CreateEntity(stackalloc ComponentType[]
-        {
-            typeof(SendRpcCommandRequest),
-            typeof(ResearchesRequestRpc),
-        });
+        NetcodeUtils.CreateRPC<ResearchesRequestRpc>(world);
 
         Debug.Log("[Client] Request avaliable researches ...");
     }

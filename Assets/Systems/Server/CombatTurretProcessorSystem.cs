@@ -3,7 +3,6 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Burst;
 using System;
-using Unity.NetCode;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
@@ -20,11 +19,6 @@ partial struct CombatTurretProcessorSystem : ISystem
     {
         DynamicBuffer<BufferedProjectile> projectiles = SystemAPI.GetSingletonBuffer<BufferedProjectile>(true);
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-        EntityArchetype shootRpcArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
-        {
-            ComponentType.ReadWrite<ShootRpc>(),
-            ComponentType.ReadWrite<SendRpcCommandRequest>(),
-        });
 
         foreach (var (processor, turret) in
             SystemAPI.Query<RefRW<Processor>, RefRW<CombatTurret>>())
@@ -76,8 +70,7 @@ partial struct CombatTurretProcessorSystem : ISystem
 
                 if (turret.ValueRO.ShootEffect != -1)
                 {
-                    Entity request = commandBuffer.CreateEntity(shootRpcArchetype);
-                    commandBuffer.SetComponent<ShootRpc>(request, new()
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ShootRpc()
                     {
                         Position = SystemAPI.GetComponent<LocalToWorld>(turret.ValueRO.ShootPosition).Position,
                         Velocity = velocity,
