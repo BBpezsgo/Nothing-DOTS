@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Entities;
@@ -6,7 +7,7 @@ using Unity.NetCode;
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 partial class CompilerSystemClient : SystemBase
 {
-    [NotNull] public readonly SerializableDictionary<FileId, CompiledSource>? CompiledSources = new();
+    [NotNull] public readonly Dictionary<FileId, CompiledSource>? CompiledSources = new();
 
     protected override void OnUpdate()
     {

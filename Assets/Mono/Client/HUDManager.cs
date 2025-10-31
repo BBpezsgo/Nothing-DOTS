@@ -31,7 +31,7 @@ public class HUDManager : Singleton<HUDManager>
         _labelFps.text = MathF.Abs(_maxDeltaTime) < 0.01f ? "-" : MathF.Round(1f / _maxDeltaTime).ToString();
         _maxDeltaTime = 0f;
 
-        if (PlayerManager.TryGetLocalPlayer(out Player localPlayer))
+        if (PlayerSystemClient.TryGetLocalPlayer(out Player localPlayer))
         {
             _labelResources.text = localPlayer.Resources.ToString();
         }

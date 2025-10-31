@@ -139,10 +139,9 @@ public static class UI
 
     static readonly List<VisualElement> _picked = new();
 
-    public static bool IsPointerOverUI() => IsPointerOverUI(Input.mousePosition);
-    public static bool IsPointerOverUI(Vector2 screenPos)
+    public static bool IsPointerOverUI()
     {
-        Vector2 pointerUiPos = new(screenPos.x, Screen.height - screenPos.y);
+        Vector2 pointerUiPos = new(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
         foreach (UIDocument? uiDocument in UIDocuments)
         {
             if (uiDocument == null || uiDocument.rootVisualElement?.panel == null) continue;

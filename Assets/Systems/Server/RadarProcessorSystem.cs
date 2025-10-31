@@ -12,8 +12,8 @@ partial struct RadarProcessorSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        foreach (var (processor, radar, transform) in
-            SystemAPI.Query<RefRW<Processor>, RefRW<Radar>, RefRO<LocalTransform>>())
+        foreach (var (processor, radar) in
+            SystemAPI.Query<RefRW<Processor>, RefRW<Radar>>())
         {
             ref MappedMemory mapped = ref processor.ValueRW.Memory.MappedMemory;
 
@@ -28,11 +28,6 @@ partial struct RadarProcessorSystem : ISystem
             // const float speed = 720f;
             // Utils.RotateTowards(ref radarTransform.ValueRW.Rotation, target, speed * SystemAPI.Time.DeltaTime);
             radarTransform.ValueRW.Rotation = target;
-
-            if (!processor.ValueRO.RadarResponse.Equals(float.NaN))
-            {
-                DebugEx.DrawPoint(transform.ValueRO.TransformPoint(processor.ValueRO.RadarResponse), 1f, Color.magenta, 3f, false);
-            }
 
             mapped.Radar.RadarResponse = processor.ValueRO.RadarResponse;
         }

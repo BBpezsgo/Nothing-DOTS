@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
@@ -7,19 +8,24 @@ using Unity.Networking.Transport;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class ConnectionManager : PrivateSingleton<ConnectionManager>
+public class ConnectionManager : Singleton<ConnectionManager>
 {
     public static World? ClientWorld => NetcodeBootstrap.ClientWorld;
     public static World? ServerWorld => NetcodeBootstrap.ServerWorld;
+    public static World? LocalWorld => NetcodeBootstrap.LocalWorld;
 
-    public static World ClientOrDefaultWorld => NetcodeBootstrap.ClientWorld ?? World.DefaultGameObjectInjectionWorld;
-    public static World ServerOrDefaultWorld => NetcodeBootstrap.ServerWorld ?? World.DefaultGameObjectInjectionWorld;
+    public static World ClientOrDefaultWorld => NetcodeBootstrap.ClientWorld ?? NetcodeBootstrap.LocalWorld ?? World.DefaultGameObjectInjectionWorld;
+    public static World ServerOrDefaultWorld => NetcodeBootstrap.ServerWorld ?? NetcodeBootstrap.LocalWorld ?? World.DefaultGameObjectInjectionWorld;
 #if UNITY_EDITOR && EDITOR_DEBUG
     [SerializeField] string DebugNickname = string.Empty;
     [SerializeField] ushort DebugPort = default;
     [SerializeField] bool AutoHost = false;
+    [SerializeField] bool Singleplayer = false;
     [SerializeField] bool NoClient = false;
 #endif
+
+    [SerializeField, NotNull] GameObject? ServerObjects = default;
+    [SerializeField, NotNull] GameObject? ClientObjects = default;
     [SerializeField, NotNull] UIDocument? UI = default;
 
     void Start()
@@ -43,7 +49,11 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (AutoHost)
         {
-            if (NoClient)
+            if (Singleplayer)
+            {
+                StartCoroutine(StartSingleplayerAsync(DebugNickname));
+            }
+            else if (NoClient)
             {
                 StartCoroutine(StartServerAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
             }
@@ -125,6 +135,35 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         return true;
     }
 
+    public void OnNetworkEvent(NetCodeConnectionEvent e)
+    {
+        string? text = e.State switch
+        {
+            ConnectionState.State.Unknown => null,
+            ConnectionState.State.Disconnected => e.DisconnectReason.ToString(),
+            ConnectionState.State.Connecting => $"Connecting ...",
+            ConnectionState.State.Handshake => $"Handshaking ...",
+            ConnectionState.State.Approval => $"Approval ...",
+            ConnectionState.State.Connected => null,
+            _ => throw new UnreachableException(),
+        };
+
+        if (UI.enabled = text is not null)
+        {
+            UIManager.Instance.CloseAllUI(UI);
+            Label label = UI.rootVisualElement.Q<Label>("label-status");
+            label.text = text;
+            label.style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        if (e.State == ConnectionState.State.Disconnected)
+        {
+            ServerObjects.SetActive(false);
+            ClientObjects.SetActive(false);
+            SetInputEnabled(true);
+        }
+    }
+
     void SetInputEnabled(bool enabled)
     {
         UI.rootVisualElement.Q<Button>("button-host").SetEnabled(enabled);
@@ -132,6 +171,34 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         UI.rootVisualElement.Q<Button>("button-server").SetEnabled(enabled);
         UI.rootVisualElement.Q<TextField>("input-host").SetEnabled(enabled);
         UI.rootVisualElement.Q<TextField>("input-nickname").SetEnabled(enabled);
+    }
+
+    public IEnumerator StartSingleplayerAsync(FixedString32Bytes nickname)
+    {
+        Debug.Log($"START SINGLEPLAYER");
+
+        SetInputEnabled(false);
+
+        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
+        NetcodeBootstrap.DestroyLocalWorld();
+
+        Debug.Log($" -> CreateLocal");
+        yield return StartCoroutine(NetcodeBootstrap.CreateLocal());
+
+        Debug.Log($" -> DefaultGameObjectInjectionWorld");
+        World.DefaultGameObjectInjectionWorld ??= NetcodeBootstrap.LocalWorld!;
+
+        Debug.Log($" -> EnablingObjects");
+        ServerObjects.SetActive(true);
+        ClientObjects.SetActive(true);
+        yield return new WaitForEndOfFrame();
+
+        Debug.Log($" -> Set nickname to {nickname}");
+        PlayerSystemClient.GetInstance(LocalWorld!.Unmanaged).SetNickname(nickname);
+
+#if UNITY_EDITOR && EDITOR_DEBUG
+        if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
+#endif
     }
 
     public IEnumerator StartHostAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname)
@@ -146,8 +213,13 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         Debug.Log($" -> NetcodeBootstrap.CreateServer({endpoint})");
         yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint));
 
-        Debug.Log($" -> DefaultGameObjectInjectionWorld()");
+        Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
+
+        Debug.Log($" -> EnablingObjects");
+        ServerObjects.SetActive(true);
+        ClientObjects.SetActive(true);
+        yield return new WaitForEndOfFrame();
 
         using (EntityQuery driverQ = ServerWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
         {
@@ -161,9 +233,6 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
         Debug.Log($" -> Set nickname to {nickname}");
         PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
-
-        SetInputEnabled(true);
-        UI.gameObject.SetActive(false);
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
@@ -185,11 +254,13 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ClientWorld!;
 
+        Debug.Log($" -> EnablingObjects");
+        ServerObjects.SetActive(false);
+        ClientObjects.SetActive(true);
+        yield return new WaitForEndOfFrame();
+
         Debug.Log($" -> Set nickname to {nickname}");
         PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
-
-        SetInputEnabled(true);
-        UI.gameObject.SetActive(false);
     }
 
     public IEnumerator StartServerAsync(NetworkEndpoint endpoint)
@@ -207,8 +278,13 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
         Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
-        SetInputEnabled(true);
-        UI.gameObject.SetActive(false);
+        Debug.Log($" -> EnablingObjects");
+        ServerObjects.SetActive(true);
+        ClientObjects.SetActive(false);
+        yield return new WaitForEndOfFrame();
+
+        Debug.Log($" -> Disabling UI");
+        UI.enabled = false;
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         Debug.Log($" -> SetupManager.Instance.Setup()");
@@ -236,22 +312,21 @@ public class ConnectionManager : PrivateSingleton<ConnectionManager>
 
     public static void DisconnectEveryone()
     {
-        if (ServerWorld != null)
+        if (ServerWorld == null) return;
+
+        using EntityQuery networkStreamConnectionQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkStreamConnection>());
+        using EntityQuery networkIdQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkId>());
+        using NativeArray<Entity> entities = networkIdQ.ToEntityArray(Allocator.Temp);
+
+        using EntityQuery driverQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>());
+        RefRW<NetworkStreamDriver> driver = driverQ.GetSingletonRW<NetworkStreamDriver>();
+
+        for (int i = 0; i < entities.Length; i++)
         {
-            using EntityQuery networkStreamConnectionQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkStreamConnection>());
-            using EntityQuery networkIdQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<NetworkId>());
-            using NativeArray<Entity> entities = networkIdQ.ToEntityArray(Allocator.Temp);
-
-            using EntityQuery driverQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>());
-            RefRW<NetworkStreamDriver> driver = driverQ.GetSingletonRW<NetworkStreamDriver>();
-
-            for (int i = 0; i < entities.Length; i++)
+            ServerWorld.EntityManager.AddComponentData<NetworkStreamRequestDisconnect>(entities[i], new()
             {
-                ServerWorld.EntityManager.AddComponentData<NetworkStreamRequestDisconnect>(entities[i], new()
-                {
-                    Reason = NetworkStreamDisconnectReason.ClosedByRemote,
-                });
-            }
+                Reason = NetworkStreamDisconnectReason.ClosedByRemote,
+            });
         }
     }
 }

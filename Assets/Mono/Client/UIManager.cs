@@ -40,6 +40,8 @@ public class UIManager : Singleton<UIManager>
 
     [Header("Documents")]
 
+    [SerializeField, NotNull] public UIDocument? Network = default;
+
     [SerializeField, NotNull] public UIDocument? Unit = default;
     [SerializeField, NotNull] public UIDocument? Factory = default;
     [SerializeField, NotNull] public UIDocument? Facility = default;
@@ -50,6 +52,7 @@ public class UIManager : Singleton<UIManager>
     ImmutableArray<UIDocument>? _uis = default;
 
     public ImmutableArray<UIDocument> UIs => _uis ?? (_uis = ImmutableArray.Create(
+        Network,
         Unit,
         Factory,
         Facility,
@@ -67,7 +70,7 @@ public class UIManager : Singleton<UIManager>
             ImmutableArray<UIDocument> uis = UIs;
             for (int i = 0; i < uis.Length; i++)
             {
-                if (uis[i].gameObject.activeSelf) return true;
+                if (uis[i].enabled && uis[i].gameObject.activeSelf) return true;
             }
             return false;
         }
@@ -104,6 +107,15 @@ public class UIManager : Singleton<UIManager>
     {
         for (int i = 0; i < UIs.Length; i++)
         {
+            CloseUI(UIs[i]);
+        }
+    }
+
+    public void CloseAllUI(UIDocument except)
+    {
+        for (int i = 0; i < UIs.Length; i++)
+        {
+            if (UIs[i] == except) continue;
             CloseUI(UIs[i]);
         }
     }

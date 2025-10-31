@@ -331,7 +331,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
         _terminalBuilder.Append(processor.StdOutBuffer.ToString());
-        SerializableDictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
+        Dictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.IsClient() ? ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources : ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
         if (processor.SourceFile == default || !compiledSources.TryGetValue(processor.SourceFile, out CompiledSource? source))
         {
             if (_scheduledSource != null)

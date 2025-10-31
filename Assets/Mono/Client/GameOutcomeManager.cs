@@ -15,7 +15,7 @@ public class GameOutcomeManager : MonoBehaviour
         if (now < _refreshAt) return;
         _refreshAt = now + 1f;
 
-        if (!PlayerManager.TryGetLocalPlayer(out Player localPlayer)) return;
+        if (!PlayerSystemClient.TryGetLocalPlayer(out Player localPlayer)) return;
 
         if (_ui.enabled = localPlayer.Outcome != GameOutcome.None && !UIManager.Instance.AnyUIVisible)
         {

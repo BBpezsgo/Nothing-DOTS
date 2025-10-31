@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -56,7 +55,7 @@ public class ChatManager : Singleton<ChatManager>
             child.EnableInClassList("very-old", (now - message.Time).TotalSeconds > 4);
         }
 
-        if (!(Input.GetKeyDown(KeyCode.Return) && !UIManager.Instance.AnyUIVisible && !SelectionManager.Instance.IsUnitCommandsActive)) return;
+        if (!Input.GetKeyDown(KeyCode.Return) || UIManager.Instance.AnyUIVisible || SelectionManager.Instance.IsUnitCommandsActive) return;
 
         if (_containerInput.style.display == DisplayStyle.None)
         {
@@ -66,6 +65,7 @@ public class ChatManager : Singleton<ChatManager>
         }
         else
         {
+            OnButtonSend();
             _containerInput.style.display = DisplayStyle.None;
             _containerMessages.EnableInClassList("show", false);
         }

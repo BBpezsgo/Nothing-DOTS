@@ -209,7 +209,7 @@ partial struct BufferedFileSenderSystem : ISystem
                 Span<byte> buffer = file!.Value.Data.AsSpan().Slice(j * FileChunkResponseRpc.ChunkSize, chunkSize);
                 fixed (byte* bufferPtr = buffer)
                 {
-                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileChunkResponseRpc
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileChunkResponseRpc()
                     {
                         Status = FileChunkStatus.OK,
                         TransactionId = sendingFiles[i].TransactionId,

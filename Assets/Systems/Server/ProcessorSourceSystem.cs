@@ -61,8 +61,16 @@ unsafe partial class ProcessorSourceSystem : SystemBase
             foreach (var (ghostInstance, processor) in
                 SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
-                NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
-                if (!World.IsServer()) ep = NetcodeEndPoint.Server;
+                NetcodeEndPoint ep;
+                if (request.ValueRO.SourceConnection == default)
+                {
+                    ep = NetcodeEndPoint.Server;
+                }
+                else
+                {
+                    ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+                    if (!World.IsServer()) ep = NetcodeEndPoint.Server;
+                }
 
                 if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
                 if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;

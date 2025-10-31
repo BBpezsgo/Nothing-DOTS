@@ -43,7 +43,7 @@ public class CameraControl : Singleton<CameraControl>
             if ((!Mouse.current.middleButton.isPressed || !Keyboard.current.shiftKey.isPressed) &&
                 !Mouse.current.middleButton.wasReleasedThisFrame)
             { return false; }
-            if (UI.IsMouseHandled) return false;
+            if (UI.IsUIFocused) return false;
             return (
                 Mouse.current.position.ReadValue() - startDragScreen
             ).SqrMagnitude() > 5f;
@@ -57,7 +57,7 @@ public class CameraControl : Singleton<CameraControl>
             if ((!Mouse.current.middleButton.isPressed || !Keyboard.current.ctrlKey.isPressed) &&
                 !Mouse.current.middleButton.wasReleasedThisFrame)
             { return false; }
-            if (UI.IsMouseHandled) return false;
+            if (UI.IsUIFocused) return false;
             return (
                 Mouse.current.position.ReadValue() - startDragZoomScreen
             ).SqrMagnitude() > 5f;
@@ -213,7 +213,7 @@ public class CameraControl : Singleton<CameraControl>
 
     void RotateCamera(InputAction.CallbackContext inputValue)
     {
-        if (UI.IsMouseHandled) return;
+        if (UI.IsUIFocused) return;
 
         if (!Mouse.current.middleButton.isPressed || Keyboard.current.shiftKey.isPressed || Keyboard.current.ctrlKey.isPressed) return;
 
@@ -228,7 +228,7 @@ public class CameraControl : Singleton<CameraControl>
 
     void ZoomCameraWithWheel(InputAction.CallbackContext inputValue)
     {
-        if (UI.IsMouseHandled) return;
+        if (UI.IsUIFocused) return;
 
         float value = -inputValue.ReadValue<Vector2>().y;
         if (Mathf.Abs(value) <= 0f) return;
@@ -239,7 +239,7 @@ public class CameraControl : Singleton<CameraControl>
 
     void ZoomCameraWithMouse()
     {
-        if (UI.IsMouseHandled) return;
+        if (UI.IsUIFocused) return;
 
         if (!Mouse.current.middleButton.isPressed || !Keyboard.current.ctrlKey.isPressed)
         {
@@ -305,7 +305,7 @@ public class CameraControl : Singleton<CameraControl>
             return;
         }
 
-        if (UI.IsMouseHandled)
+        if (UI.IsUIFocused)
         {
             return;
         }

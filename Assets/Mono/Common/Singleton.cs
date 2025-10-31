@@ -18,7 +18,11 @@ public class Singleton<T> : MonoBehaviour where T : UnityEngine.Object
 
     protected virtual void Awake()
     {
-        if (_instance != null) throw new InvalidOperationException($"Singleton {typeof(T).Name} already exists");
+        if (_instance != null)
+        {
+            if (_instance != this) Debug.LogError($"Singleton {typeof(T).Name} already exists ({_instance})", gameObject);
+            return;
+        }
         _instance = Instance;
     }
 }

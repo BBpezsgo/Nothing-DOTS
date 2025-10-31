@@ -12,6 +12,7 @@ partial struct NetworkEventsSystem : ISystem
         for (int i = 0; i < v.Length; i++)
         {
             NetCodeConnectionEvent e = v[i];
+            ConnectionManager.Instance.OnNetworkEvent(e);
             switch (e.State)
             {
                 case ConnectionState.State.Disconnected:

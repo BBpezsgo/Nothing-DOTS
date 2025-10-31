@@ -40,7 +40,6 @@ public class SelectionManager : Singleton<SelectionManager>
     [SerializeField, NotNull] RectTransform? SelectBox = default;
     [SerializeField, NotNull] UIDocument? UnitCommandsUI = default;
     [SerializeField, NotNull] VisualTreeAsset? UnitCommandItemUI = default;
-    static readonly Plane Ground = new(Vector3.up, Vector3.zero);
 
     bool _isSelectBoxVisible;
     Vector3 _selectionStart = default;
@@ -86,7 +85,7 @@ public class SelectionManager : Singleton<SelectionManager>
             }
         }
 
-        if (UI.IsMouseHandled)
+        if (UI.IsUIFocused)
         {
             SetSelectBoxVisible(false);
             _firstHit = Entity.Null;
@@ -185,7 +184,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (startPoint.z <= 0f)
         {
-            Debug.LogWarning($"Invalid selection box");
+            //Debug.LogWarning($"Invalid selection box");
             SetSelectBoxVisible(false);
             return;
         }
@@ -246,7 +245,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (startPoint.z <= 0f)
         {
-            Debug.LogWarning($"Invalid selection box");
+            //Debug.LogWarning($"Invalid selection box");
             return;
         }
 
@@ -398,7 +397,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (!entityManager.Exists(selected)) return false;
         if (!entityManager.HasComponent<Processor>(selected)) return false;
-        SerializableDictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
+        Dictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.IsClient() ? ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources : ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
         if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSource? source)) return false;
 
         commands = source.UnitCommandDefinitions.HasValue ? source.UnitCommandDefinitions.Value.AsReadOnlySpan() : ReadOnlySpan<UnitCommandDefinition>.Empty;
@@ -536,7 +535,7 @@ public class SelectionManager : Singleton<SelectionManager>
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return false;
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<UnitTeam>(unit)) return true;
         UnitTeam unitTeam = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<UnitTeam>(unit);
-        if (!PlayerManager.TryGetLocalPlayer(out Player localPlayer)) return false;
+        if (!PlayerSystemClient.TryGetLocalPlayer(out Player localPlayer)) return false;
         return unitTeam.Team == localPlayer.Team;
     }
 

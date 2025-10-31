@@ -7,7 +7,6 @@ using Unity.Profiling;
 using Unity.Mathematics;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
-using Unity.NetCode;
 using Unity.Collections;
 
 public class TerrainGenerator : Singleton<TerrainGenerator>
@@ -43,12 +42,6 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         }
         TerrainChunks.Clear();
         VisibleTerrainChunks.Clear();
-
-        if (World.DefaultGameObjectInjectionWorld.IsServer())
-        {
-            enabled = false;
-            return;
-        }
 
         MeshWorldSize = TerrainSystemServer.MeshWorldSize;
         ChunksVisibleInViewDst = Mathf.RoundToInt(MaxViewDistance / MeshWorldSize);

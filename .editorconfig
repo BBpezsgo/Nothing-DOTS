@@ -40,3 +40,6 @@ csharp_style_expression_bodied_methods = when_on_single_line
 
 # IDE0022: Use expression body for method
 dotnet_diagnostic.IDE0022.severity = silent
+
+# IDE0024: Use block body for operator
+csharp_style_expression_bodied_operators = when_on_single_line

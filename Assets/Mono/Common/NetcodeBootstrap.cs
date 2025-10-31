@@ -35,6 +35,54 @@ class NetcodeBootstrap : ClientServerBootstrap
         LocalWorld = null;
     }
 
+    public static IEnumerator CreateLocal()
+    {
+        LocalWorld = ClientServerBootstrap.CreateLocalWorld("LocalWorld");
+
+        SubScene[] subScenes = GameObject.FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        while (!LocalWorld.IsCreated)
+        {
+            yield return null;
+        }
+
+        if (subScenes != null)
+        {
+            for (int i = 0; i < subScenes.Length; i++)
+            {
+                SceneSystem.LoadParameters loadParameters = new() { Flags = SceneLoadFlags.BlockOnStreamIn };
+                Entity sceneEntity = SceneSystem.LoadSceneAsync(LocalWorld.Unmanaged, new Unity.Entities.Hash128(subScenes[i].SceneGUID.Value), loadParameters);
+                while (!SceneSystem.IsSceneLoaded(LocalWorld.Unmanaged, sceneEntity))
+                {
+                    LocalWorld.Update();
+                    yield return null;
+                }
+            }
+        }
+
+        Debug.Log($"1");
+        using (EntityQuery prefabsQ = LocalWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>()))
+        {
+            Debug.Log($"2");
+            if (prefabsQ.TryGetSingleton<PrefabDatabase>(out PrefabDatabase prefabs))
+            {
+                Debug.Log($"3");
+                Debug.Log($"Local player created");
+                Entity newPlayer = LocalWorld.EntityManager.Instantiate(prefabs.Player);
+                LocalWorld.EntityManager.SetComponentData<Player>(newPlayer, new()
+                {
+                    ConnectionId = 0,
+                    ConnectionState = PlayerConnectionState.Local,
+                    Team = -1,
+                });
+            }
+            else
+            {
+                Debug.Log($"4");
+            }
+        }
+    }
+
     public static IEnumerator CreateServer(NetworkEndpoint endpoint)
     {
         ServerWorld = ClientServerBootstrap.CreateServerWorld("ServerWorld");
@@ -69,6 +117,7 @@ class NetcodeBootstrap : ClientServerBootstrap
         {
             if (prefabsQ.TryGetSingleton<PrefabDatabase>(out PrefabDatabase prefabs))
             {
+                Debug.Log($"Local player created");
                 Entity newPlayer = ServerWorld.EntityManager.Instantiate(prefabs.Player);
                 ServerWorld.EntityManager.SetComponentData<Player>(newPlayer, new()
                 {

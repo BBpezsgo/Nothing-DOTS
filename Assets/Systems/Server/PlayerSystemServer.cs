@@ -43,17 +43,17 @@ public partial struct PlayerSystemServer : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SessionRegisterRequestRpc>>()
             .WithEntityAccess())
         {
-            var source = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId source = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
             commandBuffer.DestroyEntity(entity);
 
-            Debug.Log(string.Format("[Server] Received register request from client {0}", source.ValueRO.Value));
+            Debug.Log(string.Format("[Server] Received register request from client {0}", source.Value));
 
             (bool, Player) exists = default;
 
             foreach (var player in
                 SystemAPI.Query<RefRO<Player>>())
             {
-                if (player.ValueRO.ConnectionId == source.ValueRO.Value)
+                if (player.ValueRO.ConnectionId == source.Value)
                 {
                     exists = (true, player.ValueRO);
                 }
@@ -75,7 +75,7 @@ public partial struct PlayerSystemServer : ISystem
                 unsafe
                 {
                     byte* ptr = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(bytes));
-                    *(int*)(ptr + 0) = source.ValueRO.Value; // 4
+                    *(int*)(ptr + 0) = source.Value; // 4
                     *(double*)(ptr + 4) = SystemAPI.Time.ElapsedTime; // 8
                     *(uint*)(ptr + 12) = 0x69420; // 4
                     guid = new Guid(bytes);
@@ -84,7 +84,7 @@ public partial struct PlayerSystemServer : ISystem
                 Entity newPlayer = commandBuffer.Instantiate(prefabs.Player);
                 commandBuffer.SetComponent<Player>(newPlayer, new()
                 {
-                    ConnectionId = source.ValueRO.Value,
+                    ConnectionId = source.Value,
                     ConnectionState = PlayerConnectionState.Connected,
                     Team = -1,
                     IsCoreComputerSpawned = false,
@@ -109,12 +109,12 @@ public partial struct PlayerSystemServer : ISystem
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SessionLoginRequestRpc>>()
             .WithEntityAccess())
         {
-            var source = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId source = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
             commandBuffer.DestroyEntity(entity);
 
             FixedBytes16 guid = command.ValueRO.Guid;
 
-            Debug.Log(string.Format("[Server] Received login request from client {0} with guid {1}", source.ValueRO.Value, Marshal.As<FixedBytes16, Guid>(guid)));
+            Debug.Log(string.Format("[Server] Received login request from client {0} with guid {1}", source.Value, Marshal.As<FixedBytes16, Guid>(guid)));
 
             bool exists = false;
             foreach (var player in
@@ -126,7 +126,7 @@ public partial struct PlayerSystemServer : ISystem
                 bool loggedIn = player.ValueRO.ConnectionId != -1;
                 if (!loggedIn)
                 {
-                    player.ValueRW.ConnectionId = source.ValueRO.Value;
+                    player.ValueRW.ConnectionId = source.Value;
                     player.ValueRW.ConnectionState = PlayerConnectionState.Connected;
                     ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} reconnected", player.ValueRO.Nickname));
                 }
@@ -159,18 +159,26 @@ public partial struct PlayerSystemServer : ISystem
                 player.ValueRW.Team = _teamCounter++;
             }
 
-            if (player.ValueRO.ConnectionState != PlayerConnectionState.Connected) continue;
+            if (player.ValueRO.ConnectionState is not PlayerConnectionState.Connected and not PlayerConnectionState.Local) continue;
 
             bool found = false;
-            foreach (var id in
-                SystemAPI.Query<RefRO<NetworkId>>()
-                .WithAll<InitializedClient>())
+
+            if (player.ValueRO.ConnectionState == PlayerConnectionState.Connected)
             {
-                if (id.ValueRO.Value == player.ValueRO.ConnectionId)
+                foreach (var id in
+                    SystemAPI.Query<RefRO<NetworkId>>()
+                    .WithAll<InitializedClient>())
                 {
-                    found = true;
-                    break;
+                    if (id.ValueRO.Value == player.ValueRO.ConnectionId)
+                    {
+                        found = true;
+                        break;
+                    }
                 }
+            }
+            else
+            {
+                found = true;
             }
 
             if (!found)
