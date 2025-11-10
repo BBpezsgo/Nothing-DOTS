@@ -2,32 +2,32 @@ using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
 using "mm.bbc";
 using "utils.bbc";
 
-export void Print(float2 v)
+export void print(float2 v)
 {
-    Print(v.x);
-    Print(' ');
-    Print(v.y);
+    print(v.x);
+    print(' ');
+    print(v.y);
 }
 
-export inline void PrintLine(float2 v)
+export inline void printline(float2 v)
 {
-    Print(v);
-    PrintLine();
+    print(v);
+    printline();
 }
 
-export void Print(float3 v)
+export void print(float3 v)
 {
-    Print(v.x);
-    Print(' ');
-    Print(v.y);
-    Print(' ');
-    Print(v.z);
+    print(v.x);
+    print(' ');
+    print(v.y);
+    print(' ');
+    print(v.z);
 }
 
-export inline void PrintLine(float3 v)
+export inline void printline(float3 v)
 {
-    Print(v);
-    PrintLine();
+    print(v);
+    printline();
 }
 
 export void sleep(f32 sec)
@@ -44,12 +44,11 @@ export const u8 MAGENTA = (u8)0b101;
 export const u8 YELLOW = (u8)0b110;
 export const u8 WHITE = (u8)0b111;
 
-[External("atan2")] export f32 Atan2(f32 y, f32 x);
-[External("tan")] export f32 Tan(f32 v);
-[External("asin")] export f32 Asin(f32 v);
-[External("acos")] export f32 Acos(f32 v);
-[External("atan")] export f32 Atan(f32 v);
-[External("random")] export i32 _Random();
+[External("atan2")] export f32 atan2(f32 y, f32 x);
+[External("tan")] export f32 tan(f32 v);
+[External("asin")] export f32 asin(f32 v);
+[External("acos")] export f32 acos(f32 v);
+[External("atan")] export f32 atan(f32 v);
 
 [External("send")] export void send(any* buffer, i32 length, float3* direction, f32 angle);
 
@@ -78,89 +77,89 @@ export inline void send(any* buffer, i32 length)
 
 export float3 radar(float direction)
 {
-    Radar.RadarDirection = direction;
-    //ldebug(new float3(Cos(Radar.RadarDirection), 0f, Sin(Radar.RadarDirection)) * 10f, CYAN);
+    Radar.direction = direction;
+    //ldebug(new float3(cos(Radar.direction), 0f, sin(Radar.direction)) * 10f, CYAN);
     return radar();
 }
 
 export float3 radar()
 {
-    Radar.RadarResponse.x = 0f;
-    Radar.RadarResponse.y = 0f;
-    Radar.RadarResponse.z = 0f;
+    Radar.response.x = 0f;
+    Radar.response.y = 0f;
+    Radar.response.z = 0f;
 
     _radar();
 
-    while (Radar.RadarResponse.x == 0f || Radar.RadarResponse.y == 0f || Radar.RadarResponse.z == 0f)
+    while (Radar.response.x == 0f || Radar.response.y == 0f || Radar.response.z == 0f)
     {
 
     }
 
-    if (IsNaN(Radar.RadarResponse.x) || IsNaN(Radar.RadarResponse.y) || IsNaN(Radar.RadarResponse.z))
+    if (isnan(Radar.response.x) || isnan(Radar.response.y) || isnan(Radar.response.z))
     {
         return new float3;
     }
 
-    return Radar.RadarResponse;
+    return Radar.response;
 }
 
-export void ToGlobal(byte3* point)
+export void toglobal(byte3* point)
 {
     float3 p;
-    ToFloat3(point, &p);
-    ToGlobal(&p);
-    ToByte3(&p, point);
+    tofloat3(point, &p);
+    toglobal(&p);
+    tobyte3(&p, point);
 }
 
-export void ToGlobal(byte2* point)
+export void toglobal(byte2* point)
 {
     float2 p;
-    ToFloat2(point, &p);
-    ToGlobal(&p);
-    ToByte2(&p, point);
+    tofloat2(point, &p);
+    toglobal(&p);
+    tobyte2(&p, point);
 }
 
-[External("toglobal")] export void ToGlobal(float3* point);
-[External("tolocal")] export void ToLocal(float3* point);
+[External("toglobal")] export void toglobal(float3* point);
+[External("tolocal")] export void tolocal(float3* point);
 
-[External("toglobald")] export void ToGlobalD(float3* direction);
-[External("tolocald")] export void ToLocalD(float3* direction);
+[External("toglobald")] export void toglobald(float3* direction);
+[External("tolocald")] export void tolocald(float3* direction);
 
-export float3 ToLocal(float3 point)
+export float3 tolocal(float3 point)
 {
-    ToLocal(&point);
+    tolocal(&point);
     return point;
 }
 
-export float3 ToGlobal(float3 point)
+export float3 toglobal(float3 point)
 {
-    ToGlobal(&point);
+    toglobal(&point);
     return point;
 }
 
-export float3 ToLocalD(float3 direction)
+export float3 tolocald(float3 direction)
 {
-    ToLocalD(&direction);
+    tolocald(&direction);
     return direction;
 }
 
-export float3 ToGlobalD(float3 direction)
+export float3 toglobald(float3 direction)
 {
-    ToGlobalD(&direction);
+    toglobald(&direction);
     return direction;
 }
 
-export void ToGlobal(float2* point)
+export void toglobal(float2* point)
 {
     float3 _p = new float3(point.x, 0f, point.y);
-    ToGlobal(&_p);
+    toglobal(&_p);
     *point = new float2(_p.x, _p.z);
 }
 
-export void ToLocal(float2* point)
+export void tolocal(float2* point)
 {
     float3 _p = new float3(point.x, 0f, point.y);
-    ToLocal(&_p);
+    tolocal(&_p);
     *point = new float2(_p.x, _p.z);
 }
 
@@ -198,7 +197,7 @@ export inline void ldebug_label(float2 localPosition, temp string text)
 [External("gui_update")] void gui_update(any* ptr);
 [External("gui_destroy")] void gui_destroy(int id);
 
-export u8 ColorTo255(float r, float g, float b)
+export u8 colorto255(float r, float g, float b)
 {
     return (u8)(
         ((u8)(r * 7) << 5) |
@@ -207,7 +206,7 @@ export u8 ColorTo255(float r, float g, float b)
     );
 }
 
-export u8 ColorTo255(int r, int g, int b)
+export u8 colorto255(int r, int g, int b)
 {
     return (u8)(
         ((u8)(r * 7 / 255) << 5) |
@@ -221,30 +220,30 @@ export struct UILabel
     private bool _dirty;
     private int _id;
     private byte _type;
-    int X;
-    int Y;
-    int Width;
-    int Height;
-    float3 Color;
-    char[15] Text;
+    int x;
+    int y;
+    int width;
+    int height;
+    float3 color;
+    char[15] text;
 
     export UILabel()
     {
         this._type = 1;
-        this.X = 50;
-        this.Y = 50;
-        this.Width = 50;
-        this.Height = 50;
-        this.Text = "Hey";
+        this.x = 50;
+        this.y = 50;
+        this.width = 50;
+        this.height = 50;
+        this.text = "Hey";
         gui_create(&this);
     }
 
-    export inline void Destroy()
+    export inline void destroy()
     {
         gui_destroy(this._id);
     }
 
-    export inline void Update()
+    export inline void update()
     {
         gui_update(&this);
     }
@@ -255,76 +254,76 @@ export struct UIImage
     private bool _dirty;
     private int _id;
     private byte _type;
-    int X;
-    int Y;
-    int Width;
-    int Height;
-    i16 ImageWidth;
-    i16 ImageHeight;
-    byte[510] Image;
+    int x;
+    int y;
+    int width;
+    int height;
+    i16 imgwidth;
+    i16 imgheight;
+    byte[510] img;
 
     export UIImage(i16 width, i16 height)
     {
         this._type = 2;
-        this.X = 50;
-        this.Y = 50;
-        this.Width = 50;
-        this.Height = 50;
-        this.ImageWidth = width;
-        this.ImageHeight = height;
+        this.x = 50;
+        this.y = 50;
+        this.width = 50;
+        this.height = 50;
+        this.imgwidth = width;
+        this.imgheight = height;
         // for (int y = 0; y < height; y++)
         // {
         //     for (int x = 0; x < width; x++)
         //     {
-        //         this.Image[x + (y * width)] = (u8)(x + (y * width));
+        //         this.img[x + (y * width)] = (u8)(x + (y * width));
         //     }
         // }
         gui_create(this);
     }
 
-    export inline void Destroy()
+    export inline void destroy()
     {
         gui_destroy(this._id);
     }
 
-    export inline void Set(int x, int y, int r, int g, int b)
+    export inline void set(int x, int y, int r, int g, int b)
     {
-        this.Set(x, y, ColorTo255(r, g, b));
+        this.set(x, y, colorto255(r, g, b));
     }
 
-    export inline void Fill(int r, int g, int b)
+    export inline void fill(int r, int g, int b)
     {
-        this.Fill(ColorTo255(r, g, b));
+        this.fill(colorto255(r, g, b));
     }
 
-    export void Set(int x, int y, u8 color)
+    export void set(int x, int y, u8 color)
     {
         if (x < 0) x = 0;
-        else if (x >= this.ImageWidth) x = (int)this.ImageWidth;
+        else if (x >= this.imgwidth) x = (int)this.imgwidth;
         if (y < 0) y = 0;
-        else if (y >= this.ImageHeight) y = (int)this.ImageHeight;
-        this.Image[y * this.ImageWidth + x] = color;
+        else if (y >= this.imgheight) y = (int)this.imgheight;
+        this.img[y * this.imgwidth + x] = color;
     }
 
-    export void Fill(u8 color)
+    export void fill(u8 color)
     {
-        int l = (int)this.ImageWidth * (int)this.ImageHeight;
+        int l = (int)this.imgwidth * (int)this.imgheight;
         for (int i = 0; i < l; i++)
         {
-            this.Image[i] = color;
+            this.img[i] = color;
         }
     }
 
-    export inline void Update()
+    export inline void update()
     {
         gui_update(this);
     }
 
-    // export inline void Set(int2 pos, int r, int g, int b)   { this.Set(pos.x, pos.y, r, g, b); }
-    // export inline void Set(int2 pos, u8 color)              { this.Set(pos.x, pos.y, color); }
+    // export inline void set(int2 pos, int r, int g, int b)   { this.set(pos.x, pos.y, r, g, b); }
+    // export inline void set(int2 pos, u8 color)              { this.set(pos.x, pos.y, color); }
 
-    export inline void Set(float2 pos, int r, int g, int b) { this.Set((int)pos.x, (int)pos.y, r, g, b); }
-    export inline void Set(float2 pos, u8 color)            { this.Set((int)pos.x, (int)pos.y, color); }
+    export inline void set(float2 pos, int r, int g, int b) { this.set((int)pos.x, (int)pos.y, r, g, b); }
+    export inline void set(float2 pos, u8 color)            { this.set((int)pos.x, (int)pos.y, color); }
 }
 
 [External("pendrive_plug")]
@@ -341,9 +340,9 @@ export int _pendrive_write(byte[]* source, int destination, int length);
 
 export void _facility_enqueue(TechnologyHash* hash)
 {
-    Facility.HashLocation = hash;
-    Facility.Signal = (u8)1;
-    while (Facility.Signal == (u8)1)
+    Facility.hash_location = hash;
+    Facility.signal = (u8)1;
+    while (Facility.signal == (u8)1)
     {
 
     }
@@ -351,11 +350,11 @@ export void _facility_enqueue(TechnologyHash* hash)
 
 export u8 _facility_dequeue(TechnologyHash* hash)
 {
-    Facility.HashLocation = hash;
-    Facility.Signal = (u8)2;
-    while (Facility.Signal == (u8)2)
+    Facility.hash_location = hash;
+    Facility.signal = (u8)2;
+    while (Facility.signal == (u8)2)
     {
 
     }
-    return Facility.Signal == (u8)3;
+    return Facility.signal == (u8)3;
 }

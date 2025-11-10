@@ -25,25 +25,25 @@ void Receive()
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-            responsePacket.Header = (u8)RESPONSE_HEADER;
+            responsePacket.header = (u8)RESPONSE_HEADER;
 
-            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdLargeSq)
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdLargeSq)
             {
-                responsePacket.Position = packet.Position;
-                debug(packet.Position, CYAN);
+                responsePacket.position = packet.position;
+                debug(packet.position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
             else
             {
-                for (int i = 0; i < (&allies).Length(); i++)
+                for (int i = 0; i < (&allies).length(); i++)
                 {
-                    f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
+                    f32 distanceSqr = distancesqr((&allies).raw()[i].position, packet.position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
-                        indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
-                        indirectResponsePacket.Position = (&allies).Raw()[i].Position;
-                        indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
+                        indirectResponsePacket.header = (u8)INDIRECT_RESPONSE_HEADER;
+                        indirectResponsePacket.position = (&allies).raw()[i].position;
+                        indirectResponsePacket.expires = (&allies).raw()[i].expires;
                         send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction, 0.1f);
                         return;
                     }
@@ -56,12 +56,12 @@ void Receive()
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = time();
-            unit.Expires = time() + 10f;
-            unit.VerificationSentAt = time();
-            RemoveUnitAt(&enemies, unit.Position);
-            UpdateUnit(&allies, unit);
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = time() + 10f;
+            unit.verification_sent_at = time();
+            remove_unit_at(&enemies, unit.position);
+            update_unit(&allies, unit);
         }
         else if (v[0] == (u8)ENEMY_HEADER &&
                  receivedLength == sizeof(EnemyNotificationPacket))
@@ -69,21 +69,21 @@ void Receive()
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = 0f;
-            unit.Expires = time() + 5f;
-            unit.VerificationSentAt = time();
-            int j = UpdateUnit(&enemies, unit);
+            unit.position = packet.position;
+            unit.recorded = 0f;
+            unit.expires = time() + 5f;
+            unit.verification_sent_at = time();
+            int j = update_unit(&enemies, unit);
 
-            for (int i = 0; i < (&allies).Length(); i++)
+            for (int i = 0; i < (&allies).length(); i++)
             {
                 if (i != j)
                 {
-                    direction = (&allies).Raw()[i].Position;
-                    ToLocal(&direction);
-                    Normalise(&direction);
+                    direction = (&allies).raw()[i].position;
+                    tolocal(&direction);
+                    normalise(&direction);
 
-                    PrintLine("NTFY");
+                    printline("NTFY");
 
                     send(&packet as u8[]*, sizeof(EnemyNotificationPacket), &direction);
                 }
@@ -95,12 +95,12 @@ void Receive()
             IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = time();
-            unit.Expires = packet.Expires;
-            unit.VerificationSentAt = time();
-            RemoveUnitAt(&enemies, unit.Position);
-            UpdateUnit(&allies, unit);
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = packet.expires;
+            unit.verification_sent_at = time();
+            remove_unit_at(&enemies, unit.position);
+            update_unit(&allies, unit);
         }
     }
 }
@@ -109,58 +109,58 @@ List<Unit> enemies = new List<Unit>(4);
 List<Unit> allies = new List<Unit>(4);
 
 UIImage _minimap = new UIImage((i16)22, (i16)22);
-_minimap.Width = 100;
-_minimap.Height = 100;
-_minimap.X = 10;
-_minimap.Y = 10;
-(&_minimap).Update();
+_minimap.width = 100;
+_minimap.height = 100;
+_minimap.x = 10;
+_minimap.y = 10;
+(&_minimap).update();
 
 const float MinimapScale = 1f;
 
-PrintLine("Started ...");
+printline("Started ...");
 
 while (1)
 {
     Receive();
 
     (&_minimap).Fill((u8)0);
-    (&_minimap).Set(new float2(11f, 11f), (u8)0b_111_111_11);
+    (&_minimap).set(new float2(11f, 11f), (u8)0b_111_111_11);
 
-    for (int i = (&enemies).Length() - 1; i >= 0; i--)
+    for (int i = (&enemies).length() - 1; i >= 0; i--)
     {
-        Unit* enemy = &(&enemies).Raw()[i];
-        if (time() >= enemy.Expires)
+        Unit* enemy = &(&enemies).raw()[i];
+        if (time() >= enemy.expires)
         {
-            (&enemies).Remove(i);
+            (&enemies).remove(i);
         }
         else
         {
-            TrySendVerificationRequest(enemy);
-            float3 p = enemy.Position;
-            ToLocal(&p);
-            if (time() >= enemy.Recorded + 4f)
+            try_send_verification_request(enemy);
+            float3 p = enemy.position;
+            tolocal(&p);
+            if (time() >= enemy.recorded + 4f)
             {
                 ldebug(p, RED);
-                (&_minimap).Set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)((int)(0b_111 * Max(0f, enemy.Expires - time()) / 10f) << 5));
-                PrintLine(p.x);
+                (&_minimap).set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)((int)(0b_111 * max(0f, enemy.expires - time()) / 10f) << 5));
+                printline(p.x);
             }
         }
     }
 
-    for (int i = (&allies).Length() - 1; i >= 0; i--)
+    for (int i = (&allies).length() - 1; i >= 0; i--)
     {
-        Unit* ally = &(&allies).Raw()[i];
-        if (time() >= ally.Expires)
+        Unit* ally = &(&allies).raw()[i];
+        if (time() >= ally.expires)
         {
-            TrySendVerificationRequest(ally);
-            (&allies).Remove(i);
+            try_send_verification_request(ally);
+            (&allies).remove(i);
         }
         else
         {
-            float3 p = ally.Position;
+            float3 p = ally.position;
             debug(p, GREEN);
-            ToLocal(&p);
-            (&_minimap).Set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)((int)(0b_111 * Max(0f, ally.Expires - time()) / 10f) << 2));
+            tolocal(&p);
+            (&_minimap).set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)((int)(0b_111 * max(0f, ally.expires - time()) / 10f) << 2));
         }
     }
 
@@ -174,10 +174,10 @@ while (1)
         debug(command.position, RED);
 
         EnemyNotificationPacket notificationPacket;
-        notificationPacket.Header = ENEMY_HEADER;
-        notificationPacket.Position = command.position;
+        notificationPacket.header = ENEMY_HEADER;
+        notificationPacket.position = command.position;
         send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
     }
 
-    (&_minimap).Update();
+    (&_minimap).update();
 }

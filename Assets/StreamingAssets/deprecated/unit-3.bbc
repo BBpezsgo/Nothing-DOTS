@@ -6,13 +6,13 @@ void PerformRadar()
     f32 radarDistance = radar();
     if (radarDistance > 0f)
     {
-        PrintLine(radarDistance);
-        currentTarget.x = Sin(Radar.RadarDirection) * radarDistance;
-        currentTarget.y = Cos(Radar.RadarDirection) * radarDistance;
+        printline(radarDistance);
+        currentTarget.x = sin(Radar.direction) * radarDistance;
+        currentTarget.y = cos(Radar.direction) * radarDistance;
     }
     else
     {
-        Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
+        Radar.direction = (Radar.direction + 0.05f) % TAU;
     }
 }
 
@@ -25,5 +25,5 @@ while (1)
 
     ldebug(currentTarget, RED);
 
-    ShootAt(currentTarget, &targetedPosition);
+    shootat(currentTarget, &targetedPosition);
 }

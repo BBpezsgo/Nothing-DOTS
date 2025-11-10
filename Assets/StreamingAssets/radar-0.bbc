@@ -16,32 +16,32 @@ void Receive()
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
-            Print("I-REQ ");
-            Print(packet.Position);
-            PrintLine();
+            print("I-REQ ");
+            print(packet.position);
+            printline();
 
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-            responsePacket.Header = (u8)RESPONSE_HEADER;
+            responsePacket.header = (u8)RESPONSE_HEADER;
 
-            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
-                Print(" M");
-                responsePacket.Position = GPS.Position;
-                debug(packet.Position, CYAN);
+                print(" M");
+                responsePacket.position = GPS.position;
+                debug(packet.position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
             else
             {
-                for (int i = 0; i < (&allies).Length(); i++)
+                for (int i = 0; i < (&allies).length(); i++)
                 {
-                    f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
+                    f32 distanceSqr = distancesqr((&allies).raw()[i].position, packet.position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
-                        Print(" K");
+                        print(" K");
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
-                        indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
-                        indirectResponsePacket.Position = (&allies).Raw()[i].Position;
-                        indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
+                        indirectResponsePacket.header = (u8)INDIRECT_RESPONSE_HEADER;
+                        indirectResponsePacket.position = (&allies).raw()[i].position;
+                        indirectResponsePacket.expires = (&allies).raw()[i].expires;
                         send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                         return;
                     }
@@ -53,33 +53,33 @@ void Receive()
         {
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
 
-            Print("I-RES ");
-            Print(packet.Position);
-            PrintLine();
+            print("I-RES ");
+            print(packet.position);
+            printline();
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = time();
-            unit.Expires = time() + 10f;
-            unit.VerificationSentAt = time();
-            unit.PositionRecords = 1;
-            RemoveUnitAt(&enemies, unit.Position);
-            int j = SetUnit(&allies, unit);
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = time() + 10f;
+            unit.verification_sent_at = time();
+            unit.position_records = 1;
+            remove_unit_at(&enemies, unit.position);
+            int j = set_unit(&allies, unit);
 
-            for (int i = 0; i < (&allies).Length(); i++)
+            for (int i = 0; i < (&allies).length(); i++)
             {
                 if (i != j)
                 {
-                    direction = (&allies).Raw()[i].Position;
-                    ToLocal(&direction);
-                    Normalise(&direction);
+                    direction = (&allies).raw()[i].position;
+                    tolocal(&direction);
+                    normalise(&direction);
 
-                    PrintLine("NTFY");
+                    printline("NTFY");
 
                     IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
-                    indirectResponsePacket.Header = INDIRECT_RESPONSE_HEADER;
-                    indirectResponsePacket.Position = packet.Position;
-                    indirectResponsePacket.Expires = unit.Expires;
+                    indirectResponsePacket.header = INDIRECT_RESPONSE_HEADER;
+                    indirectResponsePacket.position = packet.position;
+                    indirectResponsePacket.expires = unit.expires;
                     send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                 }
             }
@@ -89,35 +89,35 @@ void Receive()
         {
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
 
-            Print("I-E ");
-            Print(packet.Position);
-            PrintLine();
+            print("I-E ");
+            print(packet.position);
+            printline();
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = 0f;
-            unit.Expires = time() + 5f;
-            unit.VerificationSentAt = time();
-            unit.PositionRecords = 1;
-            SetUnit(&enemies, unit);
+            unit.position = packet.position;
+            unit.recorded = 0f;
+            unit.expires = time() + 5f;
+            unit.verification_sent_at = time();
+            unit.position_records = 1;
+            set_unit(&enemies, unit);
         }
         else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
         {
             IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
 
-            Print("I-RES ");
-            Print(packet.Position);
-            PrintLine();
+            print("I-RES ");
+            print(packet.position);
+            printline();
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = time();
-            unit.Expires = packet.Expires;
-            unit.VerificationSentAt = time();
-            unit.PositionRecords = 1;
-            RemoveUnitAt(&enemies, unit.Position);
-            SetUnit(&allies, unit);
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = packet.expires;
+            unit.verification_sent_at = time();
+            unit.position_records = 1;
+            remove_unit_at(&enemies, unit.position);
+            set_unit(&allies, unit);
         }
     }
 }
@@ -131,34 +131,34 @@ void PerformRadar()
 
         ldebug_label(radarPoint, "?");
 
-        ToGlobal(&radarPoint);
+        toglobal(&radarPoint);
 
-        if (UnitIndexAt(&allies, radarPoint) != -1)
+        if (unit_index_at(&allies, radarPoint) != -1)
         {
-            Print('.');
-            Print(radarPoint);
-            PrintLine();
+            print('.');
+            print(radarPoint);
+            printline();
         }
         else
         {
-            Print('!');
-            Print(radarPoint);
-            PrintLine();
+            print('!');
+            print(radarPoint);
+            printline();
 
             Unit enemy;
-            enemy.Recorded = time();
-            enemy.Expires = time() + 12f;
-            enemy.Position = radarPoint;
-            enemy.PositionRecords = 1;
-            SendVerificationRequest(&enemy);
-            UpdateUnit(&enemies, enemy);
+            enemy.recorded = time();
+            enemy.expires = time() + 12f;
+            enemy.position = radarPoint;
+            enemy.position_records = 1;
+            send_verification_request(&enemy);
+            update_unit(&enemies, enemy);
         }
     }
     else
     {
         prevRadarDistance = 0f;
     }
-    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
+    Radar.direction = (Radar.direction + 0.05f) % TAU;
 }
 
 f32 prevRadarDistance = 0f;
@@ -167,7 +167,7 @@ List<Unit> allies = new List<Unit>(4);
 int i = 0;
 int j = 0;
 
-PrintLine("Started ...");
+printline("Started ...");
 
 while (1)
 {
@@ -175,49 +175,49 @@ while (1)
 
     PerformRadar();
 
-    if ((&enemies).Length())
+    if ((&enemies).length())
     {
-        i = (i + 1) % (&enemies).Length();
-        if (time() >= (&enemies).Raw()[i].Expires)
+        i = (i + 1) % (&enemies).length();
+        if (time() >= (&enemies).raw()[i].expires)
         {
-            (&enemies).SwapBack(i);
+            (&enemies).swapback(i);
         }
         else
         {
-            float3 p = (&enemies).Raw()[i].Position;
-            if (time() >= (&enemies).Raw()[i].Recorded + 4f)
+            float3 p = (&enemies).raw()[i].position;
+            if (time() >= (&enemies).raw()[i].recorded + 4f)
             {
-                if (time() >= (&enemies).Raw()[i].NotifiedAt + 5f)
+                if (time() >= (&enemies).raw()[i].notified_at + 5f)
                 {
                     EnemyNotificationPacket notificationPacket;
-                    notificationPacket.Header = ENEMY_HEADER;
-                    notificationPacket.Position = p;
+                    notificationPacket.header = ENEMY_HEADER;
+                    notificationPacket.position = p;
                     send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
-                    (&enemies).Raw()[i].NotifiedAt = time();
+                    (&enemies).raw()[i].notified_at = time();
                 }
                 debug(p, RED);
             }
-            elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
+            elseif (time() >= (&enemies).raw()[i].recorded + 1f)
             {
                 debug(p, YELLOW);
             }
-            PrintLine("CHK");
-            TrySendVerificationRequest(&(&enemies).Raw()[i]);
+            printline("CHK");
+            try_send_verification_request(&(&enemies).raw()[i]);
         }
     }
 
-    if ((&allies).Length())
+    if ((&allies).length())
     {
-        j = (j + 1) % (&allies).Length();
-        if (time() >= (&allies).Raw()[j].Expires)
+        j = (j + 1) % (&allies).length();
+        if (time() >= (&allies).raw()[j].expires)
         {
-            PrintLine("RTH");
-            TrySendVerificationRequest(&(&allies).Raw()[j]);
-            (&allies).SwapBack(j);
+            printline("RTH");
+            try_send_verification_request(&(&allies).raw()[j]);
+            (&allies).swapback(j);
         }
         else
         {
-            debug((&allies).Raw()[j].Position, GREEN);
+            debug((&allies).raw()[j].position, GREEN);
         }
     }
 }

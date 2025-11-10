@@ -1,53 +1,53 @@
 using "api.bbc";
 
-export void StopMoving()
+export void stop_moving()
 {
-    Vehicle.InputSteer = (i8)0;
-    Vehicle.InputForward = (i8)0;
+    Vehicle.steer = (i8)0;
+    Vehicle.forward = (i8)0;
 }
 
-export void MoveTo(f32 targetX, f32 targetZ)
+export void move_to(f32 targetX, f32 targetZ)
 {
-    float2 forward = new float2(GPS.Forward.x, GPS.Forward.z);
-    float2 position = new float2(GPS.Position.x, GPS.Position.z);
+    float2 forward = new float2(GPS.forward.x, GPS.forward.z);
+    float2 position = new float2(GPS.position.x, GPS.position.z);
 
     float2 dirMove;
     dirMove.x = targetX - position.x;
     dirMove.y = targetZ - position.y;
-    Normalise(&dirMove);
+    normalise(&dirMove);
 
-    f32 d = Distance(position, new float2(targetX, targetZ));
+    f32 d = distance(position, new float2(targetX, targetZ));
 
-    f32 t1 = Cross(forward, dirMove);
-    f32 t2 = Dot(forward, dirMove);
-    f32 t4 = Atan2(t1, t2);
+    f32 t1 = cross(forward, dirMove);
+    f32 t2 = dot(forward, dirMove);
+    f32 t4 = atan2(t1, t2);
 
     if (d < 1f)
     {
-        Vehicle.InputSteer = (i8)0;
-        Vehicle.InputForward = (i8)0;
+        Vehicle.steer = (i8)0;
+        Vehicle.forward = (i8)0;
     }
     elseif (t4 > 0.1f)
     {
-        Vehicle.InputSteer = (i8)-128;
+        Vehicle.steer = (i8)-128;
     }
     elseif (t4 < -0.1f)
     {
-        Vehicle.InputSteer = (i8)127;
+        Vehicle.steer = (i8)127;
     }
     elseif (t4 > 0.05f)
     {
-        Vehicle.InputSteer = (i8)-64;
+        Vehicle.steer = (i8)-64;
     }
     elseif (t4 < -0.05f)
     {
-        Vehicle.InputSteer = (i8)64;
+        Vehicle.steer = (i8)64;
     }
     else
     {
-        Vehicle.InputSteer = (i8)0;
+        Vehicle.steer = (i8)0;
         d += 10f;
         if (d > 127f) { d = 127f; }
-        Vehicle.InputForward = (i8)(i32)d;
+        Vehicle.forward = (i8)(i32)d;
     }
 }

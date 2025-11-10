@@ -15,8 +15,8 @@ void SendResponse(f32 direction)
     send(&v, 2, direction, 0.3f);
 
     // float2 point;
-    // point.x = Sin(direction) * 10f;
-    // point.y = Cos(direction) * 10f;
+    // point.x = sin(direction) * 10f;
+    // point.y = cos(direction) * 10f;
     // ldebug(point, CYAN);
 }
 
@@ -28,8 +28,8 @@ void SendRequest(f32 direction)
     send(&v, 2, direction, 0.7f);
 
     float2 point;
-    point.x = Sin(direction) * 10f;
-    point.y = Cos(direction) * 10f;
+    point.x = sin(direction) * 10f;
+    point.y = cos(direction) * 10f;
     ldebug(point, BLUE);
 }
 
@@ -45,15 +45,15 @@ void Receive()
 
         // {
         //     float2 point;
-        //     point.x = Sin(receivedDirection) * 10f;
-        //     point.y = Cos(receivedDirection) * 10f;
+        //     point.x = sin(receivedDirection) * 10f;
+        //     point.y = cos(receivedDirection) * 10f;
         //     ldebug(point, YELLOW);
         // }
 
         if (v[0] == (u8)1 &&
             v[1] == (u8)2)
         {
-            // PrintLine("Sending response ...");
+            // printline("Sending response ...");
             SendResponse(receivedDirection);
         }
         else if (v[0] == (u8)3 &&
@@ -61,34 +61,34 @@ void Receive()
         {
             if (requestSentAt as i32)
             {
-                f32 diff = Min(
-                    Abs(receivedDirection - requestSentToDirection),
-                    TAU - Abs(receivedDirection - requestSentToDirection)
+                f32 diff = min(
+                    abs(receivedDirection - requestSentToDirection),
+                    TAU - abs(receivedDirection - requestSentToDirection)
                 );
 
                 if (diff < 0.6f)
                 {
                     Unit unit;
-                    unit.Expires = time() + 5f;
+                    unit.expires = time() + 5f;
                     float2 point;
-                    point.x = Sin(receivedDirection) * requestSentToDistance;
-                    point.y = Cos(receivedDirection) * requestSentToDistance;
-                    ToByte2(&point, &unit.Position);
+                    point.x = sin(receivedDirection) * requestSentToDistance;
+                    point.y = cos(receivedDirection) * requestSentToDistance;
+                    tobyte2(&point, &unit.position);
                     ldebug(point, GREEN);
 
                     requestSentAt = 0f;
                     requestSentToDistance = 0f;
                     requestSentToDirection = 0f;
 
-                    // PrintLine("Object identified");
+                    // printline("Object identified");
                 }
                 else
                 {
                     float2 point;
-                    point.x = Sin(receivedDirection) * 10f;
-                    point.y = Cos(receivedDirection) * 10f;
+                    point.x = sin(receivedDirection) * 10f;
+                    point.y = cos(receivedDirection) * 10f;
                     ldebug(point, YELLOW);
-                    // PrintLine(diff);
+                    // printline(diff);
                 }
             }
         }
@@ -98,39 +98,39 @@ void Receive()
 void RecordUnit(List<Unit>* units, Unit unit)
 {
     u8 isNew = true;
-    for (int i = 0; isNew && i < units.Length(); i++)
+    for (int i = 0; isNew && i < units.length(); i++)
     {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit.Position);
+        f32 distanceSqr = distancesqr(units.raw()[i].position, unit.position);
         if (distanceSqr < DISTANCE_THRESHOLD)
         {
-            units.Raw()[i] = unit;
+            units.raw()[i] = unit;
             isNew = false;
         }
     }
     if (isNew)
     {
-        if (units.Length() >= 4)
+        if (units.length() >= 4)
         {
-            units.Raw()[0] = unit;
+            units.raw()[0] = unit;
         }
         else
         {
-            units.Add(unit);
+            units.add(unit);
         }
     }
 }
 
 i32 IsEnemy(float2 point)
 {
-    i32 isEnemy = (&allies).Length();
-    int i = (&allies).Length();
+    i32 isEnemy = (&allies).length();
+    int i = (&allies).length();
     while (i)
     {
         i--;
-        byte2 allyPosition_ = (&allies).Raw()[i].Position;
+        byte2 allyPosition_ = (&allies).raw()[i].position;
         float2 allyPosition;
-        ToFloat2(&allyPosition_, &allyPosition);
-        f32 d = DistanceSqr(point, allyPosition);
+        tofloat2(&allyPosition_, &allyPosition);
+        f32 d = distancesqr(point, allyPosition);
         if (d < DISTANCE_THRESHOLD)
         {
             isEnemy--;
@@ -143,37 +143,37 @@ void PerformRadar()
 {
     f32 radarDistance = radar();
     if (radarDistance > 0f &&
-        Abs(prevRadarDistance - radarDistance) > 1f)
+        abs(prevRadarDistance - radarDistance) > 1f)
     {
         if (requestSentAt as i32) return;
 
         prevRadarDistance = radarDistance;
 
         // float2 point;
-        // point.x = Sin(Radar.RadarDirection);
-        // point.y = Cos(Radar.RadarDirection);
+        // point.x = sin(Radar.direction);
+        // point.y = cos(Radar.direction);
         // point.x *= radarDistance;
         // point.y *= radarDistance;
         // ldebug(point, WHITE);
 
-        // PrintLine("Identifying object ...");
+        // printline("Identifying object ...");
 
-        SendRequest(Radar.RadarDirection);
+        SendRequest(Radar.direction);
         requestSentAt = time();
         requestSentToDistance = radarDistance;
-        requestSentToDirection = Radar.RadarDirection;
+        requestSentToDirection = Radar.direction;
     }
     if (radarDistance == 0f)
     {
         prevRadarDistance = 0f;
     }
-    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
+    Radar.direction = (Radar.direction + 0.05f) % TAU;
 }
 
 struct Unit
 {
-    byte2 Position;
-    f32 Expires;
+    byte2 position;
+    f32 expires;
 }
 
 f32 prevRadarDistance = 0f;
@@ -189,11 +189,11 @@ while (1)
     {
         if ((time() - requestSentAt) > 5f)
         {
-            // PrintLine("Object didn't respond");
+            // printline("Object didn't respond");
 
             float2 point;
-            point.x = Sin(requestSentToDirection);
-            point.y = Cos(requestSentToDirection);
+            point.x = sin(requestSentToDirection);
+            point.y = cos(requestSentToDirection);
             point.x *= requestSentToDistance;
             point.y *= requestSentToDistance;
 
@@ -204,8 +204,8 @@ while (1)
             ldebug(point, RED);
 
             Unit enemy;
-            enemy.Expires = time() + 5f;
-            ToByte2(&point, &enemy.Position);
+            enemy.expires = time() + 5f;
+            tobyte2(&point, &enemy.position);
             RecordUnit(&enemies, enemy);
         }
     }
@@ -214,21 +214,21 @@ while (1)
 
     currentTarget = new float2;
 
-    for (int i = (&enemies).Length() - 1; i >= 0; i--)
+    for (int i = (&enemies).length() - 1; i >= 0; i--)
     {
-        if (time() >= (&enemies).Raw()[i].Expires)
+        if (time() >= (&enemies).raw()[i].expires)
         {
-            (&enemies).Remove(i);
+            (&enemies).remove(i);
         }
         else
         {
             float2 p1;
-            byte2 p2 = (&enemies).Raw()[i].Position;
-            ToFloat2(&p2, &p1);
+            byte2 p2 = (&enemies).raw()[i].position;
+            tofloat2(&p2, &p1);
             ldebug(p1, RED);
             currentTarget = p1;
         }
     }
 
-    ShootAt(currentTarget, &targetedPosition);
+    shootat(currentTarget, &targetedPosition);
 }

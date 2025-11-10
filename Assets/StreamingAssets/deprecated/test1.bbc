@@ -38,11 +38,11 @@ while (1)
     if (currentPlug.x != 0f &&
         currentPlug.y != 0f)
     {
-        float d = DistanceSqr(GPS.Position, currentPlug);
+        float d = distancesqr(GPS.position, currentPlug);
         if (d < 2f * 2f)
         {
-            StopMoving();
-            while (!Pendrive.IsPlugged)
+            stop_moving();
+            while (!Pendrive.plugged)
             {
                 _pendrive_plug();
             }
@@ -51,22 +51,22 @@ while (1)
             byte[6] nonsense = "Hello";
             if (!_pendrive_write(&nonsense, 0, 6))
             {
-                PrintLine("Failed to write to disk");
+                printline("Failed to write to disk");
             }
         }
         else
         {
-            MoveTo(currentPlug.x, currentPlug.y);
+            move_to(currentPlug.x, currentPlug.y);
         }
     }
     elseif (currentUnplug.x != 0f &&
             currentUnplug.y != 0f)
     {
-        float d = DistanceSqr(GPS.Position, currentUnplug);
+        float d = distancesqr(GPS.position, currentUnplug);
         if (d < 2f * 2f)
         {
-            StopMoving();
-            while (Pendrive.IsPlugged)
+            stop_moving();
+            while (Pendrive.plugged)
             {
                 _pendrive_unplug();
             }
@@ -74,7 +74,7 @@ while (1)
         }
         else
         {
-            MoveTo(currentUnplug.x, currentUnplug.y);
+            move_to(currentUnplug.x, currentUnplug.y);
         }
     }
 }

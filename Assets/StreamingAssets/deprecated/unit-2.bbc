@@ -36,18 +36,18 @@ void Receive()
             float2 pos;
             p.x = v[1] as i8;
             p.y = v[2] as i8;
-            ToFloat2(&p, &pos);
+            tofloat2(&p, &pos);
 
-            if (DistanceSqr(pos, GPS.Position) < 2f * 2f)
+            if (distancesqr(pos, GPS.position) < 2f * 2f)
             {
-                pos = GPS.Position;
-                ToByte2(&pos, &p);
+                pos = GPS.position;
+                tobyte2(&pos, &p);
 
                 v[0] = (u8)RESPONSE_HEADER;
                 v[1] = p.x as u8;
                 v[2] = p.y as u8;
                 send(&v, 3, 0f, 0f);
-                PrintLine("Send response ...");
+                printline("Send response ...");
             }
         }
         else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
@@ -56,17 +56,17 @@ void Receive()
             byte2 p;
             p.x = v[1] as i8;
             p.y = v[2] as i8;
-            ToFloat2(&p, &pos);
-            ToLocal(&pos);
+            tofloat2(&p, &pos);
+            tolocal(&pos);
             Unit unit;
-            ToByte2(&pos, &unit.Position);
-            unit.Recorded = time();
-            unit.Expires = time() + 10f;
-            RemoveUnit(&enemies, unit.Position);
+            tobyte2(&pos, &unit.position);
+            unit.recorded = time();
+            unit.expires = time() + 10f;
+            RemoveUnit(&enemies, unit.position);
 
             ldebug(pos, GREEN);
 
-            PrintLine("Object identified ...");
+            printline("Object identified ...");
         }
     }
 }
@@ -74,9 +74,9 @@ void Receive()
 u8 IsNotRecorded(List<Unit>* units, byte2 unit)
 {
     u8 isNew = true;
-    for (int i = 0; isNew && i < units.Length(); i++)
+    for (int i = 0; isNew && i < units.length(); i++)
     {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        f32 distanceSqr = distancesqr(units.raw()[i].position, unit);
         if (distanceSqr < DISTANCE_THRESHOLD)
         {
             isNew = false;
@@ -87,16 +87,16 @@ u8 IsNotRecorded(List<Unit>* units, byte2 unit)
 
 void RecordUnit(List<Unit>* units, Unit unit)
 {
-    u8 isNew = IsNotRecorded(units, unit.Position);
+    u8 isNew = IsNotRecorded(units, unit.position);
     if (isNew)
     {
-        if (units.Length() >= 4)
+        if (units.length() >= 4)
         {
-            units.Raw()[0] = unit;
+            units.raw()[0] = unit;
         }
         else
         {
-            units.Add(unit);
+            units.add(unit);
         }
     }
 }
@@ -104,38 +104,38 @@ void RecordUnit(List<Unit>* units, Unit unit)
 void RemoveUnit(List<Unit>* units, byte2 unit)
 {
     u8 isNotDone = true;
-    for (int i = 0; isNotDone && i < units.Length(); i++)
+    for (int i = 0; isNotDone && i < units.length(); i++)
     {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        f32 distanceSqr = distancesqr(units.raw()[i].position, unit);
         if (distanceSqr < DISTANCE_THRESHOLD)
         {
             isNotDone = false;
-            units.Remove(i);
+            units.remove(i);
         }
     }
 }
 
 void PerformRadar()
 {
-    PrintLine("Radar ...");
+    printline("Radar ...");
     f32 radarDistance = radar();
     if (radarDistance > 0f &&
-        Abs(prevRadarDistance - radarDistance) > .5f)
+        abs(prevRadarDistance - radarDistance) > .5f)
     {
         prevRadarDistance = radarDistance;
 
         float2 point;
-        point.x = Sin(Radar.RadarDirection);
-        point.y = Cos(Radar.RadarDirection);
+        point.x = sin(Radar.direction);
+        point.y = cos(Radar.direction);
         point.x *= radarDistance;
         point.y *= radarDistance;
 
-        PrintLine("Identifying object ...");
+        printline("Identifying object ...");
 
         float2 pointGlobal = point;
-        ToGlobal(&pointGlobal);
+        toglobal(&pointGlobal);
         byte2 p;
-        ToByte2(&pointGlobal, &p);
+        tobyte2(&pointGlobal, &p);
 
         u8[3] v;
         v[0] = (u8)REQUEST_HEADER;
@@ -146,23 +146,23 @@ void PerformRadar()
         ldebug(point, BLUE);
 
         Unit enemy;
-        enemy.Recorded = time();
-        enemy.Expires = time() + 5f;
-        ToByte2(&point, &enemy.Position);
+        enemy.recorded = time();
+        enemy.expires = time() + 5f;
+        tobyte2(&point, &enemy.position);
         RecordUnit(&enemies, enemy);
     }
     if (radarDistance == 0f)
     {
         prevRadarDistance = 0f;
     }
-    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
+    Radar.direction = (Radar.direction + 0.05f) % TAU;
 }
 
 struct Unit
 {
-    byte2 Position;
-    f32 Recorded;
-    f32 Expires;
+    byte2 position;
+    f32 recorded;
+    f32 expires;
 }
 
 f32 prevRadarDistance = 0f;
@@ -179,25 +179,25 @@ while (1)
 
     currentTarget = new float2;
 
-    for (int i = (&enemies).Length() - 1; i >= 0; i--)
+    for (int i = (&enemies).length() - 1; i >= 0; i--)
     {
-        if (time() >= (&enemies).Raw()[i].Expires)
+        if (time() >= (&enemies).raw()[i].expires)
         {
-            (&enemies).Remove(i);
+            (&enemies).remove(i);
         }
-        else if (time() >= (&enemies).Raw()[i].Recorded + 2f)
+        else if (time() >= (&enemies).raw()[i].recorded + 2f)
         {
             float2 p1;
-            byte2 p2 = (&enemies).Raw()[i].Position;
-            ToFloat2(&p2, &p1);
+            byte2 p2 = (&enemies).raw()[i].position;
+            tofloat2(&p2, &p1);
             ldebug(p1, RED);
             currentTarget = p1;
         }
         else
         {
             float2 p1;
-            byte2 p2 = (&enemies).Raw()[i].Position;
-            ToFloat2(&p2, &p1);
+            byte2 p2 = (&enemies).raw()[i].position;
+            tofloat2(&p2, &p1);
         }
     }
 
@@ -210,7 +210,7 @@ while (1)
         CommandAttackAt* command = &_command as CommandAttackAt*;
         currentTarget = command.position;
         currentDestination = new float2;
-        ToLocal(&currentTarget);
+        tolocal(&currentTarget);
     }
     else if (commandId == 2)
     {
@@ -222,12 +222,12 @@ while (1)
     if (currentTarget.x != 0f &&
         currentTarget.x != 0f)
     {
-        ShootAt(currentTarget, &targetedPosition);
+        shootat(currentTarget, &targetedPosition);
     }
 
     if (currentDestination.x != 0f &&
         currentDestination.x != 0f)
     {
-        MoveTo(currentDestination.x, currentDestination.y);
+        move_to(currentDestination.x, currentDestination.y);
     }
 }

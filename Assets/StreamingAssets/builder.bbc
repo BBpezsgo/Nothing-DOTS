@@ -33,12 +33,12 @@ void Receive()
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-            responsePacket.Header = (u8)RESPONSE_HEADER;
-            responsePacket.Position = packet.Position;
+            responsePacket.header = (u8)RESPONSE_HEADER;
+            responsePacket.position = packet.position;
 
-            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
-                debug(packet.Position, CYAN);
+                debug(packet.position, CYAN);
 
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
@@ -75,29 +75,29 @@ while (1)
     if (currentDestination.x != 0f &&
         currentDestination.z != 0f)
     {
-        MoveTo(currentDestination.x, currentDestination.z);
+        move_to(currentDestination.x, currentDestination.z);
     }
 
     if (currentBuildAt.x != 0f &&
         currentBuildAt.z != 0f)
     {
         turretLastUseTime = time();
-        float d = DistanceSqr(GPS.Position, currentBuildAt);
+        float d = distancesqr(GPS.position, currentBuildAt);
         if (d < 3f * 3f)
         {
-            StopMoving();
+            stop_moving();
 
-            ShootAtSimple(currentBuildAt, &targetedPosition);
+            shootat_simple(currentBuildAt, &targetedPosition);
             debug(currentBuildAt, WHITE);
         }
         else
         {
-            MoveTo(currentBuildAt.x, currentBuildAt.z);
+            move_to(currentBuildAt.x, currentBuildAt.z);
         }
     }
     else if (time() - turretLastUseTime > 5f)
     {
-        CombatTurret.TurretTargetRotation = 0f;
-        CombatTurret.TurretTargetAngle = 0f;
+        CombatTurret.target_rotation = 0f;
+        CombatTurret.target_angle = 0f;
     }
 }

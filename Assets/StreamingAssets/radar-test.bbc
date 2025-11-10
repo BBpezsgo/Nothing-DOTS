@@ -7,5 +7,5 @@ while (1)
     {
         ldebug(radarPoint, 0b100);
     }
-    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
+    Radar.direction = (Radar.direction + 0.05f) % TAU;
 }

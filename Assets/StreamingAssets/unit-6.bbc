@@ -40,32 +40,32 @@ void Receive()
 
             if (Logs)
             {
-                Print("I-REQ ");
-                Print(packet.Position);
-                PrintLine();
+                print("I-REQ ");
+                print(packet.position);
+                printline();
             }
 
-            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
-                if (Logs) PrintLine(" M");
+                if (Logs) printline(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-                responsePacket.Header = (u8)RESPONSE_HEADER;
-                responsePacket.Position = GPS.Position;
-                if (Debug) debug(packet.Position, CYAN);
+                responsePacket.header = (u8)RESPONSE_HEADER;
+                responsePacket.position = GPS.position;
+                if (Debug) debug(packet.position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
             else
             {
-                for (int i = 0; i < (&allies).Length(); i++)
+                for (int i = 0; i < (&allies).length(); i++)
                 {
-                    f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
+                    f32 distanceSqr = distancesqr((&allies).raw()[i].position, packet.position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
-                        if (Logs) PrintLine(" K");
+                        if (Logs) printline(" K");
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
-                        indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
-                        indirectResponsePacket.Position = (&allies).Raw()[i].Position;
-                        indirectResponsePacket.Expires = (&allies).Raw()[i].Expires;
+                        indirectResponsePacket.header = (u8)INDIRECT_RESPONSE_HEADER;
+                        indirectResponsePacket.position = (&allies).raw()[i].position;
+                        indirectResponsePacket.expires = (&allies).raw()[i].expires;
                         send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                         return;
                     }
@@ -79,19 +79,19 @@ void Receive()
 
             if (Logs)
             {
-                Print("I-RES ");
-                Print(packet.Position);
-                PrintLine();
+                print("I-RES ");
+                print(packet.position);
+                printline();
             }
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = time();
-            unit.Expires = time() + 10f;
-            unit.VerificationSentAt = time();
-            unit.PositionRecords = 1;
-            RemoveUnitAt(&enemies, unit.Position);
-            UpdateUnit(&allies, unit);
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = time() + 10f;
+            unit.verification_sent_at = time();
+            unit.position_records = 1;
+            remove_unit_at(&enemies, unit.position);
+            update_unit(&allies, unit);
         }
         else if (v[0] == (u8)ENEMY_HEADER &&
                  receivedLength == sizeof(EnemyNotificationPacket))
@@ -99,18 +99,18 @@ void Receive()
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = 0f;
-            unit.Expires = time() + 5f;
-            unit.VerificationSentAt = time();
-            unit.PositionRecords = 1;
+            unit.position = packet.position;
+            unit.recorded = 0f;
+            unit.expires = time() + 5f;
+            unit.verification_sent_at = time();
+            unit.position_records = 1;
 
             if (Logs)
             {
-                Print("I-E ");
-                PrintLine(unit.Position);
+                print("I-E ");
+                printline(unit.position);
             }
-            UpdateUnit(&enemies, unit);
+            update_unit(&enemies, unit);
         }
         else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
@@ -119,19 +119,19 @@ void Receive()
 
             if (Logs)
             {
-                Print("I-RES ");
-                Print(packet.Position);
-                PrintLine();
+                print("I-RES ");
+                print(packet.position);
+                printline();
             }
 
             Unit unit;
-            unit.Position = packet.Position;
-            unit.Recorded = time();
-            unit.Expires = packet.Expires;
-            unit.VerificationSentAt = time();
-            unit.PositionRecords = 1;
-            RemoveUnitAt(&enemies, unit.Position);
-            UpdateUnit(&allies, unit);
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = packet.expires;
+            unit.verification_sent_at = time();
+            unit.position_records = 1;
+            remove_unit_at(&enemies, unit.position);
+            update_unit(&allies, unit);
         }
     }
 }
@@ -145,7 +145,7 @@ float2 currentDestination = new float2;
 u8 shouldShoot = false;
 f32 turretLastUseTime = 0f;
 
-PrintLine("Started ...");
+printline("Started ...");
 
 while (1)
 {
@@ -154,34 +154,34 @@ while (1)
     currentTarget = new float3;
     shouldShoot = false;
 
-    for (int i = (&enemies).Length() - 1; i >= 0; i--)
+    for (int i = (&enemies).length() - 1; i >= 0; i--)
     {
-        if (time() >= (&enemies).Raw()[i].Expires)
+        if (time() >= (&enemies).raw()[i].expires)
         {
-            if (Logs) PrintLine("#E-OLD");
-            (&enemies).SwapBack(i);
+            if (Logs) printline("#E-OLD");
+            (&enemies).swapback(i);
         }
         else
         {
-            float3 p = (&enemies).Raw()[i].Position;
-            ToLocal(&p);
+            float3 p = (&enemies).raw()[i].position;
+            tolocal(&p);
 
             float3 norm = p;
             norm.y = 0f;
-            Normalise(&norm);
-            float radarDirection = Atan2(norm.z, norm.x);
+            normalise(&norm);
+            float radarDirection = atan2(norm.z, norm.x);
             float3 radarPoint = radar(radarDirection);
-            bool destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
+            bool destroyed = empty(radarPoint) || distancesqr(p, radarPoint) > DistanceThresholdSq;
             const float increment = 0.04f;
             float currentIncrement = increment;
             while (destroyed && currentIncrement < 0.2f)
             {
                 float3 radarPoint = radar(radarDirection + currentIncrement);
-                destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
+                destroyed = empty(radarPoint) || distancesqr(p, radarPoint) > DistanceThresholdSq;
                 if (destroyed)
                 {
                     float3 radarPoint = radar(radarDirection - currentIncrement);
-                    destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
+                    destroyed = empty(radarPoint) || distancesqr(p, radarPoint) > DistanceThresholdSq;
                 }
                 currentIncrement += increment;
             }
@@ -190,38 +190,38 @@ while (1)
             {
                 if (Logs)
                 {
-                    PrintLine("#E-DESTROYED");
-                    PrintLine(radarPoint);
-                    PrintLine(Radar.RadarDirection);
-                    //PrintLine(norm);
+                    printline("#E-DESTROYED");
+                    printline(radarPoint);
+                    printline(Radar.direction);
+                    //printline(norm);
                 }
-                (&enemies).SwapBack(i);
+                (&enemies).swapback(i);
             }
-            elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
+            elseif (time() >= (&enemies).raw()[i].recorded + 1f)
             {
-                ToGlobal(&p);
+                toglobal(&p);
                 debug(p, RED);
                 currentTarget = p;
                 shouldShoot = true;
             }
             else
             {
-                ToGlobal(&p);
+                toglobal(&p);
                 debug(p, YELLOW);
                 currentTarget = p;
             }
         }
     }
 
-    for (int i = (&allies).Length() - 1; i >= 0; i--)
+    for (int i = (&allies).length() - 1; i >= 0; i--)
     {
-        if (time() >= (&allies).Raw()[i].Expires)
+        if (time() >= (&allies).raw()[i].expires)
         {
-            (&allies).SwapBack(i);
+            (&allies).swapback(i);
         }
         else
         {
-            float3 p = (&allies).Raw()[i].Position;
+            float3 p = (&allies).raw()[i].position;
             debug(p, GREEN);
         }
     }
@@ -260,26 +260,26 @@ while (1)
         turretLastUseTime = time();
         if (shouldShoot)
         {
-            ShootAt(currentTarget, &targetedPosition);
+            shootat(currentTarget, &targetedPosition);
         }
         else
         {
-            TargetAt(currentTarget, &targetedPosition);
+            targetat(currentTarget, &targetedPosition);
         }
     }
     else if (time() - turretLastUseTime > 5f)
     {
-        CombatTurret.TurretTargetRotation = 0f;
-        CombatTurret.TurretTargetAngle = 0f;
+        CombatTurret.target_rotation = 0f;
+        CombatTurret.target_angle = 0f;
     }
 
     if (currentDestination.x != 0f &&
         currentDestination.y != 0f)
     {
-        MoveTo(currentDestination.x, currentDestination.y);
+        move_to(currentDestination.x, currentDestination.y);
     }
     else
     {
-        StopMoving();
+        stop_moving();
     }
 }

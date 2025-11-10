@@ -18,18 +18,18 @@ void Receive()
 
             if (Logs)
             {
-                Print("I-REQ ");
-                Print(packet.Position);
-                PrintLine();
+                print("I-REQ ");
+                print(packet.position);
+                printline();
             }
 
-            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
-                if (Logs) Print(" M");
+                if (Logs) print(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-                responsePacket.Header = (u8)RESPONSE_HEADER;
-                responsePacket.Position = GPS.Position;
-                if (Debug) debug(packet.Position, CYAN);
+                responsePacket.header = (u8)RESPONSE_HEADER;
+                responsePacket.position = GPS.position;
+                if (Debug) debug(packet.position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
         }
@@ -38,21 +38,21 @@ void Receive()
 
 void PerformRadar()
 {
-    //ldebug(new float3(Cos(Radar.RadarDirection), 0f, Sin(Radar.RadarDirection)) * 10f, CYAN);
+    //ldebug(new float3(cos(Radar.direction), 0f, sin(Radar.direction)) * 10f, CYAN);
     float3 radarPoint = radar();
     if (!empty(radarPoint))
     {
-        ToGlobal(&radarPoint);
+        toglobal(&radarPoint);
 
         RadarPointPacket radarPointPacket;
-        radarPointPacket.Header = RADAR_POINT;
-        radarPointPacket.Position = radarPoint;
+        radarPointPacket.header = RADAR_POINT;
+        radarPointPacket.position = radarPoint;
         send(&radarPointPacket as u8[]*, sizeof(RadarPointPacket));
     }
-    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
+    Radar.direction = (Radar.direction + 0.05f) % TAU;
 }
 
-PrintLine("Started ...");
+printline("Started ...");
 
 while (1)
 {

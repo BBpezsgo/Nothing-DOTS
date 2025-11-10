@@ -26,12 +26,12 @@ void Receive()
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-            responsePacket.Header = (u8)RESPONSE_HEADER;
+            responsePacket.header = (u8)RESPONSE_HEADER;
 
-            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
-                responsePacket.Position = GPS.Position;
-                debug(packet.Position, CYAN);
+                responsePacket.position = GPS.position;
+                debug(packet.position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
         }
@@ -42,14 +42,14 @@ float3 targetedPosition = new float3;
 float3 currentTarget = new float3;
 f32 turretLastUseTime = 0f;
 
-PrintLine("Started ...");
+printline("Started ...");
 
-Print("Forward: ");
-PrintLine(ToLocal(GPS.Position + GPS.Forward));
+print("Forward: ");
+printline(tolocal(GPS.position + GPS.forward));
 
 while (1)
 {
-    //Print('.');
+    //print('.');
     Receive();
 
     byte[MaxCommandDataSize] _command;
@@ -60,20 +60,20 @@ while (1)
     {
         CommandAttackAt* command = &_command as CommandAttackAt*;
         currentTarget = command.position;
-        Print("Target: ");
-        PrintLine(currentTarget);
+        print("Target: ");
+        printline(currentTarget);
     }
 
     if (currentTarget.x != 0f &&
         currentTarget.z != 0f)
     {
         turretLastUseTime = time();
-        ShootAt(currentTarget, &targetedPosition);
+        shootat(currentTarget, &targetedPosition);
         debug(currentTarget, 0b100);
     }
     else if (time() - turretLastUseTime > 5f)
     {
-        CombatTurret.TurretTargetRotation = 0f;
-        CombatTurret.TurretTargetAngle = 0f;
+        CombatTurret.target_rotation = 0f;
+        CombatTurret.target_angle = 0f;
     }
 }

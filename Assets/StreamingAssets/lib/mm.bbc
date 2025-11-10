@@ -1,50 +1,50 @@
 struct MappedMemory_Vehicle
 {
-    i8 InputForward;
-    i8 InputSteer;
+    i8 forward;
+    i8 steer;
 }
 
 struct MappedMemory_CombatTurret
 {
-    u8 InputShoot;
-    f32 TurretTargetRotation;
-    f32 TurretTargetAngle;
-    f32 TurretCurrentRotation;
-    f32 TurretCurrentAngle;
+    u8 shoot;
+    f32 target_rotation;
+    f32 target_angle;
+    f32 current_rotation;
+    f32 current_angle;
 }
 
 struct MappedMemory_Extractor
 {
-    u8 InputExtract;
+    u8 extract;
 }
 
 struct MappedMemory_Transporter
 {
-    u8 LoadDirection;
-    i32 CurrentLoad;
+    u8 load_direction;
+    i32 current_load;
 }
 
 struct MappedMemory_Radar
 {
-    f32 RadarDirection;
-    float3 RadarResponse;
+    f32 direction;
+    float3 response;
 }
 
 struct MappedMemory_GPS
 {
-    float3 Position;
-    float3 Forward;
+    float3 position;
+    float3 forward;
 }
 
 struct MappedMemory_Pendrive
 {
-    u8 IsPlugged;
+    u8 plugged;
 }
 
 struct MappedMemory_Facility
 {
-    u8 Signal;
-    TechnologyHash* HashLocation;
+    u8 signal;
+    TechnologyHash* hash_location;
 }
 
 export alias TechnologyHash u8[30];

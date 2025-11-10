@@ -10,7 +10,7 @@ while (1)
         if (v[0] == (u8)1 &&
             v[1] == (u8)2)
         {
-            PrintLine("Sending response ...");
+            printline("Sending response ...");
             v[0] = (u8)3;
             v[1] = (u8)4;
             send(&v, 2, &receivedDirection, 1f);

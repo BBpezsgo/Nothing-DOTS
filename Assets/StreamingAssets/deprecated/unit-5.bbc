@@ -23,9 +23,9 @@ void Receive()
             float2 pos;
             p.x = v[1] as i8;
             p.y = v[2] as i8;
-            ToFloat2(&p, &pos);
+            tofloat2(&p, &pos);
 
-            if (DistanceSqr(pos, GPS.Position) < 2f * 2f)
+            if (distancesqr(pos, GPS.position) < 2f * 2f)
             {
                 debug(pos, CYAN);
 
@@ -33,7 +33,7 @@ void Receive()
                 v[1] = p.x as u8;
                 v[2] = p.y as u8;
                 send(&v, 3, direction, 0.1f);
-                // PrintLine("Send response ...");
+                // printline("Send response ...");
             }
         }
         else if (v[0] == (u8)RESPONSE_HEADER && receivedLength == 3)
@@ -42,23 +42,23 @@ void Receive()
             byte2 p;
             p.x = v[1] as i8;
             p.y = v[2] as i8;
-            ToFloat2(&p, &pos);
-            ToLocal(&pos);
-            ToByte2(&pos, &p);
+            tofloat2(&p, &pos);
+            tolocal(&pos);
+            tobyte2(&pos, &p);
             AddUnitScore(&units, p, 1);
 
             ldebug(pos, GREEN);
 
-            // PrintLine("Object identified ...");
+            // printline("Object identified ...");
         }
     }
 }
 
 int GetUnit(List<Unit>* units, byte2 unit)
 {
-    for (int i = 0; i < units.Length(); i++)
+    for (int i = 0; i < units.length(); i++)
     {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        f32 distanceSqr = distancesqr(units.raw()[i].position, unit);
         if (distanceSqr < DISTANCE_THRESHOLD)
         {
             return i;
@@ -69,29 +69,29 @@ int GetUnit(List<Unit>* units, byte2 unit)
 
 void RecordUnit(List<Unit>* units, Unit unit)
 {
-    int recorded = GetUnit(units, unit.Position);
+    int recorded = GetUnit(units, unit.position);
     if (recorded != -1) { return; }
-    if (units.Length() >= 8)
+    if (units.length() >= 8)
     {
-        PrintLine("Too many units recorded");
-        units.Raw()[0] = unit;
+        printline("Too many units recorded");
+        units.raw()[0] = unit;
     }
     else
     {
-        units.Add(unit);
+        units.add(unit);
     }
 }
 
 void RemoveUnit(List<Unit>* units, byte2 unit)
 {
     u8 isNotDone = true;
-    for (int i = 0; isNotDone && i < units.Length(); i++)
+    for (int i = 0; isNotDone && i < units.length(); i++)
     {
-        f32 distanceSqr = DistanceSqr(units.Raw()[i].Position, unit);
+        f32 distanceSqr = distancesqr(units.raw()[i].position, unit);
         if (distanceSqr < DISTANCE_THRESHOLD)
         {
             isNotDone = false;
-            units.Remove(i);
+            units.remove(i);
         }
     }
 }
@@ -102,53 +102,53 @@ void AddUnitScore(List<Unit>* units, byte2 unit, int score)
     if (recorded == -1)
     {
         Unit newUnit = new Unit;
-        newUnit.Recorded = time();
-        newUnit.Expires = time() + 10f;
+        newUnit.recorded = time();
+        newUnit.expires = time() + 10f;
         newUnit.Score = score;
-        newUnit.Position = unit;
+        newUnit.position = unit;
         RecordUnit(units, newUnit);
     }
     else
     {
-        Unit* recordedUnit = &units.Raw()[recorded];
+        Unit* recordedUnit = &units.raw()[recorded];
         recordedUnit.Score += score;
     }
 }
 
 void PerformRadar()
 {
-    // PrintLine("Radar ...");
+    // printline("Radar ...");
     f32 radarDistance = radar();
     if (radarDistance > 0f &&
-        Abs(prevRadarDistance - radarDistance) > .5f)
+        abs(prevRadarDistance - radarDistance) > .5f)
     {
         prevRadarDistance = radarDistance;
 
         float2 point;
-        point.x = Cos(Radar.RadarDirection);
-        point.y = Sin(Radar.RadarDirection);
+        point.x = cos(Radar.direction);
+        point.y = sin(Radar.direction);
         point.x *= radarDistance;
         point.y *= radarDistance;
 
         byte2 pLocal;
-        ToByte2(&point, &pLocal);
+        tobyte2(&point, &pLocal);
 
         int recorded = GetUnit(&units, pLocal);
         if (recorded == -1 ||
-            (&units).Raw()[recorded].Score <= 0)
+            (&units).raw()[recorded].Score <= 0)
         {
-            // PrintLine("Identifying object ...");
+            // printline("Identifying object ...");
 
             float2 pointGlobal = point;
-            ToGlobal(&pointGlobal);
+            toglobal(&pointGlobal);
             byte2 p;
-            ToByte2(&pointGlobal, &p);
+            tobyte2(&pointGlobal, &p);
 
             u8[3] v;
             v[0] = (u8)REQUEST_HEADER;
             v[1] = p.x as u8;
             v[2] = p.y as u8;
-            send(&v, 3, Radar.RadarDirection, Asin(1.2f / radarDistance));
+            send(&v, 3, Radar.direction, asin(1.2f / radarDistance));
 
             ldebug(point, BLUE);
 
@@ -159,14 +159,14 @@ void PerformRadar()
     {
         prevRadarDistance = 0f;
     }
-    Radar.RadarDirection = (Radar.RadarDirection + 0.1f) % TAU;
+    Radar.direction = (Radar.direction + 0.1f) % TAU;
 }
 
 struct Unit
 {
-    byte2 Position;
-    f32 Recorded;
-    f32 Expires;
+    byte2 position;
+    f32 recorded;
+    f32 expires;
     i32 Score;
 }
 
@@ -183,34 +183,34 @@ while (1)
 
     currentTarget = new float2;
 
-    for (int i = (&units).Length() - 1; i >= 0; i--)
+    for (int i = (&units).length() - 1; i >= 0; i--)
     {
-        Unit* unit = &((&units).Raw())[i];
-        if (time() >= unit.Expires)
+        Unit* unit = &((&units).raw())[i];
+        if (time() >= unit.expires)
         {
-            (&units).Remove(i);
+            (&units).remove(i);
         }
         else if (unit.Score > 0)
         {
             float2 p1;
-            byte2 p2 = unit.Position;
-            ToFloat2(&p2, &p1);
+            byte2 p2 = unit.position;
+            tofloat2(&p2, &p1);
             ldebug(p1, GREEN);
         }
         else if (unit.Score <= 0 &&
-                 time() >= unit.Recorded + 2f)
+                 time() >= unit.recorded + 2f)
         {
             float2 p1;
-            byte2 p2 = unit.Position;
-            ToFloat2(&p2, &p1);
+            byte2 p2 = unit.position;
+            tofloat2(&p2, &p1);
             ldebug(p1, RED);
             currentTarget = p1;
         }
         else
         {
             float2 p1;
-            byte2 p2 = unit.Position;
-            ToFloat2(&p2, &p1);
+            byte2 p2 = unit.position;
+            tofloat2(&p2, &p1);
             ldebug(p1, YELLOW);
         }
     }
@@ -218,6 +218,6 @@ while (1)
     if (currentTarget.x != 0f &&
         currentTarget.x != 0f)
     {
-        ShootAt(currentTarget, &targetedPosition);
+        shootat(currentTarget, &targetedPosition);
     }
 }

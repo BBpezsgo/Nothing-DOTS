@@ -48,13 +48,13 @@ void Receive()
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
-            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
-                PrintLine(" M");
+                printline(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-                responsePacket.Header = (u8)RESPONSE_HEADER;
-                responsePacket.Position = packet.Position;
-                debug(packet.Position, CYAN);
+                responsePacket.header = (u8)RESPONSE_HEADER;
+                responsePacket.position = packet.position;
+                debug(packet.position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
         }
@@ -110,15 +110,15 @@ while (1)
     if (currentDestination.x != 0f &&
         currentDestination.y != 0f)
     {
-        float d = DistanceSqr(GPS.Position, currentDestination);
+        float d = distancesqr(GPS.position, currentDestination);
         if (d < 2f * 2f)
         {
-            StopMoving();
-            Transporter.LoadDirection = currentDirectionAtDestination;
+            stop_moving();
+            Transporter.load_direction = currentDirectionAtDestination;
         }
         else
         {
-            MoveTo(currentDestination.x, currentDestination.y);
+            move_to(currentDestination.x, currentDestination.y);
         }
     }
     else if (_loadSource.x != 0f &&
@@ -128,42 +128,42 @@ while (1)
     {
         if (_state == 0)
         {
-            float d = DistanceSqr(GPS.Position, _loadSource);
+            float d = distancesqr(GPS.position, _loadSource);
             if (d < 2f * 2f)
             {
                 _state = 1;
             }
             else
             {
-                MoveTo(_loadSource.x, _loadSource.y);
+                move_to(_loadSource.x, _loadSource.y);
             }
         }
         elseif (_state == 1)
         {
-            StopMoving();
-            Transporter.LoadDirection = (u8)2;
-            if (Transporter.CurrentLoad > 10)
+            stop_moving();
+            Transporter.load_direction = (u8)2;
+            if (Transporter.current_load > 10)
             {
                 _state = 2;
             }
         }
         elseif (_state == 2)
         {
-            float d = DistanceSqr(GPS.Position, _loadDestination);
+            float d = distancesqr(GPS.position, _loadDestination);
             if (d < 2f * 2f)
             {
                 _state = 3;
             }
             else
             {
-                MoveTo(_loadDestination.x, _loadDestination.y);
+                move_to(_loadDestination.x, _loadDestination.y);
             }
         }
         elseif (_state == 3)
         {
-            StopMoving();
-            Transporter.LoadDirection = (u8)1;
-            if (Transporter.CurrentLoad <= 0)
+            stop_moving();
+            Transporter.load_direction = (u8)1;
+            if (Transporter.current_load <= 0)
             {
                 _state = 0;
             }

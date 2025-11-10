@@ -30,13 +30,13 @@ void Receive()
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
-            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
-                PrintLine(" M");
+                printline(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-                responsePacket.Header = (u8)RESPONSE_HEADER;
-                responsePacket.Position = packet.Position;
-                debug(packet.Position, CYAN);
+                responsePacket.header = (u8)RESPONSE_HEADER;
+                responsePacket.position = packet.position;
+                debug(packet.position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
         }
@@ -70,23 +70,23 @@ while (1)
     if (currentDestination.x != 0f &&
         currentDestination.y != 0f)
     {
-        MoveTo(currentDestination.x, currentDestination.y);
+        move_to(currentDestination.x, currentDestination.y);
     }
 
     if (currentExtract.x != 0f &&
         currentExtract.y != 0f)
     {
-        float d = DistanceSqr(GPS.Position, currentExtract);
+        float d = distancesqr(GPS.position, currentExtract);
         if (d < 2f * 2f)
         {
-            StopMoving();
+            stop_moving();
             debug(currentExtract, WHITE);
 
-            CombatTurret.InputShoot = (u8)1;
+            CombatTurret.shoot = (u8)1;
         }
         else
         {
-            MoveTo(currentExtract.x, currentExtract.y);
+            move_to(currentExtract.x, currentExtract.y);
         }
     }
 }

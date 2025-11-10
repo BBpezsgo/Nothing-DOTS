@@ -6,15 +6,15 @@ while (1)
     int l = receive(&buffer as any*, 16 as i32, 0 as f32*);
     for (int i = 0; i < l; i++)
     {
-        Print((char)buffer[i]);
+        print((char)buffer[i]);
     }
     if (l)
     {
-        PrintLine();
+        printline();
     }
 
-    Print("Message > ");
-    temp string message = ReadLine();
-    send(message, message.Length(), 0f, 0f);
+    print("Message > ");
+    temp string message = readline();
+    send(message, message.length(), 0f, 0f);
 }
 
