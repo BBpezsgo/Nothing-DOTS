@@ -276,9 +276,8 @@ public partial class CompilerSystemServer : SystemBase
 
         List<ProgressRecord<(int, int)>> progresses = new();
 
-        UserDefinedAttribute[] attributes = new UserDefinedAttribute[]
-        {
-            new("UnitCommand", new LiteralType[] { LiteralType.Integer, LiteralType.String }, CanUseOn.Struct, static (IHaveAttributes context, AttributeUsage attribute, [NotNullWhen(false)] out PossibleDiagnostic? error) =>
+        ImmutableArray<UserDefinedAttribute> attributes = ImmutableArray.Create<UserDefinedAttribute>(
+            new("UnitCommand", ImmutableArray.Create(LiteralType.Integer, LiteralType.String), CanUseOn.Struct, static (IHaveAttributes context, AttributeUsage attribute, [NotNullWhen(false)] out PossibleDiagnostic? error) =>
             {
                 if (context is not CompiledStruct @struct)
                 {
@@ -289,7 +288,7 @@ public partial class CompilerSystemServer : SystemBase
                 error = null;
                 return true;
             }),
-            new("Context", new LiteralType[] { LiteralType.String }, CanUseOn.Field, static (IHaveAttributes context, AttributeUsage attribute, [NotNullWhen(false)] out PossibleDiagnostic? error) =>
+            new("Context", ImmutableArray.Create(LiteralType.String), CanUseOn.Field, static (IHaveAttributes context, AttributeUsage attribute, [NotNullWhen(false)] out PossibleDiagnostic? error) =>
             {
                 if (context is not CompiledField field)
                 {
@@ -307,7 +306,7 @@ public partial class CompilerSystemServer : SystemBase
                 {
                     case "position2":
                     {
-                        int size =field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new()));
+                        int size = field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new()));
                         if (size != sizeof(float2))
                         {
                             error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float2)} (a 2D float vector) (type {field.Type} has a size of {size} bytes)");
@@ -317,7 +316,7 @@ public partial class CompilerSystemServer : SystemBase
                     }
                     case "position3":
                     {
-                        int size =field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new()));
+                        int size = field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new()));
                         if (size != sizeof(float3))
                         {
                             error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float3)} (a 3D float vector) (type {field.Type} has a size of {size} bytes)");
@@ -334,8 +333,8 @@ public partial class CompilerSystemServer : SystemBase
 
                 error = null;
                 return true;
-            }),
-        };
+            })
+        );
 
         CompilerResult compiled = CompilerResult.MakeEmpty(sourceUri);
         BBLangGeneratorResult generated = new()
@@ -423,7 +422,8 @@ public partial class CompilerSystemServer : SystemBase
                     exception.Message,
                     exception.Position,
                     exception.File,
-                    null
+                    false,
+                    ImmutableArray<Diagnostic>.Empty
                 ));
             }
         }

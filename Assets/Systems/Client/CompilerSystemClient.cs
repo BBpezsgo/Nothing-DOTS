@@ -110,7 +110,8 @@ partial class CompilerSystemClient : SystemBase
                 command.ValueRO.Message.ToString(),
                 new LanguageCore.Position(command.ValueRO.Position, command.ValueRO.AbsolutePosition),
                 command.ValueRO.FileName.ToUri(),
-                null
+                false,
+                System.Collections.Immutable.ImmutableArray<LanguageCore.Diagnostic>.Empty
             ));
         }
     }

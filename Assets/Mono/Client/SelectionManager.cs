@@ -628,10 +628,8 @@ public class SelectionManager : Singleton<SelectionManager>
 
     static bool RayCast(UnityEngine.Ray ray, uint layer, out Hit hit)
     {
-        Vector3 start = ray.origin;
-        Vector3 end = ray.GetPoint(300f);
         NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
-        if (!QuadrantRayCast.RayCast(map, new Ray(start, end, layer), out hit)) return false;
+        if (!QuadrantRayCast.RayCast(map, new Ray(ray, 300f, layer), out hit)) return false;
         if (WorldRaycast(ray, out float worldHitDistance) && hit.Distance > worldHitDistance + 5f) return false;
         return true;
     }

@@ -12,6 +12,9 @@ export const f32 DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
 export const f32 DistanceThresholdLarge = 5f;
 export const f32 DistanceThresholdLargeSq = DistanceThresholdLarge * DistanceThresholdLarge;
 
+export const bool Debug = false;
+export const bool Logs = false;
+
 export struct VerificationRequestPacket
 {
     byte Header;
@@ -77,12 +80,15 @@ export void SendVerificationRequest(Unit* unit)
 
     if (1)
     {
-        Print("O-VER ");
-        Print(point);
-        PrintLine();
+        if (Logs)
+        {
+            Print("O-VER ");
+            Print(point);
+            PrintLine();
+        }
 
         ToLocal(&point);
-        ldebug(point, BLUE);
+        if (Debug) ldebug(point, BLUE);
         float distance = Sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
         Normalise(&point);
         float angle = 2f * Atan(3f / (2 * distance));
@@ -92,7 +98,7 @@ export void SendVerificationRequest(Unit* unit)
     else
     {
         send(&packet as u8[]*, sizeof(VerificationRequestPacket));
-        debug(point, BLUE);
+        if (Debug) debug(point, BLUE);
     }
 
     unit.VerificationSentAt = time();

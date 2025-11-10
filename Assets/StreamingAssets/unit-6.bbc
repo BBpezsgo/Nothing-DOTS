@@ -38,17 +38,20 @@ void Receive()
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
-            Print("I-REQ ");
-            Print(packet.Position);
-            PrintLine();
+            if (Logs)
+            {
+                Print("I-REQ ");
+                Print(packet.Position);
+                PrintLine();
+            }
 
             if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
             {
-                PrintLine(" M");
+                if (Logs) PrintLine(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
                 responsePacket.Header = (u8)RESPONSE_HEADER;
                 responsePacket.Position = GPS.Position;
-                debug(packet.Position, CYAN);
+                if (Debug) debug(packet.Position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
             else
@@ -58,7 +61,7 @@ void Receive()
                     f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
-                        PrintLine(" K");
+                        if (Logs) PrintLine(" K");
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
                         indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.Position = (&allies).Raw()[i].Position;
@@ -74,9 +77,12 @@ void Receive()
         {
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
 
-            Print("I-RES ");
-            Print(packet.Position);
-            PrintLine();
+            if (Logs)
+            {
+                Print("I-RES ");
+                Print(packet.Position);
+                PrintLine();
+            }
 
             Unit unit;
             unit.Position = packet.Position;
@@ -99,8 +105,11 @@ void Receive()
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
 
-            Print("I-E ");
-            PrintLine(unit.Position);
+            if (Logs)
+            {
+                Print("I-E ");
+                PrintLine(unit.Position);
+            }
             UpdateUnit(&enemies, unit);
         }
         else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
@@ -108,9 +117,12 @@ void Receive()
         {
             IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
 
-            Print("I-RES ");
-            Print(packet.Position);
-            PrintLine();
+            if (Logs)
+            {
+                Print("I-RES ");
+                Print(packet.Position);
+                PrintLine();
+            }
 
             Unit unit;
             unit.Position = packet.Position;
@@ -146,7 +158,7 @@ while (1)
     {
         if (time() >= (&enemies).Raw()[i].Expires)
         {
-            PrintLine("#E-OLD");
+            if (Logs) PrintLine("#E-OLD");
             (&enemies).SwapBack(i);
         }
         else
@@ -154,50 +166,49 @@ while (1)
             float3 p = (&enemies).Raw()[i].Position;
             ToLocal(&p);
 
-            //float3 norm = Normalised(p);
-            //float radarDirection = Atan2(norm.z, norm.x);
-            //Radar.RadarDirection = radarDirection;
-            //float3 radarPoint = radar();
-            bool destroyed = false; // empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
-            /*
-            float incr = 0.01f;
-            while (destroyed && incr < 0.2f)
+            float3 norm = p;
+            norm.y = 0f;
+            Normalise(&norm);
+            float radarDirection = Atan2(norm.z, norm.x);
+            float3 radarPoint = radar(radarDirection);
+            bool destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
+            const float increment = 0.04f;
+            float currentIncrement = increment;
+            while (destroyed && currentIncrement < 0.2f)
             {
-                Radar.RadarDirection = radarDirection + incr;
+                float3 radarPoint = radar(radarDirection + currentIncrement);
                 destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
                 if (destroyed)
                 {
-                    Radar.RadarDirection = radarDirection - incr;
+                    float3 radarPoint = radar(radarDirection - currentIncrement);
                     destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
                 }
-                incr += 0.01f;
+                currentIncrement += increment;
             }
-            */
 
             if (destroyed)
             {
-                //PrintLine("#E-DESTROYED");
-                //PrintLine(radarPoint);
-                //PrintLine(Radar.RadarDirection);
-                //PrintLine(norm);
-                //(&enemies).SwapBack(i);
+                if (Logs)
+                {
+                    PrintLine("#E-DESTROYED");
+                    PrintLine(radarPoint);
+                    PrintLine(Radar.RadarDirection);
+                    //PrintLine(norm);
+                }
+                (&enemies).SwapBack(i);
             }
-            elseif (time() >= (&enemies).Raw()[i].Recorded + 4f)
+            elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
             {
                 ToGlobal(&p);
                 debug(p, RED);
                 currentTarget = p;
                 shouldShoot = true;
             }
-            else if (time() >= (&enemies).Raw()[i].Recorded + 1f)
+            else
             {
                 ToGlobal(&p);
                 debug(p, YELLOW);
                 currentTarget = p;
-            }
-            else
-            {
-                ldebug(p, YELLOW);
             }
         }
     }

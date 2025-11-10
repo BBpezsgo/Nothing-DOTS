@@ -13,7 +13,9 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial struct UnitRadarSystem : ISystem
 {
+#if DEBUG_LINES
     const float DebugDuration = 3f;
+#endif
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
@@ -28,7 +30,8 @@ public partial struct UnitRadarSystem : ISystem
             if (direction.Equals(default)) continue;
 
             float3 direction3 = localTransform.ValueRO.TransformDirection(new float3(direction.x, 0f, direction.y));
-            direction = math.normalize(new float2(direction3.x, direction3.z));
+            float h = math.sqrt(1f - (direction3.y * direction3.y));
+            direction = new float2(direction3.x, direction3.z) / h;
             float2 position = new(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
 
             processor.ValueRW.RadarRequest = default;
@@ -37,15 +40,10 @@ public partial struct UnitRadarSystem : ISystem
 
             const float offset = 0f;
 
-            float2 rayStart = position + (direction * offset);
-            float3 rayStart3 = transform.ValueRO.Position + (new float3(direction.x, 0f, direction.y) * offset);
-            float2 rayEnd = position + (direction * (Radar.RadarRadius - offset));
-            float3 rayEnd3 = transform.ValueRO.Position + (new float3(direction.x, 0f, direction.y) * (Radar.RadarRadius - offset));
-
-            RadarRay ray = new(localTransform.ValueRO.Position, direction, Radar.RadarRadius - offset, Layers.BuildingOrUnit);
+            RadarRay ray = new(transform.ValueRO.Position + (direction3 * offset), direction, math.max((Radar.RadarRadius * h) - offset, 0f), Layers.BuildingOrUnit);
 
 #if DEBUG_LINES
-            Debug.DrawLine(rayStart3, rayEnd3, Color.white, DebugDuration);
+            Debug.DrawLine(ray.Start, new float3(ray.End.x, ray.Start.y, ray.End.y), Color.white, DebugDuration, false);
 #endif
 
             if (!RadarCast(map, ray, out RadarHit hit))
@@ -54,7 +52,7 @@ public partial struct UnitRadarSystem : ISystem
                 return;
             }
 
-            float distance = math.distance(hit.Point, rayStart3) + offset;
+            float distance = math.distance(hit.Point, ray.Start) + offset;
 
 #if DEBUG_LINES
             DebugEx.DrawPoint(hit.Point, 1f, Color.white, DebugDuration, false);
@@ -79,7 +77,7 @@ public partial struct UnitRadarSystem : ISystem
         public RadarRay(float3 start, float2 direction, float maxDistance, uint layer, bool excludeContainingBodies = true)
         {
             Start = start;
-            End = new float2(start.x, start.z) + direction * maxDistance;
+            End = new float2(start.x, start.z) + (direction * maxDistance);
             MaxDistance = maxDistance;
             Direction = direction;
             Layer = layer;
@@ -122,24 +120,24 @@ public partial struct UnitRadarSystem : ISystem
                 ColliderType.AABB => entities[i].Collider.AABB.AABB.Center,
                 _ => default,
             };
-            float3 direction = math.normalize(target - ray.Start);
 
-            float yaw = math.atan2(ray.Direction.x, ray.Direction.y);
-            float pitch = math.asin(direction.y);
-
-            direction.x = math.cos(pitch) * math.sin(yaw);
-            direction.y = math.sin(pitch);
-            direction.z = math.cos(pitch) * math.cos(yaw);
+            float pitch = math.asin(math.normalize(target - ray.Start).y);
+            float3 direction = new(
+                ray.Direction.x * math.cos(pitch),
+                math.sin(pitch),
+                ray.Direction.y * math.cos(pitch)
+            );
 
             Ray ray3 = new(
                 ray.Start,
-                direction * ray.MaxDistance,
+                direction,
+                ray.MaxDistance,
                 ray.Layer,
                 ray.ExcludeContainingBodies
             );
 
 #if DEBUG_LINES
-            Debug.DrawLine(ray3.Start, ray3.End, Color.white, DebugDuration);
+            Debug.DrawLine(ray3.Start, ray3.End, Color.magenta, DebugDuration);
 #endif
 
             if (!CollisionSystem.Raycast(
@@ -154,7 +152,7 @@ public partial struct UnitRadarSystem : ISystem
             if (distance > ray.MaxDistance)
             {
 #if DEBUG_LINES
-                DebugEx.DrawPoint(p, 2f, Color.orange, DebugDuration, false);
+                //DebugEx.DrawPoint(p, 2f, Color.orange, DebugDuration, false);
 #endif
                 continue;
             }

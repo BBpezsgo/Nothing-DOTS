@@ -59,7 +59,7 @@ public class SetupManager : Singleton<SetupManager>
         {
             if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
             {
-                Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
+                Debug.LogError($"Failed to get {nameof(UnitDatabase)} entity singleton");
                 return;
             }
             units = world.EntityManager.GetBuffer<BufferedUnit>(unitDatabase, true);
@@ -69,7 +69,7 @@ public class SetupManager : Singleton<SetupManager>
         {
             if (!buildingDatabaseQ.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
             {
-                Debug.LogWarning($"Failed to get {nameof(BuildingDatabase)} entity singleton");
+                Debug.LogError($"Failed to get {nameof(BuildingDatabase)} entity singleton");
                 return;
             }
             buildings = world.EntityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
@@ -94,7 +94,7 @@ public class SetupManager : Singleton<SetupManager>
                 }
                 else
                 {
-                    Debug.LogWarning($"Prefab \"{unitSetup.Prefab.name}\" not found");
+                    Debug.LogError($"Prefab \"{unitSetup.Prefab.name}\" not found");
                     continue;
                 }
 
@@ -135,7 +135,7 @@ public class SetupManager : Singleton<SetupManager>
 
         if (prefab.Prefab == Entity.Null)
         {
-            Debug.LogWarning($"Prefab \"{RandomUnitPrefab.name}\" not found");
+            Debug.LogError($"Prefab \"{RandomUnitPrefab.name}\" not found");
             yield break;
         }
 

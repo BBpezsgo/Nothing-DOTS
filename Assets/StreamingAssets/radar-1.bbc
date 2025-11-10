@@ -16,17 +16,20 @@ void Receive()
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
-            Print("I-REQ ");
-            Print(packet.Position);
-            PrintLine();
+            if (Logs)
+            {
+                Print("I-REQ ");
+                Print(packet.Position);
+                PrintLine();
+            }
 
             if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
             {
-                Print(" M");
+                if (Logs) Print(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
                 responsePacket.Header = (u8)RESPONSE_HEADER;
                 responsePacket.Position = GPS.Position;
-                debug(packet.Position, CYAN);
+                if (Debug) debug(packet.Position, CYAN);
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
         }
@@ -35,6 +38,7 @@ void Receive()
 
 void PerformRadar()
 {
+    //ldebug(new float3(Cos(Radar.RadarDirection), 0f, Sin(Radar.RadarDirection)) * 10f, CYAN);
     float3 radarPoint = radar();
     if (!empty(radarPoint))
     {

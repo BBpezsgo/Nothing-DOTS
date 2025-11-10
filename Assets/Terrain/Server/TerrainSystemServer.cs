@@ -388,7 +388,7 @@ partial struct TerrainSystemServer : ISystem
         }
     }
 
-    public bool Raycast(in float3 origin, in float3 direction, float maxDistance, out float distance)
+    public bool RaycastFast(in float3 origin, in float3 direction, float maxDistance, out float distance)
     {
         int gx = (int)math.floor(origin.x / cellSize);
         int gz = (int)math.floor(origin.z / cellSize);
@@ -446,6 +446,173 @@ partial struct TerrainSystemServer : ISystem
         }
 
         distance = default;
+        return false;
+    }
+
+    public bool Raycast(float3 origin, float3 direction, float maxDistance, out float distance, out float3 normal)
+    {
+#if RAYCAST_DEBUG
+        const float DebugLineTime = 1f;
+#endif
+
+        int gx = (int)math.floor(origin.x / DataPointWorldSize);
+        int gz = (int)math.floor(origin.z / DataPointWorldSize);
+
+        int stepX = direction.x > 0 ? 1 : -1;
+        int stepZ = direction.z > 0 ? 1 : -1;
+
+        float tDeltaX = math.abs(DataPointWorldSize / direction.x);
+        float tDeltaZ = math.abs(DataPointWorldSize / direction.z);
+
+        float nextBoundaryX = (gx + (stepX > 0 ? 1 : 0)) * DataPointWorldSize;
+        float nextBoundaryZ = (gz + (stepZ > 0 ? 1 : 0)) * DataPointWorldSize;
+
+        float tMaxX = (direction.x != 0)
+            ? (nextBoundaryX - origin.x) / direction.x
+            : float.PositiveInfinity;
+        float tMaxZ = (direction.z != 0)
+            ? (nextBoundaryZ - origin.z) / direction.z
+            : float.PositiveInfinity;
+
+        float traveled = 0f;
+
+        while (traveled <= maxDistance)
+        {
+            float worldX = gx * DataPointWorldSize;
+            float worldZ = (gz + 1) * DataPointWorldSize;
+
+            WorldToChunk(new float2(worldX, worldZ), out int2 chunkCoord);
+
+#if RAYCAST_DEBUG
+            DebugEx.DrawBoxAligned(
+                ChunkToWorld(chunkCoord).FlatTo3D(),
+                new float2(MeshWorldSize).FlatTo3D(),
+                Color.white, DebugLineTime, false);
+
+            DebugEx.DrawPoint(new float3(worldX, 0f, worldZ), 0.5f, Color.white, DebugLineTime, false);
+#endif
+
+            if (Heightmaps.TryGetValue(chunkCoord, out NativeArray<float>.ReadOnly heightmap))
+            {
+                int2 dataCoord = WorldToData(new float2(worldX, worldZ) - ChunkToWorld(chunkCoord));
+                float h00 = heightmap[dataCoord.x + dataCoord.y * NumVertsPerLine];
+
+#if RAYCAST_DEBUG
+                DebugEx.DrawBoxAligned(
+                    (ChunkToWorld(chunkCoord) + DataToWorld(dataCoord)).FlatTo3D(),
+                    new float2(DataPointWorldSize).FlatTo3D(),
+                    Color.gray, DebugLineTime, false);
+#endif
+
+                if (dataCoord.x < NumVertsPerLine - 1 && dataCoord.y < NumVertsPerLine - 1)
+                {
+                    float2 dataPos00 = ChunkToWorld(chunkCoord) + DataToWorld(dataCoord);
+
+                    float h01 = heightmap[dataCoord.x + (dataCoord.y + 1) * NumVertsPerLine];
+                    float h10 = heightmap[dataCoord.x + 1 + dataCoord.y * NumVertsPerLine];
+                    float h11 = heightmap[dataCoord.x + 1 + (dataCoord.y + 1) * NumVertsPerLine];
+
+                    float2 dataPos11 = ChunkToWorld(chunkCoord) + DataToWorld(dataCoord + new int2(1, 1));
+
+                    {
+                        float3 v0 = new(dataPos00.x, h00, dataPos00.y);
+                        float3 v1 = new(dataPos11.x, h10, dataPos00.y);
+                        float3 v2 = new(dataPos11.x, h11, dataPos11.y);
+
+                        if (Utils.ray_intersects_triangle(
+                            origin,
+                            direction,
+                            new float3x3(v0, v1, v2),
+                            out float t
+                        ))
+                        {
+#if RAYCAST_DEBUG
+                            DebugEx.DrawTriangle(v0, v1, v2, Color.red, DebugLineTime, false);
+                            DebugEx.DrawPoint(origin + direction * t, 0.5f, Color.red, DebugLineTime, false);
+#endif
+                            distance = t;
+                            normal = math.normalize(math.cross(v1 - v0, v2 - v0));
+                            return distance < maxDistance;
+                        }
+                        else
+                        {
+#if RAYCAST_DEBUG
+                            DebugEx.DrawTriangle(v0, v1, v2, Color.white, DebugLineTime, false);
+#endif
+                        }
+                    }
+
+                    {
+                        float3 v0 = new(dataPos00.x, h00, dataPos00.y);
+                        float3 v2 = new(dataPos11.x, h11, dataPos11.y);
+                        float3 v1 = new(dataPos00.x, h01, dataPos11.y);
+
+                        if (Utils.ray_intersects_triangle(
+                            origin,
+                            direction,
+                            new float3x3(v0, v1, v2),
+                            out float t
+                        ))
+                        {
+#if RAYCAST_DEBUG
+                            DebugEx.DrawTriangle(v0, v1, v2, Color.red, DebugLineTime, false);
+                            DebugEx.DrawPoint(origin + direction * t, 0.5f, Color.red, DebugLineTime, false);
+#endif
+                            distance = t;
+                            normal = math.normalize(math.cross(v2 - v0, v1 - v0));
+                            return distance < maxDistance;
+                        }
+                        else
+                        {
+#if RAYCAST_DEBUG
+                            DebugEx.DrawTriangle(v0, v1, v2, Color.white, DebugLineTime, false);
+#endif
+                        }
+                    }
+                }
+
+                //if (origin.y + direction.y * traveled <= h00)
+                //{
+                //    distance = traveled;
+                //    DebugEx.DrawPoint(origin + direction * distance, 0.5f, Color.red, DebugLineTime, false);
+                //    return true;
+                //}
+            }
+
+            if (tMaxX < tMaxZ)
+            {
+                traveled = tMaxX;
+                tMaxX += tDeltaX;
+#if RAYCAST_DEBUG
+                Debug.DrawLine(
+                    (new float2(gx, gz) * DataPointWorldSize).FlatTo3D(),
+                    (new float2(gx + stepX, gz) * DataPointWorldSize).FlatTo3D(),
+                    Color.white,
+                    DebugLineTime,
+                    false
+                );
+#endif
+                gx += stepX;
+            }
+            else
+            {
+                traveled = tMaxZ;
+                tMaxZ += tDeltaZ;
+#if RAYCAST_DEBUG
+                Debug.DrawLine(
+                    (new float2(gx, gz) * DataPointWorldSize).FlatTo3D(),
+                    (new float2(gx, gz + stepZ) * DataPointWorldSize).FlatTo3D(),
+                    Color.white,
+                    DebugLineTime,
+                    false
+                );
+#endif
+                gz += stepZ;
+            }
+        }
+
+        distance = default;
+        normal = default;
         return false;
     }
 }

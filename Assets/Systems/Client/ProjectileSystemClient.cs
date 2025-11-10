@@ -30,11 +30,15 @@ partial struct ProjectileSystemClient : ISystem
             SystemAPI.Query<RefRW<LocalTransform>, RefRW<Projectile>>()
             .WithEntityAccess())
         {
+            float t = SystemAPI.Time.DeltaTime;
+            float travelDistance = math.length(projectile.ValueRO.Velocity * t);
             float3 lastPosition = transform.ValueRO.Position;
-            float3 newPosition = lastPosition + (projectile.ValueRO.Velocity * SystemAPI.Time.DeltaTime);
-            projectile.ValueRW.Velocity += new float3(0f, ProjectileSystemServer.Gravity, 0f) * SystemAPI.Time.DeltaTime;
+            float3 newPosition = lastPosition + (projectile.ValueRO.Velocity * t);
+            float3 direction = projectile.ValueRO.Velocity / travelDistance * t;
+
+            projectile.ValueRW.Velocity += new float3(0f, ProjectileSystemServer.Gravity, 0f) * t;
             transform.ValueRW.Position = newPosition;
-            transform.ValueRW.Rotation = quaternion.LookRotation(math.normalizesafe(projectile.ValueRO.Velocity), new float3(0f, 1f, 0f));
+            transform.ValueRW.Rotation = quaternion.LookRotation(direction, new float3(0f, 1f, 0f));
 
             if (transform.ValueRO.Position.y < 0f)
             {
@@ -42,7 +46,7 @@ partial struct ProjectileSystemClient : ISystem
                 continue;
             }
 
-            Ray ray = new(lastPosition, newPosition, Layers.BuildingOrUnit);
+            Ray ray = new(lastPosition, direction, travelDistance, Layers.BuildingOrUnit);
 
             bool didHitTerrain = TerrainGenerator.Instance.Raycast(ray.Start, ray.Direction, math.distance(lastPosition, newPosition), out float terrainHit, out float3 normal);
             bool didHitUnit = QuadrantRayCast.RayCast(map, ray, out Hit unitHit) && DamageQ.HasBuffer(unitHit.Entity.Entity);

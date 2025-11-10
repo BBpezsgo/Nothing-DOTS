@@ -276,7 +276,7 @@ GameObject:
   - component: {fileID: 2214842287112033513}
   - component: {fileID: 999756694363969952}
   - component: {fileID: 256273883768632085}
-  - component: {fileID: 7439602187458217569}
+  - component: {fileID: 6871807602844530278}
   m_Layer: 6
   m_Name: CoreComputer
   m_TagString: Untagged
@@ -448,7 +448,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   IsStatic: 1
---- !u!114 &7439602187458217569
+--- !u!114 &6871807602844530278
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -457,7 +457,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4988928766331271095}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4963f9df55b5e93487504b57e4d491a, type: 3}
+  m_Script: {fileID: 11500000, guid: a34d8fa7b716431598edabd9c399b05e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &8704319236189478219

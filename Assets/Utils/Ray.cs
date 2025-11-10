@@ -29,7 +29,7 @@ public readonly struct Ray
         ExcludeContainingBodies = excludeContainingBodies;
     }
 
-    public Ray(float3 start, float3 end, uint layer, bool excludeContainingBodies = true)
+    public Ray(float3 start, float3 direction, float maxDistance, uint layer, bool excludeContainingBodies = true)
     {
 #if UNITY_EDITOR && false
         if (start.Equals(end))
@@ -39,8 +39,8 @@ public readonly struct Ray
 #endif
 
         Start = start;
-        End = end;
-        Direction = math.normalize(end - start);
+        End = start + direction * maxDistance;
+        Direction = direction;
         Layer = layer;
         ExcludeContainingBodies = excludeContainingBodies;
     }

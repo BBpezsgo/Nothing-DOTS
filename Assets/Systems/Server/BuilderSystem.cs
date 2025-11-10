@@ -23,7 +23,7 @@ public partial struct BuilderSystem : ISystem
 
             RefRW<LocalToWorld> turretTransform = SystemAPI.GetComponentRW<LocalToWorld>(turret.ValueRO.Turret);
 
-            Ray ray = new(turretTransform.ValueRO.Position, turretTransform.ValueRO.Position + (turretTransform.ValueRO.Forward * Builder.BuildRadius), Layers.BuildingPlaceholder, false);
+            Ray ray = new(turretTransform.ValueRO.Position, turretTransform.ValueRO.Forward, Builder.BuildRadius, Layers.BuildingPlaceholder, false);
 
 #if DEBUG_LINES
             Debug.DrawLine(ray.Start, ray.End, Color.white, 0.2f, false);

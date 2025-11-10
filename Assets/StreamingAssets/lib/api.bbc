@@ -76,6 +76,13 @@ export inline void send(any* buffer, i32 length)
 [External("receive")] export i32 receive(any* buffer, i32 length, float3* direction);
 [External("radar")] void _radar();
 
+export float3 radar(float direction)
+{
+    Radar.RadarDirection = direction;
+    //ldebug(new float3(Cos(Radar.RadarDirection), 0f, Sin(Radar.RadarDirection)) * 10f, CYAN);
+    return radar();
+}
+
 export float3 radar()
 {
     Radar.RadarResponse.x = 0f;

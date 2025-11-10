@@ -146,8 +146,7 @@ unsafe partial struct TransmissionSystem : ISystem
                             }
 
                             RefRW<Processor> other = processorComponentQ.GetRefRWOptional(cell[i].Entity);
-                            if (!other.IsValid) continue;
-                            if (other.ValueRO.SourceFile == default) continue;
+                            if (!other.IsValid || !other.ValueRO.Source.Code.IsCreated || other.ValueRO.Signal != LanguageCore.Runtime.Signal.None) continue;
 
 #if DEBUG_LINES
                             DebugEx.DrawSphere(cell[i].Position, 1f, Color.cyan, 1f, false);

@@ -1,3 +1,7 @@
+#if UNITY_EDITOR && EDITOR_DEBUG
+#define _DEBUG_LINES
+#endif
+
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -31,34 +35,47 @@ partial struct ProjectileSystemServer : ISystem
             SystemAPI.Query<RefRW<LocalTransform>, RefRW<Projectile>>()
             .WithEntityAccess())
         {
+            float t = SystemAPI.Time.DeltaTime;
+            float travelDistance = math.length(projectile.ValueRO.Velocity * t);
             float3 lastPosition = transform.ValueRO.Position;
-            float3 newPosition = lastPosition + (projectile.ValueRO.Velocity * SystemAPI.Time.DeltaTime);
+            float3 newPosition = lastPosition + (projectile.ValueRO.Velocity * t);
+            float3 direction = projectile.ValueRO.Velocity / travelDistance * t;
             transform.ValueRW.Position = newPosition;
             projectile.ValueRW.Velocity += new float3(0f, Gravity, 0f) * SystemAPI.Time.DeltaTime;
 
             if (transform.ValueRO.Position.y < 0f)
             {
+#if DEBUG_LINES
+                DebugEx.DrawPoint(transform.ValueRO.Position, 0.2f, Color.red, 1f);
+#endif
                 commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
-            Ray ray = new(lastPosition, newPosition, Layers.BuildingOrUnit);
+            Ray ray = new(lastPosition, direction, travelDistance, Layers.BuildingOrUnit);
             DynamicBuffer<BufferedDamage> damage = default;
 
-            Debug.DrawLine(ray.Start, ray.End, Color.Lerp(Color.green, Color.white, 0.5f), 2f);
+#if DEBUG_LINES
+            Debug.DrawLine(ray.Start, ray.End, Color.Lerp(Color.green, Color.white, 0.5f), 4f);
+#endif
 
-            bool didHitTerrain = terrainSystem.Raycast(ray.Start, ray.Direction, math.distance(lastPosition, newPosition), out float terrainHit);
+            bool didHitTerrain = terrainSystem.Raycast(ray.Start, ray.Direction, math.distance(lastPosition, newPosition), out float terrainHit, out _);
             bool didHitUnit = QuadrantRayCast.RayCast(map, ray, out Hit unitHit) && damageQ.TryGetBuffer(unitHit.Entity.Entity, out damage);
 
             if (didHitTerrain && (!didHitUnit || unitHit.Distance >= terrainHit))
             {
+#if DEBUG_LINES
+                DebugEx.DrawPoint(ray.GetPoint(terrainHit), 0.2f, Color.orange, 4f);
+#endif
                 commandBuffer.DestroyEntity(entity);
                 continue;
             }
 
             if (didHitUnit)
             {
+#if DEBUG_LINES
                 DebugEx.DrawPoint(ray.GetPoint(unitHit.Distance), 0.2f, Color.green, 4f);
+#endif
 
                 damage.Add(new()
                 {

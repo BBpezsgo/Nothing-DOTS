@@ -6,6 +6,8 @@ insert_final_newline = true
 
 [*.{cs,vb}]
 
+csharp_indent_case_contents_when_block = false
+
 dotnet_analyzer_diagnostic.category-Style.severity = warning
 
 # IDE0040: Add accessibility modifiers
