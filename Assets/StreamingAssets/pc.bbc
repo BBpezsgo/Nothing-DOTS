@@ -1,27 +1,5 @@
-using "lib/turret.bbc";
-using "lib/move.bbc";
 using "lib/api.bbc";
 using "lib/protocol.bbc";
-
-[UnitCommand(1, "Attack at")]
-struct CommandAttackAt
-{
-    [Context("position3")] float3 position;
-}
-
-[UnitCommand(2, "Move to")]
-struct CommandMoveTo
-{
-    [Context("position2")] float2 position;
-}
-
-[UnitCommand(3, "Stop")]
-struct CommandStop
-{
-    
-}
-
-const int MaxCommandDataSize = 8;
 
 void Receive()
 {
@@ -44,7 +22,7 @@ void Receive()
 
             if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
             {
-                PrintLine(" M");
+                Print(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
                 responsePacket.Header = (u8)RESPONSE_HEADER;
                 responsePacket.Position = GPS.Position;
@@ -58,7 +36,7 @@ void Receive()
                     f32 distanceSqr = DistanceSqr((&allies).Raw()[i].Position, packet.Position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
-                        PrintLine(" K");
+                        Print(" K");
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
                         indirectResponsePacket.Header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.Position = (&allies).Raw()[i].Position;
@@ -85,12 +63,34 @@ void Receive()
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
             RemoveUnitAt(&enemies, unit.Position);
-            UpdateUnit(&allies, unit);
+            int j = SetUnit(&allies, unit);
+
+            for (int i = 0; i < (&allies).Length(); i++)
+            {
+                if (i != j)
+                {
+                    direction = (&allies).Raw()[i].Position;
+                    ToLocal(&direction);
+                    Normalise(&direction);
+
+                    PrintLine("NTFY");
+
+                    IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
+                    indirectResponsePacket.Header = INDIRECT_RESPONSE_HEADER;
+                    indirectResponsePacket.Position = packet.Position;
+                    indirectResponsePacket.Expires = unit.Expires;
+                    send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
+                }
+            }
         }
         else if (v[0] == (u8)ENEMY_HEADER &&
                  receivedLength == sizeof(EnemyNotificationPacket))
         {
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
+
+            Print("I-E ");
+            Print(packet.Position);
+            PrintLine();
 
             Unit unit;
             unit.Position = packet.Position;
@@ -98,10 +98,7 @@ void Receive()
             unit.Expires = time() + 5f;
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
-
-            Print("I-E ");
-            PrintLine(unit.Position);
-            UpdateUnit(&enemies, unit);
+            SetUnit(&enemies, unit);
         }
         else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
@@ -119,19 +116,48 @@ void Receive()
             unit.VerificationSentAt = time();
             unit.PositionRecords = 1;
             RemoveUnitAt(&enemies, unit.Position);
-            UpdateUnit(&allies, unit);
+            SetUnit(&allies, unit);
+        }
+        else if (v[0] == (u8)RADAR_POINT &&
+                 receivedLength == sizeof(RadarPointPacket))
+        {
+            RadarPointPacket* packet = &v as RadarPointPacket*;
+
+            if (DistanceSqr(packet.Position, GPS.Position) > DistanceThresholdSq)
+            {
+                Print('?');
+                Print(packet.Position);
+                PrintLine();
+
+                if (UnitIndexAt(&allies, packet.Position) != -1)
+                {
+                    Print('.');
+                    Print(packet.Position);
+                    PrintLine();
+                }
+                else
+                {
+                    Print('!');
+                    Print(packet.Position);
+                    PrintLine();
+
+                    Unit enemy;
+                    enemy.Recorded = time();
+                    enemy.Expires = time() + 12f;
+                    enemy.Position = packet.Position;
+                    enemy.PositionRecords = 1;
+                    SendVerificationRequest(&enemy);
+                    UpdateUnit(&enemies, enemy);
+                }
+            }
         }
     }
 }
 
-float3 targetedPosition = new float3;
-float3 currentTarget = new float3;
-float3 currentUserTarget = new float3;
 List<Unit> enemies = new List<Unit>(4);
 List<Unit> allies = new List<Unit>(4);
-float2 currentDestination = new float2;
-u8 shouldShoot = false;
-f32 turretLastUseTime = 0f;
+int i = 0;
+int j = 0;
 
 PrintLine("Started ...");
 
@@ -139,136 +165,49 @@ while (1)
 {
     Receive();
 
-    currentTarget = new float3;
-    shouldShoot = false;
-
-    for (int i = (&enemies).Length() - 1; i >= 0; i--)
+    if ((&enemies).Length())
     {
+        i = (i + 1) % (&enemies).Length();
         if (time() >= (&enemies).Raw()[i].Expires)
         {
-            PrintLine("#E-OLD");
             (&enemies).SwapBack(i);
         }
         else
         {
             float3 p = (&enemies).Raw()[i].Position;
-            ToLocal(&p);
-
-            //float3 norm = Normalised(p);
-            //float radarDirection = Atan2(norm.z, norm.x);
-            //Radar.RadarDirection = radarDirection;
-            //float3 radarPoint = radar();
-            bool destroyed = false; // empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
-            /*
-            float incr = 0.01f;
-            while (destroyed && incr < 0.2f)
+            if (time() >= (&enemies).Raw()[i].Recorded + 4f)
             {
-                Radar.RadarDirection = radarDirection + incr;
-                destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
-                if (destroyed)
+                if (time() >= (&enemies).Raw()[i].NotifiedAt + 5f)
                 {
-                    Radar.RadarDirection = radarDirection - incr;
-                    destroyed = empty(radarPoint) || DistanceSqr(p, radarPoint) > DistanceThresholdSq;
+                    EnemyNotificationPacket notificationPacket;
+                    notificationPacket.Header = ENEMY_HEADER;
+                    notificationPacket.Position = p;
+                    send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
+                    (&enemies).Raw()[i].NotifiedAt = time();
                 }
-                incr += 0.01f;
-            }
-            */
-
-            if (destroyed)
-            {
-                //PrintLine("#E-DESTROYED");
-                //PrintLine(radarPoint);
-                //PrintLine(Radar.RadarDirection);
-                //PrintLine(norm);
-                //(&enemies).SwapBack(i);
-            }
-            elseif (time() >= (&enemies).Raw()[i].Recorded + 4f)
-            {
-                ToGlobal(&p);
                 debug(p, RED);
-                currentTarget = p;
-                shouldShoot = true;
             }
-            else if (time() >= (&enemies).Raw()[i].Recorded + 1f)
+            elseif (time() >= (&enemies).Raw()[i].Recorded + 1f)
             {
-                ToGlobal(&p);
                 debug(p, YELLOW);
-                currentTarget = p;
             }
-            else
-            {
-                ldebug(p, YELLOW);
-            }
+            PrintLine("CHK");
+            TrySendVerificationRequest(&(&enemies).Raw()[i]);
         }
     }
 
-    for (int i = (&allies).Length() - 1; i >= 0; i--)
+    if ((&allies).Length())
     {
-        if (time() >= (&allies).Raw()[i].Expires)
+        j = (j + 1) % (&allies).Length();
+        if (time() >= (&allies).Raw()[j].Expires)
         {
-            (&allies).SwapBack(i);
+            PrintLine("RTH");
+            TrySendVerificationRequest(&(&allies).Raw()[j]);
+            (&allies).SwapBack(j);
         }
         else
         {
-            float3 p = (&allies).Raw()[i].Position;
-            debug(p, GREEN);
+            debug((&allies).Raw()[j].Position, GREEN);
         }
-    }
-
-    byte[MaxCommandDataSize] _command;
-
-    int commandId = dequeue_command(&_command);
-
-    if (commandId == 1)
-    {
-        CommandAttackAt* command = &_command as CommandAttackAt*;
-        currentUserTarget = command.position;
-        currentDestination = new float3;
-    }
-    else if (commandId == 2)
-    {
-        CommandMoveTo* command = &_command as CommandMoveTo*;
-        currentUserTarget = new float3;
-        currentDestination = command.position;
-    }
-    else if (commandId == 3)
-    {
-        currentUserTarget = new float3;
-        currentDestination = new float3;
-    }
-
-    if (currentUserTarget.x || currentUserTarget.z)
-    {
-        currentTarget = currentUserTarget;
-        shouldShoot = true;
-    }
-
-    if (currentTarget.x != 0f &&
-        currentTarget.z != 0f)
-    {
-        turretLastUseTime = time();
-        if (shouldShoot)
-        {
-            ShootAt(currentTarget, &targetedPosition);
-        }
-        else
-        {
-            TargetAt(currentTarget, &targetedPosition);
-        }
-    }
-    else if (time() - turretLastUseTime > 5f)
-    {
-        CombatTurret.TurretTargetRotation = 0f;
-        CombatTurret.TurretTargetAngle = 0f;
-    }
-
-    if (currentDestination.x != 0f &&
-        currentDestination.y != 0f)
-    {
-        MoveTo(currentDestination.x, currentDestination.y);
-    }
-    else
-    {
-        StopMoving();
     }
 }

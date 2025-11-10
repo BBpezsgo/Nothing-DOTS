@@ -3,6 +3,8 @@ export const u8 REQUEST_HEADER           = 0b_11110000;
 export const u8 RESPONSE_HEADER          = 0b_01111000;
 export const u8 ENEMY_HEADER             = 0b_00111100;
 export const u8 INDIRECT_RESPONSE_HEADER = 0b_00011110;
+export const u8 RADAR_POINT              = 0b_00001111;
+export const u8 PCAD                     = 0b_10000111;
 
 export const f32 DistanceThreshold = 2f;
 export const f32 DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
@@ -30,6 +32,18 @@ export struct IndirectVerificationResponsePacket
 }
 
 export struct EnemyNotificationPacket
+{
+    byte Header;
+    float3 Position;
+}
+
+export struct RadarPointPacket
+{
+    byte Header;
+    float3 Position;
+}
+
+export struct PcAdPacket
 {
     byte Header;
     float3 Position;

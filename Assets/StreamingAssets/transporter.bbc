@@ -31,26 +31,7 @@ struct CommandSetDestination
     [Context("position")] float2 position;
 }
 
-const int MaxPacketLength = 9 + 1;
-const u8 REQUEST_HEADER = 0b_11110000;
-const u8 RESPONSE_HEADER = 0b_01111000;
-
-struct VerificationRequestPacket
-{
-    byte Header;
-    float2 Position;
-}
-
-struct VerificationResponsePacket
-{
-    byte Header;
-    float2 Position;
-}
-
 const int MaxCommandDataSize = 8;
-
-const f32 DistanceThreshold = 2f;
-const f32 DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
 
 void Receive()
 {
@@ -67,14 +48,13 @@ void Receive()
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
-            VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-            responsePacket.Header = (u8)RESPONSE_HEADER;
-            responsePacket.Position = packet.Position;
-
             if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
             {
+                PrintLine(" M");
+                VerificationResponsePacket responsePacket = new VerificationResponsePacket;
+                responsePacket.Header = (u8)RESPONSE_HEADER;
+                responsePacket.Position = packet.Position;
                 debug(packet.Position, CYAN);
-
                 send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
         }

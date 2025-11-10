@@ -1,0 +1,58 @@
+using "lib/api.bbc";
+using "lib/protocol.bbc";
+
+void Receive()
+{
+    u8[MaxPacketLength] v;
+    float3 direction;
+
+    while (1)
+    {
+        i32 receivedLength = receive(&v, MaxPacketLength, &direction);
+        if (!receivedLength) { break; }
+
+        if (v[0] == (u8)REQUEST_HEADER &&
+            receivedLength == sizeof(VerificationRequestPacket))
+        {
+            VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
+
+            Print("I-REQ ");
+            Print(packet.Position);
+            PrintLine();
+
+            if (DistanceSqr(packet.Position, GPS.Position) < DistanceThresholdSq)
+            {
+                Print(" M");
+                VerificationResponsePacket responsePacket = new VerificationResponsePacket;
+                responsePacket.Header = (u8)RESPONSE_HEADER;
+                responsePacket.Position = GPS.Position;
+                debug(packet.Position, CYAN);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
+            }
+        }
+    }
+}
+
+void PerformRadar()
+{
+    float3 radarPoint = radar();
+    if (!empty(radarPoint))
+    {
+        ToGlobal(&radarPoint);
+
+        RadarPointPacket radarPointPacket;
+        radarPointPacket.Header = RADAR_POINT;
+        radarPointPacket.Position = radarPoint;
+        send(&radarPointPacket as u8[]*, sizeof(RadarPointPacket));
+    }
+    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
+}
+
+PrintLine("Started ...");
+
+while (1)
+{
+    Receive();
+
+    PerformRadar();
+}

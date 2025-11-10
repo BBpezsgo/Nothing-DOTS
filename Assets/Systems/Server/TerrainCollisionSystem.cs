@@ -72,9 +72,11 @@ partial struct TerrainCollisionSystem : ISystem
 
             float h;
             float3 n;
+            float o;
 
             if (collider.ValueRO.Type == ColliderType.AABB)
             {
+                o = -collider.ValueRO.AABB.AABB.Min.y;
                 float3 min = transform.ValueRO.Position + collider.ValueRO.AABB.AABB.Min;
                 float3 max = transform.ValueRO.Position + collider.ValueRO.AABB.AABB.Max;
                 if (!terrainSystem.TrySample(new float2(min.x, min.z), new float2(max.x, max.z), out h, out n))
@@ -82,11 +84,12 @@ partial struct TerrainCollisionSystem : ISystem
             }
             else
             {
+                o = 0f;
                 if (!terrainSystem.TrySample(new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.z), out h, out n, false))
                 { continue; }
             }
 
-            transform.ValueRW.Position.y = h;
+            transform.ValueRW.Position.y = h + o;
             AlignPreserveYawExact(ref transform.ValueRW.Rotation, n);
 
             terrainBuilding.ValueRW.IsInitialized = true;

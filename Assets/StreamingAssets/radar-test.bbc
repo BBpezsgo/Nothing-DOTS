@@ -1,0 +1,11 @@
+using "lib/api.bbc";
+
+while (1)
+{
+    float3 radarPoint = radar();
+    if (!empty(radarPoint))
+    {
+        ldebug(radarPoint, 0b100);
+    }
+    Radar.RadarDirection = (Radar.RadarDirection + 0.05f) % TAU;
+}
