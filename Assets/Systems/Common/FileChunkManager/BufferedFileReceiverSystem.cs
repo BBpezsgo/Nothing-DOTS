@@ -15,7 +15,7 @@ partial struct BufferedFileReceiverSystem : ISystem
         state.RequireForUpdate<BufferedFiles>();
     }
 
-    unsafe void ISystem.OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 

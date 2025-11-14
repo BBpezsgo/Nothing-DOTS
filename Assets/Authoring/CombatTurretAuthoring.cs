@@ -21,25 +21,16 @@ public class CombatTurretAuthoring : MonoBehaviour
         public override void Bake(CombatTurretAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new CombatTurret
+            AddComponent<CombatTurret>(entity, new()
             {
                 MinAngle = authoring.AngleConstraint.x * Mathf.Deg2Rad,
                 MaxAngle = authoring.AngleConstraint.y * Mathf.Deg2Rad,
                 TurretRotationSpeed = authoring.TurretRotationSpeed,
                 CannonRotationSpeed = authoring.CannonRotationSpeed,
-                Turret =
-                    authoring.Turret == null
-                    ? Entity.Null
-                    : GetEntity(authoring.Turret, TransformUsageFlags.Dynamic),
-                Cannon =
-                    authoring.Cannon == null
-                    ? Entity.Null
-                    : GetEntity(authoring.Cannon, TransformUsageFlags.Dynamic),
+                Turret = authoring.Turret != null ? GetEntity(authoring.Turret, TransformUsageFlags.Dynamic) : Entity.Null,
+                Cannon = authoring.Cannon != null ? GetEntity(authoring.Cannon, TransformUsageFlags.Dynamic) : Entity.Null,
                 Projectile = FindFirstObjectByType<ProjectileDatabaseAuthoring>().Find(authoring.Projectile),
-                ShootPosition =
-                    authoring.ShootPosition == null
-                    ? Entity.Null
-                    : GetEntity(authoring.ShootPosition, TransformUsageFlags.Dynamic),
+                ShootPosition = authoring.ShootPosition != null ? GetEntity(authoring.ShootPosition, TransformUsageFlags.Dynamic) : Entity.Null,
                 ShootEffect = FindFirstObjectByType<VisualEffectDatabaseAuthoring>().Find(authoring.ShootEffect),
             });
         }

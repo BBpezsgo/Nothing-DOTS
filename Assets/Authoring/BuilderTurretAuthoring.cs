@@ -16,10 +16,7 @@ public class BuilderTurretAuthoring : MonoBehaviour
             AddComponent<BuilderTurret>(entity, new()
             {
                 TurretRotationSpeed = authoring.TurretRotationSpeed,
-                Turret =
-                    authoring.Turret == null
-                    ? Entity.Null
-                    : GetEntity(authoring.Turret, TransformUsageFlags.Dynamic),
+                Turret = authoring.Turret != null ? GetEntity(authoring.Turret, TransformUsageFlags.Dynamic) : Entity.Null,
             });
         }
     }

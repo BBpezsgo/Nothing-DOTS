@@ -25,7 +25,7 @@ class BuildingDatabaseAuthoring : MonoBehaviour
         public override void Bake(BuildingDatabaseAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new BuildingDatabase());
+            AddComponent<BuildingDatabase>(entity, new());
             DynamicBuffer<BufferedBuilding> buildings = AddBuffer<BufferedBuilding>(entity);
             foreach (Item buildingAuthoring in authoring.Buildings)
             {

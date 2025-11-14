@@ -286,12 +286,15 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         {
             element.userData = file;
             element.Q<Button>().text = file;
-            if (!recycled) element.Q<Button>().clicked += () =>
+            if (!recycled)
             {
-                ui_inputSourcePath.value = (string)element.userData;
-                selectingFile = ImmutableArray<string>.Empty;
-                EndFileSelection();
-            };
+                element.Q<Button>().clicked += () =>
+                {
+                    ui_inputSourcePath.value = (string)element.userData;
+                    selectingFile = ImmutableArray<string>.Empty;
+                    EndFileSelection();
+                };
+            }
         });
 
         if (Input.GetKeyDown(KeyCode.Q))
@@ -309,7 +312,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         Files,
     }
 
-    public unsafe void RefreshUI(Entity unitEntity)
+    public void RefreshUI(Entity unitEntity)
     {
         if (!selectingFile.IsEmpty)
         {
@@ -317,7 +320,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             return;
         }
 
-        bool isBottom = ui_scrollTerminal.scrollOffset == ui_labelTerminal.layout.max - ui_scrollTerminal.contentViewport.layout.size;
+        bool isBottom = true; // ui_scrollTerminal.scrollOffset == ui_labelTerminal.layout.max - ui_scrollTerminal.contentViewport.layout.size;
         _terminalBuilder.Clear();
 
         void SetProgressStatus(string? status)
@@ -389,7 +392,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         }
                     });
             }
-            SyncDiagnosticItems(ui_scrollDiagnostics!, source.Diagnostics.Diagnostics);
+            SyncDiagnosticItems(ui_scrollDiagnostics, source.Diagnostics.Diagnostics);
 
             if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
             {
@@ -415,164 +418,164 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             switch (source.Status)
             {
                 case CompilationStatus.Secuedued:
-                    {
-                        ui_progressCompilation.title = "Secuedued ...";
-                        SetProgressStatus(null);
-                        break;
-                    }
+                {
+                    ui_progressCompilation.title = "Secuedued ...";
+                    SetProgressStatus(null);
+                    break;
+                }
                 case CompilationStatus.Compiling:
-                    {
-                        ui_progressCompilation.title = "Compiling ...";
-                        SetProgressStatus(null);
-                        break;
-                    }
+                {
+                    ui_progressCompilation.title = "Compiling ...";
+                    SetProgressStatus(null);
+                    break;
+                }
                 case CompilationStatus.Uploading:
-                    {
-                        ui_progressCompilation.title = "Uploading ...";
-                        SetProgressStatus(null);
-                        break;
-                    }
+                {
+                    ui_progressCompilation.title = "Uploading ...";
+                    SetProgressStatus(null);
+                    break;
+                }
                 case CompilationStatus.Generating:
-                    {
-                        ui_progressCompilation.title = "Generating ...";
-                        SetProgressStatus(null);
-                        break;
-                    }
+                {
+                    ui_progressCompilation.title = "Generating ...";
+                    SetProgressStatus(null);
+                    break;
+                }
                 case CompilationStatus.Generated:
-                    {
-                        ui_progressCompilation.title = "Generated";
-                        SetProgressStatus(null);
-                        break;
-                    }
+                {
+                    ui_progressCompilation.title = "Generated";
+                    SetProgressStatus(null);
+                    break;
+                }
                 case CompilationStatus.Done:
+                {
+                    if (source.IsSuccess)
                     {
-                        if (source.IsSuccess)
+                        _terminal ??= new TerminalEmulator(ui_labelTerminal);
+                        _terminal.Update();
+                        _requestedTabSwitch = Tab.Terminal;
+
+                        switch (processor.Signal)
                         {
-                            _terminal ??= new TerminalEmulator(ui_labelTerminal);
-                            _terminal.Update();
-                            _requestedTabSwitch = Tab.Terminal;
+                            case Signal.None:
+                                ui_progressCompilation.title = "Running";
+                                ui_progressCompilation.value = 1f;
+                                SetProgressStatus("success");
+                                _memory = null;
+                                _memoryDownloadProgress = null;
+                                // try { _memoryDownloadTask?.Cancel(); } catch { }
+                                _memoryDownloadTask = null;
+                                char c = _terminal.RequestKey();
+                                if (c != default)
+                                {
+                                    World world = ConnectionManager.ClientOrDefaultWorld;
 
-                            switch (processor.Signal)
-                            {
-                                case Signal.None:
-                                    ui_progressCompilation.title = "Running";
-                                    ui_progressCompilation.value = 1f;
-                                    SetProgressStatus("success");
-                                    _memory = null;
-                                    _memoryDownloadProgress = null;
-                                    // try { _memoryDownloadTask?.Cancel(); } catch { }
-                                    _memoryDownloadTask = null;
-                                    char c = _terminal.RequestKey();
-                                    if (c != default)
+                                    if (world.IsServer())
                                     {
-                                        World world = ConnectionManager.ClientOrDefaultWorld;
-
-                                        if (world.IsServer())
-                                        {
-                                            Debug.LogError($"Not implemented");
-                                        }
-                                        else
-                                        {
-                                            NetcodeUtils.CreateRPC(world.Unmanaged, new ProcessorCommandRequestRpc()
-                                            {
-                                                Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
-                                                Command = ProcessorCommand.Key,
-                                                Data = unchecked((ushort)c),
-                                            });
-                                        }
+                                        Debug.LogError($"Not implemented");
                                     }
-                                    else if (ui_labelTerminal.panel.focusController.focusedElement == ui_labelTerminal && Time.time % 1f < .5f)
+                                    else
                                     {
-                                        _terminalBuilder.Append("<mark=#ffffffff>_</mark>");
+                                        NetcodeUtils.CreateRPC(world.Unmanaged, new ProcessorCommandRequestRpc()
+                                        {
+                                            Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
+                                            Command = ProcessorCommand.Key,
+                                            Data = unchecked((ushort)c),
+                                        });
                                     }
-                                    break;
-                                case Signal.UserCrash:
-                                    ui_progressCompilation.title = "User-crashed";
-                                    ui_progressCompilation.value = 1f;
-                                    SetProgressStatus("error");
-                                    if (_memory is null)
+                                }
+                                else if (ui_labelTerminal.panel.focusController.focusedElement == ui_labelTerminal && Time.time % 1f < .5f)
+                                {
+                                    _terminalBuilder.Append("<mark=#ffffffff>_</mark>");
+                                }
+                                break;
+                            case Signal.UserCrash:
+                                ui_progressCompilation.title = "User-crashed";
+                                ui_progressCompilation.value = 1f;
+                                SetProgressStatus("error");
+                                if (_memory is null)
+                                {
+                                    _memoryDownloadProgress ??= new ProgressRecord<(int, int)>(null);
+
+                                    if (_memoryDownloadTask == null)
                                     {
-                                        _memoryDownloadProgress ??= new ProgressRecord<(int, int)>(null);
+                                        GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
+                                        // Debug.Log($"Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
+                                        _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld)
+                                            .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}.{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
+                                    }
 
-                                        if (_memoryDownloadTask == null)
+                                    Awaitable<RemoteFile>.Awaiter awaiter = _memoryDownloadTask.GetAwaiter();
+                                    if (awaiter.IsCompleted)
+                                    {
+                                        // Debug.Log("Memory loaded");
+                                        RemoteFile result = awaiter.GetResult();
+                                        switch (result.Kind)
                                         {
-                                            GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
-                                            // Debug.Log($"Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
-                                            _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld)
-                                                .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}_{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
-                                        }
-
-                                        Awaitable<RemoteFile>.Awaiter awaiter = _memoryDownloadTask.GetAwaiter();
-                                        if (awaiter.IsCompleted)
-                                        {
-                                            // Debug.Log("Memory loaded");
-                                            RemoteFile result = awaiter.GetResult();
-                                            switch (result.Kind)
-                                            {
-                                                case FileResponseStatus.NotFound:
-                                                    ui_progressCompilation.title = "Crashed (no memory)";
-                                                    ui_progressCompilation.value = 1f;
-                                                    break;
-                                                default:
-                                                    _memory = result.File.Data;
-                                                    break;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            ui_progressCompilation.title = "Crashed (loading memory)";
-                                            ui_progressCompilation.value = (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2;
+                                            case FileResponseStatus.NotFound:
+                                                ui_progressCompilation.title = "Crashed (no memory)";
+                                                ui_progressCompilation.value = 1f;
+                                                break;
+                                            default:
+                                                _memory = result.File.Data;
+                                                break;
                                         }
                                     }
                                     else
                                     {
-                                        string? message = HeapUtils.GetString(_memory, processor.Crash);
-                                        _terminalBuilder.AppendLine();
-                                        _terminalBuilder.Append("<color=red>");
-                                        _terminalBuilder.Append(message);
-                                        _terminalBuilder.Append("</color>");
-                                        _terminalBuilder.AppendLine();
+                                        ui_progressCompilation.title = "Crashed (loading memory)";
+                                        ui_progressCompilation.value = (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2;
                                     }
-                                    break;
-                                case Signal.StackOverflow:
-                                    ui_progressCompilation.title = "Crashed";
-                                    ui_progressCompilation.value = 1f;
+                                }
+                                else
+                                {
+                                    string? message = HeapUtils.GetString(_memory, processor.Crash);
                                     _terminalBuilder.AppendLine();
-                                    _terminalBuilder.AppendLine($"<color=red>Stack overflow</color>");
-                                    SetProgressStatus("error");
-                                    break;
-                                case Signal.Halt:
-                                    ui_progressCompilation.title = "Halted";
-                                    ui_progressCompilation.value = 1f;
-                                    SetProgressStatus("warning");
-                                    break;
-                                case Signal.UndefinedExternalFunction:
-                                    ui_progressCompilation.title = "Crashed";
-                                    ui_progressCompilation.value = 1f;
-                                    SetProgressStatus("error");
+                                    _terminalBuilder.Append("<color=red>");
+                                    _terminalBuilder.Append(message ?? "null");
+                                    _terminalBuilder.Append("</color>");
                                     _terminalBuilder.AppendLine();
-                                    _terminalBuilder.AppendLine($"<color=red>Undefined external function {processor.Crash}</color>");
-                                    break;
-                                case Signal.PointerOutOfRange:
-                                    ui_progressCompilation.title = "Crashed";
-                                    ui_progressCompilation.value = 1f;
-                                    SetProgressStatus("error");
-                                    _terminalBuilder.AppendLine();
-                                    _terminalBuilder.AppendLine($"<color=red>Pointer out of Range</color>");
-                                    break;
-                                default:
-                                    throw new UnreachableException();
-                            }
+                                }
+                                break;
+                            case Signal.StackOverflow:
+                                ui_progressCompilation.title = "Crashed";
+                                ui_progressCompilation.value = 1f;
+                                _terminalBuilder.AppendLine();
+                                _terminalBuilder.AppendLine($"<color=red>Stack overflow</color>");
+                                SetProgressStatus("error");
+                                break;
+                            case Signal.Halt:
+                                ui_progressCompilation.title = "Halted";
+                                ui_progressCompilation.value = 1f;
+                                SetProgressStatus("warning");
+                                break;
+                            case Signal.UndefinedExternalFunction:
+                                ui_progressCompilation.title = "Crashed";
+                                ui_progressCompilation.value = 1f;
+                                SetProgressStatus("error");
+                                _terminalBuilder.AppendLine();
+                                _terminalBuilder.AppendLine($"<color=red>Undefined external function {processor.Crash}</color>");
+                                break;
+                            case Signal.PointerOutOfRange:
+                                ui_progressCompilation.title = "Crashed";
+                                ui_progressCompilation.value = 1f;
+                                SetProgressStatus("error");
+                                _terminalBuilder.AppendLine();
+                                _terminalBuilder.AppendLine($"<color=red>Pointer out of Range</color>");
+                                break;
+                            default:
+                                throw new UnreachableException();
                         }
-                        else
-                        {
-                            ui_progressCompilation.title = "Compile failed";
-                            SetProgressStatus("error");
-
-                            _requestedTabSwitch = Tab.Diagnostics;
-                        }
-                        break;
                     }
+                    else
+                    {
+                        ui_progressCompilation.title = "Compile failed";
+                        SetProgressStatus("error");
+
+                        _requestedTabSwitch = Tab.Diagnostics;
+                    }
+                    break;
+                }
                 case CompilationStatus.None:
                 default: throw new UnreachableException();
             }

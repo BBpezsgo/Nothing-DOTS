@@ -21,41 +21,15 @@ class ProcessorAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Processor>(entity, new()
             {
-                StatusLED = new(
-                    authoring.StatusLED == null
-                    ? Entity.Null
-                    : GetEntity(authoring.StatusLED, TransformUsageFlags.Dynamic)
-                ),
-                NetworkReceiveLED = new(
-                    authoring.NetworkReceiveLED == null
-                    ? Entity.Null
-                    : GetEntity(authoring.NetworkReceiveLED, TransformUsageFlags.Dynamic)
-                ),
-                NetworkSendLED = new(
-                    authoring.NetworkSendLED == null
-                    ? Entity.Null
-                    : GetEntity(authoring.NetworkSendLED, TransformUsageFlags.Dynamic)
-                ),
-                RadarLED = new(
-                    authoring.RadarLED == null
-                    ? Entity.Null
-                    : GetEntity(authoring.RadarLED, TransformUsageFlags.Dynamic)
-                ),
-                USBLED = new(
-                    authoring.USBLED == null
-                    ? Entity.Null
-                    : GetEntity(authoring.USBLED, TransformUsageFlags.Dynamic)
-                ),
-                USBPosition =
-                    authoring.USBPosition == null
-                    ? float3.zero
-                    : authoring.transform.InverseTransformPoint(authoring.USBPosition.position),
-                USBRotation =
-                    authoring.USBPosition == null
-                    ? quaternion.identity
-                    : authoring.USBPosition.rotation,
+                StatusLED = new(authoring.StatusLED != null ? GetEntity(authoring.StatusLED, TransformUsageFlags.Dynamic) : Entity.Null),
+                NetworkReceiveLED = new(authoring.NetworkReceiveLED != null ? GetEntity(authoring.NetworkReceiveLED, TransformUsageFlags.Dynamic) : Entity.Null),
+                NetworkSendLED = new(authoring.NetworkSendLED != null ? GetEntity(authoring.NetworkSendLED, TransformUsageFlags.Dynamic) : Entity.Null),
+                RadarLED = new(authoring.RadarLED != null ? GetEntity(authoring.RadarLED, TransformUsageFlags.Dynamic) : Entity.Null),
+                USBLED = new(authoring.USBLED != null ? GetEntity(authoring.USBLED, TransformUsageFlags.Dynamic) : Entity.Null),
+                USBPosition = authoring.USBPosition != null ? authoring.transform.InverseTransformPoint(authoring.USBPosition.position) : float3.zero,
+                USBRotation = authoring.USBPosition != null ? authoring.USBPosition.rotation : quaternion.identity,
 #if UNITY_EDITOR
-                SourceFile = authoring.Script is null ? default : new FileId(authoring.Script, NetcodeEndPoint.Server),
+                SourceFile = authoring.Script is not null ? new FileId(authoring.Script, NetcodeEndPoint.Server) : default,
 #endif
             });
         }

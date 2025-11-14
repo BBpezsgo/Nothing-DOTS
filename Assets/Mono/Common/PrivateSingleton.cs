@@ -1,10 +1,12 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 
 public class PrivateSingleton<T> : MonoBehaviour where T : UnityEngine.Object
 {
     static T? _instance;
 
+    [SuppressMessage("Style", "IDE0029")]
     protected static T Instance
     {
         get

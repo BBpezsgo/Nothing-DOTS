@@ -11,12 +11,9 @@ public class TransporterAuthoring : MonoBehaviour
         public override void Bake(TransporterAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new Transporter()
+            AddComponent<Transporter>(entity, new()
             {
-                LoadPoint =
-                    authoring.LoadPoint != null
-                    ? authoring.LoadPoint.localPosition
-                    : default,
+                LoadPoint = authoring.LoadPoint != null ? authoring.LoadPoint.localPosition : default,
             });
             AddComponent<SelectableUnit>(entity);
             AddComponent<EntityWithInfoUI>(entity);

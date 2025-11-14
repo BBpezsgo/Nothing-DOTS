@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 
 public class Singleton<T> : MonoBehaviour where T : UnityEngine.Object
@@ -7,6 +8,7 @@ public class Singleton<T> : MonoBehaviour where T : UnityEngine.Object
 
     public static T? InstanceOrNull => _instance;
 
+    [SuppressMessage("Style", "IDE0029")]
     public static T Instance
     {
         get

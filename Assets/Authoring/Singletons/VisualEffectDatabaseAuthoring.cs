@@ -25,7 +25,7 @@ public class VisualEffectDatabaseAuthoring : MonoBehaviour
         public override void Bake(VisualEffectDatabaseAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new VisualEffectDatabase());
+            AddComponent<VisualEffectDatabase>(entity, new());
             DynamicBuffer<BufferedVisualEffect> visualEffects = AddBuffer<BufferedVisualEffect>(entity);
             foreach (VisualEffectAsset visualEffect in authoring.VisualEffects)
             {

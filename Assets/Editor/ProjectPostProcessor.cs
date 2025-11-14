@@ -13,7 +13,7 @@ public class ProjectPostProcessor : AssetPostprocessor
     public static string OnGeneratedCSProject(string path, string content)
     {
         XDocument project = XDocument.Parse(content);
-        XAttribute xmlns = project.Root!.Attribute("xmlns");
+        XAttribute xmlns = project.Root.Attribute("xmlns");
         string @namespace = xmlns == null ? string.Empty : $"{{{xmlns.Value}}}";
 
         XElement propertyGroup = project.Descendants($"{@namespace}PropertyGroup").First();

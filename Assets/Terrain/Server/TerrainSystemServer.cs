@@ -519,7 +519,7 @@ partial struct TerrainSystemServer : ISystem
                         float3 v1 = new(dataPos11.x, h10, dataPos00.y);
                         float3 v2 = new(dataPos11.x, h11, dataPos11.y);
 
-                        if (Utils.ray_intersects_triangle(
+                        if (Utils.RayIntersectsTriangle(
                             origin,
                             direction,
                             new float3x3(v0, v1, v2),
@@ -547,7 +547,7 @@ partial struct TerrainSystemServer : ISystem
                         float3 v2 = new(dataPos11.x, h11, dataPos11.y);
                         float3 v1 = new(dataPos00.x, h01, dataPos11.y);
 
-                        if (Utils.ray_intersects_triangle(
+                        if (Utils.RayIntersectsTriangle(
                             origin,
                             direction,
                             new float3x3(v0, v1, v2),

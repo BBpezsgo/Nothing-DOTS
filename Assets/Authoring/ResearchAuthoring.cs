@@ -18,12 +18,7 @@ class ResearchAuthoring : MonoBehaviour
             Unity.Mathematics.Random random = new(42);
             for (int i = 0; i < 29; i++)
             {
-                switch (random.NextInt(0, 2))
-                {
-                    case 0: hash[i] = (byte)random.NextInt('a', 'z'); break;
-                    case 1: hash[i] = (byte)random.NextInt('A', 'A'); break;
-                    case 2: hash[i] = (byte)random.NextInt('0', '9'); break;
-                }
+                hash[i] = random.NextAlphanumeric();
             }
             hash[29] = 0;
             AddComponent<Research>(entity, new()

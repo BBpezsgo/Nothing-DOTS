@@ -24,7 +24,7 @@ class UnitDatabaseAuthoring : MonoBehaviour
         public override void Bake(UnitDatabaseAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new UnitDatabase());
+            AddComponent<UnitDatabase>(entity, new());
             DynamicBuffer<BufferedUnit> units = AddBuffer<BufferedUnit>(entity);
             foreach (Item item in authoring.Units)
             {

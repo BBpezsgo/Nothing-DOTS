@@ -13,7 +13,6 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Profiling;
-using UnityEngine;
 
 public enum CompilationStatus
 {
@@ -26,7 +25,7 @@ public enum CompilationStatus
     Done,
 }
 
-public class CompiledSource : IInspect<CompiledSource>
+public class CompiledSource
 {
     public readonly FileId SourceFile;
     public long CompiledVersion;
@@ -76,19 +75,9 @@ public class CompiledSource : IInspect<CompiledSource>
         Compiled = CompilerResult.MakeEmpty(sourceFile.ToUri());
         SubFiles = new();
     }
-
-    public CompiledSource OnGUI(Rect rect, CompiledSource value)
-    {
-#if UNITY_EDITOR
-        bool t = GUI.enabled;
-        GUI.enabled = false;
-        GUI.Label(rect, value.Status.ToString());
-        GUI.enabled = t;
-#endif
-        return value;
-    }
 }
 
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial class CompilerSystemServer : SystemBase
 {
     static readonly bool EnableLogging = false;
@@ -226,7 +215,7 @@ public partial class CompilerSystemServer : SystemBase
             // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
 
             if (item.File is null) continue;
-            if (!item.File.TryGetNetcode(out FileId file)) continue;
+            if (!FileId.FromUri(item.File, out FileId file)) continue;
 
             NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilationAnalysticsRpc()
             {
@@ -362,7 +351,7 @@ public partial class CompilerSystemServer : SystemBase
                     {
                         UserDefinedAttributes = attributes,
                         ExternalFunctions = externalFunctions.ToImmutableArray(),
-                        DontOptimize = false,
+                        Optimizations = OptimizationSettings.All,
                         SourceProviders = ImmutableArray.Create<ISourceProvider>(
                             new NetcodeSourceProvider(source, progresses, EnableLogging)
                         ),

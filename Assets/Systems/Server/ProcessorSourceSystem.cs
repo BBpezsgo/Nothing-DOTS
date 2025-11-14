@@ -175,6 +175,7 @@ unsafe partial class ProcessorSourceSystem : SystemBase
         processorState_.Setup();
 
         processor.ValueRW.StdOutBuffer.Clear();
+        processor.ValueRW.StdOutBufferCursor = 0;
         processor.ValueRW.Registers = processorState_.Registers;
         processor.ValueRW.Signal = processorState_.Signal;
         processor.ValueRW.Crash = processorState_.Crash;

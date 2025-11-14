@@ -128,7 +128,7 @@ partial class FileChunkManagerSystem : SystemBase
             }
             else if (header.Kind == FileResponseStatus.OK)
             {
-                int totalLength = FileChunkManagerSystem.GetChunkLength(header.TotalLength);
+                int totalLength = GetChunkLength(header.TotalLength);
 
                 FileChunk[] chunks = new FileChunk[totalLength];
                 bool[] received = new bool[totalLength];
@@ -150,7 +150,7 @@ partial class FileChunkManagerSystem : SystemBase
                 byte[] data = new byte[header.TotalLength];
                 for (int j = 0; j < chunks.Length; j++)
                 {
-                    int chunkSize = FileChunkManagerSystem.GetChunkSize(header.TotalLength, j);
+                    int chunkSize = GetChunkSize(header.TotalLength, j);
                     Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[j]), chunkSize);
                     chunk.CopyTo(data.AsSpan(j * FileChunkResponseRpc.ChunkSize));
                 }
@@ -266,7 +266,7 @@ partial class FileChunkManagerSystem : SystemBase
                     return null;
                 }
 
-                if (!_fileName.Consume('_'))
+                if (!_fileName.Consume('.'))
                 {
                     Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Expected separator");
                     return null;

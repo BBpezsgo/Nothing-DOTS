@@ -6,10 +6,10 @@ using Unity.NetCode;
 [BurstCompile]
 public struct CompilationAnalysticsRpc : IRpcCommand
 {
-    public FileId Source;
+    public required FileId Source;
+    public required FixedString512Bytes Message;
+    public required DiagnosticsLevel Level;
     public FileId FileName;
-    public LanguageCore.MutableRange<SinglePosition> Position;
-    public LanguageCore.MutableRange<int> AbsolutePosition;
-    public DiagnosticsLevel Level;
-    public FixedString512Bytes Message;
+    public MutableRange<SinglePosition> Position;
+    public MutableRange<int> AbsolutePosition;
 }

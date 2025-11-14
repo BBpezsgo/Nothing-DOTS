@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Unity.Burst;
 using UnityEngine;
 
+[SuppressMessage("Style", "IDE1006")]
 public class MonoTime : MonoBehaviour
 {
     class _nowKey { }

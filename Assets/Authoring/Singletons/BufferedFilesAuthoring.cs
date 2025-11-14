@@ -9,7 +9,7 @@ class BufferedFilesAuthoring : MonoBehaviour
         public override void Bake(BufferedFilesAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new BufferedFiles());
+            AddComponent<BufferedFiles>(entity, new());
             AddBuffer<BufferedReceivingFileChunk>(entity);
             AddBuffer<BufferedReceivingFile>(entity);
             AddBuffer<BufferedSendingFile>(entity);

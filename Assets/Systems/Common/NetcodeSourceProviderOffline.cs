@@ -33,7 +33,7 @@ class NetcodeSourceProviderOffline : ISourceProviderSync
         {
             lastUri = uri;
 
-            if (!uri.TryGetNetcode(out FileId fileId))
+            if (!FileId.FromUri(uri, out FileId fileId))
             {
                 Debug.LogError($"[{nameof(CompilerSystemServer)}]: Uri \"{uri}\" aint a netcode uri");
                 return SourceProviderResultSync.NextHandler();
@@ -49,7 +49,7 @@ class NetcodeSourceProviderOffline : ISourceProviderSync
 
         if (lastUri is not null)
         {
-            return SourceProviderResultSync.NotFound(lastUri!);
+            return SourceProviderResultSync.NotFound(lastUri);
         }
         else
         {

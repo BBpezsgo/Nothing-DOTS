@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
@@ -87,6 +88,9 @@ public class ProcessorGUIManager : MonoBehaviour
                     _images[imageIndex].sprite.texture.Apply();
                     imageIndex++;
                     break;
+                case UserUIElementType.MIN:
+                case UserUIElementType.MAX:
+                default: throw new UnreachableException();
             }
         }
 

@@ -46,7 +46,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
         {
             lastUri = uri;
 
-            if (!uri.TryGetNetcode(out FileId fileId))
+            if (!FileId.FromUri(uri, out FileId fileId))
             {
                 Debug.LogError($"[{nameof(CompilerSystemServer)}]: Uri \"{uri}\" aint a netcode uri");
                 return SourceProviderResultAsync.NextHandler();
@@ -122,7 +122,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
         if (lastUri is not null)
         {
-            return SourceProviderResultAsync.NotFound(lastUri!);
+            return SourceProviderResultAsync.NotFound(lastUri);
         }
         else
         {

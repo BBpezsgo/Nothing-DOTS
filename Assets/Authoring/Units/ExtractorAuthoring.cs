@@ -11,12 +11,9 @@ public class ExtractorAuthoring : MonoBehaviour
         public override void Bake(ExtractorAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new Extractor()
+            AddComponent<Extractor>(entity, new()
             {
-                ExtractPoint =
-                    authoring.ExtractPoint != null
-                    ? authoring.ExtractPoint.localPosition
-                    : default,
+                ExtractPoint = authoring.ExtractPoint != null ? authoring.ExtractPoint.localPosition : default,
             });
             AddComponent<SelectableUnit>(entity);
             AddComponent<EntityWithInfoUI>(entity);

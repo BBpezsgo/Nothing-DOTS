@@ -11,12 +11,9 @@ class RadarAuthoring : MonoBehaviour
         public override void Bake(RadarAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new Radar()
+            AddComponent<Radar>(entity, new()
             {
-                Transform =
-                    authoring.Radar == null
-                    ? Entity.Null
-                    : GetEntity(authoring.Radar, TransformUsageFlags.Dynamic),
+                Transform = authoring.Radar != null ? GetEntity(authoring.Radar, TransformUsageFlags.Dynamic) : Entity.Null,
             });
         }
     }

@@ -63,31 +63,31 @@ public partial struct UnitCommandReceiver : ISystem
                             switch (commandDefinitions[i].GetParameter(j))
                             {
                                 case UnitCommandParameter.Position2:
+                                {
+                                    if (command.ValueRO.WorldPosition.Equals(default))
                                     {
-                                        if (command.ValueRO.WorldPosition.Equals(default))
-                                        {
-                                            Debug.LogWarning("[Server] Position data not provided");
-                                            goto failed;
-                                        }
-
-                                        dataPtr.Set(new float2(command.ValueRO.WorldPosition.x, command.ValueRO.WorldPosition.z));
-                                        dataPtr += sizeof(float2);
-                                        dataLength += sizeof(float2);
-                                        break;
+                                        Debug.LogWarning("[Server] Position data not provided");
+                                        goto failed;
                                     }
+
+                                    dataPtr.Set(new float2(command.ValueRO.WorldPosition.x, command.ValueRO.WorldPosition.z));
+                                    dataPtr += sizeof(float2);
+                                    dataLength += sizeof(float2);
+                                    break;
+                                }
                                 case UnitCommandParameter.Position3:
+                                {
+                                    if (command.ValueRO.WorldPosition.Equals(default))
                                     {
-                                        if (command.ValueRO.WorldPosition.Equals(default))
-                                        {
-                                            Debug.LogWarning("[Server] Position data not provided");
-                                            goto failed;
-                                        }
-
-                                        dataPtr.Set(command.ValueRO.WorldPosition);
-                                        dataPtr += sizeof(float3);
-                                        dataLength += sizeof(float3);
-                                        break;
+                                        Debug.LogWarning("[Server] Position data not provided");
+                                        goto failed;
                                     }
+
+                                    dataPtr.Set(command.ValueRO.WorldPosition);
+                                    dataPtr += sizeof(float3);
+                                    dataLength += sizeof(float3);
+                                    break;
+                                }
                                 default:
                                     throw new UnreachableException();
                             }

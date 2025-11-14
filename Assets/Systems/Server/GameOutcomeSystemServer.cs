@@ -8,7 +8,7 @@ partial struct GameOutcomeSystemServer : ISystem
     double _refreshAt;
 
     [BurstCompile]
-    unsafe void ISystem.OnUpdate(ref SystemState state)
+    void ISystem.OnUpdate(ref SystemState state)
     {
         double now = SystemAPI.Time.ElapsedTime;
         if (now < _refreshAt) return;

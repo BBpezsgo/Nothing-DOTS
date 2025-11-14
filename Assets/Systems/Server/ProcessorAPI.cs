@@ -226,6 +226,7 @@ static unsafe class ProcessorAPI
             char output = arguments.To<char>();
             if (output == '\r') return;
             ((FunctionScope*)_scope)->EntityRef.Processor->StdOutBuffer.AppendShift(output);
+            ((FunctionScope*)_scope)->EntityRef.Processor->StdOutBufferCursor++;
         }
 
         [BurstCompile]

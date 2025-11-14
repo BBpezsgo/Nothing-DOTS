@@ -47,12 +47,15 @@ public class ChatManager : Singleton<ChatManager>
 
     void Update()
     {
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-        foreach (VisualElement child in _containerMessages.Children())
+        if (_containerMessages.childCount > 0)
         {
-            ChatMessage message = (ChatMessage)child.userData;
-            child.EnableInClassList("old", (now - message.Time).TotalSeconds > 3);
-            child.EnableInClassList("very-old", (now - message.Time).TotalSeconds > 4);
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            foreach (VisualElement child in _containerMessages.Children())
+            {
+                ChatMessage message = (ChatMessage)child.userData;
+                child.EnableInClassList("old", (now - message.Time).TotalSeconds > 3);
+                child.EnableInClassList("very-old", (now - message.Time).TotalSeconds > 4);
+            }
         }
 
         if (!Input.GetKeyDown(KeyCode.Return) || UIManager.Instance.AnyUIVisible || SelectionManager.Instance.IsUnitCommandsActive) return;

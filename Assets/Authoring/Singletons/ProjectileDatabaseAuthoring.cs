@@ -24,7 +24,7 @@ class ProjectileDatabaseAuthoring : MonoBehaviour
         public override void Bake(ProjectileDatabaseAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new ProjectileDatabase());
+            AddComponent<ProjectileDatabase>(entity, new());
             DynamicBuffer<BufferedProjectile> projectiles = AddBuffer<BufferedProjectile>(entity);
             foreach (ProjectileStats projectile in authoring.Projectiles)
             {

@@ -40,26 +40,26 @@ public class ColliderAuthoring : MonoBehaviour
             switch (collider)
             {
                 case UnityEngine.SphereCollider v:
-                    {
-                        AddComponent<Collider>(entity, new SphereCollider(
-                            authoring.IsStatic,
-                            v.radius < 0.01f ? 0f : v.radius,
-                            v.center
-                        ));
-                        break;
-                    }
+                {
+                    AddComponent<Collider>(entity, new SphereCollider(
+                        authoring.IsStatic,
+                        v.radius < 0.01f ? 0f : v.radius,
+                        v.center
+                    ));
+                    break;
+                }
                 case BoxCollider v:
-                    {
-                        AddComponent<Collider>(entity, new AABBCollider(
-                            authoring.IsStatic,
-                            new()
-                            {
-                                Center = v.center,
-                                Extents = v.size / 2f,
-                            }
-                        ));
-                        break;
-                    }
+                {
+                    AddComponent<Collider>(entity, new AABBCollider(
+                        authoring.IsStatic,
+                        new()
+                        {
+                            Center = v.center,
+                            Extents = v.size / 2f,
+                        }
+                    ));
+                    break;
+                }
                 default:
                     Debug.LogError($"Collider \"{collider.GetType().Name}\" not implemented", authoring.gameObject);
                     break;

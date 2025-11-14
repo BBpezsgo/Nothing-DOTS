@@ -37,9 +37,9 @@ class NetcodeBootstrap : ClientServerBootstrap
 
     public static IEnumerator CreateLocal()
     {
-        LocalWorld = ClientServerBootstrap.CreateLocalWorld("LocalWorld");
+        LocalWorld = CreateLocalWorld("LocalWorld");
 
-        SubScene[] subScenes = GameObject.FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        SubScene[] subScenes = Object.FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
         while (!LocalWorld.IsCreated)
         {
@@ -85,9 +85,9 @@ class NetcodeBootstrap : ClientServerBootstrap
 
     public static IEnumerator CreateServer(NetworkEndpoint endpoint)
     {
-        ServerWorld = ClientServerBootstrap.CreateServerWorld("ServerWorld");
+        ServerWorld = CreateServerWorld("ServerWorld");
 
-        SubScene[] subScenes = GameObject.FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        SubScene[] subScenes = Object.FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
         while (!ServerWorld.IsCreated)
         {
@@ -131,9 +131,9 @@ class NetcodeBootstrap : ClientServerBootstrap
 
     public static IEnumerator CreateClient(NetworkEndpoint endpoint)
     {
-        ClientWorld = ClientServerBootstrap.CreateClientWorld("ClientWorld");
+        ClientWorld = CreateClientWorld("ClientWorld");
 
-        SubScene[] subScenes = GameObject.FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        SubScene[] subScenes = Object.FindObjectsByType<SubScene>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
         while (!ClientWorld.IsCreated)
         {

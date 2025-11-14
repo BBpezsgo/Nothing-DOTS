@@ -18,34 +18,34 @@ partial struct FacilityProcessorSystem : ISystem
             switch (mapped.Facility.Signal)
             {
                 case MappedMemory_Facility.SignalEnqueueHash:
+                {
+                    mapped.Facility.Signal = 0;
+                    if (mapped.Facility.HashLocation != 0)
                     {
-                        mapped.Facility.Signal = 0;
-                        if (mapped.Facility.HashLocation != 0)
-                        {
-                            FixedBytes30 hash = Processor.GetMemoryPtr(ref processor.ValueRW)
-                                .Get<FixedBytes30>(mapped.Facility.HashLocation);
-                            techIn.Add(new() { Hash = hash });
-                        }
-                        break;
+                        FixedBytes30 hash = Processor.GetMemoryPtr(ref processor.ValueRW)
+                            .Get<FixedBytes30>(mapped.Facility.HashLocation);
+                        techIn.Add(new() { Hash = hash });
                     }
+                    break;
+                }
                 case MappedMemory_Facility.SignalDequeueHash:
+                {
+                    if (mapped.Facility.HashLocation != 0)
                     {
-                        if (mapped.Facility.HashLocation != 0)
+                        if (techOut.IsEmpty)
                         {
-                            if (techOut.IsEmpty)
-                            {
-                                mapped.Facility.Signal = MappedMemory_Facility.SignalDequeueFailure;
-                            }
-                            else
-                            {
-                                mapped.Facility.Signal = MappedMemory_Facility.SignalDequeueSuccess;
-                                BufferedTechnologyHashOut tech = techOut[0];
-                                techOut.RemoveAt(0);
-                                Processor.GetMemoryPtr(ref processor.ValueRW).Set(mapped.Facility.HashLocation, tech.Hash);
-                            }
+                            mapped.Facility.Signal = MappedMemory_Facility.SignalDequeueFailure;
                         }
-                        break;
+                        else
+                        {
+                            mapped.Facility.Signal = MappedMemory_Facility.SignalDequeueSuccess;
+                            BufferedTechnologyHashOut tech = techOut[0];
+                            techOut.RemoveAt(0);
+                            Processor.GetMemoryPtr(ref processor.ValueRW).Set(mapped.Facility.HashLocation, tech.Hash);
+                        }
                     }
+                    break;
+                }
             }
         }
     }
