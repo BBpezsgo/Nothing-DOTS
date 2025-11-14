@@ -8,7 +8,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Transforms;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct TerrainSystemServer : ISystem
 {
     public const int numSupportedChunkSizes = 9;

@@ -3,7 +3,7 @@ using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
 
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial class WorldLabelSystemClientSystem : SystemBase
 {
     Transform? _canvas;

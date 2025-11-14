@@ -6,7 +6,7 @@ using Unity.NetCode;
 using Unity.Rendering;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct ProcessorSystemClient : ISystem
 {
     ComponentLookup<URPMaterialPropertyEmissionColor> _emissionColorQ;

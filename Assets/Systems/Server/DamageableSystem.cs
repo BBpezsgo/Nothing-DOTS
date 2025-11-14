@@ -3,7 +3,7 @@ using Unity.Entities;
 using Unity.Transforms;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct DamageableSystem : ISystem
 {
     [BurstCompile]
@@ -17,16 +17,15 @@ public partial struct DamageableSystem : ISystem
         {
             for (int i = damages.Length - 1; i >= 0; i--)
             {
-                if ((damageable.ValueRW.Health -= damages[i].Amount) <= 0f)
+                damageable.ValueRW.Health -= damages[i].Amount;
+                if (damageable.ValueRW.Health > 0f) continue;
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new VisualEffectRpc()
                 {
-                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new VisualEffectRpc()
-                    {
-                        Position = transform.ValueRO.Position,
-                        Rotation = default,
-                        Index = damageable.ValueRO.DestroyEffect,
-                    });
-                    commandBuffer.DestroyEntity(entity);
-                }
+                    Position = transform.ValueRO.Position,
+                    Rotation = default,
+                    Index = damageable.ValueRO.DestroyEffect,
+                });
+                commandBuffer.DestroyEntity(entity);
             }
             damages.Clear();
         }

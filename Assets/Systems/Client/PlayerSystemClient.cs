@@ -5,7 +5,7 @@ using Unity.Entities;
 using Unity.NetCode;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct PlayerSystemClient : ISystem
 {
     bool _requestSent;
@@ -51,7 +51,7 @@ public partial struct PlayerSystemClient : ISystem
 
         if (connection.CurrentState != ConnectionState.State.Connected) return;
 
-        if (!TryGetLocalPlayer(ref state, out _))
+        if (!TryGetLocalPlayer(ref state, out _) && connection.CurrentState == ConnectionState.State.Connected)
         {
             if (!_requestSent)
             {
@@ -85,6 +85,11 @@ public partial struct PlayerSystemClient : ISystem
 
     public bool TryGetLocalPlayer(ref SystemState state, out Player player)
     {
+        if (state.WorldUnmanaged.IsLocal())
+        {
+            return SystemAPI.TryGetSingleton<Player>(out player);
+        }
+
         if (!SystemAPI.TryGetSingleton(out NetworkId networkId))
         {
             player = default;
@@ -106,6 +111,11 @@ public partial struct PlayerSystemClient : ISystem
     public static bool TryGetLocalPlayer(out Player player)
     {
         using EntityQuery playersQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(Player));
+        if (ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal())
+        {
+            return playersQ.TryGetSingleton<Player>(out player);
+        }
+
         using EntityQuery connectionsQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(NetworkId));
         if (!connectionsQ.TryGetSingleton(out NetworkId networkId))
         {
@@ -122,11 +132,46 @@ public partial struct PlayerSystemClient : ISystem
         }
 
         player = default;
+        Debug.LogWarning("No local player found");
+        return false;
+    }
+
+    public static bool TryGetLocalPlayer(out Entity player)
+    {
+        using EntityQuery playersQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(Player));
+        if (ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal())
+        {
+            return playersQ.TryGetSingletonEntity<Player>(out player);
+        }
+
+        using EntityQuery connectionsQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(NetworkId));
+        if (!connectionsQ.TryGetSingleton(out NetworkId networkId))
+        {
+            player = default;
+            return false;
+        }
+
+        using NativeArray<Entity> players = playersQ.ToEntityArray(Allocator.Temp);
+        for (int i = 0; i < players.Length; i++)
+        {
+            if (ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<Player>(players[i]).ConnectionId != networkId.Value) continue;
+            player = players[i];
+            return true;
+        }
+
+        player = default;
+        Debug.LogWarning("No local player found");
         return false;
     }
 
     public void SetNickname(FixedString32Bytes nickname)
     {
         _nickname = nickname;
+
+        if (ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal())
+        {
+            using EntityQuery playersQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(Player));
+            playersQ.GetSingletonRW<Player>().ValueRW.Nickname = nickname;
+        }
     }
 }

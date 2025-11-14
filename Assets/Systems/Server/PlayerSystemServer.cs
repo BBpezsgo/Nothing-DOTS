@@ -8,7 +8,7 @@ using Unity.NetCode;
 using Unity.Transforms;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct PlayerSystemServer : ISystem
 {
     int _teamCounter;
@@ -88,7 +88,6 @@ public partial struct PlayerSystemServer : ISystem
                     ConnectionState = PlayerConnectionState.Connected,
                     Team = -1,
                     IsCoreComputerSpawned = false,
-                    Resources = 30,
                     Guid = guid,
                     Nickname = command.ValueRO.Nickname,
                 });
@@ -223,6 +222,7 @@ public partial struct PlayerSystemServer : ISystem
                         break;
                     }
                     player.ValueRW.IsCoreComputerSpawned = true;
+                    player.ValueRW.Resources = 30;
                 }
             }
         }

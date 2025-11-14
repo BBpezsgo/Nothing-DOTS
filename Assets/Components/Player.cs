@@ -8,6 +8,7 @@ using Unity.NetCode;
 public enum PlayerConnectionState : byte
 {
     Connected,
+    Local,
     Server,
     Disconnected,
 }

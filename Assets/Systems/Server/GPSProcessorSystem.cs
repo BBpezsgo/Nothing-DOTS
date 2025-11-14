@@ -3,7 +3,7 @@ using Unity.Transforms;
 using Unity.Burst;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct GPSProcessorSystem : ISystem
 {
     [BurstCompile]

@@ -68,7 +68,7 @@ struct OwnedData<T>
 }
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 unsafe partial struct ProcessorSystemServer : ISystem
 {
     public const int CyclesPerTick = 256;

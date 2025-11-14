@@ -6,7 +6,7 @@ using Unity.Transforms;
 [BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct TerrainCollisionSystem : ISystem
 {
     [BurstCompile]

@@ -10,7 +10,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct UnitRadarSystem : ISystem
 {
 #if DEBUG_LINES

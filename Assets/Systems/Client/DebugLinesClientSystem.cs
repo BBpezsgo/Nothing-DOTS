@@ -4,7 +4,7 @@ using Unity.Entities;
 using Unity.NetCode;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct DebugLinesClientSystem : ISystem
 {
     NativeArray<Entity>.ReadOnly Batches;

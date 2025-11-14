@@ -1,29 +1,35 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
-partial struct ProjectileSystemClient : ISystem
+[WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation)]
+partial struct ProjectileSystemLocal : ISystem
 {
-    BufferLookup<BufferedDamage> DamageQ;
+    BufferLookup<BufferedDamage> damageQ;
     EntityArchetype VisualEffectSpawnArchetype;
+    public const float Gravity = -9.82f;
 
+    [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
-        DamageQ = state.GetBufferLookup<BufferedDamage>(true);
+        damageQ = state.GetBufferLookup<BufferedDamage>();
         VisualEffectSpawnArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
             ComponentType.ReadWrite<VisualEffectSpawn>(),
         });
     }
 
+    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        TerrainSystemServer terrainSystem = TerrainSystemServer.GetInstance(state.WorldUnmanaged);
 
-        DamageQ.Update(ref state);
+        damageQ.Update(ref state);
         var map = QuadrantSystem.GetMap(ref state);
 
         foreach (var (transform, projectile, entity) in
@@ -36,8 +42,8 @@ partial struct ProjectileSystemClient : ISystem
             float3 newPosition = lastPosition + (projectile.ValueRO.Velocity * t);
             float3 direction = projectile.ValueRO.Velocity / travelDistance * t;
 
-            projectile.ValueRW.Velocity += new float3(0f, ProjectileSystemServer.Gravity, 0f) * t;
             transform.ValueRW.Position = newPosition;
+            projectile.ValueRW.Velocity += new float3(0f, Gravity, 0f) * SystemAPI.Time.DeltaTime;
             transform.ValueRW.Rotation = quaternion.LookRotation(direction, new float3(0f, 1f, 0f));
 
             if (transform.ValueRO.Position.y < 0f)
@@ -47,9 +53,10 @@ partial struct ProjectileSystemClient : ISystem
             }
 
             Ray ray = new(lastPosition, direction, travelDistance, Layers.BuildingOrUnit);
+            DynamicBuffer<BufferedDamage> damage = default;
 
-            bool didHitTerrain = TerrainGenerator.Instance.Raycast(ray.Start, ray.Direction, math.distance(lastPosition, newPosition), out float terrainHit, out float3 normal);
-            bool didHitUnit = QuadrantRayCast.RayCast(map, ray, out Hit unitHit) && DamageQ.HasBuffer(unitHit.Entity.Entity);
+            bool didHitTerrain = terrainSystem.Raycast(ray.Start, ray.Direction, math.distance(lastPosition, newPosition), out float terrainHit, out float3 normal);
+            bool didHitUnit = QuadrantRayCast.RayCast(map, ray, out Hit unitHit) && damageQ.TryGetBuffer(unitHit.Entity.Entity, out damage);
 
             float distance;
             bool metalHit;
@@ -63,6 +70,11 @@ partial struct ProjectileSystemClient : ISystem
 
             if (didHitUnit)
             {
+                damage.Add(new()
+                {
+                    Amount = projectile.ValueRO.Damage,
+                    Direction = math.normalize(projectile.ValueRO.Velocity),
+                });
                 distance = unitHit.Distance;
                 normal = math.normalizesafe(-projectile.ValueRW.Velocity);
                 metalHit = true;
@@ -86,69 +98,5 @@ partial struct ProjectileSystemClient : ISystem
 
             commandBuffer.DestroyEntity(entity);
         }
-
-        // EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-
-        // ProjectileJob projectileJob = new()
-        // {
-        //     EntityCommandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged),
-        //     DeltaTime = SystemAPI.Time.DeltaTime,
-        //     CollisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld,
-        //     DamageQ = damageQ,
-        // };
-
-        // projectileJob.Schedule();
     }
 }
-
-/*
-[BurstCompile]
-public partial struct ProjectileJob : IJobEntity
-{
-    public EntityCommandBuffer EntityCommandBuffer;
-    public float DeltaTime;
-    public CollisionWorld CollisionWorld;
-    public BufferLookup<BufferedDamage> DamageQ;
-
-    [BurstCompile]
-    void Execute(Entity entity, ref Projectile projectile, ref LocalTransform transform)
-    {
-        float3 lastPosition = transform.Position;
-        transform.Position += projectile.Velocity * DeltaTime;
-        projectile.Velocity += new float3(0f, -9.82f, 0f) * DeltaTime;
-
-        if (transform.Position.y < 0f)
-        {
-            EntityCommandBuffer.DestroyEntity(entity);
-            return;
-        }
-
-        float3 lastPositionWorld = transform.TransformPoint(lastPosition);
-        float3 positionWorld = transform.TransformPoint(transform.Position);
-
-        RaycastInput input = new()
-        {
-            Start = lastPositionWorld,
-            End = positionWorld,
-            Filter = new CollisionFilter()
-            {
-                BelongsTo = Layers.All,
-                CollidesWith = Layers.All,
-                GroupIndex = 0,
-            },
-        };
-
-        if (!CollisionWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
-        { return; }
-
-        Debug.Log("Bruh");
-
-        if (DamageQ.TryGetBuffer(hit.Entity, out var damage))
-        {
-            damage.Add(new BufferedDamage(1f, math.normalize(projectile.Velocity)));
-            EntityCommandBuffer.DestroyEntity(entity);
-            return;
-        }
-    }
-}
-*/

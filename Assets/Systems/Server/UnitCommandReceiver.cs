@@ -20,13 +20,13 @@ public partial struct UnitCommandReceiver : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            RefRO<NetworkId> requestConnection = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
 
             int sourceTeam = -1;
             foreach (var player in
                 SystemAPI.Query<RefRO<Player>>())
             {
-                if (player.ValueRO.ConnectionId != requestConnection.ValueRO.Value) continue;
+                if (player.ValueRO.ConnectionId != networkId.Value) continue;
                 sourceTeam = player.ValueRO.Team;
                 break;
             }

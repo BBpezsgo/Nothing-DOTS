@@ -4,7 +4,7 @@ using Unity.Entities;
 using Unity.NetCode;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct BuildingsSystemClient : ISystem
 {
     public NativeList<BufferedBuilding> Buildings;

@@ -4,7 +4,7 @@ using Unity.Transforms;
 using UnityEngine;
 
 [UpdateAfter(typeof(TransformSystemGroup))]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial class EntityInfoUISystem : SystemBase
 {
 #if UNITY_EDITOR && ENABLE_PROFILER

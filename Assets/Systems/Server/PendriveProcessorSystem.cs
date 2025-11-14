@@ -5,7 +5,7 @@ using Unity.Burst;
 using Unity.NetCode;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct PendriveProcessorSystem : ISystem
 {
     Random _random;

@@ -3,7 +3,7 @@ using Unity.Entities;
 using Unity.NetCode;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct FacilitySystem : ISystem
 {
     void ISystem.OnCreate(ref SystemState state)
@@ -21,7 +21,7 @@ public partial struct FacilitySystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
 
             Entity requestPlayer = default;
 
@@ -29,14 +29,14 @@ public partial struct FacilitySystem : ISystem
                 SystemAPI.Query<RefRO<Player>>()
                 .WithEntityAccess())
             {
-                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                if (player.ValueRO.ConnectionId != networkId.Value) continue;
                 requestPlayer = _entity;
                 break;
             }
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogError(string.Format("[Server] Failed to start research: requested by {0} but aint have a team", networkId.ValueRO));
+                Debug.LogError(string.Format("[Server] Failed to start research: requested by {0} but aint have a team", networkId));
                 return;
             }
 

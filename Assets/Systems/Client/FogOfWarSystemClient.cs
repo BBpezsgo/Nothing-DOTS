@@ -140,8 +140,7 @@ public partial class FogOfWarSystemClient : SystemBase
 
     void UpdateFogPlaneTextureBuffer()
     {
-        if (_fogPlaneTextureLerpBuffer == null ||
-            _fogPlaneTextureLerpTarget == null) return;
+        if (_fogPlaneTextureLerpBuffer == null || _fogPlaneTextureLerpTarget == null) return;
 
         _fogPlaneTextureLerpBuffer.CopyPixels(_fogPlaneTextureLerpTarget);
         _fogPlaneTextureLerpBuffer.Apply();

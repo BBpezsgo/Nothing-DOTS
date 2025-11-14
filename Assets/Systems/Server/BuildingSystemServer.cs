@@ -5,7 +5,7 @@ using Unity.NetCode;
 using Unity.Transforms;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct BuildingSystemServer : ISystem
 {
     public static Entity PlaceBuilding(
@@ -34,7 +34,7 @@ public partial struct BuildingSystemServer : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
 
             (Entity Entity, Player Player) requestPlayer = default;
 
@@ -42,14 +42,14 @@ public partial struct BuildingSystemServer : ISystem
                 SystemAPI.Query<RefRO<Player>>()
                 .WithEntityAccess())
             {
-                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                if (player.ValueRO.ConnectionId != networkId.Value) continue;
                 requestPlayer = (_entity, player.ValueRO);
                 break;
             }
 
             if (requestPlayer.Entity == Entity.Null)
             {
-                Debug.LogError(string.Format("Failed to place building: requested by {0} but aint have a team", networkId.ValueRO));
+                Debug.LogError(string.Format("Failed to place building: requested by {0} but aint have a team", networkId));
                 continue;
             }
 
@@ -99,19 +99,19 @@ public partial struct BuildingSystemServer : ISystem
             foreach (var _player in
                 SystemAPI.Query<RefRW<Player>>())
             {
-                if (_player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                if (_player.ValueRO.ConnectionId != networkId.Value) continue;
                 _player.ValueRW.Resources -= building.RequiredResources;
                 break;
             }
 
-            Entity newEntity = BuildingSystemServer.PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
+            Entity newEntity = PlaceBuilding(commandBuffer, building, command.ValueRO.Position);
             commandBuffer.SetComponent<UnitTeam>(newEntity, new()
             {
                 Team = requestPlayer.Player.Team,
             });
             commandBuffer.SetComponent<GhostOwner>(newEntity, new()
             {
-                NetworkId = networkId.ValueRO.Value,
+                NetworkId = networkId.Value,
             });
         }
 
@@ -142,7 +142,7 @@ public partial struct BuildingSystemServer : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
 
             Entity requestPlayer = default;
 
@@ -150,7 +150,7 @@ public partial struct BuildingSystemServer : ISystem
                 SystemAPI.Query<RefRO<Player>>()
                 .WithEntityAccess())
             {
-                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                if (player.ValueRO.ConnectionId != networkId.Value) continue;
                 requestPlayer = _entity;
                 break;
             }

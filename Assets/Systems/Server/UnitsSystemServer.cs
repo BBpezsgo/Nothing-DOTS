@@ -16,7 +16,7 @@ public partial struct UnitsSystemServer : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
 
             Entity requestPlayer = default;
 
@@ -24,7 +24,7 @@ public partial struct UnitsSystemServer : ISystem
                 SystemAPI.Query<RefRO<Player>>()
                 .WithEntityAccess())
             {
-                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                if (player.ValueRO.ConnectionId != networkId.Value) continue;
                 requestPlayer = _entity;
                 break;
             }

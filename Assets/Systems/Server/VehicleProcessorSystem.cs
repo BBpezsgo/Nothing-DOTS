@@ -3,7 +3,7 @@ using Unity.Mathematics;
 using Unity.Burst;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct VehicleProcessorSystem : ISystem
 {
     [BurstCompile]

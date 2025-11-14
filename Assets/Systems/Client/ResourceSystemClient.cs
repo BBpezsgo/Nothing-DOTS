@@ -6,7 +6,7 @@ using Unity.Transforms;
 [BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct ResourceSystemClient : ISystem
 {
     [BurstCompile]

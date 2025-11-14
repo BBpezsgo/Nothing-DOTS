@@ -1,7 +1,7 @@
 using Unity.Entities;
 using Unity.NetCode;
 
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct ChatSystemClient : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)

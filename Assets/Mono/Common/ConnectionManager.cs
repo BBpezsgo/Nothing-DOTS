@@ -196,6 +196,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         Debug.Log($" -> Set nickname to {nickname}");
         PlayerSystemClient.GetInstance(LocalWorld!.Unmanaged).SetNickname(nickname);
 
+        Debug.Log($" -> Disabling UI");
+        UI.enabled = false;
+
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
 #endif

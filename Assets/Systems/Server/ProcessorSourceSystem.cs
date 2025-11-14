@@ -2,8 +2,8 @@ using LanguageCore.Runtime;
 using Unity.Entities;
 using Unity.NetCode;
 
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-unsafe partial class ProcessorSourceSystem : SystemBase
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+partial class ProcessorSourceSystem : SystemBase
 {
     const bool EnableLogging = true;
 

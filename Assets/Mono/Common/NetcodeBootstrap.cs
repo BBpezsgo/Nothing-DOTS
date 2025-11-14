@@ -60,13 +60,10 @@ class NetcodeBootstrap : ClientServerBootstrap
             }
         }
 
-        Debug.Log($"1");
         using (EntityQuery prefabsQ = LocalWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>()))
         {
-            Debug.Log($"2");
             if (prefabsQ.TryGetSingleton<PrefabDatabase>(out PrefabDatabase prefabs))
             {
-                Debug.Log($"3");
                 Debug.Log($"Local player created");
                 Entity newPlayer = LocalWorld.EntityManager.Instantiate(prefabs.Player);
                 LocalWorld.EntityManager.SetComponentData<Player>(newPlayer, new()
@@ -75,10 +72,6 @@ class NetcodeBootstrap : ClientServerBootstrap
                     ConnectionState = PlayerConnectionState.Local,
                     Team = -1,
                 });
-            }
-            else
-            {
-                Debug.Log($"4");
             }
         }
     }

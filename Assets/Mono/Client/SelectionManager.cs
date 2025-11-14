@@ -290,7 +290,11 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (!RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layer, out Hit hit)) return;
         Entity selectableHit = hit.Entity.Entity;
-        if (!IsMine(selectableHit)) return;
+        if (!IsMine(selectableHit))
+        {
+            Debug.Log("Unit isn't mine");
+            return;
+        }
 
         _firstHit = selectableHit;
     }
@@ -319,7 +323,11 @@ public class SelectionManager : Singleton<SelectionManager>
 
     bool OpenEntityUI(Entity entity)
     {
-        if (!IsMine(entity)) return false;
+        if (!IsMine(entity))
+        {
+            Debug.Log("Unit isn't mine");
+            return false;
+        }
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 

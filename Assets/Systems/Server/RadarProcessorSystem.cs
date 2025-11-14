@@ -6,7 +6,7 @@ using Unity.Burst;
 [BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct RadarProcessorSystem : ISystem
 {
     [BurstCompile]

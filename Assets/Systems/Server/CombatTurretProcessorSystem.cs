@@ -5,7 +5,7 @@ using Unity.Burst;
 using System;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct CombatTurretProcessorSystem : ISystem
 {
     [BurstCompile]

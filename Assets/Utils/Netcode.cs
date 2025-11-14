@@ -3,6 +3,8 @@ using Unity.NetCode;
 
 public static class NetcodeUtils
 {
+    public static bool IsLocal(this WorldUnmanaged world) => !world.IsServer() && !world.IsClient();
+
     public static Entity CreateRPC(ref SystemState state, ComponentType componentType, Entity connectionEntity = default)
         => CreateRPC(state.EntityManager, state.WorldUnmanaged, componentType, connectionEntity);
 

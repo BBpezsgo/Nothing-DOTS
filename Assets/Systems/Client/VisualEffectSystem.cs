@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Pool;
 using UnityEngine.VFX;
 
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial class VisualEffectSystem : SystemBase
 {
     ObjectPool<VisualEffect>[]? Pools;

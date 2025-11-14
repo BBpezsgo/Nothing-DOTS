@@ -11,8 +11,8 @@ using Unity.Profiling;
 using Unity.Transforms;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
-unsafe partial struct TransmissionSystem : ISystem
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
+partial struct TransmissionSystem : ISystem
 {
     public const float TransmissionRadius = 100f;
 

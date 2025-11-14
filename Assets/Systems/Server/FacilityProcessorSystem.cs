@@ -4,7 +4,7 @@ using LanguageCore.Runtime;
 using Unity.Collections;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct FacilityProcessorSystem : ISystem
 {
     [BurstCompile]

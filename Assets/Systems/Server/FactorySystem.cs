@@ -5,7 +5,7 @@ using Unity.NetCode;
 using Unity.Transforms;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct FactorySystem : ISystem
 {
     void ISystem.OnCreate(ref SystemState state)
@@ -26,7 +26,7 @@ public partial struct FactorySystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
 
             Entity playerE = default;
             Player player = default;
@@ -35,7 +35,7 @@ public partial struct FactorySystem : ISystem
                 SystemAPI.Query<RefRO<Player>>()
                 .WithEntityAccess())
             {
-                if (_player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                if (_player.ValueRO.ConnectionId != networkId.Value) continue;
                 playerE = _entity;
                 player = _player.ValueRO;
                 break;
@@ -43,7 +43,7 @@ public partial struct FactorySystem : ISystem
 
             if (playerE == Entity.Null)
             {
-                Debug.LogError(string.Format("[Server] Failed to queue unit: requested by {0} but aint have a team", networkId.ValueRO));
+                Debug.LogError(string.Format("[Server] Failed to queue unit: requested by {0} but aint have a team", networkId));
                 continue;
             }
 
@@ -97,7 +97,7 @@ public partial struct FactorySystem : ISystem
                 foreach (var _player in
                     SystemAPI.Query<RefRW<Player>>())
                 {
-                    if (_player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                    if (_player.ValueRO.ConnectionId != networkId.Value) continue;
                     _player.ValueRW.Resources -= unit.RequiredResources;
                     break;
                 }

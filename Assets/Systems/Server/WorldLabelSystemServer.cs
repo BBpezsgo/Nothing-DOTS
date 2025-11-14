@@ -1,6 +1,6 @@
 using Unity.Entities;
 
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial class WorldLabelSystemServerSystem : SystemBase
 {
     protected override void OnUpdate()

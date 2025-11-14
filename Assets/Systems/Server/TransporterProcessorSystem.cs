@@ -4,7 +4,7 @@ using Unity.Transforms;
 using Unity.Burst;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct TransporterProcessorSystem : ISystem
 {
     Random _random;

@@ -3,7 +3,7 @@ using Unity.Entities;
 using Unity.NetCode;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct ResearchSystemServer : ISystem
 {
     [BurstCompile]
@@ -16,7 +16,7 @@ public partial struct ResearchSystemServer : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            RefRO<NetworkId> networkId = SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
 
             Entity requestPlayer = default;
 
@@ -24,7 +24,7 @@ public partial struct ResearchSystemServer : ISystem
                 SystemAPI.Query<RefRO<Player>>()
                 .WithEntityAccess())
             {
-                if (player.ValueRO.ConnectionId != networkId.ValueRO.Value) continue;
+                if (player.ValueRO.ConnectionId != networkId.Value) continue;
                 requestPlayer = _entity;
                 break;
             }
