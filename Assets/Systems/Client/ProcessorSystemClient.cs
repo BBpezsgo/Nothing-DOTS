@@ -1,3 +1,4 @@
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -29,39 +30,49 @@ partial struct ProcessorSystemClient : ISystem
         foreach (RefRW<Processor> processor in
             SystemAPI.Query<RefRW<Processor>>())
         {
-            if (processor.ValueRO.StatusLED.LED != Entity.Null)
+            if (processor.ValueRO.StatusLED.Entity != Entity.Null)
             {
-                _emissionColorQ.GetRefRW(processor.ValueRO.StatusLED.LED).ValueRW.Value = processor.ValueRO.StatusLED.Status switch
+                _emissionColorQ.GetRefRW(processor.ValueRO.StatusLED.Entity).ValueRW.Value = processor.ValueRO.StatusLED.Status switch
                 {
-                    1 => new float4(0f, 1f, 0f, 1f) * 10f,
-                    2 => new float4(1f, 1f, 0f, 1f) * 10f,
-                    _ => default,
+                    ProcessorStatus.Off => default,
+                    ProcessorStatus.Running => new float4(0f, 1f, 0f, 1f) * 10f,
+                    ProcessorStatus.Halted => new float4(1f, 1f, 0f, 1f) * 10f,
+                    ProcessorStatus.Error => new float4(1f, 0f, 0f, 1f) * 10f,
+                    _ => throw new UnreachableException(),
                 };
             }
 
-            if (processor.ValueRO.NetworkSendLED.LED != Entity.Null)
-                _emissionColorQ.GetRefRW(processor.ValueRO.NetworkSendLED.LED).ValueRW.Value =
+            if (processor.ValueRO.NetworkSendLED.Entity != Entity.Null)
+            {
+                _emissionColorQ.GetRefRW(processor.ValueRO.NetworkSendLED.Entity).ValueRW.Value =
                     processor.ValueRW.NetworkSendLED.ReceiveBlink() ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
+            }
 
-            if (processor.ValueRO.NetworkReceiveLED.LED != Entity.Null)
-                _emissionColorQ.GetRefRW(processor.ValueRO.NetworkReceiveLED.LED).ValueRW.Value =
+            if (processor.ValueRO.NetworkReceiveLED.Entity != Entity.Null)
+            {
+                _emissionColorQ.GetRefRW(processor.ValueRO.NetworkReceiveLED.Entity).ValueRW.Value =
                     processor.ValueRW.NetworkReceiveLED.ReceiveBlink() ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
+            }
 
-            if (processor.ValueRO.RadarLED.LED != Entity.Null)
-                _emissionColorQ.GetRefRW(processor.ValueRO.RadarLED.LED).ValueRW.Value =
+            if (processor.ValueRO.RadarLED.Entity != Entity.Null)
+            {
+                _emissionColorQ.GetRefRW(processor.ValueRO.RadarLED.Entity).ValueRW.Value =
                     processor.ValueRW.RadarLED.ReceiveBlink() ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
+            }
 
-            if (processor.ValueRO.USBLED.LED != Entity.Null)
-                _emissionColorQ.GetRefRW(processor.ValueRO.USBLED.LED).ValueRW.Value =
+            if (processor.ValueRO.USBLED.Entity != Entity.Null)
+            {
+                _emissionColorQ.GetRefRW(processor.ValueRO.USBLED.Entity).ValueRW.Value =
                     processor.ValueRW.USBLED.ReceiveBlink() ?
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
+            }
         }
 
         foreach (var (request, command, entity) in

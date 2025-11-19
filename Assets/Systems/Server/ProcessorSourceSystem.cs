@@ -22,8 +22,7 @@ partial class ProcessorSourceSystem : SystemBase
             foreach (var (ghostInstance, processor) in
                 SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
             {
-                if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
-                if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
+                if (!command.ValueRO.Entity.Equals(ghostInstance.ValueRO)) continue;
 
                 switch (command.ValueRO.Command)
                 {
@@ -72,8 +71,7 @@ partial class ProcessorSourceSystem : SystemBase
                     if (!World.IsServer()) ep = NetcodeEndPoint.Server;
                 }
 
-                if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
-                if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
+                if (!command.ValueRO.Entity.Equals(ghostInstance.ValueRO)) continue;
 
                 processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, ep);
 

@@ -36,7 +36,7 @@ partial struct PendriveProcessorSystem : ISystem
                         if (math.distancesq(pendriveTransform.ValueRO.Position, transform.ValueRO.Position) >= 5f * 5f) continue;
 
                         processor.ValueRW.PluggedPendrive = (false, pendrive.ValueRO, pendriveEntity);
-                        pendriveChild.ValueRW.ParentId = ghostInstance.ValueRO;
+                        pendriveChild.ValueRW.ParentEntity = ghostInstance.ValueRO;
                         pendriveChild.ValueRW.LocalPosition = processor.ValueRO.USBPosition;
                         pendriveChild.ValueRW.LocalRotation = processor.ValueRO.USBRotation;
                         rigidbody.ValueRW.IsEnabled = false;
@@ -75,7 +75,7 @@ partial struct PendriveProcessorSystem : ISystem
                         if (pendriveParent.ValueRO.Value != entity) continue;
 
                         processor.ValueRW.PluggedPendrive = default;
-                        pendriveChild.ValueRW.ParentId = default;
+                        pendriveChild.ValueRW.ParentEntity = default;
                         rigidbody.ValueRW.Velocity = new float3(_random.NextFloat3Direction() * 1f);
                         rigidbody.ValueRW.Velocity.y = math.abs(rigidbody.ValueRW.Velocity.y);
                         rigidbody.ValueRW.IsEnabled = true;

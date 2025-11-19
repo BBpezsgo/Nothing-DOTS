@@ -12,7 +12,7 @@ public enum ProcessorCommand : byte
 [BurstCompile]
 public struct ProcessorCommandRequestRpc : IRpcCommand
 {
-    public required GhostInstance Entity;
+    public required SpawnedGhost Entity;
     public required ProcessorCommand Command;
     public required ushort Data;
 }

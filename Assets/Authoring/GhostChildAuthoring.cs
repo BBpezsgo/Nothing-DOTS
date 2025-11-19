@@ -12,8 +12,8 @@ public class GhostChildAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<GhostChild>(entity, new()
             {
-                ParentId = default,
-                LocalParentId = default,
+                ParentEntity = default,
+                LocalParentEntity = default,
                 LocalPosition = float3.zero,
                 LocalRotation = quaternion.identity,
             });

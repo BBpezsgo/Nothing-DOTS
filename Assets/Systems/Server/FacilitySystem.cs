@@ -47,8 +47,7 @@ public partial struct FacilitySystem : ISystem
                 .WithAll<Facility>()
                 .WithEntityAccess())
             {
-                if (ghostInstance.ValueRO.ghostId != command.ValueRO.FacilityEntity.ghostId) continue;
-                if (ghostInstance.ValueRO.spawnTick != command.ValueRO.FacilityEntity.spawnTick) continue;
+                if (!command.ValueRO.Entity.Equals(ghostInstance.ValueRO)) continue;
 
                 Research research = default;
                 bool canResearch = false;

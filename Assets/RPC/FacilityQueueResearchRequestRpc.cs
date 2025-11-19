@@ -5,6 +5,6 @@ using Unity.NetCode;
 [BurstCompile]
 public struct FacilityQueueResearchRequestRpc : IRpcCommand
 {
-    public required GhostInstance FacilityEntity;
+    public required SpawnedGhost Entity;
     public required FixedString64Bytes ResearchName;
 }

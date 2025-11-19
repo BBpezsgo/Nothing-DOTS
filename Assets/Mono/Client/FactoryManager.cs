@@ -132,7 +132,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new FactoryQueueUnitRequestRpc()
         {
             Unit = unit.Name,
-            FactoryEntity = ghostInstance,
+            Entity = ghostInstance,
         });
 
         if (selectedFactory.TotalProgress == default)

@@ -348,7 +348,7 @@ GameObject:
   - component: {fileID: 6344335348889950589}
   - component: {fileID: 7471197614132441824}
   m_Layer: 6
-  m_Name: Cube (3)
+  m_Name: RadarLED
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -434,7 +434,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f2ff14263fb43a41b667c84492f8f16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  color: {r: 0.3542429, g: 2.5438476, b: 5.7768817, a: 0}
+  color: {r: 0, g: 0, b: 0, a: 0}
 --- !u!1 &4387523237411542620
 GameObject:
   m_ObjectHideFlags: 0

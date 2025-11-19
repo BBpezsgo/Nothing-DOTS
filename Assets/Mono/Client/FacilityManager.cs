@@ -163,7 +163,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
         NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new FacilityQueueResearchRequestRpc()
         {
             ResearchName = research.Name,
-            FacilityEntity = ghostInstance,
+            Entity = ghostInstance,
         });
 
         if (selected.Current.Name.IsEmpty)

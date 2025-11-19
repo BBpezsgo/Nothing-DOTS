@@ -54,8 +54,7 @@ public partial struct FactorySystem : ISystem
                 .WithAll<Factory>()
                 .WithEntityAccess())
             {
-                if (ghostInstance.ValueRO.ghostId != command.ValueRO.FactoryEntity.ghostId) continue;
-                if (ghostInstance.ValueRO.spawnTick != command.ValueRO.FactoryEntity.spawnTick) continue;
+                if (!command.ValueRO.Entity.Equals(ghostInstance.ValueRO)) continue;
 
                 BufferedUnit unit = default;
                 for (int i = 0; i < units.Length; i++)

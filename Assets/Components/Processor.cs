@@ -8,28 +8,28 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
 
-struct StatusLED
+struct StatusLED<T> where T : struct, Enum
 {
-    [GhostField(SendData = false)] public Entity LED;
-    [GhostField] public int Status;
+    [GhostField(SendData = false)] public Entity Entity;
+    [GhostField] public T Status;
 
-    public StatusLED(Entity led)
+    public StatusLED(Entity entity)
     {
-        LED = led;
+        Entity = entity;
         Status = default;
     }
 }
 
 struct BlinkingLED
 {
-    [GhostField(SendData = false)] public Entity LED;
+    [GhostField(SendData = false)] public Entity Entity;
     [GhostField(SendData = false)] public float LastBlinked;
     [GhostField(SendData = false)] public uint LastBlinkedLocal;
     [GhostField] public uint LastBlinkedNet;
 
     public BlinkingLED(Entity led)
     {
-        LED = led;
+        Entity = led;
     }
 
     public void Blink() => LastBlinkedNet = unchecked(LastBlinkedNet + 1);
@@ -58,6 +58,14 @@ struct ProcessorSource
     public UnsafeList<Instruction>.ReadOnly Code;
     public UnsafeList<UnitCommandDefinition>.ReadOnly UnitCommandDefinitions;
     public UnsafeList<ExternalFunctionScopedSync> GeneratedFunctions;
+}
+
+public enum ProcessorStatus : byte
+{
+    Off,
+    Running,
+    Error,
+    Halted,
 }
 
 struct Processor : IComponentData
@@ -98,9 +106,10 @@ struct Processor : IComponentData
     public float2 RadarRequest;
     public float3 RadarResponse;
 
-    [GhostField] public FixedString128Bytes StdOutBuffer;
+    public int StdOutBufferCursor;
+    [GhostField] public FixedString512Bytes StdOutBuffer;
 
-    [GhostField] public StatusLED StatusLED;
+    [GhostField] public StatusLED<ProcessorStatus> StatusLED;
     [GhostField] public BlinkingLED NetworkReceiveLED;
     [GhostField] public BlinkingLED NetworkSendLED;
     [GhostField] public BlinkingLED RadarLED;

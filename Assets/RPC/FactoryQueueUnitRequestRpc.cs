@@ -5,6 +5,6 @@ using Unity.NetCode;
 [BurstCompile]
 public struct FactoryQueueUnitRequestRpc : IRpcCommand
 {
-    public required GhostInstance FactoryEntity;
+    public required SpawnedGhost Entity;
     public required FixedString32Bytes Unit;
 }

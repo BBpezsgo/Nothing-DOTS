@@ -40,8 +40,7 @@ public partial struct UnitCommandReceiver : ISystem
             foreach (var (ghostInstance, processor, team) in
                 SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, RefRO<UnitTeam>>())
             {
-                if (ghostInstance.ValueRO.ghostId != command.ValueRO.Entity.ghostId) continue;
-                if (ghostInstance.ValueRO.spawnTick != command.ValueRO.Entity.spawnTick) continue;
+                if (!command.ValueRO.Entity.Equals(ghostInstance.ValueRO)) continue;
 
                 if (team.ValueRO.Team != sourceTeam)
                 {
