@@ -15,6 +15,8 @@ export const f32 DistanceThresholdLargeSq = DistanceThresholdLarge * DistanceThr
 export const bool Debug = false;
 export const bool Logs = false;
 
+const int MaxUnits = 16;
+
 export struct VerificationRequestPacket
 {
     byte header;
@@ -131,7 +133,7 @@ export int update_unit(List<Unit>* units, Unit unit)
     int existing = unit_index_at(units, unit.position, &distanceSqr);
     if (existing == -1)
     {
-        if (units.length() >= 4)
+        if (units.length() >= MaxUnits)
         {
             printline("Too many units");
         }
@@ -173,7 +175,7 @@ export int set_unit(List<Unit>* units, Unit unit)
     int existing = unit_index_at(units, unit.position);
     if (existing == -1)
     {
-        if (units.length() >= 4)
+        if (units.length() >= MaxUnits)
         {
             printline("Too many units");
             units.raw()[0] = unit;

@@ -3,8 +3,7 @@ export inline bool empty(float3 v)
     return !((v.x as int) || (v.y as int) || (v.z as int));
 }
 
-template<T>
-export void fill(T[]* buffer, int length, T value)
+export void fill<T>(T[]* buffer, int length, T value)
 {
     for (int i = 0; i < length; i++)
     {
@@ -12,8 +11,7 @@ export void fill(T[]* buffer, int length, T value)
     }
 }
 
-template<T>
-export void fill(T[]* buffer, int start, int length, T value)
+export void fill<T>(T[]* buffer, int start, int length, T value)
 {
     length += start;
     for (int i = start; i < length; i++)
