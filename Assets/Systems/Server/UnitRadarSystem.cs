@@ -58,8 +58,7 @@ public partial struct UnitRadarSystem : ISystem
             DebugEx.DrawPoint(hit.Point, 1f, Color.white, DebugDuration, false);
 #endif
 
-            if (distance > Radar.RadarRadius) processor.ValueRW.RadarResponse = float.NaN;
-            else processor.ValueRW.RadarResponse = localTransform.ValueRO.InverseTransformPoint(hit.Point);
+            processor.ValueRW.RadarResponse = distance > Radar.RadarRadius ? float.NaN : localTransform.ValueRO.InverseTransformPoint(hit.Point);
         }
     }
 
@@ -113,6 +112,14 @@ public partial struct UnitRadarSystem : ISystem
                     entities[i].Position,
                     ray.Start))
             { continue; }
+
+            float targetSize = entities[i].Collider.Type switch
+            {
+                ColliderType.Sphere => entities[i].Collider.Sphere.Radius * 2f,
+                ColliderType.AABB => math.length(entities[i].Collider.AABB.AABB.Size),
+                _ => default,
+            };
+            if (targetSize < .7) continue;
 
             float3 target = entities[i].Position + entities[i].Collider.Type switch
             {

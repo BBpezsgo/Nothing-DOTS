@@ -146,7 +146,7 @@ void Receive()
                     enemy.expires = time() + 12f;
                     enemy.position = packet.position;
                     enemy.position_records = 1;
-                    send_verification_request(&enemy);
+                    //send_verification_request(&enemy);
                     update_unit(&enemies, enemy);
                 }
             }

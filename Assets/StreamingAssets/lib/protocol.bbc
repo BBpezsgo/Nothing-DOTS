@@ -148,20 +148,16 @@ export int update_unit(List<Unit>* units, Unit unit)
         Unit* existingUnit = &units.raw()[existing];
         if (existingUnit.position_records >= 255)
         {
-            unit.position_records = 1;
-            units[existing] = unit;
+            existingUnit.position_records = 0;
         }
-        else
-        {
-            unit.position_records = existingUnit.position_records + 1;
-            float b = (float)(int)unit.position_records;
-            float a = (float)(int)existingUnit.position_records / b;
-            unit.position.x = (existingUnit.position.x * a) + (unit.position.x / b);
-            unit.position.y = (existingUnit.position.y * a) + (unit.position.y / b);
-            unit.position.z = (existingUnit.position.z * a) + (unit.position.z / b);
-            units[existing] = unit;
-            debug(unit.position, MAGENTA);
-        }
+
+        existingUnit.position_records++;
+        float n = (float)(int)existingUnit.position_records;
+        existingUnit.position.x = ((existingUnit.position.x * (n - 1)) / n) + (unit.position.x / n);
+        existingUnit.position.y = ((existingUnit.position.y * (n - 1)) / n) + (unit.position.y / n);
+        existingUnit.position.z = ((existingUnit.position.z * (n - 1)) / n) + (unit.position.z / n);
+        existingUnit.expires = unit.expires;
+        debug(unit.position, MAGENTA);
     }
     else
     {
