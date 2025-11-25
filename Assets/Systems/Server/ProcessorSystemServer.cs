@@ -345,7 +345,7 @@ partial struct ProcessorJob : IJobEntity
 
         if (!processor.Source.Code.IsCreated)
         {
-            processor.StatusLED.Status = 0;
+            processor.StatusLED.Status = ProcessorStatus.Off;
             return;
         }
 
@@ -477,8 +477,14 @@ partial struct ProcessorJob : IJobEntity
         processor.Signal = processorState.Signal;
         processor.Crash = processorState.Crash;
         processor.HotFunctions = processorState.HotFunctions;
-        processor.StatusLED.Status = processorState.Signal == Signal.None ? 1 : 2;
-
+#pragma warning disable IDE0072 // Add missing cases
+        processor.StatusLED.Status = processorState.Signal switch
+        {
+            Signal.None => ProcessorStatus.Running,
+            Signal.Halt => ProcessorStatus.Halted,
+            _ => ProcessorStatus.Error,
+        };
+#pragma warning restore IDE0072
         scopedExternalFunctions.Dispose();
     }
 }

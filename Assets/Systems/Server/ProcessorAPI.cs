@@ -12,7 +12,6 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Profiling;
-using Unity.Transforms;
 using FunctionScope = ProcessorSystemServer.FunctionScope;
 
 [BurstCompile]
@@ -66,9 +65,6 @@ static unsafe class ProcessorAPI
 
     public static IExternalFunction[] GenerateManagedExternalFunctions()
     {
-        static float _time() => MonoTime.Now;
-        static int _random() => Math.SharedRandom.NextInt();
-
         return new IExternalFunction[]
         {
             new ExternalFunctionStub(IO.Prefix + 1,                "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
@@ -82,7 +78,7 @@ static unsafe class ProcessorAPI
             ExternalFunctionSync.Create<float, float>(Math.Prefix + 6, "asin", MathF.Asin),
             ExternalFunctionSync.Create<float, float>(Math.Prefix + 7, "acos", MathF.Acos),
             ExternalFunctionSync.Create<float, float>(Math.Prefix + 8, "atan", MathF.Atan),
-            ExternalFunctionSync.Create<int>(Math.Prefix + 9,      "random", _random),
+            ExternalFunctionSync.Create<int>(Math.Prefix + 9,      "random", Math.SharedRandom.NextInt),
 
             new ExternalFunctionStub(Transmission.Prefix + 1,      "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
             new ExternalFunctionStub(Transmission.Prefix + 2,      "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
@@ -93,8 +89,7 @@ static unsafe class ProcessorAPI
             new ExternalFunctionStub(Environment.Prefix + 2,       "tolocal", ExternalFunctionGenerator.SizeOf<int>(), 0),
             new ExternalFunctionStub(Environment.Prefix + 3,       "toglobald", ExternalFunctionGenerator.SizeOf<int>(), 0),
             new ExternalFunctionStub(Environment.Prefix + 4,       "tolocald", ExternalFunctionGenerator.SizeOf<int>(), 0),
-
-            ExternalFunctionSync.Create(Environment.Prefix + 5,    "time", _time),
+            new ExternalFunctionStub(Environment.Prefix + 5,       "time", 0, ExternalFunctionGenerator.SizeOf<float>()),
 
             new ExternalFunctionStub(Debug.Prefix + 1,             "debug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),
             new ExternalFunctionStub(Debug.Prefix + 2,             "ldebug", ExternalFunctionGenerator.SizeOf<float3, byte>(), 0),

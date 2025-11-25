@@ -135,9 +135,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         return true;
     }
 
-    public void OnNetworkEvent(NetCodeConnectionEvent e)
+    static string? GetText(NetCodeConnectionEvent e)
     {
-        string? text = e.State switch
+        return e.State switch
         {
             ConnectionState.State.Unknown => null,
             ConnectionState.State.Disconnected => e.DisconnectReason.ToString(),
@@ -147,20 +147,56 @@ public class ConnectionManager : Singleton<ConnectionManager>
             ConnectionState.State.Connected => null,
             _ => throw new UnreachableException(),
         };
+    }
 
-        if (UI.enabled = text is not null)
-        {
-            UIManager.Instance.CloseAllUI(UI);
-            Label label = UI.rootVisualElement.Q<Label>("label-status");
-            label.text = text;
-            label.style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
-        }
+    public void OnNetworkEvent(NetCodeConnectionEvent e)
+    {
+        string? text = GetText(e);
 
         if (e.State == ConnectionState.State.Disconnected)
         {
+            UIManager.Instance.CloseAllUI(UI);
             ServerObjects.SetActive(false);
             ClientObjects.SetActive(false);
+            if (UI.rootVisualElement is null)
+            {
+                StartCoroutine(LateUIRefresh(e));
+            }
+            else
+            {
+                SetInputEnabled(true);
+            }
+        }
+        else if (UI.enabled = text is not null)
+        {
+            UIManager.Instance.CloseAllUI(UI);
+            if (UI.rootVisualElement is null)
+            {
+                StartCoroutine(LateUIRefresh(e));
+            }
+            else
+            {
+                Label label = UI.rootVisualElement.Q<Label>("label-status");
+                label.text = text;
+                label.style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
+            }
+        }
+    }
+
+    IEnumerator LateUIRefresh(NetCodeConnectionEvent e)
+    {
+        yield return new WaitForEndOfFrame();
+
+        if (e.State == ConnectionState.State.Disconnected)
+        {
             SetInputEnabled(true);
+        }
+        else
+        {
+            string? text = GetText(e);
+            Label label = UI.rootVisualElement.Q<Label>("label-status");
+            label.text = text;
+            label.style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
         }
     }
 
