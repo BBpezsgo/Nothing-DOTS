@@ -114,6 +114,7 @@ struct Processor : IComponentData
     [GhostField] public BlinkingLED NetworkSendLED;
     [GhostField] public BlinkingLED RadarLED;
     [GhostField] public BlinkingLED USBLED;
+    [GhostField] public BlinkingLED CustomLED;
     public float3 USBPosition;
     public quaternion USBRotation;
 

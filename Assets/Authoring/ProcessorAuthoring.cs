@@ -9,6 +9,7 @@ class ProcessorAuthoring : MonoBehaviour
     [SerializeField] GameObject? NetworkReceiveLED = default;
     [SerializeField] GameObject? NetworkSendLED = default;
     [SerializeField] GameObject? RadarLED = default;
+    [SerializeField] GameObject? CustomLED = default;
     [SerializeField] GameObject? USBLED = default;
     [SerializeField] Transform? USBPosition = default;
 
@@ -25,6 +26,7 @@ class ProcessorAuthoring : MonoBehaviour
                 NetworkReceiveLED = new(authoring.NetworkReceiveLED != null ? GetEntity(authoring.NetworkReceiveLED, TransformUsageFlags.Dynamic) : Entity.Null),
                 NetworkSendLED = new(authoring.NetworkSendLED != null ? GetEntity(authoring.NetworkSendLED, TransformUsageFlags.Dynamic) : Entity.Null),
                 RadarLED = new(authoring.RadarLED != null ? GetEntity(authoring.RadarLED, TransformUsageFlags.Dynamic) : Entity.Null),
+                CustomLED = new(authoring.CustomLED != null ? GetEntity(authoring.CustomLED, TransformUsageFlags.Dynamic) : Entity.Null),
                 USBLED = new(authoring.USBLED != null ? GetEntity(authoring.USBLED, TransformUsageFlags.Dynamic) : Entity.Null),
                 USBPosition = authoring.USBPosition != null ? authoring.transform.InverseTransformPoint(authoring.USBPosition.position) : float3.zero,
                 USBRotation = authoring.USBPosition != null ? authoring.USBPosition.rotation : quaternion.identity,

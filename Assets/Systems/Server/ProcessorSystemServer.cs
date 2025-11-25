@@ -472,6 +472,12 @@ partial struct ProcessorJob : IJobEntity
             }
         }
 
+        if (((ProcessorMemory*)memory.GetUnsafePtr())->MappedMemory.Leds.CustomLED != 0)
+        {
+            ((ProcessorMemory*)memory.GetUnsafePtr())->MappedMemory.Leds.CustomLED = 0;
+            processor.CustomLED.Blink();
+        }
+
         processor.Memory = *(ProcessorMemory*)memory.GetUnsafePtr();
         processor.Registers = processorState.Registers;
         processor.Signal = processorState.Signal;

@@ -10,6 +10,15 @@ using i32 = System.Int32;
 using f32 = System.Single;
 
 /// <summary>
+/// Size: 1
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct MappedMemory_LEDS
+{
+    public i8 CustomLED;
+}
+
+/// <summary>
 /// Size: 2
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -102,8 +111,9 @@ public struct MappedMemory
     [FieldOffset(24)] public MappedMemory_Pendrive Pendrive;
     [FieldOffset(25)] public MappedMemory_Radar Radar;
     [FieldOffset(41)] public MappedMemory_Vehicle Vehicle;
+    [FieldOffset(43)] public MappedMemory_LEDS Leds;
 
-    const int GenericModulesSize = 43;
+    const int GenericModulesSize = 44;
 
     [FieldOffset(GenericModulesSize)] public MappedMemory_CombatTurret CombatTurret;
     [FieldOffset(GenericModulesSize)] public MappedMemory_Extractor Extractor;

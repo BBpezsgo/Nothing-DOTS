@@ -73,6 +73,14 @@ partial struct ProcessorSystemClient : ISystem
                     new float4(0.1f, 0.2f, 1f, 1f) * 10f :
                     default;
             }
+
+            if (processor.ValueRO.CustomLED.Entity != Entity.Null)
+            {
+                _emissionColorQ.GetRefRW(processor.ValueRO.CustomLED.Entity).ValueRW.Value =
+                    processor.ValueRW.CustomLED.ReceiveBlink() ?
+                    new float4(0.1f, 0.2f, 1f, 1f) * 10f :
+                    default;
+            }
         }
 
         foreach (var (request, command, entity) in

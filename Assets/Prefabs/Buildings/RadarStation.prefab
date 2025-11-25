@@ -222,6 +222,7 @@ MonoBehaviour:
   NetworkReceiveLED: {fileID: 2447701851480365545}
   NetworkSendLED: {fileID: 5305952807411566311}
   RadarLED: {fileID: 743220294239855450}
+  CustomLED: {fileID: 8245014547069723734}
   USBLED: {fileID: 0}
   USBPosition: {fileID: 0}
   Script: 
@@ -583,7 +584,7 @@ PrefabInstance:
     - target: {fileID: 8652205736085714332, guid: 861edd50cb40d5741a04282eb5c9c6d3,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.373
+      value: 0.285
       objectReference: {fileID: 0}
     - target: {fileID: 8652205736085714332, guid: 861edd50cb40d5741a04282eb5c9c6d3,
         type: 3}
@@ -593,7 +594,7 @@ PrefabInstance:
     - target: {fileID: 8652205736085714332, guid: 861edd50cb40d5741a04282eb5c9c6d3,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.53
+      value: -0.522
       objectReference: {fileID: 0}
     - target: {fileID: 8652205736085714332, guid: 861edd50cb40d5741a04282eb5c9c6d3,
         type: 3}
@@ -656,6 +657,12 @@ GameObject:
 --- !u!1 &5389730877752521265 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2423400371679257742, guid: 861edd50cb40d5741a04282eb5c9c6d3,
+    type: 3}
+  m_PrefabInstance: {fileID: 7740999882807793343}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8245014547069723734 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1801901005128708841, guid: 861edd50cb40d5741a04282eb5c9c6d3,
     type: 3}
   m_PrefabInstance: {fileID: 7740999882807793343}
   m_PrefabAsset: {fileID: 0}

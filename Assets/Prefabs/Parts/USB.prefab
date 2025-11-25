@@ -99,7 +99,7 @@ GameObject:
   - component: {fileID: 5434918679074688394}
   - component: {fileID: 5620270674323973850}
   m_Layer: 6
-  m_Name: LED
+  m_Name: USBLED
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -185,7 +185,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f2ff14263fb43a41b667c84492f8f16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  color: {r: 10.664455, g: 0, b: 21.112127, a: 0}
+  color: {r: 0, g: 0, b: 0, a: 0}
 --- !u!1 &2559448938035597342
 GameObject:
   m_ObjectHideFlags: 0

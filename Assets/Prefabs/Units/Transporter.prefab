@@ -554,6 +554,7 @@ MonoBehaviour:
   NetworkReceiveLED: {fileID: 996139562965703133}
   NetworkSendLED: {fileID: 7315960762508625619}
   RadarLED: {fileID: 0}
+  CustomLED: {fileID: 6794007082447266914}
   USBLED: {fileID: 0}
   USBPosition: {fileID: 0}
   Script: 
@@ -757,6 +758,12 @@ GameObject:
 --- !u!4 &4565037440764486423 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8652205736085714332, guid: 861edd50cb40d5741a04282eb5c9c6d3,
+    type: 3}
+  m_PrefabInstance: {fileID: 5136507224354215563}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &6794007082447266914 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1801901005128708841, guid: 861edd50cb40d5741a04282eb5c9c6d3,
     type: 3}
   m_PrefabInstance: {fileID: 5136507224354215563}
   m_PrefabAsset: {fileID: 0}
