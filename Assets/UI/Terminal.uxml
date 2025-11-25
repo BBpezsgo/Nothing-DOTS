@@ -1,16 +1,15 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" editor-extension-mode="False">
     <ui:Template name="TerminalDiagnosticsItem" src="project://database/Assets/UI/TerminalDiagnosticsItem.uxml?fileID=9197481963319205126&amp;guid=a1e4e6549353cff66b9c74b990c63867&amp;type=3#TerminalDiagnosticsItem" />
+    <ui:Template name="TerminalProgressItem" src="project://database/Assets/UI/TerminalProgressItem.uxml?fileID=9197481963319205126&amp;guid=9eea0e1bced7ce10ba2cf37db8517d65&amp;type=3#TerminalProgressItem" />
     <ui:Template name="TerminalFileItem" src="project://database/Assets/UI/TerminalFileItem.uxml?fileID=9197481963319205126&amp;guid=f38b8fac42e49f32f9b892e445389217&amp;type=3#TerminalFileItem" />
     <Style src="project://database/Assets/UI/Style.uss?fileID=7433441132597879392&amp;guid=c2d58f7c49026b5c192353093602f48b&amp;type=3#Style" />
     <ui:VisualElement style="flex-grow: 1;">
-        <ui:VisualElement>
-            <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
-                <ui:Button text="Halt" name="button-halt" style="flex-basis: 1px; flex-grow: 1;" />
-                <ui:Button text="Reset" name="button-reset" style="flex-basis: 1px; flex-grow: 1;" />
-                <ui:Button text="Continue" name="button-continue" style="flex-basis: 1px; flex-grow: 1;" />
-            </ui:VisualElement>
+        <ui:VisualElement style="flex-direction: row;">
+            <ui:ProgressBar value="0" title="Loading ..." name="progress-compilation" high-value="1" tooltip="Processor Status" class="label-left" style="flex-grow: 1;" />
+            <ui:Button text="\uf04c" name="button-halt" parse-escape-sequences="true" tooltip="Halt Processor" style="-unity-font-definition: url(&quot;project://database/Assets/UI/Fonts/Font%20Awesome%207%20Free-Solid-900.otf?fileID=12800000&amp;guid=08a8c06d1c31b66bead804787c809857&amp;type=3#Font Awesome 7 Free-Solid-900&quot;); margin-right: 2px; margin-left: 2px; padding-right: 2px; padding-left: 2px; width: 20px; height: 20px;" />
+            <ui:Button text="\uf2f9" name="button-reset" parse-escape-sequences="true" tooltip="Restart Processor" style="-unity-font-definition: url(&quot;project://database/Assets/UI/Fonts/Font%20Awesome%207%20Free-Solid-900.otf?fileID=12800000&amp;guid=08a8c06d1c31b66bead804787c809857&amp;type=3#Font Awesome 7 Free-Solid-900&quot;); margin-right: 2px; margin-left: 2px; padding-right: 2px; padding-left: 2px; width: 20px; height: 20px;" />
+            <ui:Button text="\uf04b" name="button-continue" parse-escape-sequences="true" tooltip="Continue Processor" style="-unity-font-definition: url(&quot;project://database/Assets/UI/Fonts/Font%20Awesome%207%20Free-Solid-900.otf?fileID=12800000&amp;guid=08a8c06d1c31b66bead804787c809857&amp;type=3#Font Awesome 7 Free-Solid-900&quot;); margin-right: 2px; margin-left: 2px; padding-top: 0; padding-right: 2px; padding-bottom: 0; padding-left: 2px; width: 20px; height: 20px;" />
         </ui:VisualElement>
-        <ui:ProgressBar value="0" title="Loading ..." name="progress-compilation" high-value="1" class="label-left" style="margin-top: 2px; margin-bottom: 2px;" />
         <ui:TabView name="tabs" style="height: 120px; flex-grow: 1;">
             <ui:Tab label="Terminal" style="flex-grow: 1;">
                 <ui:ScrollView name="scroll-terminal" vertical-scroller-visibility="Hidden" horizontal-scroller-visibility="Hidden" tabindex="-1" mode="Vertical" class="terminal" style="white-space: normal;">
@@ -23,17 +22,19 @@
                 </ui:ScrollView>
             </ui:Tab>
             <ui:Tab label="Progress" style="flex-grow: 1;">
-                <ui:ScrollView name="scroll-progresses" />
+                <ui:ScrollView name="scroll-progresses">
+                    <ui:Instance template="TerminalProgressItem" />
+                </ui:ScrollView>
             </ui:Tab>
             <ui:Tab label="Files" style="flex-grow: 1;">
-                <ui:TextField name="input-source-path" />
                 <ui:VisualElement style="flex-direction: row;">
-                    <ui:Button text="Select" name="button-select" style="flex-grow: 1;" />
-                    <ui:Button text="Hot Reload" name="button-hotreload" style="flex-grow: 1;" />
-                    <ui:Button text="Compile" name="button-compile" style="flex-grow: 1;" />
+                    <ui:TextField name="input-source-path" tooltip="Source File Path" style="flex-grow: 1; margin-top: 0; margin-bottom: 0;" />
+                    <ui:Button text="\uf07c" name="button-select" parse-escape-sequences="true" tooltip="Select File" style="-unity-font-definition: url(&quot;project://database/Assets/UI/Fonts/Font%20Awesome%207%20Free-Solid-900.otf?fileID=12800000&amp;guid=08a8c06d1c31b66bead804787c809857&amp;type=3#Font Awesome 7 Free-Solid-900&quot;); margin-top: 2px; margin-right: 2px; margin-bottom: 2px; margin-left: 2px; padding-right: 2px; padding-left: 2px; width: 20px; height: 20px;" />
+                    <ui:Button text="\uf06d" name="button-hotreload" parse-escape-sequences="true" tooltip="Hot-reload" style="-unity-font-definition: url(&quot;project://database/Assets/UI/Fonts/Font%20Awesome%207%20Free-Solid-900.otf?fileID=12800000&amp;guid=08a8c06d1c31b66bead804787c809857&amp;type=3#Font Awesome 7 Free-Solid-900&quot;); margin-top: 2px; margin-right: 2px; margin-bottom: 2px; margin-left: 2px; padding-right: 2px; padding-left: 2px; width: 20px; height: 20px;" />
+                    <ui:Button text="\uf6e3" name="button-compile" parse-escape-sequences="true" tooltip="Compile" style="-unity-font-definition: url(&quot;project://database/Assets/UI/Fonts/Font%20Awesome%207%20Free-Solid-900.otf?fileID=12800000&amp;guid=08a8c06d1c31b66bead804787c809857&amp;type=3#Font Awesome 7 Free-Solid-900&quot;); margin-top: 2px; margin-right: 2px; margin-bottom: 2px; margin-left: 2px; padding-right: 2px; padding-left: 2px; width: 20px; height: 20px;" />
                 </ui:VisualElement>
                 <ui:ScrollView name="scroll-files" style="flex-grow: 1;">
-                    <ui:Instance template="TerminalFileItem" name="TerminalFileItem" />
+                    <ui:Instance template="TerminalFileItem" />
                 </ui:ScrollView>
             </ui:Tab>
         </ui:TabView>
