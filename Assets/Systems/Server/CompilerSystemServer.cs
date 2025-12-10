@@ -270,7 +270,7 @@ public partial class CompilerSystemServer : SystemBase
             {
                 if (context is not CompiledStruct @struct)
                 {
-                    error = new PossibleDiagnostic($"This aint a struct");
+                    error = new PossibleDiagnostic($"Attribute `UnitCommand` is only valid on struct declarations", attribute);
                     return false;
                 }
 
@@ -281,13 +281,13 @@ public partial class CompilerSystemServer : SystemBase
             {
                 if (context is not CompiledField field)
                 {
-                    error = new PossibleDiagnostic($"This aint a field");
+                    error = new PossibleDiagnostic($"Attribute `Context` is only valid on field declarations", attribute);
                     return false;
                 }
 
                 if (!field.Context.Attributes.TryGetAttribute("UnitCommand", out _))
                 {
-                    error = new PossibleDiagnostic($"The struct should be flagged with [UnitCommand] attribute");
+                    error = new PossibleDiagnostic($"The struct should be flagged with [UnitCommand] attribute", attribute);
                     return false;
                 }
 
@@ -295,22 +295,32 @@ public partial class CompilerSystemServer : SystemBase
                 {
                     case "position2":
                     {
-                        int size = field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new()));
+                        if (!StatementCompiler.FindSize(field.Type, out int size, out error, new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new())))
+                        {
+                            return false;
+                        }
+
                         if (size != sizeof(float2))
                         {
                             error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float2)} (a 2D float vector) (type {field.Type} has a size of {size} bytes)");
                             return false;
                         }
+
                         break;
                     }
                     case "position3":
                     {
-                        int size = field.Type.GetSize(new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new()));
+                        if (!StatementCompiler.FindSize(field.Type, out int size, out error, new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new())))
+                        {
+                            return false;
+                        }
+
                         if (size != sizeof(float3))
                         {
                             error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float3)} (a 3D float vector) (type {field.Type} has a size of {size} bytes)");
                             return false;
                         }
+
                         break;
                     }
                     default:
@@ -386,6 +396,16 @@ public partial class CompilerSystemServer : SystemBase
                     source.Diagnostics
                 );
             }
+
+            //if (file.Name == "unit-6.bbc")
+            //{
+            //    const string _out = "/home/bb/Projects/BBLang/Core/Utility/out2.il";
+            //    System.IO.File.WriteAllBytes(_out, Array.Empty<byte>());
+            //    using System.IO.FileStream stream = System.IO.File.OpenWrite(_out);
+            //    using System.IO.StreamWriter writer = new(stream);
+            //    generated.CodeEmitter.WriteTo(writer, false);
+            //    Debug.Log($"Bytecode has been written to {_out}");
+            //}
 
             //using (StreamWriter stringWriter = new($"/home/bb/Projects/BBLang/Core/out-{DateTime.Now:O}-{file.Name.ToString().Replace('/', '_')}.bbc"))
             //{
