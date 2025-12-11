@@ -29,6 +29,11 @@ public static class HeightMapGenerator
     [BurstCompile]
     public static void GenerateHeightMap(ref NativeArray<float> values, int width, int height, float heightMultiplier, in float2 offset, in NoiseSettings noiseSettings, Allocator allocator)
     {
+        if (heightMultiplier == 0f)
+        {
+            values.AsSpan().Clear();
+            return;
+        }
         NoiseGeneratorUnmanaged noiseGenerator = new(noiseSettings, offset, allocator: allocator);
         GenerateHeightMap(ref values, width, height, heightMultiplier, in noiseGenerator);
         noiseGenerator.Dispose();

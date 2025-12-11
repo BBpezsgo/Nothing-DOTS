@@ -8,6 +8,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Profiling;
 using Unity.Transforms;
 
 [BurstCompile]
@@ -222,6 +223,7 @@ unsafe partial struct CollisionSystem : ISystem
         enumerator.Dispose();
     }
 
+    static readonly ProfilerMarker _handleCollision = new("CollisionSystem.HandleCollision");
     [BurstCompile]
     static void HandleCollision(QuadrantEntity* a, QuadrantEntity* b, bool skipB)
     {
@@ -234,6 +236,8 @@ unsafe partial struct CollisionSystem : ISystem
         // { continue; }
 
         // a->LastPosition = a->Position;
+
+        using ProfilerMarker.AutoScope _ = _handleCollision.Auto();
 
 #if DEBUG_COLLISIONS
         UnityEngine.Debug.DrawLine(a->Position, b->Position, Color.Lerp(Color.green, Color.white, 0.5f), 0.1f, false);

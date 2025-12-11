@@ -53,7 +53,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     ProgressRecord<(int, int)>? _memoryDownloadProgress;
     Awaitable<RemoteFile>? _memoryDownloadTask;
     string? _scheduledSource;
-    Tab _requestedTabSwitch;
+    (Tab Condition, Tab Target) _requestedTabSwitch;
     Tab? _fulfilledTabSwitch;
 
     void Update()
@@ -66,10 +66,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             return;
         }
 
-        if (!_fulfilledTabSwitch.HasValue || _fulfilledTabSwitch.Value != _requestedTabSwitch)
+        if (!_fulfilledTabSwitch.HasValue || _fulfilledTabSwitch.Value != _requestedTabSwitch.Target)
         {
-            ui_tabView.selectedTabIndex = (int)_requestedTabSwitch;
-            _fulfilledTabSwitch = _requestedTabSwitch;
+            if ((int)_requestedTabSwitch.Condition == ui_tabView.selectedTabIndex)
+            {
+                ui_tabView.selectedTabIndex = (int)_requestedTabSwitch.Target;
+            }
+            _fulfilledTabSwitch = _requestedTabSwitch.Target;
         }
 
         if (Time.time >= refreshAt || !selectingFile.IsDefault)
@@ -334,8 +337,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
         _terminalBuilder.Append(processor.StdOutBuffer.ToString());
-        Dictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.IsClient() ? ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources : ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
-        if (processor.SourceFile == default || !compiledSources.TryGetValue(processor.SourceFile, out CompiledSource? source))
+        CompiledSourceClient? clientSource = null;
+        CompiledSourceServer? serverSource = null;
+        if (processor.SourceFile == default ||
+            !(ConnectionManager.ClientOrDefaultWorld.IsClient() ? ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources.TryGetValue(processor.SourceFile, out clientSource) : ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources.TryGetValue(processor.SourceFile, out serverSource)))
         {
             if (_scheduledSource != null)
             {
@@ -352,11 +357,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         }
         else
         {
+            ICompiledSource source = ((clientSource as ICompiledSource) ?? serverSource)!;
+
             _scheduledSource = null;
             const string SpinnerChars = "-\\|/";
             char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
 
-            void SyncDiagnosticItems(VisualElement container, IEnumerable<Diagnostic> diagnostics)
+            void SyncDiagnosticItems(VisualElement container, IEnumerable<IDiagnostic> diagnostics, DiagnosticsLevel parentLevel)
             {
                 container.SyncList(
                     diagnostics
@@ -369,8 +376,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         VisualElement icon = element.Q<VisualElement>("diagnostic-icon");
                         Label label = element.Q<Label>("diagnostic-label");
                         Foldout foldout = element.Q<Foldout>("diagnostic-foldout");
+                        DiagnosticsLevel fixedLevel = item.Level > parentLevel ? item.Level : parentLevel;
 
-                        icon.style.backgroundImage = item.Level switch
+                        icon.style.backgroundImage = fixedLevel switch
                         {
                             DiagnosticsLevel.Error => new StyleBackground(DiagnosticsErrorIcon),
                             DiagnosticsLevel.Warning => new StyleBackground(DiagnosticsWarningIcon),
@@ -382,9 +390,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         };
 
                         label.text = item.Message;
-                        if (item.SubErrors.Length > 0)
+                        if (item.SubErrors.Any())
                         {
-                            SyncDiagnosticItems(foldout, item.SubErrors);
+                            SyncDiagnosticItems(foldout, item.SubErrors, fixedLevel);
                         }
                         else
                         {
@@ -392,7 +400,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         }
                     });
             }
-            SyncDiagnosticItems(ui_scrollDiagnostics, source.Diagnostics.Diagnostics);
+            SyncDiagnosticItems(ui_scrollDiagnostics, source.Diagnostics, default);
 
             if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
             {
@@ -412,7 +420,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
                 ui_progressCompilation.value = source.Progress;
 
-                _requestedTabSwitch = Tab.Progress;
+                _requestedTabSwitch = (Tab.Files, Tab.Progress);
             }
 
             switch (source.Status)
@@ -453,7 +461,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     {
                         _terminal ??= new TerminalEmulator(ui_labelTerminal);
                         _terminal.Update();
-                        _requestedTabSwitch = Tab.Terminal;
+                        _requestedTabSwitch = (Tab.Progress, Tab.Terminal);
 
                         switch (processor.Signal)
                         {
@@ -480,7 +488,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                         {
                                             Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
                                             Command = ProcessorCommand.Key,
-                                            Data = unchecked((ushort)c),
+                                            Data = c,
                                         });
                                     }
                                 }
@@ -572,7 +580,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         ui_progressCompilation.title = "Compile failed";
                         SetProgressStatus("error");
 
-                        _requestedTabSwitch = Tab.Diagnostics;
+                        _requestedTabSwitch = (Tab.Progress, Tab.Diagnostics);
                     }
                     break;
                 }

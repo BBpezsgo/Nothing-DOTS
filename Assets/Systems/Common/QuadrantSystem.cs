@@ -12,7 +12,6 @@ public struct QuadrantEntity
     public readonly Entity Entity;
     public readonly Collider Collider;
     public float3 Position;
-    public float3 LastPosition;
     public float3 ResolvedOffset;
     public uint Key;
     public uint Layer;
@@ -21,14 +20,12 @@ public struct QuadrantEntity
         Entity entity,
         Collider collider,
         float3 position,
-        float3 lastPosition,
         uint key,
         uint layer)
     {
         Entity = entity;
         Collider = collider;
         Position = position;
-        LastPosition = lastPosition;
         ResolvedOffset = default;
         Key = key;
         Layer = layer;
@@ -229,24 +226,35 @@ public partial struct QuadrantSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        foreach (var item in HashMap)
-        { item.Value.Clear(); }
-
         foreach (var (inQuadrant, collider, transform, entity) in
             SystemAPI.Query<RefRW<QuadrantEntityIdentifier>, RefRO<Collider>, RefRO<LocalToWorld>>()
             .WithEntityAccess())
         {
             Cell.ToGrid(transform.ValueRO.Position, out Cell cell);
 
+            if (inQuadrant.ValueRO.Added)
+            {
+                if (inQuadrant.ValueRO.Key == cell.key) continue;
+
+                NativeList<QuadrantEntity> list = HashMap[inQuadrant.ValueRO.Key];
+                for (int i = 0; i < list.Length; i++)
+                {
+                    if (list[i].Entity != entity) continue;
+                    HashMap[inQuadrant.ValueRO.Key].RemoveAtSwapBack(i);
+                    break;
+                }
+            }
+
             inQuadrant.ValueRW.Added = true;
             inQuadrant.ValueRW.Key = cell.key;
+
             if (!HashMap.ContainsKey(cell.key))
             { HashMap.Add(cell.key, new(32, Allocator.Persistent)); }
+
             HashMap[cell.key].Add(new QuadrantEntity(
                 entity,
                 collider.ValueRO,
                 transform.ValueRO.Position,
-                default,
                 cell.key,
                 inQuadrant.ValueRO.Layer));
         }

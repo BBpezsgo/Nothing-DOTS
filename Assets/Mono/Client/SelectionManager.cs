@@ -405,11 +405,22 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (!entityManager.Exists(selected)) return false;
         if (!entityManager.HasComponent<Processor>(selected)) return false;
-        Dictionary<FileId, CompiledSource> compiledSources = ConnectionManager.ClientOrDefaultWorld.IsClient() ? ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources : ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
-        if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSource? source)) return false;
+        if (ConnectionManager.ClientOrDefaultWorld.IsClient())
+        {
+            Dictionary<FileId, CompiledSourceClient> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
+            if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceClient? source)) return false;
 
-        commands = source.UnitCommandDefinitions.HasValue ? source.UnitCommandDefinitions.Value.AsReadOnlySpan() : ReadOnlySpan<UnitCommandDefinition>.Empty;
-        return true;
+            commands = source.UnitCommandDefinitions.HasValue ? source.UnitCommandDefinitions.Value.AsReadOnlySpan() : ReadOnlySpan<UnitCommandDefinition>.Empty;
+            return true;
+        }
+        else
+        {
+            Dictionary<FileId, CompiledSourceServer> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
+            if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceServer? source)) return false;
+
+            commands = source.UnitCommandDefinitions.HasValue ? source.UnitCommandDefinitions.Value.AsReadOnlySpan() : ReadOnlySpan<UnitCommandDefinition>.Empty;
+            return true;
+        }
     }
 
     void ShowUnitCommandsUI()

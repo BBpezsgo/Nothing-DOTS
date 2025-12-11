@@ -34,15 +34,18 @@ partial struct CombatTurretProcessorSystem : ISystem
             mapped.CombatTurret.TurretCurrentRotation = turretEuler.y;
             mapped.CombatTurret.TurretCurrentAngle = cannonEuler.x;
 
-            if (float.IsFinite(mapped.CombatTurret.TurretTargetRotation))
+            float targetRotation = mapped.CombatTurret.TurretTargetRotation;
+            float targetAngle = Math.Clamp(mapped.CombatTurret.TurretTargetAngle, turret.ValueRO.MinAngle, turret.ValueRO.MaxAngle);
+
+            if (float.IsFinite(mapped.CombatTurret.TurretTargetRotation) && turretEuler.y != targetRotation)
             {
-                float y = Utils.MoveTowardsAngle(turretEuler.y, mapped.CombatTurret.TurretTargetRotation, turret.ValueRO.TurretRotationSpeed * SystemAPI.Time.DeltaTime);
+                float y = Utils.MoveTowardsAngle(turretEuler.y, targetRotation, turret.ValueRO.TurretRotationSpeed * SystemAPI.Time.DeltaTime);
                 turretTransform.ValueRW.Rotation = quaternion.EulerXYZ(0, y, 0);
             }
 
-            if (float.IsFinite(mapped.CombatTurret.TurretTargetAngle))
+            if (float.IsFinite(mapped.CombatTurret.TurretTargetAngle) && cannonEuler.x != targetAngle)
             {
-                float x = Utils.MoveTowardsAngle(cannonEuler.x, Math.Clamp(mapped.CombatTurret.TurretTargetAngle, turret.ValueRO.MinAngle, turret.ValueRO.MaxAngle), turret.ValueRO.CannonRotationSpeed * SystemAPI.Time.DeltaTime);
+                float x = Utils.MoveTowardsAngle(cannonEuler.x, targetAngle, turret.ValueRO.CannonRotationSpeed * SystemAPI.Time.DeltaTime);
                 cannonTransform.ValueRW.Rotation = quaternion.EulerXYZ(x, 0, 0);
             }
 

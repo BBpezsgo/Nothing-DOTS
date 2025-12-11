@@ -271,8 +271,10 @@ public class SetupManager : Singleton<SetupManager>
     {
         if (!RandomPosition || Deterministic)
         {
+            int i = 0;
             foreach (Vector2 position in GetPositions())
             {
+                if (i++ > 100) break;
                 Gizmos.DrawSphere(new Vector3(position.x, 0.5f, position.y), UnitRadius);
             }
         }

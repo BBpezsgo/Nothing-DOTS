@@ -25,7 +25,17 @@ public enum CompilationStatus
     Done,
 }
 
-public class CompiledSource
+public interface ICompiledSource
+{
+    FileId SourceFile { get; }
+    CompilationStatus Status { get; }
+    float Progress { get; }
+    bool IsSuccess { get; }
+    IEnumerable<IDiagnostic> Diagnostics { get; }
+    IReadOnlyDictionary<FileId, ProgressRecord<(int Current, int Total)>> SubFiles { get; }
+}
+
+public class CompiledSourceServer : ICompiledSource
 {
     public readonly FileId SourceFile;
     public long CompiledVersion;
@@ -48,7 +58,14 @@ public class CompiledSource
     public BBLangGeneratorResult Generated;
     public Dictionary<FileId, ProgressRecord<(int Current, int Total)>> SubFiles;
 
-    public CompiledSource(
+    FileId ICompiledSource.SourceFile => SourceFile;
+    CompilationStatus ICompiledSource.Status => Status;
+    float ICompiledSource.Progress => Progress;
+    bool ICompiledSource.IsSuccess => IsSuccess;
+    IEnumerable<IDiagnostic> ICompiledSource.Diagnostics => (Diagnostics.Diagnostics as IEnumerable<IDiagnostic>).Append(Diagnostics.DiagnosticsWithoutContext);
+    IReadOnlyDictionary<FileId, ProgressRecord<(int Current, int Total)>> ICompiledSource.SubFiles => SubFiles;
+
+    public CompiledSourceServer(
         FileId sourceFile,
         long compiledVersion,
         long latestVersion,
@@ -82,7 +99,7 @@ public partial class CompilerSystemServer : SystemBase
 {
     static readonly bool EnableLogging = false;
 
-    [NotNull] public readonly Dictionary<FileId, CompiledSource>? CompiledSources = new();
+    [NotNull] public readonly Dictionary<FileId, CompiledSourceServer>? CompiledSources = new();
 
     readonly List<Task> _tasks = new();
 
@@ -90,7 +107,7 @@ public partial class CompilerSystemServer : SystemBase
     {
         EntityCommandBuffer commandBuffer = default;
 
-        foreach ((FileId file, CompiledSource source) in CompiledSources)
+        foreach ((FileId file, CompiledSourceServer source) in CompiledSources)
         {
             lock (source)
             {
@@ -100,7 +117,7 @@ public partial class CompilerSystemServer : SystemBase
                         break;
                     case CompilationStatus.Secuedued:
                         source.Status = CompilationStatus.Compiling;
-                        _tasks.Add(Task.Factory.StartNew(static v => CompileSourceTask(((FileId, bool, CompiledSource))v), (file, false, source))
+                        _tasks.Add(Task.Factory.StartNew(static v => CompileSourceTask(((FileId, bool, CompiledSourceServer))v), (file, false, source))
                             .ContinueWith(task =>
                             {
                                 if (task.IsFaulted)
@@ -153,7 +170,7 @@ public partial class CompilerSystemServer : SystemBase
         }
     }
 
-    void SendCompilationStatus(CompiledSource source, EntityCommandBuffer commandBuffer)
+    void SendCompilationStatus(CompiledSourceServer source, EntityCommandBuffer commandBuffer)
     {
         source.LastStatusSync = SystemAPI.Time.ElapsedTime;
         source.StatusChanged = false;
@@ -194,48 +211,68 @@ public partial class CompilerSystemServer : SystemBase
             }
         }
 
-        foreach (var subfile in source.SubFiles)
+        foreach ((FileId name, ProgressRecord<(int Current, int Total)> value) in source.SubFiles.ToArray())
         {
             NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilerSubstatusRpc()
             {
                 FileName = source.SourceFile,
-                SubFileName = subfile.Key,
-                CurrentProgress = subfile.Value.Progress.Current,
-                TotalProgress = subfile.Value.Progress.Total,
+                SubFileName = name,
+                CurrentProgress = value.Progress.Current,
+                TotalProgress = value.Progress.Total,
             }, source.SourceFile.Source.GetEntity());
         }
     }
 
-    void SendDiagnostics(CompiledSource source, EntityCommandBuffer commandBuffer)
+    void SendDiagnostic(Diagnostic diagnostic, CompiledSourceServer source, EntityCommandBuffer commandBuffer, Dictionary<IDiagnostic, uint> diagnosticIds, ref uint diagnosticIdCounter, uint parent)
     {
+        if (diagnostic.File is null) return;
+        if (!FileId.FromUri(diagnostic.File, out FileId file)) return;
+
+        if (!diagnosticIds.TryGetValue(diagnostic, out uint id))
+        {
+            if (diagnosticIdCounter == uint.MaxValue) return;
+            diagnosticIds.Add(diagnostic, id = diagnosticIdCounter++);
+        }
+
+        NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilationAnalysticsRpc()
+        {
+            Id = id,
+            Parent = parent,
+            Source = source.SourceFile,
+            FileName = file,
+            Position = diagnostic.Position.Range.ToMutable(),
+            AbsolutePosition = diagnostic.Position.AbsoluteRange.ToMutable(),
+            Level = diagnostic.Level,
+            Message = diagnostic.Message,
+        }, source.SourceFile.Source.GetEntity());
+
+        foreach (Diagnostic subdiagnostic in diagnostic.SubErrors)
+        {
+            SendDiagnostic(subdiagnostic, source, commandBuffer, diagnosticIds, ref diagnosticIdCounter, id);
+        }
+    }
+
+    void SendDiagnostics(CompiledSourceServer source, EntityCommandBuffer commandBuffer)
+    {
+        Dictionary<IDiagnostic, uint> diagnosticIds = new();
+        uint diagnosticIdCounter = 1;
+
         // .ToArray() because the collection can be modified somewhere idk
         foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
-            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
 
-            if (item.File is null) continue;
-            if (!FileId.FromUri(item.File, out FileId file)) continue;
-
-            NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilationAnalysticsRpc()
-            {
-                Source = source.SourceFile,
-                FileName = file,
-                Position = item.Position.Range.ToMutable(),
-                AbsolutePosition = item.Position.AbsoluteRange.ToMutable(),
-                Level = item.Level,
-                Message = item.Message,
-            }, source.SourceFile.Source.GetEntity());
+            SendDiagnostic(item, source, commandBuffer, diagnosticIds, ref diagnosticIdCounter, 0);
         }
 
         // .ToArray() because the collection can be modified somewhere idk
         foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}");
-            // if (item.Level == DiagnosticsLevel.Warning) Debug.Log($"[{nameof(CompilerSystemServer)}]: {item}");
 
             NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilationAnalysticsRpc()
             {
+                Id = 0,
                 Source = source.SourceFile,
                 Level = item.Level,
                 Message = item.Message,
@@ -247,11 +284,11 @@ public partial class CompilerSystemServer : SystemBase
     static readonly ProfilerMarker _markerCompilerCompilation = new("Compiler.Compilation");
     static readonly ProfilerMarker _markerCompilerGeneration = new("Compiler.Generation");
 
-    public static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSource source) args)
+    public static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSourceServer source) args)
     {
         using ProfilerMarker.AutoScope _m = _markerCompiler.Auto();
 
-        (FileId file, bool force, CompiledSource source) = args;
+        (FileId file, bool force, CompiledSourceServer source) = args;
 
         Uri sourceUri = file.ToUri();
         if (EnableLogging) Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Compilation started for \"{sourceUri}\" ...");

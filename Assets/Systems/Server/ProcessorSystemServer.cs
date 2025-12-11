@@ -349,8 +349,9 @@ partial struct ProcessorJob : IJobEntity
             return;
         }
 
-        NativeArray<byte> memory = new(Processor.TotalMemorySize, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
-        memory.CopyFrom(new Span<byte>(Unsafe.AsPointer(ref processor.Memory), Processor.TotalMemorySize).ToArray());
+        //NativeArray<byte> memory = new NativeArray<byte>(Processor.TotalMemorySize, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+        //memory.CopyFrom(new Span<byte>(Unsafe.AsPointer(ref processor.Memory), Processor.TotalMemorySize).ToArray());
+        Span<byte> memory = new(Unsafe.AsPointer(ref processor.Memory), Processor.TotalMemorySize);
 
         processor.Memory.MappedMemory.Pendrive.IsPlugged = processor.PluggedPendrive.Entity != Entity.Null;
 
@@ -361,7 +362,7 @@ partial struct ProcessorJob : IJobEntity
             UIElements = uiElements,
             ProcessorRef = new ProcessorSystemServer.ProcessorRef()
             {
-                Memory = memory.GetUnsafePtr(),
+                Memory = Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory)),
                 Crash = null,
                 Registers = null,
                 Signal = null,
@@ -472,13 +473,13 @@ partial struct ProcessorJob : IJobEntity
             }
         }
 
-        if (((ProcessorMemory*)memory.GetUnsafePtr())->MappedMemory.Leds.CustomLED != 0)
+        if (((ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory)))->MappedMemory.Leds.CustomLED != 0)
         {
-            ((ProcessorMemory*)memory.GetUnsafePtr())->MappedMemory.Leds.CustomLED = 0;
+            ((ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory)))->MappedMemory.Leds.CustomLED = 0;
             processor.CustomLED.Blink();
         }
 
-        processor.Memory = *(ProcessorMemory*)memory.GetUnsafePtr();
+        //processor.Memory = *(ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory));
         processor.Registers = processorState.Registers;
         processor.Signal = processorState.Signal;
         processor.Crash = processorState.Crash;

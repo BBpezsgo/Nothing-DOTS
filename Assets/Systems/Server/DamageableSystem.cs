@@ -9,23 +9,28 @@ public partial struct DamageableSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
-        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+        EntityCommandBuffer commandBuffer = default;
 
         foreach (var (damageable, damages, transform, entity) in
             SystemAPI.Query<RefRW<Damageable>, DynamicBuffer<BufferedDamage>, RefRO<LocalToWorld>>()
             .WithEntityAccess())
         {
-            for (int i = damages.Length - 1; i >= 0; i--)
+            for (int i = 0; i < damages.Length; i++)
             {
                 damageable.ValueRW.Health -= damages[i].Amount;
-                if (damageable.ValueRW.Health > 0f) continue;
-                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new VisualEffectRpc()
+                if (damageable.ValueRW.Health <= 0f)
                 {
-                    Position = transform.ValueRO.Position,
-                    Rotation = default,
-                    Index = damageable.ValueRO.DestroyEffect,
-                });
-                commandBuffer.DestroyEntity(entity);
+                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+
+                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new VisualEffectRpc()
+                    {
+                        Position = transform.ValueRO.Position,
+                        Rotation = default,
+                        Index = damageable.ValueRO.DestroyEffect,
+                    });
+                    commandBuffer.DestroyEntity(entity);
+                    break;
+                }
             }
             damages.Clear();
         }

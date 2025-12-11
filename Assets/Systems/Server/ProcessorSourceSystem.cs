@@ -75,7 +75,7 @@ partial class ProcessorSourceSystem : SystemBase
 
                 processor.ValueRW.SourceFile = new FileId(command.ValueRO.Source, ep);
 
-                if (compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
+                if (compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSourceServer? source))
                 {
                     if (EnableLogging) Debug.Log(string.Format("[Server] Update source file {0} ({1} -> {2})", command.ValueRO.Source, source.LatestVersion, source.LatestVersion + 1));
                     source.LatestVersion++;
@@ -108,7 +108,7 @@ partial class ProcessorSourceSystem : SystemBase
                 continue;
             }
 
-            if (!compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSource? source))
+            if (!compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSourceServer? source))
             {
                 if (EnableLogging) Debug.Log(string.Format("[Server] Creating new source file {0} (internal)", processor.ValueRO.SourceFile));
                 compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);

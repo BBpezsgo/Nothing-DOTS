@@ -68,8 +68,8 @@ partial struct TerrainSystemServer : ISystem
 
         if (Queue.Length == 0) return;
 
-        NativeHeightMapSettings heightMapSettings = SystemAPI.GetSingleton<NativeHeightMapSettings>();
-        TerrainFeaturePrefabs terrainFeatures = SystemAPI.GetSingleton<TerrainFeaturePrefabs>();
+        if (!SystemAPI.TryGetSingleton(out NativeHeightMapSettings heightMapSettings)) return;
+        if (!SystemAPI.TryGetSingleton(out TerrainFeaturePrefabs terrainFeatures)) return;
 
         NativeArray<NativeArray<float>> results = new(Queue.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < results.Length; i++)
@@ -185,11 +185,11 @@ partial struct TerrainSystemServer : ISystem
         => _topLeft + new float2(dataCoord.x - 1, dataCoord.y - 1) / (NumVertsPerLine - 3) * new float2(1f, -1f) * MeshWorldSize;
 
     [BurstCompile]
-    public bool TrySample(in float2 position, out float height, bool neighbours = false)
+    bool GetOrCreateChunk(in float2 position, out NativeArray<float>.ReadOnly heightmap, bool neighbours)
     {
-        WorldToChunk(position + new float2(DataPointWorldSize, DataPointWorldSize) * 0.5f, out int2 chunkCoord);
+        WorldToChunk(position + (new float2(DataPointWorldSize, DataPointWorldSize) * 0.5f), out int2 chunkCoord);
 
-        if (!Heightmaps.TryGetValue(chunkCoord, out NativeArray<float>.ReadOnly heightmap))
+        if (!Heightmaps.TryGetValue(chunkCoord, out heightmap))
         {
             if (Hashset.Add(chunkCoord)) Queue.Add(chunkCoord);
             if (neighbours)
@@ -200,6 +200,19 @@ partial struct TerrainSystemServer : ISystem
                 if (Hashset.Add(chunkCoord + new int2(0, -1))) Queue.Add(chunkCoord + new int2(0, -1));
             }
 
+            return false;
+        }
+
+        return true;
+    }
+
+    [BurstCompile]
+    public bool TrySample(in float2 position, out float height, bool neighbours = false)
+    {
+        WorldToChunk(position + new float2(DataPointWorldSize, DataPointWorldSize) * 0.5f, out int2 chunkCoord);
+
+        if (!GetOrCreateChunk(chunkCoord, out NativeArray<float>.ReadOnly heightmap, neighbours))
+        {
             height = default;
             return false;
         }
@@ -221,17 +234,8 @@ partial struct TerrainSystemServer : ISystem
     {
         WorldToChunk(position + new float2(DataPointWorldSize, DataPointWorldSize) * 0.5f, out int2 chunkCoord);
 
-        if (!Heightmaps.TryGetValue(chunkCoord, out NativeArray<float>.ReadOnly heightmap))
+        if (!GetOrCreateChunk(chunkCoord, out NativeArray<float>.ReadOnly heightmap, neighbours))
         {
-            if (Hashset.Add(chunkCoord)) Queue.Add(chunkCoord);
-            if (neighbours)
-            {
-                if (Hashset.Add(chunkCoord + new int2(+1, 0))) Queue.Add(chunkCoord + new int2(+1, 0));
-                if (Hashset.Add(chunkCoord + new int2(-1, 0))) Queue.Add(chunkCoord + new int2(-1, 0));
-                if (Hashset.Add(chunkCoord + new int2(0, +1))) Queue.Add(chunkCoord + new int2(0, +1));
-                if (Hashset.Add(chunkCoord + new int2(0, -1))) Queue.Add(chunkCoord + new int2(0, -1));
-            }
-
             height = default;
             normal = new float3(0f, 1f, 0f);
             return false;

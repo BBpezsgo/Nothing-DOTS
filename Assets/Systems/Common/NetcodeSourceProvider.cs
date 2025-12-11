@@ -8,11 +8,11 @@ using UnityEngine;
 
 class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 {
-    readonly CompiledSource source;
+    readonly CompiledSourceServer source;
     readonly List<ProgressRecord<(int, int)>> progresses;
     readonly bool EnableLogging;
 
-    public NetcodeSourceProvider(CompiledSource source, List<ProgressRecord<(int, int)>> progresses, bool enableLogging)
+    public NetcodeSourceProvider(CompiledSourceServer source, List<ProgressRecord<(int, int)>> progresses, bool enableLogging)
     {
         this.source = source;
         this.progresses = progresses;
