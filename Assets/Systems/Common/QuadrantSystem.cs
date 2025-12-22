@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -226,6 +227,22 @@ public partial struct QuadrantSystem : ISystem
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
+        foreach (KeyValue<uint, NativeList<QuadrantEntity>> cell in HashMap)
+        {
+            for (int i = 0; i < cell.Value.Length; i++)
+            {
+                if (!state.EntityManager.Exists(cell.Value[i].Entity))
+                {
+                    cell.Value.RemoveAtSwapBack(i);
+                    i--;
+                }
+                else
+                {
+                    CollisionSystem.Debug(cell.Value[i].Collider, cell.Value[i].Position, Color.lightGreen);
+                }
+            }
+        }
+
         foreach (var (inQuadrant, collider, transform, entity) in
             SystemAPI.Query<RefRW<QuadrantEntityIdentifier>, RefRO<Collider>, RefRO<LocalToWorld>>()
             .WithEntityAccess())
@@ -234,14 +251,26 @@ public partial struct QuadrantSystem : ISystem
 
             if (inQuadrant.ValueRO.Added)
             {
-                if (inQuadrant.ValueRO.Key == cell.key) continue;
-
                 NativeList<QuadrantEntity> list = HashMap[inQuadrant.ValueRO.Key];
-                for (int i = 0; i < list.Length; i++)
+
+                if (inQuadrant.ValueRO.Key == cell.key)
                 {
-                    if (list[i].Entity != entity) continue;
-                    HashMap[inQuadrant.ValueRO.Key].RemoveAtSwapBack(i);
-                    break;
+                    for (int i = 0; i < list.Length; i++)
+                    {
+                        if (list[i].Entity != entity) continue;
+                        list[i] = list[i] with { Position = transform.ValueRO.Position };
+                        break;
+                    }
+                    continue;
+                }
+                else
+                {
+                    for (int i = 0; i < list.Length; i++)
+                    {
+                        if (list[i].Entity != entity) continue;
+                        list.RemoveAtSwapBack(i);
+                        break;
+                    }
                 }
             }
 

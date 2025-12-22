@@ -19,18 +19,18 @@ partial struct DebugLinesClientSystem : ISystem
     {
         if (!SystemAPI.TryGetSingleton(out NetworkId networkId)) return;
 
-        if (!Batches.IsCreated) Batches = CreateBatches();
+        if (!Batches.IsCreated) Batches = CreateBatches(state.EntityManager);
 
         UpdateLines(ref state, in networkId);
     }
 
-    NativeArray<Entity>.ReadOnly CreateBatches()
+    NativeArray<Entity>.ReadOnly CreateBatches(EntityManager entityManager)
     {
         DebugLinesSettings settings = SystemAPI.ManagedAPI.GetSingleton<DebugLinesSettings>();
         NativeArray<Entity> _batches = new(settings.Materials.Length, Allocator.Persistent);
         for (int i = 0; i < settings.Materials.Length; i++)
         {
-            Segments.Core.Create(out Entity v, settings.Materials[i]);
+            Segments.Core.Create(entityManager, out Entity v, settings.Materials[i]);
             _batches[i] = v;
         }
         return _batches.AsReadOnly();
@@ -40,11 +40,11 @@ partial struct DebugLinesClientSystem : ISystem
     void UpdateLines(ref SystemState state, in NetworkId networkId)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
-        NativeArray<DynamicBuffer<Unity.Mathematics.float3x2>> batches = new(Batches.Length, Allocator.Temp);
+        NativeArray<Segments.Segment> batches = new(Batches.Length, Allocator.Temp);
 
         for (int i = 0; i < Batches.Length; i++)
         {
-            batches[i] = Segments.Core.GetBuffer(Batches[i], false);
+            batches[i] = Segments.Core.GetSegment(state.EntityManager, Batches[i]);
         }
 
         foreach (var (player, lines) in
@@ -67,13 +67,18 @@ partial struct DebugLinesClientSystem : ISystem
 
             for (int i = 0; i < batches.Length; i++)
             {
-                batches[i].Clear();
+                batches[i].Buffer.Clear();
             }
 
             for (int i = 0; i < lines.Length; i++)
             {
                 if (lines[i].DieAt <= SystemAPI.Time.ElapsedTime) lines.RemoveAt(i--);
-                else batches[lines[i].Color - 1].Add(lines[i].Value);
+                else batches[lines[i].Color - 1].Buffer.Add(lines[i].Value);
+            }
+
+            for (int i = 0; i < batches.Length; i++)
+            {
+                Segments.Core.SetSegmentChanged(state.EntityManager, Batches[i]);
             }
             break;
         }
