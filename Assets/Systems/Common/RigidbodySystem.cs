@@ -45,7 +45,7 @@ partial struct RigidbodySystem : ISystem
                     {
                         transform.ValueRW.Position.y = h + sphere.Radius;
                         rigidbody.ValueRW.Velocity.y = math.abs(rigidbody.ValueRW.Velocity.y);
-                        rigidbody.ValueRW.Velocity *= 0.7f;
+                        rigidbody.ValueRW.Velocity *= rigidbody.ValueRO.Bounciness;
                     }
                     else
                     {
@@ -80,7 +80,7 @@ partial struct RigidbodySystem : ISystem
                     {
                         transform.ValueRW.Position.y = h + height;
                         rigidbody.ValueRW.Velocity.y = math.abs(rigidbody.ValueRW.Velocity.y);
-                        rigidbody.ValueRW.Velocity *= 0.7f;
+                        rigidbody.ValueRW.Velocity *= rigidbody.ValueRO.Bounciness;
                     }
                     else
                     {
