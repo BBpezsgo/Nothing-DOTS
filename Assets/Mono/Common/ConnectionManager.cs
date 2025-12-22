@@ -255,9 +255,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
-        Debug.Log($" -> EnablingObjects");
+        Debug.Log($" -> EnablingServerObjects");
+        yield return new WaitForEndOfFrame();
         ServerObjects.SetActive(true);
-        ClientObjects.SetActive(true);
         yield return new WaitForEndOfFrame();
 
         using (EntityQuery driverQ = ServerWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
@@ -272,6 +272,11 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         Debug.Log($" -> Set nickname to {nickname}");
         PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
+
+        Debug.Log($" -> EnablingClientObjects");
+        yield return new WaitForEndOfFrame();
+        ClientObjects.SetActive(true);
+        yield return new WaitForEndOfFrame();
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
