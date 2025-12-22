@@ -85,6 +85,15 @@ public class SelectionManager : Singleton<SelectionManager>
             }
         }
 
+        if (BuildingManager.Instance.IsWireConnecting)
+        {
+            SetSelectBoxVisible(false);
+            _firstHit = Entity.Null;
+            SelectBox.gameObject.SetActive(false);
+            _selectionStart = default;
+            return;
+        }
+
         if (UI.IsUIFocused)
         {
             SetSelectBoxVisible(false);
@@ -549,7 +558,7 @@ public class SelectionManager : Singleton<SelectionManager>
         return ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<SelectableUnit>(unit);
     }
 
-    static bool IsMine(Entity unit)
+    public static bool IsMine(Entity unit)
     {
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.Exists(unit)) return false;
         if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<UnitTeam>(unit)) return true;
@@ -645,7 +654,7 @@ public class SelectionManager : Singleton<SelectionManager>
         //return Ground.Raycast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), out distance);
     }
 
-    static bool RayCast(UnityEngine.Ray ray, uint layer, out Hit hit)
+    public static bool RayCast(UnityEngine.Ray ray, uint layer, out Hit hit)
     {
         NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
         if (!QuadrantRayCast.RayCast(map, new Ray(ray, 300f, layer), out hit)) return false;

@@ -16,7 +16,7 @@ void Receive()
 
     while (1)
     {
-        i32 receivedLength = receive(&v, MaxPacketLength, &direction);
+        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
         if (v[0] == (u8)REQUEST_HEADER &&
@@ -31,7 +31,7 @@ void Receive()
             {
                 responsePacket.position = packet.position;
                 debug(packet.position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
+                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
             else
             {
@@ -44,7 +44,7 @@ void Receive()
                         indirectResponsePacket.header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.position = (&allies).raw()[i].position;
                         indirectResponsePacket.expires = (&allies).raw()[i].expires;
-                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction, 0.1f);
+                        wsend(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction, 0.1f);
                         return;
                     }
                 }
@@ -85,7 +85,7 @@ void Receive()
 
                     printline("NTFY");
 
-                    send(&packet as u8[]*, sizeof(EnemyNotificationPacket), &direction);
+                    wsend(&packet as u8[]*, sizeof(EnemyNotificationPacket), &direction);
                 }
             }
         }
@@ -176,7 +176,7 @@ while (1)
         EnemyNotificationPacket notificationPacket;
         notificationPacket.header = ENEMY_HEADER;
         notificationPacket.position = command.position;
-        send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
+        wsend(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
     }
 
     (&_minimap).update();

@@ -30,7 +30,7 @@ void Receive()
 
     while (1)
     {
-        i32 receivedLength = receive(&v, MaxPacketLength, &direction);
+        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
         if (v[0] == (u8)REQUEST_HEADER &&
@@ -52,7 +52,7 @@ void Receive()
                 responsePacket.header = (u8)RESPONSE_HEADER;
                 responsePacket.position = GPS.position;
                 if (Debug) debug(packet.position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
+                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
             else
             {
@@ -66,7 +66,7 @@ void Receive()
                         indirectResponsePacket.header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.position = (&allies).raw()[i].position;
                         indirectResponsePacket.expires = (&allies).raw()[i].expires;
-                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
+                        wsend(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                         return;
                     }
                 }
@@ -132,6 +132,12 @@ void Receive()
             unit.position_records = 1;
             remove_unit_at(&enemies, unit.position);
             update_unit(&allies, unit);
+        }
+        else
+        {
+            print("INVSEQ ");
+            print(v[0]);
+            printline();
         }
     }
 }

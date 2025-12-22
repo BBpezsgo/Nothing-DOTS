@@ -12,7 +12,7 @@ using Unity.Transforms;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
-partial struct TransmissionSystem : ISystem
+partial struct WirelessTransmissionSystem : ISystem
 {
     public const float TransmissionRadius = 100f;
 
@@ -38,6 +38,8 @@ partial struct TransmissionSystem : ISystem
         {
             if (processor.ValueRW.OutgoingTransmissions.Length == 0) continue;
             BufferedUnitTransmissionOutgoing transmission = processor.ValueRW.OutgoingTransmissions[0];
+            if (!transmission.Metadata.IsWireless) continue;
+
             processor.ValueRW.OutgoingTransmissions.RemoveAt(0);
 
             NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(state.WorldUnmanaged);
@@ -131,10 +133,10 @@ partial struct TransmissionSystem : ISystem
                                 continue;
                             }
 
-                            if (!transmission.Direction.Equals(default))
+                            if (!transmission.Metadata.Wireless.Direction.Equals(default))
                             {
-                                float dot = math.abs(math.dot(transmission.Direction, math.normalize(entityLocalPosition)));
-                                if (dot < transmission.CosAngle)
+                                float dot = math.abs(math.dot(transmission.Metadata.Wireless.Direction, math.normalize(entityLocalPosition)));
+                                if (dot < transmission.Metadata.Wireless.CosAngle)
                                 {
 #if DEBUG_LINES
                                     //Debug.DrawLine(transmission.Source, cell[i].Position, Color.orange, 1f, false);
@@ -159,8 +161,15 @@ partial struct TransmissionSystem : ISystem
                             if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
                             transmissions.Add(new()
                             {
-                                Source = transform.ValueRO.Position,
                                 Data = transmission.Data,
+                                Metadata = new IncomingUnitTransmissionMetadata()
+                                {
+                                    IsWireless = true,
+                                    Wireless = new()
+                                    {
+                                        Source = transform.ValueRO.Position,
+                                    },
+                                },
                             });
                         }
                     }

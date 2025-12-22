@@ -49,7 +49,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer.Entity == Entity.Null)
             {
-                Debug.LogError(string.Format("Failed to place building: requested by {0} but aint have a team", networkId));
+                Debug.LogWarning(string.Format("Failed to place building: requested by {0} but aint have a team", networkId));
                 continue;
             }
 
@@ -85,14 +85,14 @@ public partial struct BuildingSystemServer : ISystem
 
                 if (!can)
                 {
-                    Debug.LogWarning($"Can't place building \"{building.Name}\": not researched");
+                    Debug.Log($"Can't place building \"{building.Name}\": not researched");
                     continue;
                 }
             }
 
             if (requestPlayer.Player.Resources < building.RequiredResources)
             {
-                Debug.LogWarning($"Can't place building \"{building.Name}\": not enought resources ({requestPlayer.Player.Resources} < {building.RequiredResources})");
+                Debug.Log($"Can't place building \"{building.Name}\": not enought resources ({requestPlayer.Player.Resources} < {building.RequiredResources})");
                 break;
             }
 
@@ -113,6 +113,95 @@ public partial struct BuildingSystemServer : ISystem
             {
                 NetworkId = networkId.Value,
             });
+        }
+
+        foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<PlaceWireRequestRpc>>()
+            .WithEntityAccess())
+        {
+            commandBuffer.DestroyEntity(entity);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
+
+            (Entity Entity, Player Player) requestPlayer = default;
+
+            foreach (var (player, _entity) in
+                SystemAPI.Query<RefRO<Player>>()
+                .WithEntityAccess())
+            {
+                if (player.ValueRO.ConnectionId != networkId.Value) continue;
+                requestPlayer = (_entity, player.ValueRO);
+                break;
+            }
+
+            if (requestPlayer.Entity == Entity.Null)
+            {
+                Debug.LogWarning(string.Format("Failed to place wire: requested by {0} but aint have a team", networkId));
+                continue;
+            }
+
+            Entity connectorA = default;
+            Entity connectorB = default;
+
+            foreach (var (connectorGhost, connectorEntity) in SystemAPI.Query<RefRO<GhostInstance>>().WithAll<Connector>().WithEntityAccess())
+            {
+                if (command.ValueRO.A.Equals(connectorGhost.ValueRO))
+                {
+                    connectorA = connectorEntity;
+                    if (!connectorB.Equals(default)) break;
+                }
+                else if (command.ValueRO.B.Equals(connectorGhost.ValueRO))
+                {
+                    connectorB = connectorEntity;
+                    if (!connectorA.Equals(default)) break;
+                }
+            }
+
+            if (connectorA == default || connectorB == default)
+            {
+                Debug.LogWarning(string.Format("Failed to place wire: connectors not found"));
+                continue;
+            }
+
+            if (connectorA == default)
+            {
+                Debug.Log(string.Format("Failed to place wire: two connectors are the same"));
+                continue;
+            }
+
+            DynamicBuffer<BufferedWire> wiresA = SystemAPI.GetBuffer<BufferedWire>(connectorA);
+            DynamicBuffer<BufferedWire> wiresB = SystemAPI.GetBuffer<BufferedWire>(connectorB);
+
+            foreach (BufferedWire item in wiresA)
+            {
+                if ((item.EntityA == connectorA && item.EntityB == connectorB) || (item.EntityA == connectorB && item.EntityB == connectorA))
+                {
+                    goto alreadyExists;
+                }
+            }
+
+            foreach (BufferedWire item in wiresB)
+            {
+                if ((item.EntityA == connectorA && item.EntityB == connectorB) || (item.EntityA == connectorB && item.EntityB == connectorA))
+                {
+                    goto alreadyExists;
+                }
+            }
+
+            BufferedWire wire = new()
+            {
+                EntityA = connectorA,
+                EntityB = connectorB,
+                GhostA = command.ValueRO.A,
+                GhostB = command.ValueRO.B,
+            };
+
+            wiresA.Add(wire);
+            wiresB.Add(wire);
+
+            continue;
+
+        alreadyExists:;
+            Debug.Log(string.Format("Failed to place wire: already exists"));
         }
 
         foreach (var (placeholder, transform, owner, unitTeam, entity) in
@@ -157,7 +246,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogError(string.Format("Player with network id {0} aint have a team", networkId));
+                Debug.LogWarning(string.Format("Player with network id {0} aint have a team", networkId));
                 continue;
             }
 

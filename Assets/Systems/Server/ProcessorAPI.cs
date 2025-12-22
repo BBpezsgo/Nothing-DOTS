@@ -15,6 +15,7 @@ using Unity.Profiling;
 using FunctionScope = ProcessorSystemServer.FunctionScope;
 
 [BurstCompile]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter")]
 static unsafe class ProcessorAPI
 {
     [BurstCompile]
@@ -33,8 +34,10 @@ static unsafe class ProcessorAPI
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Atan).Value, Math.Prefix + 8, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Random).Value, Math.Prefix + 9, 0, ExternalFunctionGenerator.SizeOf<int>(), default));
 
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Transmission.Send).Value, Transmission.Prefix + 1, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default));
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Transmission.Receive).Value, Transmission.Prefix + 2, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(WirelessTransmission.Send).Value, WirelessTransmission.Prefix + 1, ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(WirelessTransmission.Receive).Value, WirelessTransmission.Prefix + 2, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(WiredTransmission.Send).Value, WirelessTransmission.Prefix + 3, ExternalFunctionGenerator.SizeOf<int, int>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(WiredTransmission.Receive).Value, WirelessTransmission.Prefix + 4, ExternalFunctionGenerator.SizeOf<int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
 
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Sensors.Radar).Value, Sensors.Prefix + 1, 0, 0, default));
 
@@ -80,8 +83,10 @@ static unsafe class ProcessorAPI
             ExternalFunctionSync.Create<float, float>(Math.Prefix + 8, "atan", MathF.Atan),
             ExternalFunctionSync.Create<int>(Math.Prefix + 9,      "random", Math.SharedRandom.NextInt),
 
-            new ExternalFunctionStub(Transmission.Prefix + 1,      "send", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
-            new ExternalFunctionStub(Transmission.Prefix + 2,      "receive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+            new ExternalFunctionStub(WirelessTransmission.Prefix + 1,      "wsend", ExternalFunctionGenerator.SizeOf<int, int, float, float>(), 0),
+            new ExternalFunctionStub(WirelessTransmission.Prefix + 2,      "wreceive", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+            new ExternalFunctionStub(WirelessTransmission.Prefix + 3,      "send", ExternalFunctionGenerator.SizeOf<int, int>(), 0),
+            new ExternalFunctionStub(WirelessTransmission.Prefix + 4,      "receive", ExternalFunctionGenerator.SizeOf<int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
 
             new ExternalFunctionStub(Sensors.Prefix + 1,           "radar", 0, 0),
 
@@ -237,12 +242,12 @@ static unsafe class ProcessorAPI
     }
 
     [BurstCompile]
-    public static class Transmission
+    public static class WirelessTransmission
     {
         public const int Prefix = 0x00030000;
 
-        static readonly ProfilerMarker MarkerSend = new("ProcessorSystemServer.External.send");
-        static readonly ProfilerMarker MarkerReceive = new("ProcessorSystemServer.External.receive");
+        static readonly ProfilerMarker MarkerSend = new("ProcessorSystemServer.External.wsend");
+        static readonly ProfilerMarker MarkerReceive = new("ProcessorSystemServer.External.wreceive");
 
         [BurstCompile]
         [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
@@ -270,11 +275,18 @@ static unsafe class ProcessorAPI
             { scope->EntityRef.Processor->OutgoingTransmissions.RemoveAt(0); }
             scope->EntityRef.Processor->OutgoingTransmissions.Add(new()
             {
-                Source = scope->EntityRef.LocalTransform.Position,
-                Direction = direction,
                 Data = data,
-                CosAngle = cosAngle,
-                Angle = angle,
+                Metadata = new OutgoingUnitTransmissionMetadata()
+                {
+                    IsWireless = true,
+                    Wireless = new()
+                    {
+                        Source = scope->EntityRef.LocalTransform.Position,
+                        Direction = direction,
+                        CosAngle = cosAngle,
+                        Angle = angle,
+                    },
+                },
             });
         }
 
@@ -298,6 +310,7 @@ static unsafe class ProcessorAPI
             if (received.Length == 0) return;
 
             BufferedUnitTransmission first = received[0];
+            if (!first.Metadata.IsWireless) return;
 
             int copyLength = math.min(first.Data.Length, length);
 
@@ -305,10 +318,91 @@ static unsafe class ProcessorAPI
 
             if (directionPtr > 0)
             {
-                float3 transformed = math.normalize(scope->EntityRef.LocalTransform.InverseTransformPoint(first.Source));
+                float3 transformed = math.normalize(scope->EntityRef.LocalTransform.InverseTransformPoint(first.Metadata.Wireless.Source));
                 Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
                 memory.Set(directionPtr, transformed);
             }
+
+            if (copyLength >= first.Data.Length)
+            {
+                received.RemoveAt(0);
+            }
+            else
+            {
+                first.Data.RemoveRange(0, copyLength);
+                received[0] = first;
+            }
+
+            returnValue.Set(copyLength);
+        }
+    }
+
+    [BurstCompile]
+    public static class WiredTransmission
+    {
+        public const int Prefix = 0x00030000;
+
+        static readonly ProfilerMarker MarkerSend = new("ProcessorSystemServer.External.send");
+        static readonly ProfilerMarker MarkerReceive = new("ProcessorSystemServer.External.receive");
+
+        [BurstCompile]
+        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+        public static void Send(nint _scope, nint arguments, nint returnValue)
+        {
+#if UNITY_PROFILER
+            using ProfilerMarker.AutoScope marker = MarkerSend.Auto();
+#endif
+
+            FunctionScope* scope = (FunctionScope*)_scope;
+
+            (int bufferPtr, int length) = ExternalFunctionGenerator.TakeParameters<int, int>(arguments);
+            if (length <= 0 || length >= 30) throw new Exception("Passed buffer length must be in range [0,30] inclusive");
+            if (bufferPtr == 0) throw new Exception($"Passed buffer pointer is null");
+            if (bufferPtr < 0 || bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Passed buffer pointer is invalid");
+
+            Span<byte> memory = new(scope->ProcessorRef.Memory, Processor.UserMemorySize);
+
+            FixedList32Bytes<byte> data = new();
+            data.AddRange((byte*)((nint)scope->ProcessorRef.Memory + bufferPtr), length);
+
+            if (scope->EntityRef.Processor->OutgoingTransmissions.Length >= scope->EntityRef.Processor->OutgoingTransmissions.Capacity)
+            { scope->EntityRef.Processor->OutgoingTransmissions.RemoveAt(0); }
+            scope->EntityRef.Processor->OutgoingTransmissions.Add(new()
+            {
+                Data = data,
+                Metadata = new OutgoingUnitTransmissionMetadata()
+                {
+                    IsWireless = false,
+                    Wired = new(),
+                },
+            });
+        }
+
+        [BurstCompile]
+        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+        public static void Receive(nint _scope, nint arguments, nint returnValue)
+        {
+#if UNITY_PROFILER
+            using ProfilerMarker.AutoScope marker = MarkerReceive.Auto();
+#endif
+
+            returnValue.Set(0);
+
+            (int bufferPtr, int length) = ExternalFunctionGenerator.TakeParameters<int, int>(arguments);
+            if (bufferPtr == 0 || length <= 0) return;
+            if (bufferPtr < 0 || bufferPtr + length >= Processor.UserMemorySize) throw new Exception($"Passed buffer pointer is invalid");
+
+            FunctionScope* scope = (FunctionScope*)_scope;
+
+            ref FixedList128Bytes<BufferedUnitTransmission> received = ref scope->EntityRef.Processor->IncomingTransmissions; // scope->EntityManager.GetBuffer<BufferedUnitTransmission>(scope->SourceEntity);
+            if (received.Length == 0) return;
+
+            BufferedUnitTransmission first = received[0];
+            if (first.Metadata.IsWireless) return;
+
+            int copyLength = math.min(first.Data.Length, length);
+
+            Buffer.MemoryCopy(((byte*)&first.Data) + 2, (byte*)scope->ProcessorRef.Memory + bufferPtr, copyLength, copyLength);
 
             if (copyLength >= first.Data.Length)
             {

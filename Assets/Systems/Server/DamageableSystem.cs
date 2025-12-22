@@ -28,6 +28,24 @@ public partial struct DamageableSystem : ISystem
                         Rotation = default,
                         Index = damageable.ValueRO.DestroyEffect,
                     });
+
+                    if (SystemAPI.HasComponent<Connector>(entity))
+                    {
+                        DynamicBuffer<BufferedWire> buffer = SystemAPI.GetBuffer<BufferedWire>(entity);
+                        foreach (BufferedWire wire in buffer)
+                        {
+                            DynamicBuffer<BufferedWire> other = SystemAPI.GetBuffer<BufferedWire>(wire.EntityA == entity ? wire.EntityB : wire.EntityA);
+                            for (int j = 0; j < other.Length; j++)
+                            {
+                                if (other[j].EntityA == entity || other[j].EntityB == entity)
+                                {
+                                    other.RemoveAtSwapBack(j);
+                                    j--;
+                                }
+                            }
+                        }
+                    }
+
                     commandBuffer.DestroyEntity(entity);
                     break;
                 }

@@ -24,7 +24,7 @@ void Receive()
 
     while (1)
     {
-        i32 receivedLength = receive(&v, MaxPacketLength, &direction);
+        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
         if (v[0] == (u8)REQUEST_HEADER &&
@@ -40,7 +40,7 @@ void Receive()
             {
                 debug(packet.position, CYAN);
 
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
+                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
         }
     }

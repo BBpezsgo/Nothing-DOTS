@@ -50,29 +50,32 @@ export const u8 WHITE = (u8)0b111;
 [External("acos")] export f32 acos(f32 v);
 [External("atan")] export f32 atan(f32 v);
 
-[External("send")] export void send(any* buffer, i32 length, float3* direction, f32 angle);
+[External("wreceive")] export i32 wreceive(any* buffer, i32 length, float3* direction);
+[External("wsend")] export void wsend(any* buffer, i32 length, float3* direction, f32 angle);
 
-export inline void send(any* buffer, i32 length, float3 direction, f32 angle)
+[External("receive")] export i32 receive(any* buffer, i32 length);
+[External("send")] export void send(any* buffer, i32 length);
+
+export inline void wsend(any* buffer, i32 length, float3 direction, f32 angle)
 {
-    send(buffer, length, &direction, angle);
+    wsend(buffer, length, &direction, angle);
 }
 
-export inline void send(any* buffer, i32 length, float3* direction)
+export inline void wsend(any* buffer, i32 length, float3* direction)
 {
-    send(buffer, length, direction, 0.1f);
+    wsend(buffer, length, direction, 0.1f);
 }
 
-export inline void send(any* buffer, i32 length, float3 direction)
+export inline void wsend(any* buffer, i32 length, float3 direction)
 {
-    send(buffer, length, &direction, 0.1f);
+    wsend(buffer, length, &direction, 0.1f);
 }
 
-export inline void send(any* buffer, i32 length)
+export inline void wsend(any* buffer, i32 length)
 {
-    send(buffer, length, (float3*)0, 0f);
+    wsend(buffer, length, (float3*)0, 0f);
 }
 
-[External("receive")] export i32 receive(any* buffer, i32 length, float3* direction);
 [External("radar")] void _radar();
 
 export float3 radar(float direction)

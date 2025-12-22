@@ -5,6 +5,7 @@ using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
+using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -17,7 +18,7 @@ class BuildingPlaceholderItem
     [NotNull] public GameObject? Prefab = default;
 }
 
-public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUICleanup
+public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
 {
     BufferedBuilding SelectedBuilding = default;
     [SerializeField, NotNull] List<BuildingPlaceholderItem> Holograms = new();
@@ -27,11 +28,16 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
 
     [SerializeField, ReadOnly] bool IsValidPosition = false;
 
+    [SerializeField, NotNull] LineRenderer? WirePlaceholder = default;
+    [SerializeField, ReadOnly] SpawnedGhost SelectedConnector;
+    [SerializeField, ReadOnly] float3 SelectedConnectorPosition;
+
     [SerializeField] Color ValidHologramColor = Color.white;
     [SerializeField] Color InvalidHologramColor = Color.red;
     [SerializeField, Range(-10f, 10f)] float HologramEmission = 1.1f;
 
-    public bool IsBuilding => SelectedBuilding.Prefab != default;
+    public bool IsBuilding => SelectedBuilding.Prefab != default || IsWireConnecting;
+    public bool IsWireConnecting => !SelectedConnector.Equals(default);
 
     [Header("UI")]
 
@@ -41,19 +47,6 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
     float refreshAt = default;
     float refreshedBySyncAt = default;
     float syncAt = default;
-
-    void OnKeyEsc()
-    {
-        SelectedBuilding = default;
-        if (BuildingHologram != null) Destroy(BuildingHologram);
-        BuildingHologram = null;
-
-        if (BuildingUI.gameObject.activeSelf)
-        {
-            IsValidPosition = false;
-            UIManager.Instance.CloseUI(this);
-        }
-    }
 
     void RefreshUI()
     {
@@ -125,11 +118,11 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         if (Input.GetKeyDown(KeyCode.B) && (!UI.IsUIFocused || BuildingUI.gameObject.activeSelf))
         {
             SelectedBuilding = default;
-            if (BuildingHologram != null)
-            {
-                Destroy(BuildingHologram);
-                BuildingHologram = null;
-            }
+            SelectedConnector = default;
+            SelectedConnectorPosition = default;
+            if (BuildingHologram != null) Destroy(BuildingHologram);
+            BuildingHologram = null;
+            WirePlaceholder.gameObject.SetActive(false);
 
             if (BuildingUI.gameObject.activeSelf)
             {
@@ -148,6 +141,11 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         if (UIManager.Instance.GrapESC())
         {
             UIManager.Instance.CloseUI(this);
+            SelectedBuilding = default;
+            if (BuildingHologram != null) Destroy(BuildingHologram);
+            BuildingHologram = null;
+            IsValidPosition = false;
+            WirePlaceholder.gameObject.SetActive(false);
             return;
         }
 
@@ -156,11 +154,14 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             (IsBuilding || BuildingUI.gameObject.activeSelf) &&
             !CameraControl.Instance.IsDragging)
         {
-            if (SelectedBuilding.Prefab != Entity.Null)
+            if (SelectedBuilding.Prefab != Entity.Null || !SelectedConnector.Equals(default))
             {
                 SelectedBuilding = default;
                 if (BuildingHologram != null) Destroy(BuildingHologram);
                 BuildingHologram = null;
+                SelectedConnector = default;
+                SelectedConnectorPosition = default;
+                WirePlaceholder.gameObject.SetActive(false);
             }
             else
             {
@@ -185,23 +186,128 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             BuildingsSystemClient.Refresh(ConnectionManager.ClientOrDefaultWorld.Unmanaged);
         }
 
-        if (SelectedBuilding.Prefab == Entity.Null)
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (BuildingHologram != null)
-            {
-                Destroy(BuildingHologram);
-                BuildingHologram = null;
-            }
+            SelectedBuilding = default;
+            if (BuildingHologram != null) Destroy(BuildingHologram);
+            BuildingHologram = null;
+            IsValidPosition = false;
+            WirePlaceholder.gameObject.SetActive(false);
             return;
         }
 
+        if (SelectedBuilding.Prefab != Entity.Null)
+        {
+            HandleBuildingPlacement();
+            return;
+        }
+        else if (BuildingHologram != null)
+        {
+            Destroy(BuildingHologram);
+            BuildingHologram = null;
+        }
+
+        HandleWirePlacement();
+    }
+
+    void HandleWirePlacement()
+    {
+        if (Mouse.current.leftButton.wasPressedThisFrame && !UI.IsMouseHandled)
+        {
+            if (!SelectionManager.RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.BuildingOrUnit, out Hit hit)) return;
+
+            Entity connector = hit.Entity.Entity;
+            if (!SelectionManager.IsMine(connector))
+            {
+                Debug.Log("Entity isn't mine");
+                return;
+            }
+
+            if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<Connector>(connector))
+            {
+                Debug.Log("Entity isn't a connector");
+                return;
+            }
+
+            if (SelectedConnector.Equals(default))
+            {
+                SelectedConnector = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(connector);
+                SelectedConnectorPosition = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<LocalTransform>(connector).TransformPoint(ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<Connector>(connector).ConnectorPosition);
+            }
+            else
+            {
+                GhostInstance otherSelectedConnector = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(connector);
+
+                if (ConnectionManager.ClientOrDefaultWorld.IsServer())
+                {
+                    throw new NotImplementedException();
+                }
+                else
+                {
+                    NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new PlaceWireRequestRpc()
+                    {
+                        A = SelectedConnector,
+                        B = otherSelectedConnector,
+                        IsRemove = false,
+                    });
+                }
+
+                SelectedConnector = default;
+                SelectedConnectorPosition = default;
+                WirePlaceholder.gameObject.SetActive(false);
+            }
+        }
+        else
+        {
+            if (SelectedConnector.Equals(default))
+            {
+                WirePlaceholder.gameObject.SetActive(false);
+            }
+            else
+            {
+                WirePlaceholder.gameObject.SetActive(true);
+                bool isValid;
+                float3 endPosition;
+
+                if (SelectionManager.RayCast(MainCamera.Camera.ScreenPointToRay(Input.mousePosition), Layers.BuildingOrUnit, out Hit hit)
+                    && SelectionManager.IsMine(hit.Entity.Entity)
+                    && ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<Connector>(hit.Entity.Entity))
+                {
+                    isValid = true;
+                    endPosition = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<LocalTransform>(hit.Entity.Entity).TransformPoint(ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<Connector>(hit.Entity.Entity).ConnectorPosition);
+                }
+                else
+                {
+                    isValid = false;
+
+                    float d = math.distance(MainCamera.Camera.transform.position, SelectedConnectorPosition);
+                    UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Input.mousePosition);
+                    endPosition = SelectionManager.WorldRaycast(ray, out float distance) && distance < d ? ray.GetPoint(distance) : ray.GetPoint(d);
+                }
+
+                WirePlaceholder.material.color = isValid ? ValidHologramColor : InvalidHologramColor;
+                WirePlaceholder.material.SetEmissionColor(isValid ? ValidHologramColor : InvalidHologramColor, HologramEmission);
+
+                float l = math.distance(SelectedConnectorPosition, endPosition);
+                WirePlaceholder.positionCount = (int)Math.Ceiling(l) + 1;
+                for (int i = 0; i < l; i++)
+                {
+                    float3 p = math.lerp(SelectedConnectorPosition, endPosition, i / l);
+                    WirePlaceholder.SetPosition(i, p);
+                }
+                WirePlaceholder.SetPosition(WirePlaceholder.positionCount - 1, endPosition);
+            }
+        }
+    }
+
+    void HandleBuildingPlacement()
+    {
         if (BuildingHologram != null)
         {
             Destroy(BuildingHologram);
         }
 
         BuildingHologram = Instantiate(Holograms.First(v => SelectedBuilding.Name.Equals(v.Name)).Prefab, transform);
-
 
         UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Mouse.current.position.value);
 
@@ -242,15 +348,6 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             material.SetEmissionColor(IsValidPosition ? ValidHologramColor : InvalidHologramColor, HologramEmission);
         }
 
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            SelectedBuilding = default;
-            if (BuildingHologram != null) Destroy(BuildingHologram);
-            BuildingHologram = null;
-            IsValidPosition = false;
-            return;
-        }
-
         if (Mouse.current.leftButton.isPressed && !UI.IsMouseHandled)
         {
             if (SelectedBuilding.Prefab == default) return;
@@ -274,7 +371,6 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
             }
 
             UIManager.Instance.CloseUI(this);
-            return;
         }
     }
 
@@ -314,5 +410,6 @@ public class BuildingManager : PrivateSingleton<BuildingManager>, IUISetup, IUIC
         ui.gameObject.SetActive(false);
         if (BuildingHologram != null) Destroy(BuildingHologram);
         BuildingHologram = null;
+        WirePlaceholder.gameObject.SetActive(false);
     }
 }

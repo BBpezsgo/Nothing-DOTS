@@ -8,7 +8,7 @@ void Receive()
 
     while (1)
     {
-        i32 receivedLength = receive(&v, MaxPacketLength, &direction);
+        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
         if (v[0] == (u8)REQUEST_HEADER &&
@@ -27,7 +27,7 @@ void Receive()
                 responsePacket.header = (u8)RESPONSE_HEADER;
                 responsePacket.position = GPS.position;
                 debug(packet.position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
+                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
             }
             else
             {
@@ -41,7 +41,7 @@ void Receive()
                         indirectResponsePacket.header = (u8)INDIRECT_RESPONSE_HEADER;
                         indirectResponsePacket.position = (&allies).raw()[i].position;
                         indirectResponsePacket.expires = (&allies).raw()[i].expires;
-                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
+                        wsend(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                         return;
                     }
                 }
@@ -79,7 +79,118 @@ void Receive()
                     indirectResponsePacket.header = INDIRECT_RESPONSE_HEADER;
                     indirectResponsePacket.position = packet.position;
                     indirectResponsePacket.expires = unit.expires;
-                    send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
+                    wsend(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
+                }
+            }
+        }
+        else if (v[0] == (u8)ENEMY_HEADER &&
+                 receivedLength == sizeof(EnemyNotificationPacket))
+        {
+            EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
+
+            print("I-E ");
+            print(packet.position);
+            printline();
+
+            Unit unit;
+            unit.position = packet.position;
+            unit.recorded = 0f;
+            unit.expires = time() + 5f;
+            unit.verification_sent_at = time();
+            unit.position_records = 1;
+            set_unit(&enemies, unit);
+        }
+        else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
+                 receivedLength == sizeof(IndirectVerificationResponsePacket))
+        {
+            IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
+
+            print("I-RES ");
+            print(packet.position);
+            printline();
+
+            Unit unit;
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = packet.expires;
+            unit.verification_sent_at = time();
+            unit.position_records = 1;
+            remove_unit_at(&enemies, unit.position);
+            set_unit(&allies, unit);
+        }
+        else if (v[0] == (u8)RADAR_POINT &&
+                 receivedLength == sizeof(RadarPointPacket))
+        {
+            RadarPointPacket* packet = &v as RadarPointPacket*;
+
+            if (distancesqr(packet.position, GPS.position) > DistanceThresholdSq)
+            {
+                print('?');
+                print(packet.position);
+                printline();
+
+                if (unit_index_at(&allies, packet.position) != -1)
+                {
+                    print('.');
+                    print(packet.position);
+                    printline();
+                }
+                else
+                {
+                    print('!');
+                    print(packet.position);
+                    printline();
+
+                    Unit enemy;
+                    enemy.recorded = time();
+                    enemy.expires = time() + 12f;
+                    enemy.position = packet.position;
+                    enemy.position_records = 1;
+                    //send_verification_request(&enemy);
+                    update_unit(&enemies, enemy);
+                }
+            }
+        }
+    }
+
+    while (1)
+    {
+        i32 receivedLength = receive(&v, MaxPacketLength);
+        if (!receivedLength) { break; }
+
+        if (v[0] == (u8)REQUEST_HEADER &&
+            receivedLength == sizeof(VerificationRequestPacket))
+        {
+            VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
+
+            print("I-REQ ");
+            print(packet.position);
+            printline();
+
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
+            {
+                print(" M");
+                VerificationResponsePacket responsePacket = new VerificationResponsePacket;
+                responsePacket.header = (u8)RESPONSE_HEADER;
+                responsePacket.position = GPS.position;
+                debug(packet.position, CYAN);
+                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket));
+            }
+            else
+            {
+                for (int i = 0; i < (&allies).length(); i++)
+                {
+                    f32 distanceSqr = distancesqr((&allies).raw()[i].position, packet.position);
+                    if (distanceSqr < DistanceThresholdSq)
+                    {
+                        print(" K");
+                        IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
+                        indirectResponsePacket.header = (u8)INDIRECT_RESPONSE_HEADER;
+                        indirectResponsePacket.position = (&allies).raw()[i].position;
+                        indirectResponsePacket.expires = (&allies).raw()[i].expires;
+                        send(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket));
+                        return;
+                    }
                 }
             }
         }
@@ -163,6 +274,8 @@ printline("Started ...");
 
 while (1)
 {
+    LEDs.custom_led = true;
+
     Receive();
 
     if ((&enemies).length())
@@ -171,6 +284,7 @@ while (1)
         if (time() >= (&enemies).raw()[i].expires)
         {
             (&enemies).swapback(i);
+            printline("EXP");
         }
         else
         {
@@ -182,7 +296,7 @@ while (1)
                     EnemyNotificationPacket notificationPacket;
                     notificationPacket.header = ENEMY_HEADER;
                     notificationPacket.position = p;
-                    send(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
+                    wsend(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
                     (&enemies).raw()[i].notified_at = time();
                 }
                 debug(p, RED);

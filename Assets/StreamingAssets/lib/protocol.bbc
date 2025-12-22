@@ -89,17 +89,28 @@ export void send_verification_request(Unit* unit)
             printline();
         }
 
+        send(&packet as u8[]*, sizeof(VerificationRequestPacket));
+    }
+    elseif (1)
+    {
+        if (Logs)
+        {
+            print("O-VER ");
+            print(point);
+            printline();
+        }
+
         tolocal(&point);
         if (Debug) ldebug(point, BLUE);
         float distance = sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
         normalise(&point);
         float angle = 2f * atan(3f / (2 * distance));
 
-        send(&packet as u8[]*, sizeof(VerificationRequestPacket), &point, angle);
+        wsend(&packet as u8[]*, sizeof(VerificationRequestPacket), &point, angle);
     }
     else
     {
-        send(&packet as u8[]*, sizeof(VerificationRequestPacket));
+        wsend(&packet as u8[]*, sizeof(VerificationRequestPacket));
         if (Debug) debug(point, BLUE);
     }
 
