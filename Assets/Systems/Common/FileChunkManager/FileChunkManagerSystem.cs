@@ -16,8 +16,8 @@ partial class FileChunkManagerSystem : SystemBase
     const bool EnableLogging = false;
     public static string? BasePath => Application.streamingAssetsPath;
 
-    [NotNull] readonly Dictionary<FileId, RemoteFile>? RemoteFiles = new();
-    [NotNull] readonly List<FileRequest>? Requests = new();
+    [NotNull] public readonly Dictionary<FileId, RemoteFile>? RemoteFiles = new();
+    [NotNull] public readonly List<FileRequest>? Requests = new();
 
     public static FileChunkManagerSystem GetInstance(World world)
         => world.GetExistingSystemManaged<FileChunkManagerSystem>();

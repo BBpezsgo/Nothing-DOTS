@@ -60,23 +60,21 @@ class NetcodeBootstrap : ClientServerBootstrap
             }
         }
 
-        using (EntityQuery prefabsQ = LocalWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>()))
+        using EntityQuery prefabsQ = LocalWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>());
+        if (prefabsQ.TryGetSingleton(out PrefabDatabase prefabs))
         {
-            if (prefabsQ.TryGetSingleton<PrefabDatabase>(out PrefabDatabase prefabs))
+            Debug.Log($"Local player created");
+            Entity newPlayer = LocalWorld.EntityManager.Instantiate(prefabs.Player);
+            LocalWorld.EntityManager.SetComponentData<Player>(newPlayer, new()
             {
-                Debug.Log($"Local player created");
-                Entity newPlayer = LocalWorld.EntityManager.Instantiate(prefabs.Player);
-                LocalWorld.EntityManager.SetComponentData<Player>(newPlayer, new()
-                {
-                    ConnectionId = 0,
-                    ConnectionState = PlayerConnectionState.Local,
-                    Team = -1,
-                });
-            }
+                ConnectionId = 0,
+                ConnectionState = PlayerConnectionState.Local,
+                Team = -1,
+            });
         }
     }
 
-    public static IEnumerator CreateServer(NetworkEndpoint endpoint)
+    public static IEnumerator CreateServer(NetworkEndpoint endpoint, string? savefile)
     {
         ServerWorld = CreateServerWorld("ServerWorld");
 
@@ -106,9 +104,17 @@ class NetcodeBootstrap : ClientServerBootstrap
             driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.Listen(endpoint);
         }
 
-        using (EntityQuery prefabsQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>()))
+        if (savefile is not null)
         {
-            if (prefabsQ.TryGetSingleton<PrefabDatabase>(out PrefabDatabase prefabs))
+            EntityCommandBuffer entityCommandBuffer = new(Unity.Collections.Allocator.Temp);
+            SaveManager.Load(ServerWorld, entityCommandBuffer, savefile);
+            entityCommandBuffer.Playback(ServerWorld.EntityManager);
+            entityCommandBuffer.Dispose();
+        }
+        else
+        {
+            using EntityQuery prefabsQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>());
+            if (prefabsQ.TryGetSingleton(out PrefabDatabase prefabs))
             {
                 Debug.Log($"Local player created");
                 Entity newPlayer = ServerWorld.EntityManager.Instantiate(prefabs.Player);
@@ -147,10 +153,8 @@ class NetcodeBootstrap : ClientServerBootstrap
             }
         }
 
-        using (EntityQuery driverQ = ClientWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
-        {
-            driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.Connect(ClientWorld.EntityManager, endpoint);
-        }
+        using EntityQuery driverQ = ClientWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>());
+        driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.Connect(ClientWorld.EntityManager, endpoint);
     }
 
     public override bool Initialize(string defaultWorldName)

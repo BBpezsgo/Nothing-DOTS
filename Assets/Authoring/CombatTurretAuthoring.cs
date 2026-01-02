@@ -7,7 +7,7 @@ public class CombatTurretAuthoring : MonoBehaviour
 {
     [SerializeField] Transform? Turret = default;
     [SerializeField] Transform? Cannon = default;
-    [SerializeField] ProjectileStats? Projectile = default;
+    [SerializeField] ProjectilePrefab? Projectile = default;
     [SerializeField] Transform? ShootPosition = default;
     [SerializeField] VisualEffectAsset? ShootEffect = default;
 

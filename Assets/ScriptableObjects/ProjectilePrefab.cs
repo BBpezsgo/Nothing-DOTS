@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.VFX;
 
 [CreateAssetMenu(fileName = "Projectile", menuName = "Game/Projectile")]
-class ProjectileStats : ScriptableObject
+class ProjectilePrefab : ScriptableObject
 {
     [SerializeField, NotNull] public GameObject? Prefab = default;
     [SerializeField, Min(0f)] public float Damage = default;

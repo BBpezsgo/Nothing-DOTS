@@ -4,7 +4,7 @@ using Unity.Burst;
 using Unity.Collections;
 
 [BurstCompile]
-public static class FixedStringExtensions
+public static partial class FixedStringExtensions
 {
     [BurstCompile]
     public static FormatError AppendShift<T>(ref this T fs, Unicode.Rune rune)

@@ -450,6 +450,7 @@ GameObject:
   - component: {fileID: 7488714515863496120}
   - component: {fileID: -7005501249638528122}
   - component: {fileID: 5336572858239011704}
+  - component: {fileID: -5069248889722731002}
   m_Layer: 6
   m_Name: Transporter
   m_TagString: Untagged
@@ -570,6 +571,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f479cce2bb25bd08a3a9a1c614ed37c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Prefabs: {fileID: 11400000, guid: 9fbd3be61b1b911759f2e0e4d52dafb8, type: 2}
+  Prefab: {fileID: 11400000, guid: e2b9043e7f8756d9c914380e76e03b77, type: 2}
   LoadPoint: {fileID: 6861355488853584980}
 --- !u!114 &7649168981226902965
 MonoBehaviour:
@@ -648,6 +651,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4963f9df55b5e93487504b57e4d491a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &-5069248889722731002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8196213229133260831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &9053958080788308250

@@ -50,6 +50,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
         ui.gameObject.SetActive(true);
         ui.rootVisualElement.Q<Button>("button-exit").clicked += OnButtonExit;
+        ui.rootVisualElement.Q<Button>("button-save").clicked += OnButtonSave;
     }
 
     void OnButtonExit()
@@ -58,9 +59,23 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
         Application.Quit();
     }
 
+    void OnButtonSave()
+    {
+        if (ConnectionManager.ServerWorld is null)
+        {
+            Debug.LogWarning($"Cannot save: server world is null");
+        }
+        else
+        {
+            SaveManager.Save(ConnectionManager.ServerWorld, "save.bin");
+        }
+    }
+
     public void RefreshUI()
     {
         if (ui == null || !ui.gameObject.activeSelf || ConnectionManager.ClientOrDefaultWorld == null) return;
+
+        ui.rootVisualElement.Q<Button>("button-save").visible = ConnectionManager.ServerWorld != null;
 
         ScrollView connectionsList = ui.rootVisualElement.Q<ScrollView>("list-connections");
 
@@ -93,5 +108,6 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
     {
         refreshAt = float.PositiveInfinity;
         ui.rootVisualElement.Q<Button>("button-exit").clicked -= OnButtonExit;
+        ui.rootVisualElement.Q<Button>("button-save").clicked -= OnButtonSave;
     }
 }

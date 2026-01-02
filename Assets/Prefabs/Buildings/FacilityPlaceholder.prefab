@@ -361,6 +361,7 @@ GameObject:
   - component: {fileID: 3804656520141926503}
   - component: {fileID: 2551557377401731758}
   - component: {fileID: 5965012309056869600}
+  - component: {fileID: 2937512117378243675}
   m_Layer: 8
   m_Name: FacilityPlaceholder
   m_TagString: Untagged
@@ -508,6 +509,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a34d8fa7b716431598edabd9c399b05e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &2937512117378243675
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7709171237079450168}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &8435350588881264392

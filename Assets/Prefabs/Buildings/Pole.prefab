@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: -3944260934384083804}
   - component: {fileID: -6240172969677342294}
   - component: {fileID: -3574999813005951356}
+  - component: {fileID: 6216150996948289786}
   m_Layer: 0
   m_Name: Pole
   m_TagString: Untagged
@@ -168,6 +169,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c2562f427ba299938e5f811481e946b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Prefabs: {fileID: 0}
+  Prefab: {fileID: 0}
   Team: 0
 --- !u!114 &-3944260934384083804
 MonoBehaviour:
@@ -204,6 +207,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a34d8fa7b716431598edabd9c399b05e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &6216150996948289786
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1545415078347206922}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &8694413660970219775

@@ -22,6 +22,7 @@ GameObject:
   - component: {fileID: 4071649569041009695}
   - component: {fileID: -5014564730154132850}
   - component: {fileID: 6648902176329383294}
+  - component: {fileID: 6356345539999921960}
   m_Layer: 6
   m_Name: Facility
   m_TagString: Untagged
@@ -204,6 +205,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c2562f427ba299938e5f811481e946b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Prefabs: {fileID: 11400000, guid: 9fbd3be61b1b911759f2e0e4d52dafb8, type: 2}
+  Prefab: {fileID: 11400000, guid: 3ecf600c37977c6e6ac20c3d2957888c, type: 2}
   Team: 0
 --- !u!114 &4071649569041009695
 MonoBehaviour:
@@ -243,6 +246,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ConnectorPosition: {fileID: 326801749117777011}
+--- !u!114 &6356345539999921960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9140697471898167478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &6070396115500586433
 PrefabInstance:
   m_ObjectHideFlags: 0

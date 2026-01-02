@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
@@ -18,6 +19,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
     public static World ServerOrDefaultWorld => NetcodeBootstrap.ServerWorld ?? NetcodeBootstrap.LocalWorld ?? World.DefaultGameObjectInjectionWorld;
 #if UNITY_EDITOR && EDITOR_DEBUG
     [SerializeField] string DebugNickname = string.Empty;
+    [SerializeField] string DebugSavefile = string.Empty;
     [SerializeField] ushort DebugPort = default;
     [SerializeField] bool AutoHost = false;
     [SerializeField] bool Singleplayer = false;
@@ -33,7 +35,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         UI.rootVisualElement.Q<Button>("button-host").clicked += () =>
         {
             if (!HandleInput(out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
-            StartCoroutine(StartHostAsync(endpoint, nickname));
+            StartCoroutine(StartHostAsync(endpoint, nickname, null));
         };
         UI.rootVisualElement.Q<Button>("button-client").clicked += () =>
         {
@@ -43,7 +45,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         UI.rootVisualElement.Q<Button>("button-server").clicked += () =>
         {
             if (!HandleInput(out NetworkEndpoint endpoint, out _)) return;
-            StartCoroutine(StartServerAsync(endpoint));
+            StartCoroutine(StartServerAsync(endpoint, null));
         };
 
 #if UNITY_EDITOR && EDITOR_DEBUG
@@ -55,11 +57,11 @@ public class ConnectionManager : Singleton<ConnectionManager>
             }
             else if (NoClient)
             {
-                StartCoroutine(StartServerAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort)));
+                StartCoroutine(StartServerAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), string.IsNullOrWhiteSpace(DebugSavefile) || !File.Exists(DebugSavefile) ? null : DebugSavefile));
             }
             else
             {
-                StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), DebugNickname));
+                StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), DebugNickname, string.IsNullOrWhiteSpace(DebugSavefile) || !File.Exists(DebugSavefile) ? null : DebugSavefile));
             }
         }
 #endif
@@ -155,6 +157,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         if (e.State == ConnectionState.State.Disconnected)
         {
+            UI.enabled = true;
             UIManager.Instance.CloseAllUI(UI);
             ServerObjects.SetActive(false);
             ClientObjects.SetActive(false);
@@ -236,11 +239,15 @@ public class ConnectionManager : Singleton<ConnectionManager>
         UI.enabled = false;
 
 #if UNITY_EDITOR && EDITOR_DEBUG
-        if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
+        if (SetupManager.Instance.isActiveAndEnabled)
+        {
+            Debug.Log($" -> SetupManager.Instance.Setup()");
+            SetupManager.Instance.Setup();
+        }
 #endif
     }
 
-    public IEnumerator StartHostAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname)
+    public IEnumerator StartHostAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname, string? savefile)
     {
         Debug.Log($"START HOST ({endpoint})");
 
@@ -250,7 +257,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         NetcodeBootstrap.DestroyLocalWorld();
 
         Debug.Log($" -> NetcodeBootstrap.CreateServer({endpoint})");
-        yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint));
+        yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint, savefile));
 
         Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
@@ -279,7 +286,11 @@ public class ConnectionManager : Singleton<ConnectionManager>
         yield return new WaitForEndOfFrame();
 
 #if UNITY_EDITOR && EDITOR_DEBUG
-        if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
+        if (SetupManager.Instance.isActiveAndEnabled && savefile == null)
+        {
+            Debug.Log($" -> SetupManager.Instance.Setup()");
+            SetupManager.Instance.Setup();
+        }
 #endif
     }
 
@@ -307,7 +318,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
     }
 
-    public IEnumerator StartServerAsync(NetworkEndpoint endpoint)
+    public IEnumerator StartServerAsync(NetworkEndpoint endpoint, string? savefile)
     {
         Debug.Log($"START SERVER ({endpoint})");
 
@@ -317,7 +328,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         NetcodeBootstrap.DestroyLocalWorld();
 
         Debug.Log($" -> NetcodeBootstrap.CreateServer({endpoint})");
-        yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint));
+        yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint, savefile));
 
         Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
@@ -331,8 +342,11 @@ public class ConnectionManager : Singleton<ConnectionManager>
         UI.enabled = false;
 
 #if UNITY_EDITOR && EDITOR_DEBUG
-        Debug.Log($" -> SetupManager.Instance.Setup()");
-        if (SetupManager.Instance.isActiveAndEnabled) SetupManager.Instance.Setup();
+        if (SetupManager.Instance.isActiveAndEnabled && savefile == null)
+        {
+            Debug.Log($" -> SetupManager.Instance.Setup()");
+            SetupManager.Instance.Setup();
+        }
 #endif
     }
 

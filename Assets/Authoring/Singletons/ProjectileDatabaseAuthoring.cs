@@ -5,14 +5,14 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Projectile Database")]
 class ProjectileDatabaseAuthoring : MonoBehaviour
 {
-    [SerializeField, NotNull] ProjectileStats[]? Projectiles = default;
+    [SerializeField, NotNull] AllPrefabs? Prefabs = default;
 
-    public int Find(ProjectileStats? projectile)
+    public int Find(ProjectilePrefab? projectile)
     {
         if (projectile == null) return -1;
-        for (int i = 0; i < Projectiles.Length; i++)
+        for (int i = 0; i < Prefabs.Projectiles.Length; i++)
         {
-            if (Projectiles[i] != projectile) continue;
+            if (Prefabs.Projectiles[i] != projectile) continue;
             return i;
         }
         Debug.LogError($"Projectile {projectile} is not present in the database", projectile);
@@ -26,7 +26,7 @@ class ProjectileDatabaseAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<ProjectileDatabase>(entity, new());
             DynamicBuffer<BufferedProjectile> projectiles = AddBuffer<BufferedProjectile>(entity);
-            foreach (ProjectileStats projectile in authoring.Projectiles)
+            foreach (ProjectilePrefab projectile in authoring.Prefabs.Projectiles)
             {
                 projectiles.Add(new()
                 {

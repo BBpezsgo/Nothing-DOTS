@@ -141,6 +141,8 @@ public partial struct PlayerSystemServer : ISystem
 
             if (!exists)
             {
+                Debug.Log(string.Format("[Server] Player does not exists {0}", Marshal.As<FixedBytes16, Guid>(guid)));
+
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
                     StatusCode = SessionStatusCode.InvalidGuid,

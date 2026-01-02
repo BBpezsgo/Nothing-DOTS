@@ -1,9 +1,30 @@
 using System;
+using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Mathematics;
 
 public static partial class Utils
 {
+    public static int IndexOf<T>(this IEnumerable<T> collection, Func<T, bool> predicate)
+    {
+        int i = 0;
+        foreach (T item in collection)
+        {
+            if (predicate.Invoke(item)) return i;
+            i++;
+        }
+        return -1;
+    }
+
+    [BurstCompile]
+    public static unsafe void NextNonce(this ref Unity.Mathematics.Random random, byte* buffer, int length)
+    {
+        for (int i = 0; i < length; i++)
+        {
+            buffer[i] = random.NextAlphanumeric();
+        }
+    }
+
     [BurstCompile]
     public static byte NextAlphanumeric(this ref Unity.Mathematics.Random random) => random.NextInt(0, 2) switch
     {

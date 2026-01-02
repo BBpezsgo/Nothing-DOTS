@@ -19,8 +19,6 @@ public struct NetcodeEndPoint : IEquatable<NetcodeEndPoint>, IRpcCommandSerializ
         ConnectionEntity = connectionEntity;
     }
 
-    public Entity GetEntity()
-        => GetEntity(World.DefaultGameObjectInjectionWorld.EntityManager);
     public Entity GetEntity(EntityManager entityManager)
     {
         if (ConnectionEntity != Entity.Null) return ConnectionEntity;

@@ -5,10 +5,7 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Prefab Database")]
 class PrefabDatabaseAuthoring : MonoBehaviour
 {
-    [SerializeField, NotNull] GameObject? PlayerPrefab = default;
-    [SerializeField, NotNull] GameObject? CoreComputerPrefab = default;
-    [SerializeField, NotNull] GameObject? Builder = default;
-    [SerializeField, NotNull] GameObject? Resource = default;
+    [SerializeField, NotNull] AllPrefabs? Prefabs = default;
 
     class Baker : Baker<PrefabDatabaseAuthoring>
     {
@@ -17,10 +14,10 @@ class PrefabDatabaseAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<PrefabDatabase>(entity, new()
             {
-                Player = GetEntity(authoring.PlayerPrefab, TransformUsageFlags.Dynamic),
-                CoreComputer = GetEntity(authoring.CoreComputerPrefab, TransformUsageFlags.Dynamic),
-                Builder = GetEntity(authoring.Builder, TransformUsageFlags.Dynamic),
-                Resource = GetEntity(authoring.Resource, TransformUsageFlags.Dynamic),
+                Player = GetEntity(authoring.Prefabs.PlayerPrefab, TransformUsageFlags.Dynamic),
+                CoreComputer = GetEntity(authoring.Prefabs.CoreComputerPrefab, TransformUsageFlags.Dynamic),
+                Builder = GetEntity(authoring.Prefabs.Builder.Prefab, TransformUsageFlags.Dynamic),
+                Resource = GetEntity(authoring.Prefabs.Resource, TransformUsageFlags.Dynamic),
             });
         }
     }

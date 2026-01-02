@@ -13,7 +13,7 @@ public enum PlayerConnectionState : byte
     Disconnected,
 }
 
-public enum GameOutcome
+public enum GameOutcome : byte
 {
     None,
     Won,

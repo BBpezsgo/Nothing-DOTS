@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -44,6 +45,7 @@ public partial struct PlayerSystemClient : ISystem
             if (command.ValueRO.StatusCode.IsOk())
             {
                 _nickname = command.ValueRO.Nickname;
+                File.WriteAllBytes("session.bin", _guid.ToByteArray());
             }
 
             Debug.Log(string.Format("[Client] Session status: {0}\n  guid: {1}\n  nickname: {2}", _sessionStatus, _guid, _nickname));
@@ -57,12 +59,26 @@ public partial struct PlayerSystemClient : ISystem
             {
                 if (_guid == default)
                 {
-                    Debug.Log(string.Format("[Client] No player found, registering"));
-
-                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionRegisterRequestRpc()
+                    if (File.Exists("session.bin"))
                     {
-                        Nickname = _nickname,
-                    });
+                        _guid = new(File.ReadAllBytes("session.bin"));
+
+                        Debug.Log(string.Format("[Client] No player found, logging in with saved session {0}", _guid));
+
+                        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
+                        {
+                            Guid = Marshal.As<Guid, FixedBytes16>(_guid),
+                        });
+                    }
+                    else
+                    {
+                        Debug.Log(string.Format("[Client] No player found, registering"));
+
+                        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionRegisterRequestRpc()
+                        {
+                            Nickname = _nickname,
+                        });
+                    }
                 }
                 else
                 {

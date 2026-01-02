@@ -1,4 +1,3 @@
-using System;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
@@ -6,18 +5,7 @@ using UnityEngine;
 [AddComponentMenu("Authoring/UnitDatabase")]
 class UnitDatabaseAuthoring : MonoBehaviour
 {
-    [SerializeField, NotNull] Item[]? Units = default;
-
-    [Serializable]
-    class Item
-    {
-        [SerializeField, NotNull] public GameObject? Prefab = default;
-        [Min(0f)]
-        [SerializeField] public float ProductionTime = default;
-        [Min(0f)]
-        [SerializeField] public float RequiredResources = default;
-        [SerializeField] public ResearchAuthoring? RequiredResearch = default;
-    }
+    [SerializeField, NotNull] public AllPrefabs? Prefabs = default;
 
     class Baker : Baker<UnitDatabaseAuthoring>
     {
@@ -26,7 +14,7 @@ class UnitDatabaseAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<UnitDatabase>(entity, new());
             DynamicBuffer<BufferedUnit> units = AddBuffer<BufferedUnit>(entity);
-            foreach (Item item in authoring.Units)
+            foreach (UnitPrefab item in authoring.Prefabs.Units)
             {
                 units.Add(new()
                 {

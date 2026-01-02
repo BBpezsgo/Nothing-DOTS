@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -219,7 +220,7 @@ public partial class CompilerSystemServer : SystemBase
                 SubFileName = name,
                 CurrentProgress = value.Progress.Current,
                 TotalProgress = value.Progress.Total,
-            }, source.SourceFile.Source.GetEntity());
+            }, source.SourceFile.Source.GetEntity(EntityManager));
         }
     }
 
@@ -244,7 +245,7 @@ public partial class CompilerSystemServer : SystemBase
             AbsolutePosition = diagnostic.Position.AbsoluteRange.ToMutable(),
             Level = diagnostic.Level,
             Message = diagnostic.Message,
-        }, source.SourceFile.Source.GetEntity());
+        }, source.SourceFile.Source.GetEntity(EntityManager));
 
         foreach (Diagnostic subdiagnostic in diagnostic.SubErrors)
         {
@@ -276,13 +277,15 @@ public partial class CompilerSystemServer : SystemBase
                 Source = source.SourceFile,
                 Level = item.Level,
                 Message = item.Message,
-            }, source.SourceFile.Source.GetEntity());
+            }, source.SourceFile.Source.GetEntity(EntityManager));
         }
     }
 
     static readonly ProfilerMarker _markerCompiler = new("Compiler");
     static readonly ProfilerMarker _markerCompilerCompilation = new("Compiler.Compilation");
     static readonly ProfilerMarker _markerCompilerGeneration = new("Compiler.Generation");
+
+    static readonly ConcurrentDictionary<Uri, CacheItem> CompilerCache = new();
 
     public static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSourceServer source) args)
     {
@@ -402,6 +405,7 @@ public partial class CompilerSystemServer : SystemBase
                         SourceProviders = ImmutableArray.Create<ISourceProvider>(
                             new NetcodeSourceProvider(source, progresses, EnableLogging)
                         ),
+                        Cache = CompilerCache,
                     },
                     source.Diagnostics
                 );

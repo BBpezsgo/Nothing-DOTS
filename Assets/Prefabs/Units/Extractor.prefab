@@ -278,6 +278,7 @@ GameObject:
   - component: {fileID: 2488301921735300700}
   - component: {fileID: -8182890979665479971}
   - component: {fileID: 8318267316310773149}
+  - component: {fileID: 5082890867231000181}
   m_Layer: 6
   m_Name: Extractor
   m_TagString: Untagged
@@ -397,6 +398,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 335b1108307c5afc5b1fb5316cdfc71e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Prefabs: {fileID: 11400000, guid: 9fbd3be61b1b911759f2e0e4d52dafb8, type: 2}
+  Prefab: {fileID: 11400000, guid: cb78474dddaf45b3fb7b9d393e184956, type: 2}
   ExtractPoint: {fileID: 5531823854664646853}
 --- !u!114 &2692020928873932253
 MonoBehaviour:
@@ -475,6 +478,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4963f9df55b5e93487504b57e4d491a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &5082890867231000181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1994654560244389388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &5441661597332669052

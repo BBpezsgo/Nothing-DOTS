@@ -22,6 +22,7 @@ GameObject:
   - component: {fileID: 1099650667235307236}
   - component: {fileID: 5636674099620838031}
   - component: {fileID: 6939693532095284406}
+  - component: {fileID: 1297744320707112640}
   m_Layer: 6
   m_Name: Computer
   m_TagString: Untagged
@@ -192,6 +193,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c2562f427ba299938e5f811481e946b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Prefabs: {fileID: 11400000, guid: 9fbd3be61b1b911759f2e0e4d52dafb8, type: 2}
+  Prefab: {fileID: 11400000, guid: 16902f19e2053636ea4ce7c1fd7f6ccc, type: 2}
   Team: 0
 --- !u!114 &3894392865319758894
 MonoBehaviour:
@@ -243,6 +246,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ConnectorPosition: {fileID: 8957658871423060080}
+--- !u!114 &1297744320707112640
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1440773521679765917}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &7129070400378599844
 GameObject:
   m_ObjectHideFlags: 0

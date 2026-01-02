@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: -7098031594843421296}
   - component: {fileID: 2384997903409849443}
   - component: {fileID: 6632425690145875234}
+  - component: {fileID: 1365476065651807390}
   m_Layer: 8
   m_Name: RadarStationPlaceholder
   m_TagString: Untagged
@@ -168,6 +169,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.5, y: 1.0477405, z: 1.5}
   m_Center: {x: 0, y: 0.512779, z: 0}
+--- !u!114 &1365476065651807390
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289979656329170851}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1420347843143947351
 GameObject:
   m_ObjectHideFlags: 0

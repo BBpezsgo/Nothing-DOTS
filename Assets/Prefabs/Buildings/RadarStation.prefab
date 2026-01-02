@@ -123,6 +123,7 @@ GameObject:
   - component: {fileID: 3482363967099141446}
   - component: {fileID: 8179091391437972485}
   - component: {fileID: 3799779939614412750}
+  - component: {fileID: 6313998410875668265}
   m_Layer: 6
   m_Name: RadarStation
   m_TagString: Untagged
@@ -294,6 +295,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c2562f427ba299938e5f811481e946b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Prefabs: {fileID: 11400000, guid: 9fbd3be61b1b911759f2e0e4d52dafb8, type: 2}
+  Prefab: {fileID: 11400000, guid: debe93196177db0ad82efba7b1d99f4a, type: 2}
   Team: 0
 --- !u!114 &3447805605622345422
 MonoBehaviour:
@@ -358,6 +361,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ConnectorPosition: {fileID: 7692218783675751826}
+--- !u!114 &6313998410875668265
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1289979656329170851}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5601257594661473603
 GameObject:
   m_ObjectHideFlags: 0

@@ -22,6 +22,7 @@ GameObject:
   - component: {fileID: 7178615066619863551}
   - component: {fileID: 4404517891824282671}
   - component: {fileID: 1951249746935316775}
+  - component: {fileID: -1191735710831297487}
   m_Layer: 6
   m_Name: Factory
   m_TagString: Untagged
@@ -204,6 +205,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c2562f427ba299938e5f811481e946b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Prefabs: {fileID: 11400000, guid: 9fbd3be61b1b911759f2e0e4d52dafb8, type: 2}
+  Prefab: {fileID: 11400000, guid: f7f8bc1d5374c9afd928976d8b7f02b7, type: 2}
   Team: 0
 --- !u!114 &7178615066619863551
 MonoBehaviour:
@@ -243,6 +246,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ConnectorPosition: {fileID: 4010709259121684147}
+--- !u!114 &-1191735710831297487
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7887398088158380673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1578c6f4703a07a5a2ba978c753907e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &2632597475191654485
 PrefabInstance:
   m_ObjectHideFlags: 0
