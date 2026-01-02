@@ -19,18 +19,18 @@ public class ColliderAuthoring : MonoBehaviour
             }
 
             Bounds bounds = default;
-            static void ExtendBounds(ref Bounds bounds, GameObject gameObject)
+            static void ExtendBounds(ref Bounds bounds, Transform root, GameObject gameObject)
             {
                 foreach (MeshRenderer renderer in gameObject.GetComponents<MeshRenderer>())
                 {
-                    bounds.Encapsulate(renderer.bounds);
+                    bounds.Encapsulate(new Bounds(root.InverseTransformPoint(renderer.bounds.center), renderer.bounds.extents));
                 }
                 foreach (Transform child in gameObject.transform)
                 {
-                    ExtendBounds(ref bounds, child.gameObject);
+                    ExtendBounds(ref bounds, root, child.gameObject);
                 }
             }
-            ExtendBounds(ref bounds, authoring.gameObject);
+            ExtendBounds(ref bounds, authoring.transform, authoring.gameObject);
 
             AddComponent<MeshBounds>(entity, new()
             {

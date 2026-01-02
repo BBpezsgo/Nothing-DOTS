@@ -9,5 +9,4 @@ public struct BufferedProducingUnit : IBufferElementData
     [GhostField(SendData = false)] public Entity Prefab;
     [GhostField] public FixedString32Bytes Name;
     [GhostField(Quantization = 100)] public float ProductionTime;
-    [GhostField(Quantization = 100)] public float CurrentTime;
 }

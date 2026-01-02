@@ -5,7 +5,7 @@ using Unity.NetCode;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial class ProcessorSourceSystem : SystemBase
 {
-    const bool EnableLogging = true;
+    const bool EnableLogging = false;
 
     protected override void OnUpdate()
     {

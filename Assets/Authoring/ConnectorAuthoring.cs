@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Connector")]
 class ConnectorAuthoring : MonoBehaviour
 {
-    [SerializeField] Transform ConnectorPosition;
+    [SerializeField, NotNull] Transform? ConnectorPosition = default;
 
     class Baker : Baker<ConnectorAuthoring>
     {
