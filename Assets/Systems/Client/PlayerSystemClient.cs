@@ -42,13 +42,20 @@ public partial struct PlayerSystemClient : ISystem
             _sessionStatus = command.ValueRO.StatusCode;
             _guid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
 
+            Debug.Log(string.Format("[Client] Session status: {0}\n  guid: {1}\n  nickname: {2}", _sessionStatus, _guid, _nickname));
+
             if (command.ValueRO.StatusCode.IsOk())
             {
                 _nickname = command.ValueRO.Nickname;
                 File.WriteAllBytes("session.bin", _guid.ToByteArray());
             }
+            else if (command.ValueRO.StatusCode == SessionStatusCode.InvalidGuid)
+            {
+                Debug.Log(string.Format("[Client] Invalid guid, registering new player"));
 
-            Debug.Log(string.Format("[Client] Session status: {0}\n  guid: {1}\n  nickname: {2}", _sessionStatus, _guid, _nickname));
+                _requestSent = false;
+                _guid = default;
+            }
         }
 
         if (connection.CurrentState != ConnectionState.State.Connected) return;
@@ -59,7 +66,7 @@ public partial struct PlayerSystemClient : ISystem
             {
                 if (_guid == default)
                 {
-                    if (File.Exists("session.bin"))
+                    if (File.Exists("session.bin") && _sessionStatus != SessionStatusCode.InvalidGuid)
                     {
                         _guid = new(File.ReadAllBytes("session.bin"));
 
@@ -148,7 +155,7 @@ public partial struct PlayerSystemClient : ISystem
         }
 
         player = default;
-        Debug.LogWarning("No local player found");
+        //Debug.LogWarning("No local player found");
         return false;
     }
 
@@ -176,7 +183,7 @@ public partial struct PlayerSystemClient : ISystem
         }
 
         player = default;
-        Debug.LogWarning("No local player found");
+        //Debug.LogWarning("No local player found");
         return false;
     }
 
