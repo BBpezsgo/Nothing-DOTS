@@ -337,10 +337,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
         _terminalBuilder.Append(processor.StdOutBuffer.ToString());
-        CompiledSourceClient? clientSource = null;
-        CompiledSourceServer? serverSource = null;
-        if (processor.SourceFile == default ||
-            !(ConnectionManager.ClientOrDefaultWorld.IsClient() ? ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources.TryGetValue(processor.SourceFile, out clientSource) : ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources.TryGetValue(processor.SourceFile, out serverSource)))
+        if (processor.SourceFile == default)
         {
             if (_scheduledSource != null)
             {
@@ -357,7 +354,21 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         }
         else
         {
-            ICompiledSource source = ((clientSource as ICompiledSource) ?? serverSource)!;
+            ICompiledSource? source = null;
+            if (ConnectionManager.ClientOrDefaultWorld.IsClient())
+            {
+                if (ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources.TryGetValue(processor.SourceFile, out CompiledSourceClient? clientSource))
+                {
+                    source = clientSource;
+                }
+            }
+            else
+            {
+                if (ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources.TryGetValue(processor.SourceFile, out CompiledSourceServer? serverSource))
+                {
+                    source = serverSource;
+                }
+            }
 
             _scheduledSource = null;
             const string SpinnerChars = "-\\|/";
@@ -400,30 +411,33 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                         }
                     });
             }
-            SyncDiagnosticItems(ui_scrollDiagnostics, source.Diagnostics, default);
 
-            if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
+            if (source != null)
             {
-                ui_scrollProgresses.SyncList(source.SubFiles.ToArray(), ProgressItem, (file, element, recycled) =>
+                SyncDiagnosticItems(ui_scrollDiagnostics, source.Diagnostics, default);
+                if (source.Status != CompilationStatus.Done && !float.IsNaN(source.Progress))
                 {
-                    ProgressBar progressBar = element.Q<ProgressBar>();
-                    progressBar.title = file.Key.Name.ToString();
-                    if (file.Value.Progress.Total == 0)
+                    ui_scrollProgresses.SyncList(source.SubFiles.ToArray(), ProgressItem, (file, element, recycled) =>
                     {
-                        progressBar.value = 0f;
-                    }
-                    else
-                    {
-                        progressBar.value = (float)file.Value.Progress.Current / (float)file.Value.Progress.Total;
-                    }
-                });
+                        ProgressBar progressBar = element.Q<ProgressBar>();
+                        progressBar.title = file.Key.Name.ToString();
+                        if (file.Value.Progress.Total == 0)
+                        {
+                            progressBar.value = 0f;
+                        }
+                        else
+                        {
+                            progressBar.value = (float)file.Value.Progress.Current / (float)file.Value.Progress.Total;
+                        }
+                    });
 
-                ui_progressCompilation.value = source.Progress;
+                    ui_progressCompilation.value = source.Progress;
 
-                _requestedTabSwitch = (Tab.Files, Tab.Progress);
+                    _requestedTabSwitch = (Tab.Files, Tab.Progress);
+                }
             }
 
-            switch (source.Status)
+            switch (source == null ? CompilationStatus.None : source.Status)
             {
                 case CompilationStatus.Secuedued:
                 {
@@ -456,8 +470,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     break;
                 }
                 case CompilationStatus.Done:
+                case CompilationStatus.None:
                 {
-                    if (source.IsSuccess)
+                    if (source != null && source.IsSuccess)
                     {
                         _terminal ??= new TerminalEmulator(ui_labelTerminal);
                         _terminal.Update();
@@ -575,16 +590,30 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 throw new UnreachableException();
                         }
                     }
-                    else
+                    else if (source == null)
+                    {
+                        ui_progressCompilation.title = "Remote source";
+                        ui_progressCompilation.value = 0f;
+                        SetProgressStatus(null);
+                    }
+                    else if (!source.IsSuccess)
                     {
                         ui_progressCompilation.title = "Compile failed";
+                        ui_progressCompilation.value = 1f;
+                        SetProgressStatus("error");
+
+                        _requestedTabSwitch = (Tab.Progress, Tab.Diagnostics);
+                    }
+                    else
+                    {
+                        ui_progressCompilation.title = "Invalid source";
+                        ui_progressCompilation.value = 1f;
                         SetProgressStatus("error");
 
                         _requestedTabSwitch = (Tab.Progress, Tab.Diagnostics);
                     }
                     break;
                 }
-                case CompilationStatus.None:
                 default: throw new UnreachableException();
             }
         }
