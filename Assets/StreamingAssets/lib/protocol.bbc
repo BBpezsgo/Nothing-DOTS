@@ -91,7 +91,7 @@ export void send_verification_request(Unit* unit)
 
         send(&packet as u8[]*, sizeof(VerificationRequestPacket));
     }
-    elseif (1)
+    else if (1)
     {
         if (Logs)
         {
@@ -154,7 +154,7 @@ export int update_unit(List<Unit>* units, Unit unit)
             units.add(unit);
         }
     }
-    elseif (distanceSqr < 2f * 2f)
+    else if (distanceSqr < 2f * 2f)
     {
         Unit* existingUnit = &units.raw()[existing];
         if (existingUnit.position_records >= 255)

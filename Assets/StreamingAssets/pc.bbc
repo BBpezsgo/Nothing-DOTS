@@ -301,7 +301,7 @@ while (1)
                 }
                 debug(p, RED);
             }
-            elseif (time() >= (&enemies).raw()[i].recorded + 1f)
+            else if (time() >= (&enemies).raw()[i].recorded + 1f)
             {
                 debug(p, YELLOW);
             }

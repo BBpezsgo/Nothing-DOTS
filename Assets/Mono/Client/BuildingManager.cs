@@ -288,14 +288,9 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
                 WirePlaceholder.material.color = isValid ? ValidHologramColor : InvalidHologramColor;
                 WirePlaceholder.material.SetEmissionColor(isValid ? ValidHologramColor : InvalidHologramColor, HologramEmission);
 
-                float l = math.distance(SelectedConnectorPosition, endPosition);
-                WirePlaceholder.positionCount = (int)Math.Ceiling(l) + 1;
-                for (int i = 0; i < l; i++)
-                {
-                    float3 p = math.lerp(SelectedConnectorPosition, endPosition, i / l);
-                    WirePlaceholder.SetPosition(i, p);
-                }
-                WirePlaceholder.SetPosition(WirePlaceholder.positionCount - 1, endPosition);
+                Vector3[] points = WireRendererSystem.GenerateWire(SelectedConnectorPosition, endPosition);
+                WirePlaceholder.positionCount = points.Length;
+                WirePlaceholder.SetPositions(points);
             }
         }
     }

@@ -121,9 +121,9 @@ const float ProjectileV = 40f;
 const float ProjectileV2 = ProjectileV * ProjectileV;
 const float ProjectileV4 = ProjectileV2 * ProjectileV2;
 
-u8 solve_ballistic_arc(float3 selfWorldPosition, float3 targetPosition, float3* shootDirection)
+u8 solve_ballistic_arc(float3 selfWorldPosition, float3 targetWorldPosition, float3* shootDirection)
 {
-    float3 diff = targetPosition - selfWorldPosition;
+    float3 diff = targetWorldPosition - selfWorldPosition;
     float groundDistance = sqrt(diff.x * diff.x + diff.z * diff.z);
 
     float root = ProjectileV4 - G * (G * groundDistance * groundDistance + 2.0 * diff.y * ProjectileV2);
@@ -157,7 +157,7 @@ export u8 targetat(float3 target, float3* targetedPosition)
         targetedPosition.z != targetLocal.z)
     {
         float3 result;
-        if (!solve_ballistic_arc(GPS.position + (toglobald(new float3(0.0, 1.0, 0.0)) * 0.5), target, &result))
+        if (!solve_ballistic_arc(toglobal(new float3(0.0, 0.436 + 0.073, 0.077)), target, &result))
         {
             return (u8)0;
         }

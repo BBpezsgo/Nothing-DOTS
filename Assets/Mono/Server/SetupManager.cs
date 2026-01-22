@@ -100,14 +100,20 @@ public class SetupManager : Singleton<SetupManager>
 
                 Entity newUnit = world.EntityManager.Instantiate(prefab);
                 world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(new float3(unitSetup.Spawn.x, PositionY, unitSetup.Spawn.y)));
-                world.EntityManager.SetComponentData(newUnit, new Processor()
+                if (world.EntityManager.HasComponent<Processor>(newUnit))
                 {
-                    SourceFile = new FileId(unitSetup.Script, NetcodeEndPoint.Server),
-                });
-                world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+                    world.EntityManager.SetComponentData(newUnit, new Processor()
+                    {
+                        SourceFile = new FileId(unitSetup.Script, NetcodeEndPoint.Server),
+                    });
+                }
+                if (world.EntityManager.HasComponent<UnitTeam>(newUnit))
                 {
-                    Team = Team,
-                });
+                    world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+                    {
+                        Team = Team,
+                    });
+                }
             }
         }
 
@@ -166,14 +172,20 @@ public class SetupManager : Singleton<SetupManager>
                     new float3(generated.x, PositionY, generated.y)
                 ));
             }
-            world.EntityManager.SetComponentData(newUnit, new Processor()
+            if (world.EntityManager.HasComponent<Processor>(newUnit))
             {
-                SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
-            });
-            world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+                world.EntityManager.SetComponentData(newUnit, new Processor()
+                {
+                    SourceFile = new FileId(GeneratedScript, NetcodeEndPoint.Server),
+                });
+            }
+            if (world.EntityManager.HasComponent<UnitTeam>(newUnit))
             {
-                Team = Team,
-            });
+                world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+                {
+                    Team = Team,
+                });
+            }
         }
     }
 

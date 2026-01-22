@@ -1,5 +1,7 @@
+using System.Collections;
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
+using SaintsField.Playa;
+using Unity.EditorCoroutines.Editor;
 using UnityEngine;
 
 class HologramGenerator : MonoBehaviour
@@ -8,20 +10,28 @@ class HologramGenerator : MonoBehaviour
     [SerializeField, NotNull] GameObject? Prefab = default;
     [SerializeField, NotNull] Material? Material = default;
 
-    [Button("Generate", EButtonEnableMode.Editor)]
-    public void Generate()
+    [Button]
+    public void Generate() => EditorCoroutineUtility.StartCoroutine(GenerateImpl(), this);
+
+    IEnumerator GenerateImpl()
     {
         transform.position = default;
+
+        yield return new WaitForEndOfFrame();
 
         for (int i = 0; i < transform.childCount; i++)
         {
             DestroyImmediate(transform.GetChild(i).gameObject, false);
         }
 
+        yield return new WaitForEndOfFrame();
+
         foreach (UnityEngine.Collider collider in GetComponents<UnityEngine.Collider>())
         {
             DestroyImmediate(collider, false);
         }
+
+        yield return new WaitForEndOfFrame();
 
         if (Prefab.TryGetComponent(out BoxCollider boxCollider))
         {
@@ -35,6 +45,8 @@ class HologramGenerator : MonoBehaviour
             newSphereCollider.center = sphereCollider.center;
             newSphereCollider.radius = sphereCollider.radius;
         }
+
+        yield return new WaitForEndOfFrame();
 
         MeshRenderer[] renderers = Prefab.GetComponentsInChildren<MeshRenderer>(false);
         foreach (MeshRenderer renderer in renderers)
@@ -53,6 +65,8 @@ class HologramGenerator : MonoBehaviour
             newObject.transform.SetPositionAndRotation(renderer.transform.position, renderer.transform.rotation);
             newObject.transform.localScale = renderer.transform.localScale;
         }
+
+        yield return new WaitForEndOfFrame();
     }
 #endif
 }

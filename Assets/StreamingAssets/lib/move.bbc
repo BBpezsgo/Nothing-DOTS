@@ -27,19 +27,19 @@ export void move_to(f32 targetX, f32 targetZ)
         Vehicle.steer = (i8)0;
         Vehicle.forward = (i8)0;
     }
-    elseif (t4 > 0.1f)
+    else if (t4 > 0.1f)
     {
         Vehicle.steer = (i8)-128;
     }
-    elseif (t4 < -0.1f)
+    else if (t4 < -0.1f)
     {
         Vehicle.steer = (i8)127;
     }
-    elseif (t4 > 0.05f)
+    else if (t4 > 0.05f)
     {
         Vehicle.steer = (i8)-64;
     }
-    elseif (t4 < -0.05f)
+    else if (t4 < -0.05f)
     {
         Vehicle.steer = (i8)64;
     }

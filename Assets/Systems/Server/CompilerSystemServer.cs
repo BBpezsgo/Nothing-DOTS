@@ -224,10 +224,17 @@ public partial class CompilerSystemServer : SystemBase
         }
     }
 
-    void SendDiagnostic(Diagnostic diagnostic, CompiledSourceServer source, EntityCommandBuffer commandBuffer, Dictionary<IDiagnostic, uint> diagnosticIds, ref uint diagnosticIdCounter, uint parent)
+    void SendDiagnostic(IDiagnostic diagnostic, CompiledSourceServer source, EntityCommandBuffer commandBuffer, Dictionary<IDiagnostic, uint> diagnosticIds, ref uint diagnosticIdCounter, uint parent)
     {
-        if (diagnostic.File is null) return;
-        if (!FileId.FromUri(diagnostic.File, out FileId file)) return;
+        FileId file = default;
+        Position position = default;
+
+        if (diagnostic is Diagnostic _diagnostic)
+        {
+            if (_diagnostic.File is null) return;
+            if (!FileId.FromUri(_diagnostic.File, out file)) return;
+            position = _diagnostic.Position;
+        }
 
         if (!diagnosticIds.TryGetValue(diagnostic, out uint id))
         {
@@ -241,13 +248,13 @@ public partial class CompilerSystemServer : SystemBase
             Parent = parent,
             Source = source.SourceFile,
             FileName = file,
-            Position = diagnostic.Position.Range.ToMutable(),
-            AbsolutePosition = diagnostic.Position.AbsoluteRange.ToMutable(),
+            Position = position.Range.ToMutable(),
+            AbsolutePosition = position.AbsoluteRange.ToMutable(),
             Level = diagnostic.Level,
             Message = diagnostic.Message,
         }, source.SourceFile.Source.GetEntity(EntityManager));
 
-        foreach (Diagnostic subdiagnostic in diagnostic.SubErrors)
+        foreach (IDiagnostic subdiagnostic in diagnostic.SubErrors)
         {
             SendDiagnostic(subdiagnostic, source, commandBuffer, diagnosticIds, ref diagnosticIdCounter, id);
         }
@@ -484,7 +491,8 @@ public partial class CompilerSystemServer : SystemBase
                 source.IsSuccess = false;
                 source.Diagnostics.Add(new DiagnosticWithoutContext(
                     DiagnosticsLevel.Error,
-                    exception.Message
+                    exception.Message,
+                    ImmutableArray<IDiagnostic>.Empty
                 ));
             }
         }

@@ -117,6 +117,69 @@ public partial class WireRendererSystem : SystemBase
         LinesPool = new(CreateLine, OnGetLine, OnReleaseLine);
     }
 
+    const float WireResolution = 1f;
+    const float WireCatenary = 20f;
+
+    public static Vector3[] GenerateWire(float3 startPosition, float3 endPosition)
+    {
+        float distance = Vector3.Distance(startPosition, endPosition);
+        int nPoints = (int)((distance / WireResolution) + 1);
+
+        Vector3[] wirePoints = new Vector3[nPoints];
+        GenerateWire(startPosition, endPosition, wirePoints);
+        return wirePoints;
+    }
+
+    static float Catenary(float a, float t) => a * MathF.Cosh(t / a);
+
+    public static void GenerateWire(float3 startPosition, float3 endPosition, Span<Vector3> wirePoints)
+    {
+        float distance = math.distance(startPosition, endPosition);
+        float wireResolution = distance / (wirePoints.Length - 1);
+
+        wirePoints[0] = startPosition;
+        wirePoints[^1] = endPosition;
+
+        float3 dir = math.normalize(endPosition - startPosition);
+        float offset = Catenary(WireCatenary, -distance / 2);
+
+        for (int i = 1; i < wirePoints.Length - 1; ++i)
+        {
+            float3 wirePoint = startPosition + (i * wireResolution * dir);
+
+            float x = (i * wireResolution) - (distance / 2);
+            wirePoint.y -= offset - Catenary(WireCatenary, x);
+
+            wirePoints[i] = wirePoint;
+        }
+    }
+
+    public static void DrawWire(float3 startPosition, float3 endPosition, Color color, float duration, bool depthTest)
+    {
+        float wireResolution = WireResolution;
+        float distance = math.distance(startPosition, endPosition);
+        int nPoints = (int)((distance / wireResolution) + 1);
+        wireResolution = distance / (nPoints - 1);
+
+        Vector3 p = startPosition;
+
+        float3 dir = math.normalize(endPosition - startPosition);
+        float offset = Catenary(WireCatenary, -distance / 2);
+
+        for (int i = 1; i < nPoints - 1; ++i)
+        {
+            float3 wirePoint = startPosition + (i * wireResolution * dir);
+
+            float t = (i * wireResolution) - (distance / 2);
+            wirePoint.y -= offset - Catenary(WireCatenary, t);
+
+            Debug.DrawLine(p, wirePoint, color, duration, depthTest);
+            p = wirePoint;
+        }
+
+        Debug.DrawLine(p, endPosition, color, duration, depthTest);
+    }
+
     protected override void OnUpdate()
     {
         Settings = SystemAPI.ManagedAPI.GetSingleton<WiresSettings>();
@@ -174,14 +237,9 @@ public partial class WireRendererSystem : SystemBase
                 float3 startPosition = connectorPos1.ValueRO.TransformPoint(connector.ValueRO.ConnectorPosition);
                 float3 endPosition = connectorPos2;
 
-                float l = math.distance(startPosition, endPosition);
-                line.positionCount = (int)math.ceil(l) + 1;
-                for (int i = 0; i < l; i++)
-                {
-                    float3 p = math.lerp(startPosition, endPosition, i / l);
-                    line.SetPosition(i, p);
-                }
-                line.SetPosition(line.positionCount - 1, endPosition);
+                Vector3[] points = GenerateWire(startPosition, endPosition);
+                line.positionCount = points.Length;
+                line.SetPositions(points);
             }
         }
     }

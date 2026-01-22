@@ -63,7 +63,7 @@ partial struct WiredTransmissionSystem : ISystem
 #if DEBUG_LINES
                             float3 a = SystemAPI.GetComponentRO<LocalTransform>(next).ValueRO.TransformPoint(SystemAPI.GetComponentRO<Connector>(next).ValueRO.ConnectorPosition);
                             float3 b = SystemAPI.GetComponentRO<LocalTransform>(wire.EntityB).ValueRO.TransformPoint(SystemAPI.GetComponentRO<Connector>(wire.EntityB).ValueRO.ConnectorPosition);
-                            Debug.DrawLine(a, b, Color.white, 0.1f, false);
+                            WireRendererSystem.DrawWire(a, b, Color.white, 0.1f, false);
 #endif
                             openSet.Enqueue(wire.EntityB);
                         }
@@ -75,7 +75,7 @@ partial struct WiredTransmissionSystem : ISystem
 #if DEBUG_LINES
                             float3 a = SystemAPI.GetComponentRO<LocalTransform>(next).ValueRO.TransformPoint(SystemAPI.GetComponentRO<Connector>(next).ValueRO.ConnectorPosition);
                             float3 b = SystemAPI.GetComponentRO<LocalTransform>(wire.EntityA).ValueRO.TransformPoint(SystemAPI.GetComponentRO<Connector>(wire.EntityA).ValueRO.ConnectorPosition);
-                            Debug.DrawLine(a, b, Color.white, 0.1f, false);
+                            WireRendererSystem.DrawWire(a, b, Color.white, 0.1f, false);
 #endif
                             openSet.Enqueue(wire.EntityA);
                         }
