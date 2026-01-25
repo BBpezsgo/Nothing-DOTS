@@ -407,6 +407,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fe9faf46ca8a62068ad2e7ff17dd3d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  CyclesPerTick: 200
   StatusLED: {fileID: 5531386286674872900}
   NetworkReceiveLED: {fileID: 2880261923365986716}
   NetworkSendLED: {fileID: 5741459364462296722}

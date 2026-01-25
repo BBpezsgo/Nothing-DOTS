@@ -82,6 +82,7 @@ struct Processor : IComponentData
     public long CompiledSourceVersion;
     public ProcessorSource Source;
 
+    public int CyclesPerTick;
     public Registers Registers;
     public ProcessorMemory Memory;
     public HotFunctions HotFunctions;

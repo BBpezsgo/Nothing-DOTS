@@ -1,10 +1,20 @@
 using System;
 using System.Collections.Generic;
 using Unity.Burst;
+using Unity.Entities;
 using Unity.Mathematics;
 
 public static partial class Utils
 {
+    public delegate void ModifyComponentCallback<T>(ref T component) where T : unmanaged, IComponentData;
+
+    public static void ModifyComponent<T>(this EntityManager entityManager, Entity entity, ModifyComponentCallback<T> callback) where T : unmanaged, IComponentData
+    {
+        T component = entityManager.GetComponentData<T>(entity);
+        callback(ref component);
+        entityManager.SetComponentData(entity, component);
+    }
+
     public static int IndexOf<T>(this IEnumerable<T> collection, Func<T, bool> predicate)
     {
         int i = 0;

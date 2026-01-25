@@ -81,6 +81,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fe9faf46ca8a62068ad2e7ff17dd3d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  CyclesPerTick: 150
   StatusLED: {fileID: 5184125261067671261}
   NetworkReceiveLED: {fileID: 3227504257845984517}
   NetworkSendLED: {fileID: 4944699706832134667}

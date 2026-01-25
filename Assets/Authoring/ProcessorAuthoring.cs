@@ -5,6 +5,7 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Processor")]
 class ProcessorAuthoring : MonoBehaviour
 {
+    [SerializeField] int CyclesPerTick;
     [SerializeField] GameObject? StatusLED = default;
     [SerializeField] GameObject? NetworkReceiveLED = default;
     [SerializeField] GameObject? NetworkSendLED = default;
@@ -19,9 +20,11 @@ class ProcessorAuthoring : MonoBehaviour
     {
         public override void Bake(ProcessorAuthoring authoring)
         {
+            if (authoring.CyclesPerTick == 0) Debug.LogWarning($"{nameof(CyclesPerTick)} is 0 on {authoring.gameObject}", authoring);
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Processor>(entity, new()
             {
+                CyclesPerTick = authoring.CyclesPerTick,
                 StatusLED = new(authoring.StatusLED != null ? GetEntity(authoring.StatusLED, TransformUsageFlags.Dynamic) : Entity.Null),
                 NetworkReceiveLED = new(authoring.NetworkReceiveLED != null ? GetEntity(authoring.NetworkReceiveLED, TransformUsageFlags.Dynamic) : Entity.Null),
                 NetworkSendLED = new(authoring.NetworkSendLED != null ? GetEntity(authoring.NetworkSendLED, TransformUsageFlags.Dynamic) : Entity.Null),

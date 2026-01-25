@@ -102,16 +102,16 @@ public class SetupManager : Singleton<SetupManager>
                 world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(new float3(unitSetup.Spawn.x, PositionY, unitSetup.Spawn.y)));
                 if (world.EntityManager.HasComponent<Processor>(newUnit))
                 {
-                    world.EntityManager.SetComponentData(newUnit, new Processor()
+                    world.EntityManager.ModifyComponent(newUnit, (ref Processor v) =>
                     {
-                        SourceFile = new FileId(unitSetup.Script, NetcodeEndPoint.Server),
+                        v.SourceFile = new FileId(unitSetup.Script, NetcodeEndPoint.Server);
                     });
                 }
                 if (world.EntityManager.HasComponent<UnitTeam>(newUnit))
                 {
-                    world.EntityManager.SetComponentData(newUnit, new UnitTeam()
+                    world.EntityManager.ModifyComponent(newUnit, (ref UnitTeam v) =>
                     {
-                        Team = Team,
+                        v.Team = Team;
                     });
                 }
             }

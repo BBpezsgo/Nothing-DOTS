@@ -417,7 +417,7 @@ partial struct ProcessorJob : IJobEntity
 
         //using (var _2 = __ProcessorJobInner.Auto())
         {
-            for (int i = 0; i < ProcessorSystemServer.CyclesPerTick; i++)
+            for (int i = 0; i < processor.CyclesPerTick; i++)
             {
                 if (processorState.Signal != Signal.None)
                 {
