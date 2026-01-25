@@ -7,34 +7,35 @@ using UnityEngine.InputSystem;
 
 public class CameraControl : Singleton<CameraControl>
 {
-    [NotNull] CameraInput? cameraActions = default;
-    [NotNull] InputAction? movement = default;
-    [NotNull] InputAction? keyZoom = default;
-    [NotNull] Transform? cameraTransform = default;
+    [NotNull] CameraInput? CameraActions = default;
+    [NotNull] InputAction? Movement = default;
+    [NotNull] InputAction? KeyZoom = default;
+    [NotNull] Transform? CameraTransform = default;
 
-    [Header("Horizontal Translation")]
+    [Header("Movement")]
 
-    [SerializeField] float maxSpeed = 5f;
-    [SerializeField, ReadOnly] float speed;
-    [SerializeField] float acceleration = 10f;
-    [SerializeField] float damping = 15f;
+    [SerializeField] float MaxSpeed = 20f;
+    [SerializeField, ReadOnly] float Speed;
+    [SerializeField] float Acceleration = 10f;
+    [SerializeField] float Damping = 10f;
 
-    [Header("Vertical Translation")]
+    [Header("Zoom")]
 
-    [SerializeField] float stepSize = 2f;
-    [SerializeField] float zoomDampening = 7.5f;
-    [SerializeField] float minHeight = 5f;
-    [SerializeField] float maxHeight = 50f;
+    [SerializeField] float KeyZoomSpeed = 0.06f;
+    [SerializeField] float WheelZoomSpeed = 80f;
+    [SerializeField] float ZoomDampening = 7.5f;
+    [SerializeField] float MinHeight = 1f;
+    [SerializeField] float MaxHeight = 500f;
 
     [Header("Rotation")]
 
-    [SerializeField] float maxRotationSpeed = 1f;
+    [SerializeField] float MaxRotationSpeed = 0.2f;
 
     [Header("Edge Movement")]
 
     [Range(0f, 0.1f)]
-    [SerializeField] float edgeTolerance = 0.05f;
-    [SerializeField] bool useScreenEdge = true;
+    [SerializeField] float EdgeTolerance = 0.05f;
+    [SerializeField] bool UseScreenEdge = true;
 
     public bool IsDragging
     {
@@ -65,7 +66,7 @@ public class CameraControl : Singleton<CameraControl>
     }
 
     Vector3 velocity;
-    float zoomHeight;
+    float ZoomHeight;
     Vector3 horizontalVelocity;
     Vector3 lastPosition;
     Vector3 startDragWorld;
@@ -75,30 +76,30 @@ public class CameraControl : Singleton<CameraControl>
     protected override void Awake()
     {
         base.Awake();
-        cameraActions = new CameraInput();
-        cameraTransform = GetComponentInChildren<Camera>().transform;
+        CameraActions = new CameraInput();
+        CameraTransform = GetComponentInChildren<Camera>().transform;
     }
 
     void OnEnable()
     {
-        zoomHeight = cameraTransform.localPosition.y;
+        ZoomHeight = CameraTransform.localPosition.y;
 
         lastPosition = transform.position;
-        movement = cameraActions.Camera.Movement;
-        keyZoom = cameraActions.Camera.KeyZoom;
+        Movement = CameraActions.Camera.Movement;
+        KeyZoom = CameraActions.Camera.KeyZoom;
 
-        cameraActions.Camera.Rotate.performed += RotateCamera;
-        cameraActions.Camera.ScrollZoom.performed += ZoomCameraWithWheel;
+        CameraActions.Camera.Rotate.performed += RotateCamera;
+        CameraActions.Camera.ScrollZoom.performed += ZoomWithWheel;
 
-        cameraActions.Camera.Enable();
+        CameraActions.Camera.Enable();
     }
 
     void OnDisable()
     {
-        cameraActions.Camera.Rotate.performed -= RotateCamera;
-        cameraActions.Camera.ScrollZoom.performed -= ZoomCameraWithWheel;
+        CameraActions.Camera.Rotate.performed -= RotateCamera;
+        CameraActions.Camera.ScrollZoom.performed -= ZoomWithWheel;
 
-        cameraActions.Camera.Disable();
+        CameraActions.Camera.Disable();
     }
 
     void Update()
@@ -111,33 +112,33 @@ public class CameraControl : Singleton<CameraControl>
         //    return;
         //}
 
-        GetKeyboardMovement();
-        GetKeyZoom();
-        ZoomCameraWithMouse();
-        if (useScreenEdge)
-        { CheckMouseAtScreenEdge(); }
-        DragCamera();
+        MoveWithKeys();
+        ZoomWithKeys();
+        ZoomWithMouse();
+        if (UseScreenEdge)
+        { MoveWithScreenEdge(); }
+        MoveWithDrag();
 
         UpdateVelocity();
-        UpdateCameraZoom();
-        UpdateBasePosition();
+        ApplyZoom();
+        ApplyPosition();
 
         if (TerrainGenerator.Instance.TrySample(new float2(transform.position.x, transform.position.z), out float height))
         {
             transform.position = new Vector3(transform.position.x, Mathf.Lerp(transform.position.y, height, 5f * Time.deltaTime), transform.position.z);
         }
 
-        if (TerrainGenerator.Instance.TrySample(new float2(cameraTransform.position.x, cameraTransform.position.z), out height))
+        if (TerrainGenerator.Instance.TrySample(new float2(CameraTransform.position.x, CameraTransform.position.z), out height))
         {
-            if (cameraTransform.position.y <= height + minHeight)
+            if (CameraTransform.position.y <= height + MinHeight)
             {
-                cameraTransform.position = new Vector3(cameraTransform.position.x, height + minHeight, cameraTransform.position.z);
+                CameraTransform.position = new Vector3(CameraTransform.position.x, height + MinHeight, CameraTransform.position.z);
             }
         }
 
         if (ConnectionManager.ClientWorld != null && Time.timeSinceLevelLoad > 5f)
         {
-            PlayerPositionSystemClient.GetInstance(ConnectionManager.ClientWorld.Unmanaged).CurrentPosition = cameraTransform.position;
+            PlayerPositionSystemClient.GetInstance(ConnectionManager.ClientWorld.Unmanaged).CurrentPosition = CameraTransform.position;
         }
     }
 
@@ -151,65 +152,20 @@ public class CameraControl : Singleton<CameraControl>
         lastPosition = transform.position;
     }
 
-    void GetKeyboardMovement()
-    {
-        if (UI.IsUIFocused) return;
-        if (startDragWorld != default) return;
-
-        Vector3 inputValue =
-            movement.ReadValue<Vector2>().x * GetCameraRight() +
-            movement.ReadValue<Vector2>().y * GetCameraForward();
-        inputValue.Normalize();
-
-        if (inputValue.sqrMagnitude <= 0.1f) return;
-
-        if (Keyboard.current.shiftKey.isPressed)
-        { inputValue *= 2f; }
-
-        velocity += inputValue * (zoomHeight * 0.1f);
-    }
-
-    void GetKeyZoom()
-    {
-        if (UI.IsUIFocused) return;
-
-        float value = -keyZoom.ReadValue<Vector2>().y;
-        if (Mathf.Abs(value) <= 0f) return;
-
-        zoomHeight += value * stepSize * zoomHeight * 0.03f;
-        zoomHeight = math.clamp(zoomHeight, minHeight, maxHeight);
-    }
-
     Vector3 GetCameraRight()
     {
-        Vector3 right = cameraTransform.right;
+        Vector3 right = CameraTransform.right;
         right.y = 0;
         return right;
     }
 
     Vector3 GetCameraForward()
     {
-        Vector3 forward = cameraTransform.forward;
+        Vector3 forward = CameraTransform.forward;
         forward.y = 0;
         return forward;
     }
 
-    void UpdateBasePosition()
-    {
-        if (velocity.sqrMagnitude > 0.001f)
-        {
-            speed = Mathf.Lerp(speed, maxSpeed, Time.deltaTime * acceleration);
-            transform.position += velocity * (speed * Time.deltaTime);
-        }
-        else
-        {
-            speed = Mathf.Lerp(speed, 0f, Time.deltaTime * damping);
-            horizontalVelocity = Vector3.Lerp(horizontalVelocity, Vector3.zero, Time.deltaTime * damping);
-            transform.position += horizontalVelocity * Time.deltaTime;
-        }
-
-        velocity = Vector3.zero;
-    }
 
     void RotateCamera(InputAction.CallbackContext inputValue)
     {
@@ -220,24 +176,36 @@ public class CameraControl : Singleton<CameraControl>
         float x = inputValue.ReadValue<Vector2>().x;
         float y = inputValue.ReadValue<Vector2>().y;
         transform.rotation = Quaternion.Euler(
-            math.clamp(y * maxRotationSpeed + transform.rotation.eulerAngles.x, 5f, 85f),
-            x * maxRotationSpeed + transform.rotation.eulerAngles.y,
+            math.clamp(y * MaxRotationSpeed + transform.rotation.eulerAngles.x, 5f, 85f),
+            x * MaxRotationSpeed + transform.rotation.eulerAngles.y,
             0f
         );
     }
 
-    void ZoomCameraWithWheel(InputAction.CallbackContext inputValue)
+
+    void ZoomWithKeys()
+    {
+        if (UI.IsUIFocused) return;
+
+        float value = -KeyZoom.ReadValue<Vector2>().y;
+        if (Math.Abs(value) <= 0f) return;
+
+        ZoomHeight *= Mathf.Pow(2, value * KeyZoomSpeed);
+        ZoomHeight = math.clamp(ZoomHeight, MinHeight, MaxHeight);
+    }
+
+    void ZoomWithWheel(InputAction.CallbackContext inputValue)
     {
         if (UI.IsUIFocused) return;
 
         float value = -inputValue.ReadValue<Vector2>().y;
-        if (Mathf.Abs(value) <= 0f) return;
+        if (Math.Abs(value) <= 0f) return;
 
-        zoomHeight += value * stepSize;
-        zoomHeight = math.clamp(zoomHeight, minHeight, maxHeight);
+        ZoomHeight *= Mathf.Pow(2, value * WheelZoomSpeed);
+        ZoomHeight = math.clamp(ZoomHeight, MinHeight, MaxHeight);
     }
 
-    void ZoomCameraWithMouse()
+    void ZoomWithMouse()
     {
         if (UI.IsUIFocused) return;
 
@@ -261,42 +229,61 @@ public class CameraControl : Singleton<CameraControl>
 
         startDragZoomScreen = mousePosition;
 
-        zoomHeight *= Mathf.Pow(2, delta * 5f);
-        zoomHeight = math.clamp(zoomHeight, minHeight, maxHeight);
+        ZoomHeight *= Mathf.Pow(2, delta * 5f);
+        ZoomHeight = math.clamp(ZoomHeight, MinHeight, MaxHeight);
     }
 
-    void UpdateCameraZoom()
+    void ApplyZoom()
     {
         Vector3 zoomTarget = new(
             0f,
-            zoomHeight,
+            ZoomHeight,
             0f
         );
 
-        cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, zoomTarget, Time.deltaTime * zoomDampening);
+        CameraTransform.localPosition = Vector3.Lerp(CameraTransform.localPosition, zoomTarget, Time.deltaTime * ZoomDampening);
     }
 
-    void CheckMouseAtScreenEdge()
+
+    void MoveWithKeys()
+    {
+        if (UI.IsUIFocused) return;
+        if (startDragWorld != default) return;
+
+        Vector3 inputValue =
+            Movement.ReadValue<Vector2>().x * GetCameraRight() +
+            Movement.ReadValue<Vector2>().y * GetCameraForward();
+        inputValue.Normalize();
+
+        if (inputValue.sqrMagnitude <= 0.1f) return;
+
+        if (Keyboard.current.shiftKey.isPressed)
+        { inputValue *= 2f; }
+
+        velocity += inputValue * (ZoomHeight * 0.1f);
+    }
+
+    void MoveWithScreenEdge()
     {
         Vector2 mousePosition = Mouse.current.position.ReadValue();
         Vector3 moveDirection = Vector3.zero;
 
-        if (mousePosition.x < edgeTolerance * Screen.width)
+        if (mousePosition.x < EdgeTolerance * Screen.width)
         { moveDirection -= GetCameraRight(); }
-        else if (mousePosition.x > (1f - edgeTolerance) * Screen.width)
+        else if (mousePosition.x > (1f - EdgeTolerance) * Screen.width)
         { moveDirection += GetCameraRight(); }
 
-        if (mousePosition.y < edgeTolerance * Screen.height)
+        if (mousePosition.y < EdgeTolerance * Screen.height)
         { moveDirection -= GetCameraForward(); }
-        else if (mousePosition.y > (1f - edgeTolerance) * Screen.height)
+        else if (mousePosition.y > (1f - EdgeTolerance) * Screen.height)
         { moveDirection += GetCameraForward(); }
 
         moveDirection.Normalize();
 
-        velocity += moveDirection * (zoomHeight * 0.1f);
+        velocity += moveDirection * (ZoomHeight * 0.1f);
     }
 
-    void DragCamera()
+    void MoveWithDrag()
     {
         if (!Mouse.current.middleButton.isPressed || !Keyboard.current.shiftKey.isPressed)
         {
@@ -325,5 +312,22 @@ public class CameraControl : Singleton<CameraControl>
                 velocity += startDragWorld - ray.GetPoint(distance);
             }
         }
+    }
+
+    void ApplyPosition()
+    {
+        if (velocity.sqrMagnitude > 0.001f)
+        {
+            Speed = Mathf.Lerp(Speed, MaxSpeed, Time.deltaTime * Acceleration);
+            transform.position += velocity * (Speed * Time.deltaTime);
+        }
+        else
+        {
+            Speed = Mathf.Lerp(Speed, 0f, Time.deltaTime * Damping);
+            horizontalVelocity = Vector3.Lerp(horizontalVelocity, Vector3.zero, Time.deltaTime * Damping);
+            transform.position += horizontalVelocity * Time.deltaTime;
+        }
+
+        velocity = Vector3.zero;
     }
 }
