@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
@@ -6,14 +7,22 @@ using UnityEngine.VFX;
 [AddComponentMenu("Authoring/Visual Effect Database")]
 public class VisualEffectDatabaseAuthoring : MonoBehaviour
 {
-    [SerializeField, NotNull] public VisualEffectAsset[]? VisualEffects = default;
+    [Serializable]
+    struct VisualEffectItem
+    {
+        [SerializeField, Min(0f)] public float Duration;
+        [SerializeField, NotNull] public VisualEffectAsset? VisualEffect;
+        [SerializeField] public Light? Light;
+    }
+
+    [SerializeField, NotNull] VisualEffectItem[]? VisualEffects = default;
 
     public int Find(VisualEffectAsset? visualEffect)
     {
         if (visualEffect == null) return -1;
         for (int i = 0; i < VisualEffects.Length; i++)
         {
-            if (VisualEffects[i] != visualEffect) continue;
+            if (VisualEffects[i].VisualEffect != visualEffect) continue;
             return i;
         }
         Debug.LogError($"Visual effect {visualEffect} is not present in the database", visualEffect);
@@ -27,11 +36,15 @@ public class VisualEffectDatabaseAuthoring : MonoBehaviour
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<VisualEffectDatabase>(entity, new());
             DynamicBuffer<BufferedVisualEffect> visualEffects = AddBuffer<BufferedVisualEffect>(entity);
-            foreach (VisualEffectAsset visualEffect in authoring.VisualEffects)
+            foreach (VisualEffectItem visualEffect in authoring.VisualEffects)
             {
                 visualEffects.Add(new()
                 {
-                    VisualEffect = visualEffect,
+                    Duration = visualEffect.Duration,
+                    VisualEffect = visualEffect.VisualEffect,
+                    LightColor = visualEffect.Light == null ? default : new(visualEffect.Light.color.r, visualEffect.Light.color.g, visualEffect.Light.color.b),
+                    LightIntensity = visualEffect.Light == null ? default : visualEffect.Light.intensity,
+                    LightRange = visualEffect.Light == null ? default : visualEffect.Light.range,
                 });
             }
         }

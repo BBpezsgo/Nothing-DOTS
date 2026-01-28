@@ -8,7 +8,7 @@ using UnityEngine.VFX;
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial class VisualEffectSystem : SystemBase
 {
-    ObjectPool<VisualEffect>[]? Pools;
+    ObjectPool<VisualEffectHandlerComponent>[]? Pools;
 
     protected override void OnCreate()
     {
@@ -20,25 +20,34 @@ public partial class VisualEffectSystem : SystemBase
         if (Pools == null)
         {
             DynamicBuffer<BufferedVisualEffect> database = SystemAPI.GetSingletonBuffer<BufferedVisualEffect>(true);
-            Pools = new ObjectPool<VisualEffect>[database.Length];
+            Pools = new ObjectPool<VisualEffectHandlerComponent>[database.Length];
             for (int i = 0; i < Pools.Length; i++)
             {
                 int _i = i;
-                VisualEffectAsset asset = database[_i].VisualEffect.Value;
-                Pools[_i] = new ObjectPool<VisualEffect>(
+                BufferedVisualEffect asset = database[_i];
+                Pools[_i] = new ObjectPool<VisualEffectHandlerComponent>(
                     () =>
                     {
                         GameObject gameObject = new($"Effect {_i}");
 
-                        VisualEffect visualEffect = gameObject.AddComponent<VisualEffect>();
-                        visualEffect.visualEffectAsset = asset;
-
                         VisualEffectHandlerComponent handlerComponent = gameObject.AddComponent<VisualEffectHandlerComponent>();
-                        handlerComponent.Lifetime = 0.5f;
+                        handlerComponent.Lifetime = asset.Duration;
+                        handlerComponent.Asset = asset;
                         handlerComponent.Pool = Pools[_i];
-                        handlerComponent.VisualEffect = visualEffect;
 
-                        return visualEffect;
+                        VisualEffect visualEffect = handlerComponent.VisualEffect = gameObject.AddComponent<VisualEffect>();
+                        visualEffect.visualEffectAsset = asset.VisualEffect.Value;
+
+                        if (!asset.LightColor.Equals(default) && asset.LightRange > 0f && asset.LightIntensity > 0f)
+                        {
+                            Light light = handlerComponent.Light = gameObject.AddComponent<Light>();
+                            light.color = new Color(asset.LightColor.x, asset.LightColor.y, asset.LightColor.z);
+                            light.intensity = 0f;
+                            light.range = asset.LightRange;
+                            light.enabled = false;
+                        }
+
+                        return handlerComponent;
                     },
                     (v) =>
                     {
@@ -62,14 +71,14 @@ public partial class VisualEffectSystem : SystemBase
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            var p = MainCamera.Camera.WorldToViewportPoint(spawn.ValueRO.Position);
+            Vector3 p = MainCamera.Camera.WorldToViewportPoint(spawn.ValueRO.Position);
             if (p.z < 0f || p.x < 0f || p.y < 0f || p.x > 1f || p.y > 1f) continue;
             if (math.distancesq(MainCamera.Camera.transform.position, spawn.ValueRO.Position) > 50f * 50f) continue;
 
-            VisualEffect effect = Pools[spawn.ValueRO.Index].Get();
+            VisualEffectHandlerComponent effect = Pools[spawn.ValueRO.Index].Get();
             effect.transform.position = spawn.ValueRO.Position;
-            if (effect.HasVector3("direction")) effect.SetVector3("direction", (spawn.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
-            effect.Play();
+            if (effect.VisualEffect.HasVector3("direction")) effect.VisualEffect.SetVector3("direction", (spawn.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
+            effect.VisualEffect.Play();
         }
 
         foreach (var (command, entity) in
@@ -80,14 +89,14 @@ public partial class VisualEffectSystem : SystemBase
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            var p = MainCamera.Camera.WorldToViewportPoint(command.ValueRO.Position);
+            Vector3 p = MainCamera.Camera.WorldToViewportPoint(command.ValueRO.Position);
             if (p.z < 0f || p.x < 0f || p.y < 0f || p.x > 1f || p.y > 1f) continue;
             if (math.distancesq(MainCamera.Camera.transform.position, command.ValueRO.Position) > 50f * 50f) continue;
 
-            VisualEffect effect = Pools[command.ValueRO.Index].Get();
+            VisualEffectHandlerComponent effect = Pools[command.ValueRO.Index].Get();
             effect.transform.position = command.ValueRO.Position;
-            if (effect.HasVector3("direction")) effect.SetVector3("direction", (command.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
-            effect.Play();
+            if (effect.VisualEffect.HasVector3("direction")) effect.VisualEffect.SetVector3("direction", (command.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
+            effect.VisualEffect.Play();
         }
     }
 }
