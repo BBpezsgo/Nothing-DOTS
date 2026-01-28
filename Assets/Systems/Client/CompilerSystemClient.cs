@@ -8,21 +8,17 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
-public class ClientSimpleDiagnostic : IDiagnostic
+public class ClientSimpleDiagnostic : Diagnostic
 {
     public uint Id { get; }
-    public DiagnosticsLevel Level { get; }
-    public string Message { get; }
     public Position Position { get; }
     public Uri? File { get; }
-    public List<ClientSimpleDiagnostic> SubErrors { get; }
-    IEnumerable<IDiagnostic> IDiagnostic.SubErrors => SubErrors;
+    public new List<ClientSimpleDiagnostic> SubErrors { get; }
 
     public ClientSimpleDiagnostic(uint id, DiagnosticsLevel level, string message, Position position, Uri? file, List<ClientSimpleDiagnostic> suberrors)
+        : base(level, message, System.Collections.Immutable.ImmutableArray<Diagnostic>.Empty)
     {
         Id = id;
-        Level = level;
-        Message = message;
         Position = position;
         File = file;
         SubErrors = suberrors;
@@ -52,7 +48,7 @@ public class CompiledSourceClient : ICompiledSource
     CompilationStatus ICompiledSource.Status => Status;
     float ICompiledSource.Progress => Progress;
     bool ICompiledSource.IsSuccess => IsSuccess;
-    IEnumerable<IDiagnostic> ICompiledSource.Diagnostics => ClientDiagnostics;
+    IEnumerable<Diagnostic> ICompiledSource.Diagnostics => ClientDiagnostics;
     IReadOnlyDictionary<FileId, ProgressRecord<(int Current, int Total)>> ICompiledSource.SubFiles => SubFiles;
 
     public CompiledSourceClient(

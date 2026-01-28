@@ -71,8 +71,6 @@ struct OwnedData<T>
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 unsafe partial struct ProcessorSystemServer : ISystem
 {
-    public const int CyclesPerTick = 256;
-
     public static readonly BytecodeInterpreterSettings BytecodeInterpreterSettings = new()
     {
         HeapSize = Processor.HeapSize,

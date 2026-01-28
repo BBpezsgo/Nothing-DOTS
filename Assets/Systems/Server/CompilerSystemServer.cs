@@ -9,6 +9,7 @@ using LanguageCore;
 using LanguageCore.BBLang.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Parser;
+using LanguageCore.Parser.Statements;
 using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
@@ -32,7 +33,7 @@ public interface ICompiledSource
     CompilationStatus Status { get; }
     float Progress { get; }
     bool IsSuccess { get; }
-    IEnumerable<IDiagnostic> Diagnostics { get; }
+    IEnumerable<Diagnostic> Diagnostics { get; }
     IReadOnlyDictionary<FileId, ProgressRecord<(int Current, int Total)>> SubFiles { get; }
 }
 
@@ -63,7 +64,7 @@ public class CompiledSourceServer : ICompiledSource
     CompilationStatus ICompiledSource.Status => Status;
     float ICompiledSource.Progress => Progress;
     bool ICompiledSource.IsSuccess => IsSuccess;
-    IEnumerable<IDiagnostic> ICompiledSource.Diagnostics => (Diagnostics.Diagnostics as IEnumerable<IDiagnostic>).Append(Diagnostics.DiagnosticsWithoutContext);
+    IEnumerable<Diagnostic> ICompiledSource.Diagnostics => Diagnostics.Diagnostics.Append(Diagnostics.DiagnosticsWithoutContext);
     IReadOnlyDictionary<FileId, ProgressRecord<(int Current, int Total)>> ICompiledSource.SubFiles => SubFiles;
 
     public CompiledSourceServer(
@@ -224,12 +225,12 @@ public partial class CompilerSystemServer : SystemBase
         }
     }
 
-    void SendDiagnostic(IDiagnostic diagnostic, CompiledSourceServer source, EntityCommandBuffer commandBuffer, Dictionary<IDiagnostic, uint> diagnosticIds, ref uint diagnosticIdCounter, uint parent)
+    void SendDiagnostic(Diagnostic diagnostic, CompiledSourceServer source, EntityCommandBuffer commandBuffer, Dictionary<Diagnostic, uint> diagnosticIds, ref uint diagnosticIdCounter, uint parent)
     {
         FileId file = default;
         Position position = default;
 
-        if (diagnostic is Diagnostic _diagnostic)
+        if (diagnostic is DiagnosticAt _diagnostic)
         {
             if (_diagnostic.File is null) return;
             if (!FileId.FromUri(_diagnostic.File, out file)) return;
@@ -254,7 +255,7 @@ public partial class CompilerSystemServer : SystemBase
             Message = diagnostic.Message,
         }, source.SourceFile.Source.GetEntity(EntityManager));
 
-        foreach (IDiagnostic subdiagnostic in diagnostic.SubErrors)
+        foreach (Diagnostic subdiagnostic in diagnostic.SubErrors)
         {
             SendDiagnostic(subdiagnostic, source, commandBuffer, diagnosticIds, ref diagnosticIdCounter, id);
         }
@@ -262,11 +263,11 @@ public partial class CompilerSystemServer : SystemBase
 
     void SendDiagnostics(CompiledSourceServer source, EntityCommandBuffer commandBuffer)
     {
-        Dictionary<IDiagnostic, uint> diagnosticIds = new();
+        Dictionary<Diagnostic, uint> diagnosticIds = new();
         uint diagnosticIdCounter = 1;
 
         // .ToArray() because the collection can be modified somewhere idk
-        foreach (Diagnostic item in source.Diagnostics.Diagnostics.ToArray())
+        foreach (DiagnosticAt item in source.Diagnostics.Diagnostics.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
 
@@ -274,7 +275,7 @@ public partial class CompilerSystemServer : SystemBase
         }
 
         // .ToArray() because the collection can be modified somewhere idk
-        foreach (DiagnosticWithoutContext item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
+        foreach (Diagnostic item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
             if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"[{nameof(CompilerSystemServer)}]: {item}");
 
@@ -338,7 +339,13 @@ public partial class CompilerSystemServer : SystemBase
                     return false;
                 }
 
-                switch (attribute.Parameters[0].Value)
+                if (attribute.Parameters[0] is not StringLiteralExpression stringLiteral)
+                {
+                    error = new PossibleDiagnostic($"The struct should be flagged with [UnitCommand] attribute", attribute);
+                    return false;
+                }
+
+                switch (stringLiteral.Value)
                 {
                     case "position2":
                     {
@@ -349,7 +356,7 @@ public partial class CompilerSystemServer : SystemBase
 
                         if (size != sizeof(float2))
                         {
-                            error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float2)} (a 2D float vector) (type {field.Type} has a size of {size} bytes)");
+                            error = new PossibleDiagnostic($"Fields with unit command context \"{stringLiteral.Value}\" should be a size of {sizeof(float2)} (a 2D float vector) (type {field.Type} has a size of {size} bytes)");
                             return false;
                         }
 
@@ -364,7 +371,7 @@ public partial class CompilerSystemServer : SystemBase
 
                         if (size != sizeof(float3))
                         {
-                            error = new PossibleDiagnostic($"Fields with unit command context \"{attribute.Parameters[0].Value}\" should be a size of {sizeof(float3)} (a 3D float vector) (type {field.Type} has a size of {size} bytes)");
+                            error = new PossibleDiagnostic($"Fields with unit command context \"{stringLiteral.Value}\" should be a size of {sizeof(float3)} (a 3D float vector) (type {field.Type} has a size of {size} bytes)");
                             return false;
                         }
 
@@ -372,7 +379,7 @@ public partial class CompilerSystemServer : SystemBase
                     }
                     default:
                     {
-                        error = new PossibleDiagnostic($"Unknown unit command context \"{attribute.Parameters[0].Value}\"", attribute.Parameters[0]);
+                        error = new PossibleDiagnostic($"Unknown unit command context \"{stringLiteral.Value}\"", stringLiteral);
                         return false;
                     }
                 }
@@ -469,12 +476,12 @@ public partial class CompilerSystemServer : SystemBase
 
             Debug.Log($"{sourceUri} done");
         }
-        catch (LanguageException exception)
+        catch (LanguageExceptionAt exception)
         {
             lock (source)
             {
                 source.IsSuccess = false;
-                source.Diagnostics.Add(new Diagnostic(
+                source.Diagnostics.Add(new DiagnosticAt(
                     DiagnosticsLevel.Error,
                     exception.Message,
                     exception.Position,
@@ -484,15 +491,15 @@ public partial class CompilerSystemServer : SystemBase
                 ));
             }
         }
-        catch (LanguageExceptionWithoutContext exception)
+        catch (LanguageException exception)
         {
             lock (source)
             {
                 source.IsSuccess = false;
-                source.Diagnostics.Add(new DiagnosticWithoutContext(
+                source.Diagnostics.Add(new Diagnostic(
                     DiagnosticsLevel.Error,
                     exception.Message,
-                    ImmutableArray<IDiagnostic>.Empty
+                    ImmutableArray<Diagnostic>.Empty
                 ));
             }
         }
@@ -537,13 +544,17 @@ public partial class CompilerSystemServer : SystemBase
                     if (!@struct.Attributes.TryGetAttribute("UnitCommand", out AttributeUsage? structAttribute))
                     { continue; }
 
+                    if (structAttribute.Parameters[0] is not IntLiteralExpression idArgument) continue;
+                    if (structAttribute.Parameters[1] is not StringLiteralExpression nameArgument) continue;
+
                     FixedList32Bytes<UnitCommandParameter> parameterTypes = new();
                     bool ok = true;
 
                     foreach (CompiledField field in @struct.Fields)
                     {
                         if (!field.Attributes.TryGetAttribute("Context", out AttributeUsage? attribute)) continue;
-                        switch (attribute.Parameters[0].Value)
+                        if (attribute.Parameters[0] is not StringLiteralExpression stringLiteral) continue;
+                        switch (stringLiteral.Value)
                         {
                             case "position2":
                                 parameterTypes.Add(UnitCommandParameter.Position2);
@@ -559,7 +570,7 @@ public partial class CompilerSystemServer : SystemBase
 
                     if (!ok) continue;
 
-                    commandDefinitions.Add(new(structAttribute.Parameters[0].GetInt(), structAttribute.Parameters[1].Value, parameterTypes));
+                    commandDefinitions.Add(new(idArgument.Value, nameArgument.Value, parameterTypes));
                 }
                 source.UnitCommandDefinitions = new(commandDefinitions.ToArray(), Allocator.Persistent);
 
