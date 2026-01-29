@@ -11,13 +11,15 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct PlayerSystemServer : ISystem
 {
-    int _teamCounter;
+    int TeamCounter;
+    public Guid ServerGuid;
 
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<PrefabDatabase>();
-        _teamCounter = 0;
+        TeamCounter = 0;
+        ServerGuid = Guid.NewGuid();
     }
 
     [BurstCompile]
@@ -38,6 +40,21 @@ public partial struct PlayerSystemServer : ISystem
         }
 
         ReadOnlySpan<byte> bytes = stackalloc byte[16];
+
+        foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ServerGuidRequestRpc>>()
+            .WithEntityAccess())
+        {
+            NetworkId source = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
+            commandBuffer.DestroyEntity(entity);
+
+            Debug.Log(string.Format("[Server] Received guid request from client {0}", source.Value));
+
+            NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ServerGuidResponseRpc()
+            {
+                Guid = Marshal.As<Guid, FixedBytes16>(ref ServerGuid),
+            }, request.ValueRO.SourceConnection);
+        }
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SessionRegisterRequestRpc>>()
@@ -157,7 +174,7 @@ public partial struct PlayerSystemServer : ISystem
         {
             if (player.ValueRO.Team == -1)
             {
-                player.ValueRW.Team = _teamCounter++;
+                player.ValueRW.Team = TeamCounter++;
             }
 
             if (player.ValueRO.ConnectionState is not PlayerConnectionState.Connected and not PlayerConnectionState.Local) continue;

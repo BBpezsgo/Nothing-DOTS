@@ -9,10 +9,14 @@ using Unity.NetCode;
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct PlayerSystemClient : ISystem
 {
-    bool _requestSent;
-    SessionStatusCode _sessionStatus;
-    Guid _guid;
-    FixedString32Bytes _nickname;
+    const string SessionsDirectoryPath = "sessions";
+
+    bool GuidRequestSent;
+    bool SessionRequestSent;
+    SessionStatusCode SessionStatus;
+    Guid PlayerGuid;
+    Guid ServerGuid;
+    FixedString32Bytes Nickname;
 
     public static ref PlayerSystemClient GetInstance(in WorldUnmanaged world)
     {
@@ -22,8 +26,8 @@ public partial struct PlayerSystemClient : ISystem
 
     void ISystem.OnCreate(ref SystemState state)
     {
-        _requestSent = false;
-        _guid = default;
+        SessionRequestSent = false;
+        PlayerGuid = default;
         state.RequireForUpdate<NetworkStreamConnection>();
     }
 
@@ -31,78 +35,97 @@ public partial struct PlayerSystemClient : ISystem
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        NetworkStreamConnection connection = SystemAPI.GetSingleton<NetworkStreamConnection>();
+        foreach (var (_, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ServerGuidResponseRpc>>()
+            .WithEntityAccess())
+        {
+            commandBuffer.DestroyEntity(entity);
 
-        foreach (var (request, command, entity) in
+            ServerGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
+
+            Debug.Log(string.Format("[Client] Server guid: {0}", ServerGuid));
+        }
+
+        foreach (var (_, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<SessionResponseRpc>>()
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
 
-            _sessionStatus = command.ValueRO.StatusCode;
-            _guid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
+            SessionStatus = command.ValueRO.StatusCode;
+            PlayerGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
 
-            Debug.Log(string.Format("[Client] Session status: {0}\n  guid: {1}\n  nickname: {2}", _sessionStatus, _guid, _nickname));
+            Debug.Log(string.Format("[Client] Session status: {0}\n  guid: {1}\n  nickname: {2}", SessionStatus, PlayerGuid, Nickname));
 
             if (command.ValueRO.StatusCode.IsOk())
             {
-                _nickname = command.ValueRO.Nickname;
-                File.WriteAllBytes("session.bin", _guid.ToByteArray());
+                Nickname = command.ValueRO.Nickname;
+                SaveSession(ServerGuid, PlayerGuid);
             }
             else if (command.ValueRO.StatusCode == SessionStatusCode.InvalidGuid)
             {
                 Debug.Log(string.Format("[Client] Invalid guid, registering new player"));
 
-                _requestSent = false;
-                _guid = default;
+                SessionRequestSent = false;
+                PlayerGuid = default;
             }
         }
 
+        NetworkStreamConnection connection = SystemAPI.GetSingleton<NetworkStreamConnection>();
+
         if (connection.CurrentState != ConnectionState.State.Connected) return;
 
-        if (!TryGetLocalPlayer(ref state, out _) && connection.CurrentState == ConnectionState.State.Connected)
+        if (TryGetLocalPlayer(ref state, out _))
         {
-            if (!_requestSent)
+            SessionRequestSent = false;
+            GuidRequestSent = false;
+            return;
+        }
+
+        if (ServerGuid == default)
+        {
+            if (GuidRequestSent) return;
+            GuidRequestSent = true;
+
+            Debug.Log(string.Format("[Client] Requesting server guid"));
+
+            NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ServerGuidRequestRpc());
+
+            return;
+        }
+
+        if (SessionRequestSent) return;
+        SessionRequestSent = true;
+
+        if (PlayerGuid == default)
+        {
+            if (FindSavedSession(ServerGuid, out Guid savedPlayerGuid) && SessionStatus != SessionStatusCode.InvalidGuid)
             {
-                if (_guid == default)
+                Debug.Log(string.Format("[Client] No player found, logging in with saved session\nserver: {0}\nplayer: {1}", ServerGuid, savedPlayerGuid));
+
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
                 {
-                    if (File.Exists("session.bin") && _sessionStatus != SessionStatusCode.InvalidGuid)
-                    {
-                        _guid = new(File.ReadAllBytes("session.bin"));
+                    Guid = Marshal.As<Guid, FixedBytes16>(savedPlayerGuid),
+                });
+            }
+            else
+            {
+                Debug.Log(string.Format("[Client] No player found, registering"));
 
-                        Debug.Log(string.Format("[Client] No player found, logging in with saved session {0}", _guid));
-
-                        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
-                        {
-                            Guid = Marshal.As<Guid, FixedBytes16>(_guid),
-                        });
-                    }
-                    else
-                    {
-                        Debug.Log(string.Format("[Client] No player found, registering"));
-
-                        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionRegisterRequestRpc()
-                        {
-                            Nickname = _nickname,
-                        });
-                    }
-                }
-                else
+                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionRegisterRequestRpc()
                 {
-                    Debug.Log(string.Format("[Client] No player found, logging in with {0}", _guid));
-
-                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
-                    {
-                        Guid = Marshal.As<Guid, FixedBytes16>(_guid),
-                    });
-                }
-
-                _requestSent = true;
+                    Nickname = Nickname,
+                });
             }
         }
         else
         {
-            _requestSent = false;
+            Debug.Log(string.Format("[Client] No player found, logging in with {0}", PlayerGuid));
+
+            NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
+            {
+                Guid = Marshal.As<Guid, FixedBytes16>(PlayerGuid),
+            });
         }
     }
 
@@ -189,12 +212,63 @@ public partial struct PlayerSystemClient : ISystem
 
     public void SetNickname(FixedString32Bytes nickname)
     {
-        _nickname = nickname;
+        Nickname = nickname;
 
         if (ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal())
         {
             using EntityQuery playersQ = ConnectionManager.ClientOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(Player));
             playersQ.GetSingletonRW<Player>().ValueRW.Nickname = nickname;
         }
+    }
+
+    static bool FindSavedSession(Guid serverGuid, out Guid playerGuid)
+    {
+        playerGuid = default;
+
+        if (!Directory.Exists(SessionsDirectoryPath)) return false;
+
+        foreach (string file in Directory.GetFiles(SessionsDirectoryPath))
+        {
+            if (LoadSession(file, out Guid _serverGuid, out playerGuid) && _serverGuid == serverGuid) return true;
+        }
+
+        return false;
+    }
+
+    static bool LoadSession(string file, out Guid serverGuid, out Guid playerGuid)
+    {
+        using FileBinaryReader reader = new(file);
+        try
+        {
+            serverGuid = reader.ReadGuid();
+            playerGuid = reader.ReadGuid();
+            return reader.IsEOF;
+        }
+        catch
+        {
+            serverGuid = default;
+            playerGuid = default;
+            return false;
+        }
+    }
+
+    static void SaveSession(Guid serverGuid, Guid playerGuid)
+    {
+        if (!Directory.Exists(SessionsDirectoryPath))
+        {
+            Directory.CreateDirectory(SessionsDirectoryPath);
+        }
+
+        uint counter = 1;
+        string fileName;
+        while (File.Exists(fileName = Path.Combine(SessionsDirectoryPath, $"{counter}.bin")))
+        {
+            counter++;
+            if (counter == 0) throw new Exception($"Failed to generate a session file name");
+        }
+
+        using FileBinaryWriter writer = new(fileName);
+        writer.Write(serverGuid);
+        writer.Write(playerGuid);
     }
 }
