@@ -76,15 +76,52 @@ public class ChatManager : Singleton<ChatManager>
 
     void OnButtonSend()
     {
-        string message = _inputMessage.value.Trim();
-        if (string.IsNullOrWhiteSpace(message)) return;
-        SendChatMessage(message);
+        ReadOnlySpan<char> message = _inputMessage.value.Trim();
+        if (message.Length is 0) return;
+
+        long time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        while (!message.IsEmpty)
+        {
+            const int chunkSize = 30;
+            ReadOnlySpan<char> chunk;
+            if (message.Length > chunkSize)
+            {
+                chunk = message[..chunkSize];
+                message = message[chunkSize..];
+            }
+            else
+            {
+                chunk = message;
+                message = ReadOnlySpan<char>.Empty;
+            }
+
+            NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new ChatMessageRpc()
+            {
+                Sender = 0,
+                Message = chunk.ToString(),
+                Time = time,
+            });
+        }
+
         _inputMessage.value = string.Empty;
     }
 
-    public void AppendChatMessageElement(int sender, string message)
+    public void AppendChatMessageElement(int sender, string? message, DateTimeOffset time)
     {
-        _chatMessages.Add(new ChatMessage(sender, message, DateTimeOffset.UtcNow));
+        if (message is null) return;
+
+        for (int i = 0; i < _chatMessages.Count; i++)
+        {
+            if (_chatMessages[i].Sender == sender && _chatMessages[i].Time == time)
+            {
+                _chatMessages[i] = new ChatMessage(sender, _chatMessages[i].Message + message, time);
+                goto added;
+            }
+        }
+        _chatMessages.Add(new ChatMessage(sender, message, time));
+    added:
+
         RefreshChatContainer();
     }
 
@@ -120,15 +157,6 @@ public class ChatManager : Singleton<ChatManager>
             {
                 element.Q<Label>("label-message").text = item.Message;
             }
-        });
-    }
-
-    void SendChatMessage(string message)
-    {
-        NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new ChatMessageRpc()
-        {
-            Sender = 0,
-            Message = message,
         });
     }
 }

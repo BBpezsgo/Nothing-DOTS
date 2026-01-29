@@ -7,4 +7,5 @@ public struct ChatMessageRpc : IRpcCommand
 {
     public required int Sender;
     public required FixedString64Bytes Message;
+    public required long Time;
 }

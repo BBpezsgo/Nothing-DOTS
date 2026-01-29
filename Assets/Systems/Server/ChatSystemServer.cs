@@ -29,17 +29,19 @@ public partial struct ChatSystemServer : ISystem
                 {
                     Sender = networkId.ValueRO.Value,
                     Message = command.ValueRO.Message,
+                    Time = command.ValueRO.Time,
                 });
             }
         }
     }
 
-    public static void SendChatMessage(in EntityCommandBuffer commandBuffer, FixedString64Bytes message)
+    public static void SendChatMessage(in EntityCommandBuffer commandBuffer, FixedString64Bytes message, long time)
     {
         NetcodeUtils.CreateRPC(commandBuffer, ConnectionManager.ClientOrDefaultWorld.Unmanaged, new ChatMessageRpc()
         {
             Sender = 0,
             Message = message,
+            Time = time,
         });
     }
 }

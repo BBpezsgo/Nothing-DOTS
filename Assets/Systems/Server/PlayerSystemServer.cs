@@ -110,7 +110,7 @@ public partial struct PlayerSystemServer : ISystem
                 });
 
                 Debug.Log("[Server] Player created");
-                ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} connected", command.ValueRO.Nickname));
+                ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} connected", command.ValueRO.Nickname), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
@@ -144,7 +144,7 @@ public partial struct PlayerSystemServer : ISystem
                 {
                     player.ValueRW.ConnectionId = source.Value;
                     player.ValueRW.ConnectionState = PlayerConnectionState.Connected;
-                    ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} reconnected", player.ValueRO.Nickname));
+                    ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} reconnected", player.ValueRO.Nickname), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 }
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
@@ -202,7 +202,7 @@ public partial struct PlayerSystemServer : ISystem
             if (!found)
             {
                 Debug.Log(string.Format("[Server] Client {0} disconnected", player.ValueRO.ConnectionId));
-                ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} disconnected", player.ValueRO.Nickname));
+                ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} disconnected", player.ValueRO.Nickname), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
                 player.ValueRW.ConnectionId = -1;
                 player.ValueRW.ConnectionState = PlayerConnectionState.Disconnected;

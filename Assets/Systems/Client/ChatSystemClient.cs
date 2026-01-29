@@ -1,3 +1,4 @@
+using System;
 using Unity.Entities;
 using Unity.NetCode;
 
@@ -8,12 +9,12 @@ public partial struct ChatSystemClient : ISystem
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        foreach (var (request, command, entity) in
+        foreach (var (_, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<ChatMessageRpc>>()
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            ChatManager.Instance.AppendChatMessageElement(command.ValueRO.Sender, command.ValueRO.Message.ToString());
+            ChatManager.Instance.AppendChatMessageElement(command.ValueRO.Sender, command.ValueRO.Message.ToString(), DateTimeOffset.FromUnixTimeMilliseconds(command.ValueRO.Time));
         }
     }
 }

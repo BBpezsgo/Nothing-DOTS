@@ -1,3 +1,4 @@
+using System;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
@@ -13,28 +14,15 @@ partial struct NetworkEventsSystem : ISystem
         {
             NetCodeConnectionEvent e = v[i];
             ConnectionManager.Instance.OnNetworkEvent(e);
-            switch (e.State)
+            ChatManager.Instance.AppendChatMessageElement(-1, (string?)(e.State switch
             {
-                case ConnectionState.State.Disconnected:
-                    ChatManager.Instance.AppendChatMessageElement(-1, $"Disconnected: {e.DisconnectReason}");
-                    break;
-                case ConnectionState.State.Connecting:
-                    ChatManager.Instance.AppendChatMessageElement(-1, $"Connecting ...");
-                    break;
-                case ConnectionState.State.Handshake:
-                    ChatManager.Instance.AppendChatMessageElement(-1, $"Handshaking ...");
-                    break;
-                case ConnectionState.State.Approval:
-                    ChatManager.Instance.AppendChatMessageElement(-1, $"Waiting for approval ...");
-                    break;
-                case ConnectionState.State.Connected:
-                    ChatManager.Instance.AppendChatMessageElement(-1, $"Connected");
-                    break;
-                case ConnectionState.State.Unknown:
-                default:
-                    ChatManager.Instance.AppendChatMessageElement(-1, e.ToFixedString().ToString());
-                    break;
-            }
+                ConnectionState.State.Disconnected => $"Disconnected: {e.DisconnectReason}",
+                ConnectionState.State.Connecting => $"Connecting ...",
+                ConnectionState.State.Handshake => $"Handshaking ...",
+                ConnectionState.State.Approval => $"Waiting for approval ...",
+                ConnectionState.State.Connected => $"Connected",
+                ConnectionState.State.Unknown or _ => e.ToFixedString().ToString(),
+            }), DateTimeOffset.UtcNow);
         }
     }
 }
