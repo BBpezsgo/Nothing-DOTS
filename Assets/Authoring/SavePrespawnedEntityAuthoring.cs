@@ -1,18 +1,21 @@
+using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
-using UnityEditor;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Save Prespawned Entity")]
 class SavePrespawnedEntityAuthoring : MonoBehaviour
 {
+    [SerializeField, NotNull] string? Id = default;
+
     class Baker : Baker<SavePrespawnedEntityAuthoring>
     {
         public override void Bake(SavePrespawnedEntityAuthoring authoring)
         {
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
+            SavePrespawnedEntityAuthoring[] all = FindObjectsByType<SavePrespawnedEntityAuthoring>(FindObjectsInactive.Exclude, FindObjectsSortMode.InstanceID);
             AddComponent<SavePrespawnedEntity>(entity, new()
             {
-                Id = GlobalObjectId.GetGlobalObjectIdSlow(authoring.gameObject).ToString(),
+                Id = $"{all.IndexOf(v => v == authoring)}".ToString(),
             });
         }
     }

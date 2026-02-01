@@ -176,6 +176,9 @@ public partial class CompilerSystemServer : SystemBase
     {
         source.LastStatusSync = SystemAPI.Time.ElapsedTime;
         source.StatusChanged = false;
+
+        if (World.Unmanaged.IsLocal()) return;
+
         {
             NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilerStatusRpc()
             {
@@ -186,7 +189,7 @@ public partial class CompilerSystemServer : SystemBase
                 CompiledVersion = source.CompiledVersion,
                 LatestVersion = source.LatestVersion,
                 UnitCommands = source.UnitCommandDefinitions?.Length ?? 0,
-            }, source.SourceFile.Source.GetEntity(World.EntityManager));
+            });
             if (EnableLogging) Debug.Log($"[Server] [{nameof(CompilerSystemServer)}] Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
@@ -209,7 +212,7 @@ public partial class CompilerSystemServer : SystemBase
                     Id = item.Id,
                     Label = item.Label,
                     Parameters = parameters,
-                }, source.SourceFile.Source.GetEntity(EntityManager));
+                });
             }
         }
 
@@ -221,12 +224,14 @@ public partial class CompilerSystemServer : SystemBase
                 SubFileName = name,
                 CurrentProgress = value.Progress.Current,
                 TotalProgress = value.Progress.Total,
-            }, source.SourceFile.Source.GetEntity(EntityManager));
+            });
         }
     }
 
     void SendDiagnostic(Diagnostic diagnostic, CompiledSourceServer source, EntityCommandBuffer commandBuffer, Dictionary<Diagnostic, uint> diagnosticIds, ref uint diagnosticIdCounter, uint parent)
     {
+        if (World.Unmanaged.IsLocal()) return;
+
         FileId file = default;
         Position position = default;
 
@@ -253,7 +258,7 @@ public partial class CompilerSystemServer : SystemBase
             AbsolutePosition = position.AbsoluteRange.ToMutable(),
             Level = diagnostic.Level,
             Message = diagnostic.Message,
-        }, source.SourceFile.Source.GetEntity(EntityManager));
+        });
 
         foreach (Diagnostic subdiagnostic in diagnostic.SubErrors)
         {
@@ -263,6 +268,8 @@ public partial class CompilerSystemServer : SystemBase
 
     void SendDiagnostics(CompiledSourceServer source, EntityCommandBuffer commandBuffer)
     {
+        if (World.Unmanaged.IsLocal()) return;
+
         Dictionary<Diagnostic, uint> diagnosticIds = new();
         uint diagnosticIdCounter = 1;
 
@@ -285,7 +292,7 @@ public partial class CompilerSystemServer : SystemBase
                 Source = source.SourceFile,
                 Level = item.Level,
                 Message = item.Message,
-            }, source.SourceFile.Source.GetEntity(EntityManager));
+            });
         }
     }
 
@@ -563,6 +570,7 @@ public partial class CompilerSystemServer : SystemBase
                                 parameterTypes.Add(UnitCommandParameter.Position3);
                                 break;
                             default:
+                                Debug.LogError($"Invalid unit command field context `{stringLiteral.Value}`");
                                 ok = false;
                                 break;
                         }

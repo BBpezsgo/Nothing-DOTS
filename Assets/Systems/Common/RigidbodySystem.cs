@@ -1,3 +1,4 @@
+using System;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -6,7 +7,7 @@ using Unity.Transforms;
 [BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial struct RigidbodySystem : ISystem
 {
     void ISystem.OnUpdate(ref SystemState state)
@@ -90,6 +91,7 @@ partial struct RigidbodySystem : ISystem
 
                     break;
                 }
+                default: throw new UnreachableException();
             }
 
             rigidbody.ValueRW.LastPosition = new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.z);

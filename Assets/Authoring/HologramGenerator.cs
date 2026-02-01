@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using SaintsField.Playa;
+#if UNITY_EDITOR
 using Unity.EditorCoroutines.Editor;
+#endif
 using UnityEngine;
 
 class HologramGenerator : MonoBehaviour

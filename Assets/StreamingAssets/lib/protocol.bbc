@@ -13,7 +13,7 @@ export const f32 DistanceThresholdLarge = 5f;
 export const f32 DistanceThresholdLargeSq = DistanceThresholdLarge * DistanceThresholdLarge;
 
 export const bool Debug = false;
-export const bool Logs = false;
+export const bool Logs = true;
 
 const int MaxUnits = 16;
 
@@ -80,7 +80,7 @@ export void send_verification_request(Unit* unit)
     packet.header = (u8)REQUEST_HEADER;
     packet.position = point;
 
-    if (1)
+    if (true)
     {
         if (Logs)
         {
@@ -91,7 +91,8 @@ export void send_verification_request(Unit* unit)
 
         send(&packet as u8[]*, sizeof(VerificationRequestPacket));
     }
-    else if (1)
+
+    if (true)
     {
         if (Logs)
         {

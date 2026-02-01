@@ -7,7 +7,7 @@ using Unity.Mathematics;
 using Unity.NetCode;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct UnitCommandReceiver : ISystem
 {
     [BurstCompile]
@@ -52,56 +52,55 @@ public partial struct UnitCommandReceiver : ISystem
 
                 for (int i = 0; i < commandDefinitions.Length; i++)
                 {
-                    if (commandDefinitions[i].Id == command.ValueRO.CommandId)
+                    if (commandDefinitions[i].Id != command.ValueRO.CommandId) continue;
+
+                    FixedBytes30 data = default;
+                    nint dataPtr = (nint)(&data);
+                    int dataLength = 0;
+                    for (int j = 0; j < commandDefinitions[i].ParameterCount; j++)
                     {
-                        FixedBytes30 data = default;
-                        nint dataPtr = (nint)(&data);
-                        int dataLength = 0;
-                        for (int j = 0; j < commandDefinitions[i].ParameterCount; j++)
+                        switch (commandDefinitions[i].GetParameter(j))
                         {
-                            switch (commandDefinitions[i].GetParameter(j))
+                            case UnitCommandParameter.Position2:
                             {
-                                case UnitCommandParameter.Position2:
+                                if (command.ValueRO.WorldPosition.Equals(default))
                                 {
-                                    if (command.ValueRO.WorldPosition.Equals(default))
-                                    {
-                                        Debug.LogWarning("[Server] Position data not provided");
-                                        goto failed;
-                                    }
-
-                                    dataPtr.Set(new float2(command.ValueRO.WorldPosition.x, command.ValueRO.WorldPosition.z));
-                                    dataPtr += sizeof(float2);
-                                    dataLength += sizeof(float2);
-                                    break;
+                                    Debug.LogWarning("[Server] Position data not provided");
+                                    goto failed;
                                 }
-                                case UnitCommandParameter.Position3:
-                                {
-                                    if (command.ValueRO.WorldPosition.Equals(default))
-                                    {
-                                        Debug.LogWarning("[Server] Position data not provided");
-                                        goto failed;
-                                    }
 
-                                    dataPtr.Set(command.ValueRO.WorldPosition);
-                                    dataPtr += sizeof(float3);
-                                    dataLength += sizeof(float3);
-                                    break;
-                                }
-                                default:
-                                    throw new UnreachableException();
+                                dataPtr.Set(new float2(command.ValueRO.WorldPosition.x, command.ValueRO.WorldPosition.z));
+                                dataPtr += sizeof(float2);
+                                dataLength += sizeof(float2);
+                                break;
                             }
-                        }
-                        if (processor.ValueRW.CommandQueue.Length >= processor.ValueRW.CommandQueue.Capacity)
-                        {
-                            processor.ValueRW.CommandQueue.RemoveAt(0);
-                            Debug.LogWarning("[Server] Too much commands");
-                        }
+                            case UnitCommandParameter.Position3:
+                            {
+                                if (command.ValueRO.WorldPosition.Equals(default))
+                                {
+                                    Debug.LogWarning("[Server] Position data not provided");
+                                    goto failed;
+                                }
 
-                        processor.ValueRW.CommandQueue.Add(new UnitCommandRequest(command.ValueRO.CommandId, (ushort)dataLength, data));
-
-                    failed:
-                        break;
+                                dataPtr.Set(command.ValueRO.WorldPosition);
+                                dataPtr += sizeof(float3);
+                                dataLength += sizeof(float3);
+                                break;
+                            }
+                            default:
+                                throw new UnreachableException();
+                        }
                     }
+                    if (processor.ValueRW.CommandQueue.Length >= processor.ValueRW.CommandQueue.Capacity)
+                    {
+                        processor.ValueRW.CommandQueue.RemoveAt(0);
+                        Debug.LogWarning("[Server] Too much commands");
+                    }
+
+                    processor.ValueRW.CommandQueue.Add(new UnitCommandRequest(command.ValueRO.CommandId, (ushort)dataLength, data));
+
+                failed:
+                    break;
                 }
 
                 break;

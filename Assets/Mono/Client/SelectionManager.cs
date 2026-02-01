@@ -412,12 +412,26 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         commands = default;
 
-        if (!entityManager.Exists(selected)) return false;
-        if (!entityManager.HasComponent<Processor>(selected)) return false;
+        if (!entityManager.Exists(selected))
+        {
+            Debug.LogWarning($"Cannot get unit commands for {selected}: Entity does not exists");
+            return false;
+        }
+
+        if (!entityManager.HasComponent<Processor>(selected))
+        {
+            Debug.LogWarning($"Cannot get unit commands for {selected}: Entity does not have a Processor component");
+            return false;
+        }
+
         if (ConnectionManager.ClientOrDefaultWorld.IsClient())
         {
             Dictionary<FileId, CompiledSourceClient> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
-            if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceClient? source)) return false;
+            if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceClient? source))
+            {
+                Debug.LogWarning($"Cannot get unit commands for {selected}: Source `{entityManager.GetComponentData<Processor>(selected).SourceFile}` does not exists");
+                return false;
+            }
 
             commands = source.UnitCommandDefinitions.HasValue ? source.UnitCommandDefinitions.Value.AsReadOnlySpan() : ReadOnlySpan<UnitCommandDefinition>.Empty;
             return true;
@@ -425,7 +439,11 @@ public class SelectionManager : Singleton<SelectionManager>
         else
         {
             Dictionary<FileId, CompiledSourceServer> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
-            if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceServer? source)) return false;
+            if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceServer? source))
+            {
+                Debug.LogWarning($"Cannot get unit commands for {selected}: Source `{entityManager.GetComponentData<Processor>(selected).SourceFile}` does not exists");
+                return false;
+            }
 
             commands = source.UnitCommandDefinitions.HasValue ? source.UnitCommandDefinitions.Value.AsReadOnlySpan() : ReadOnlySpan<UnitCommandDefinition>.Empty;
             return true;
@@ -444,6 +462,14 @@ public class SelectionManager : Singleton<SelectionManager>
 
         UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
         UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").value = 0f;
+
+        Vector3 screenPoint = MainCamera.Camera.WorldToScreenPoint(_unitCommandUIPosition);
+        if (screenPoint.z >= 0f)
+        {
+            screenPoint.z = 0f;
+            screenPoint.y = MainCamera.Camera.pixelHeight - screenPoint.y;
+            UnitCommandsUI.rootVisualElement.transform.position = screenPoint;
+        }
 
         VisualElement container = UnitCommandsUI.rootVisualElement.Q("container-unit-commands");
         container.Clear();
@@ -499,7 +525,7 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         VirtualGhostEntity[] yeah = _selected.ToArray();
 
-        // int i = 0;
+        int i = 0;
         foreach (VirtualGhostEntity selected in yeah)
         {
             yield return null;
@@ -510,18 +536,19 @@ public class SelectionManager : Singleton<SelectionManager>
 
                 WorldPosition = _unitCommandUIWorldPositionData,
             });
-            // if (UnitCommandsUI.rootVisualElement != null)
-            // {
-            //     float v = (float)(++i) / (float)yeah.Length;
-            //     ProgressBar progressBar = UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress");
-            //     progressBar.value = v;
-            //     progressBar.style.display = DisplayStyle.Flex;
-            // }
+
+            if (UnitCommandsUI.rootVisualElement != null)
+            {
+                ProgressBar progressBar = UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress");
+                progressBar.value = (float)(++i) / yeah.Length;
+                progressBar.style.display = DisplayStyle.Flex;
+            }
         }
-        // if (UnitCommandsUI.rootVisualElement != null)
-        // {
-        //     UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
-        // }
+
+        if (UnitCommandsUI.rootVisualElement != null)
+        {
+            UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
+        }
     }
 
     Entity[] UnitsInRect(Rect rect)

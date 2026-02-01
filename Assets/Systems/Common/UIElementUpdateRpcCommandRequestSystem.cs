@@ -1,4 +1,3 @@
-using NUnit.Framework;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Entities;
@@ -18,7 +17,6 @@ partial struct UIElementUpdateRpcCommandRequestSystem : ISystem
 
         public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
         {
-            Assert.IsFalse(useEnabledMask);
             data.Execute(chunk, unfilteredChunkIndex);
         }
     }

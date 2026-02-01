@@ -334,6 +334,10 @@ MonoBehaviour:
     VisualEffect: {fileID: 8926484042661614526, guid: 8faf1c8db239f6f8ba43f391090e0e6c,
       type: 3}
     Light: {fileID: 2036629940}
+  - Duration: 0.4
+    VisualEffect: {fileID: 8926484042661614526, guid: 4a223d1681213c85abdae2a027f89ab4,
+      type: 3}
+    Light: {fileID: 2036629940}
   - Duration: 0.2
     VisualEffect: {fileID: 8926484042661614526, guid: f187d57176b8bc2b598bac872e9e75e1,
       type: 3}

@@ -374,7 +374,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             const string SpinnerChars = "-\\|/";
             char spinner = SpinnerChars[(int)(MonoTime.Now * 8f) % SpinnerChars.Length];
 
-            void SyncDiagnosticItems(VisualElement container, IEnumerable<IDiagnostic> diagnostics, DiagnosticsLevel parentLevel)
+            void SyncDiagnosticItems(VisualElement container, IEnumerable<Diagnostic> diagnostics, DiagnosticsLevel parentLevel)
             {
                 container.SyncList(
                     diagnostics

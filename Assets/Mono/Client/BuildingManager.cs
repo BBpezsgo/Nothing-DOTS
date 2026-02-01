@@ -9,7 +9,6 @@ using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
-using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
 [Serializable]
 class BuildingPlaceholderItem
@@ -22,15 +21,15 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
 {
     BufferedBuilding SelectedBuilding = default;
     [SerializeField, NotNull] List<BuildingPlaceholderItem> Holograms = new();
-    [SerializeField, ReadOnly, NotNull] GameObject? BuildingHologram = default;
+    [SerializeField, SaintsField.ReadOnly, NotNull] GameObject? BuildingHologram = default;
 
     [SerializeField, NotNull] Material? HologramMaterial = default;
 
-    [SerializeField, ReadOnly] bool IsValidPosition = false;
+    [SerializeField, SaintsField.ReadOnly] bool IsValidPosition = false;
 
     [SerializeField, NotNull] LineRenderer? WirePlaceholder = default;
-    [SerializeField, ReadOnly] SpawnedGhost SelectedConnector;
-    [SerializeField, ReadOnly] float3 SelectedConnectorPosition;
+    [SerializeField, SaintsField.ReadOnly] SpawnedGhost SelectedConnector;
+    [SerializeField, SaintsField.ReadOnly] float3 SelectedConnectorPosition;
 
     [SerializeField] Color ValidHologramColor = Color.white;
     [SerializeField] Color InvalidHologramColor = Color.red;

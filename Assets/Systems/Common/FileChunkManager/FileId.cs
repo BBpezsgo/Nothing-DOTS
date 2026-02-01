@@ -16,7 +16,7 @@ public struct FileId : IEquatable<FileId>
     }
 
     public override readonly int GetHashCode() => HashCode.Combine(Name, Source);
-    public override readonly string ToString() => $"{Source} {Name}";
+    public override readonly string? ToString() => Equals(default) ? null : $"{Source} {Name}";
     public override readonly bool Equals(object obj) => obj is FileId other && Equals(other);
     public readonly bool Equals(FileId other) => Name.Equals(other.Name) && Source.Equals(other.Source);
 

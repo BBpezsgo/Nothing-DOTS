@@ -89,6 +89,7 @@ partial class CompilerSystemClient : SystemBase
         {
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
+
             if (CompiledSources.TryGetValue(command.ValueRO.FileName, out CompiledSourceClient? source))
             {
                 source.Code?.Dispose();

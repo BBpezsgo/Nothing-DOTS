@@ -305,8 +305,12 @@ while (1)
             {
                 debug(p, YELLOW);
             }
-            printline("CHK");
-            try_send_verification_request(&(&enemies).raw()[i]);
+
+            if ((&enemies).raw()[i].verification_sent_at + 1f < time())
+            {
+                printline("CHK");
+                send_verification_request(&(&enemies).raw()[i]);
+            }
         }
     }
 

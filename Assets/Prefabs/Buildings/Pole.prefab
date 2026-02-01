@@ -130,7 +130,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MaxHealth: 5
-  DestroyEffect: {fileID: 8926484042661614526, guid: 8faf1c8db239f6f8ba43f391090e0e6c,
+  DestroyEffect: {fileID: 8926484042661614526, guid: 4a223d1681213c85abdae2a027f89ab4,
     type: 3}
 --- !u!114 &-3109358712516817298
 MonoBehaviour:
