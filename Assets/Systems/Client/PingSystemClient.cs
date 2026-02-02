@@ -8,7 +8,7 @@ partial struct PingSystemClient : ISystem
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = default;
-        long now = DateTime.UtcNow.Ticks;
+        long now = MonoTime.Ticks;
 
         foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<PingResponseFinalRpc>>()

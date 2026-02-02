@@ -56,7 +56,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
         using EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
-            Debug.LogWarning($"Failed to get {nameof(BuildingDatabase)} entity singleton");
+            Debug.LogWarning($"Failed to get `{nameof(BuildingDatabase)}` entity singleton");
             return;
         }
 
@@ -287,7 +287,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
                 WirePlaceholder.material.color = isValid ? ValidHologramColor : InvalidHologramColor;
                 WirePlaceholder.material.SetEmissionColor(isValid ? ValidHologramColor : InvalidHologramColor, HologramEmission);
 
-                Vector3[] points = WireRendererSystem.GenerateWire(SelectedConnectorPosition, endPosition);
+                Vector3[] points = WireRendererSystemClient.GenerateWire(SelectedConnectorPosition, endPosition);
                 WirePlaceholder.positionCount = points.Length;
                 WirePlaceholder.SetPositions(points);
             }
@@ -318,7 +318,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
         if (TerrainGenerator.Instance.TrySample(new float2(position.x, position.z), out float h, out float3 n))
         {
             position.y = h;
-            TerrainCollisionSystem.AlignPreserveYawExact(transform.rotation, n, out quaternion rotation);
+            TerrainCollisionSystemServer.AlignPreserveYawExact(transform.rotation, n, out quaternion rotation);
             transform.rotation = rotation;
         }
         BuildingHologram.transform.position = position;

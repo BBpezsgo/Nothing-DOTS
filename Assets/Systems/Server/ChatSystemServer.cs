@@ -35,9 +35,10 @@ public partial struct ChatSystemServer : ISystem
         }
     }
 
-    public static void SendChatMessage(in EntityCommandBuffer commandBuffer, FixedString64Bytes message, long time)
+    [BurstCompile]
+    public static void SendChatMessage(in EntityCommandBuffer commandBuffer, in WorldUnmanaged world, in FixedString64Bytes message, long time)
     {
-        NetcodeUtils.CreateRPC(commandBuffer, ConnectionManager.ClientOrDefaultWorld.Unmanaged, new ChatMessageRpc()
+        NetcodeUtils.CreateRPC(in commandBuffer, in world, new ChatMessageRpc()
         {
             Sender = 0,
             Message = message,

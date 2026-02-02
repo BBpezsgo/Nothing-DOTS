@@ -172,7 +172,7 @@ partial class FileChunkManagerSystem : SystemBase
             }
         }
 
-        if (DateTime.UtcNow.TimeOfDay.TotalSeconds - request.RequestSentAt > 5d)
+        if (SystemAPI.Time.ElapsedTime - request.RequestSentAt > 5d)
         {
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
 
@@ -182,7 +182,7 @@ partial class FileChunkManagerSystem : SystemBase
                 Version = requestCached && RemoteFiles.TryGetValue(request.File, out RemoteFile v) ? v.File.Version : 0,
             }, request.File.Source.GetEntity(World.EntityManager));
 
-            request.RequestSent();
+            request.RequestSentAt = SystemAPI.Time.ElapsedTime;
             if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Sending request for file \"{request.File.ToUri()}\"");
         }
     }
@@ -313,7 +313,7 @@ partial class FileChunkManagerSystem : SystemBase
                     {
                         Processor processor = World.DefaultGameObjectInjectionWorld.EntityManager.GetComponentData<Processor>(entity);
                         byte[] data = new Span<byte>(&processor.Memory, Processor.TotalMemorySize).ToArray();
-                        return new FileData(data, DateTime.UtcNow.Ticks);
+                        return new FileData(data, MonoTime.Ticks);
                     }
                 }
             }

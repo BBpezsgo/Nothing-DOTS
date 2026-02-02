@@ -1,3 +1,4 @@
+using System;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -31,7 +32,6 @@ partial struct RigidbodySystemClient : ISystem
                     transform.ValueRW.Rotation = math.mul(transform.ValueRO.Rotation, quaternion.AxisAngle(right, alpha));
                     break;
                 }
-
                 case ColliderType.AABB:
                 {
                     ref readonly AABBCollider aabb = ref collider.ValueRO.AABB;
@@ -58,6 +58,7 @@ partial struct RigidbodySystemClient : ISystem
 
                     break;
                 }
+                default: throw new UnreachableException();
             }
         }
     }

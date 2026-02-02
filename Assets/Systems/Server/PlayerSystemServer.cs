@@ -19,10 +19,8 @@ public partial struct PlayerSystemServer : ISystem
     {
         state.RequireForUpdate<PrefabDatabase>();
         TeamCounter = 0;
-        ServerGuid = Guid.NewGuid();
     }
 
-    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         if (!SystemAPI.TryGetSingletonBuffer(out DynamicBuffer<BufferedSpawn> spawns, false)) return;
@@ -35,7 +33,7 @@ public partial struct PlayerSystemServer : ISystem
             .WithNone<InitializedClient>()
             .WithEntityAccess())
         {
-            Debug.Log(string.Format("[Server] Client {0} initialized", id.ValueRO.Value));
+            Debug.Log($"{DebugEx.ServerPrefix} Client `{id.ValueRO.Value}` initialized");
             commandBuffer.AddComponent<InitializedClient>(entity);
         }
 
@@ -48,7 +46,17 @@ public partial struct PlayerSystemServer : ISystem
             NetworkId source = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
             commandBuffer.DestroyEntity(entity);
 
-            Debug.Log(string.Format("[Server] Received guid request from client {0}", source.Value));
+            Debug.Log($"{DebugEx.ServerPrefix} Received guid request from client {source.Value}");
+
+            if (ServerGuid == default)
+            {
+                unsafe
+                {
+                    Unity.Mathematics.Random random = state.GetRandom();
+                    ServerGuid = new Guid(random.NextInt(), (short)random.NextInt(short.MinValue, short.MaxValue), (short)random.NextInt(short.MinValue, short.MaxValue), random.NextByte(), random.NextByte(), random.NextByte(), random.NextByte(), random.NextByte(), random.NextByte(), random.NextByte(), random.NextByte());
+                }
+                Debug.Log($"{DebugEx.ServerPrefix} Server guid generated: {ServerGuid}");
+            }
 
             NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ServerGuidResponseRpc()
             {
@@ -63,7 +71,7 @@ public partial struct PlayerSystemServer : ISystem
             NetworkId source = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
             commandBuffer.DestroyEntity(entity);
 
-            Debug.Log(string.Format("[Server] Received register request from client {0}", source.Value));
+            Debug.Log($"{DebugEx.ServerPrefix} Received register request from client {source.Value}\n  Nickname: \"{command.ValueRO.Nickname}\"");
 
             (bool, Player) exists = default;
 
@@ -78,7 +86,7 @@ public partial struct PlayerSystemServer : ISystem
 
             if (exists.Item1)
             {
-                Debug.LogWarning("[Server] Already logged in");
+                Debug.LogWarning($"{DebugEx.ServerPrefix} Already logged in");
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
                     StatusCode = SessionStatusCode.AlreadyLoggedIn,
@@ -109,8 +117,8 @@ public partial struct PlayerSystemServer : ISystem
                     Nickname = command.ValueRO.Nickname,
                 });
 
-                Debug.Log("[Server] Player created");
-                ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} connected", command.ValueRO.Nickname), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                Debug.Log($"{DebugEx.ServerPrefix} Player created\n  Nickname: \"{command.ValueRO.Nickname}\"\n  Guid: {guid}\n  ConnectionId: {source.Value}");
+                ChatSystemServer.SendChatMessage(commandBuffer, state.WorldUnmanaged, $"Player {command.ValueRO.Nickname} connected", MonoTime.UnixSeconds);
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
@@ -130,7 +138,7 @@ public partial struct PlayerSystemServer : ISystem
 
             FixedBytes16 guid = command.ValueRO.Guid;
 
-            Debug.Log(string.Format("[Server] Received login request from client {0} with guid {1}", source.Value, Marshal.As<FixedBytes16, Guid>(guid)));
+            Debug.Log($"{DebugEx.ServerPrefix} Received login request from client {source.Value}\n  Guid: {Marshal.As<FixedBytes16, Guid>(guid)}");
 
             bool exists = false;
             foreach (var player in
@@ -144,7 +152,7 @@ public partial struct PlayerSystemServer : ISystem
                 {
                     player.ValueRW.ConnectionId = source.Value;
                     player.ValueRW.ConnectionState = PlayerConnectionState.Connected;
-                    ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} reconnected", player.ValueRO.Nickname), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                    ChatSystemServer.SendChatMessage(commandBuffer, state.WorldUnmanaged, $"Player {player.ValueRO.Nickname} reconnected", MonoTime.UnixSeconds);
                 }
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
@@ -158,7 +166,7 @@ public partial struct PlayerSystemServer : ISystem
 
             if (!exists)
             {
-                Debug.Log(string.Format("[Server] Player does not exists {0}", Marshal.As<FixedBytes16, Guid>(guid)));
+                Debug.Log($"{DebugEx.ServerPrefix} Player does not exists {Marshal.As<FixedBytes16, Guid>(guid)}");
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionResponseRpc()
                 {
@@ -201,8 +209,8 @@ public partial struct PlayerSystemServer : ISystem
 
             if (!found)
             {
-                Debug.Log(string.Format("[Server] Client {0} disconnected", player.ValueRO.ConnectionId));
-                ChatSystemServer.SendChatMessage(commandBuffer, string.Format("Player {0} disconnected", player.ValueRO.Nickname), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                Debug.Log($"{DebugEx.ServerPrefix} Client {player.ValueRO.ConnectionId} disconnected");
+                ChatSystemServer.SendChatMessage(commandBuffer, state.WorldUnmanaged, $"Player {player.ValueRO.Nickname} disconnected", MonoTime.UnixSeconds);
 
                 player.ValueRW.ConnectionId = -1;
                 player.ValueRW.ConnectionState = PlayerConnectionState.Disconnected;

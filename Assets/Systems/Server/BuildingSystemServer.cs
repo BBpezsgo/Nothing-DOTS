@@ -49,7 +49,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer.Entity == Entity.Null)
             {
-                Debug.LogWarning(string.Format("Failed to place building: requested by {0} but aint have a team", networkId));
+                Debug.LogWarning($"Failed to place building: requested by `{networkId}` but aint have a team");
                 continue;
             }
 
@@ -135,7 +135,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer.Entity == Entity.Null)
             {
-                Debug.LogWarning(string.Format("Failed to place wire: requested by {0} but aint have a team", networkId));
+                Debug.LogWarning($"Failed to place wire: requested by {networkId} but aint have a team");
                 continue;
             }
 
@@ -158,13 +158,13 @@ public partial struct BuildingSystemServer : ISystem
 
             if (connectorA == default || connectorB == default)
             {
-                Debug.LogWarning(string.Format("Failed to place wire: connectors not found"));
+                Debug.LogWarning("Failed to place wire: connectors not found");
                 continue;
             }
 
             if (connectorA == default)
             {
-                Debug.Log(string.Format("Failed to place wire: two connectors are the same"));
+                Debug.Log("Failed to place wire: two connectors are the same");
                 continue;
             }
 
@@ -201,7 +201,7 @@ public partial struct BuildingSystemServer : ISystem
             continue;
 
         alreadyExists:;
-            Debug.Log(string.Format("Failed to place wire: already exists"));
+            Debug.Log("Failed to place wire: already exists");
         }
 
         foreach (var (placeholder, transform, owner, unitTeam, entity) in
@@ -246,7 +246,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogWarning(string.Format("Player with network id {0} aint have a team", networkId));
+                Debug.LogWarning($"Player with network id {networkId} aint have a team");
                 continue;
             }
 

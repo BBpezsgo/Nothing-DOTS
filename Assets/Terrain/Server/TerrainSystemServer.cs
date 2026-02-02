@@ -633,7 +633,7 @@ partial struct TerrainGeneratorJobServer : IJobFor
     {
         int2 coord = Queue[index];
         float2 noiseOffset = new float2(coord.x, coord.y) * TerrainSystemServer.MeshWorldSize / TerrainSystemServer.meshScale;
-        //Debug.Log(string.Format("Generating chunk at {0} {1}", coord.x, coord.y));
+        //Debug.Log($"Generating chunk at {coord.x} {coord.y}");
         NativeArray<float> chunk = Result[index];
         HeightMapGenerator.GenerateHeightMap(ref chunk, TerrainSystemServer.NumVertsPerLine, TerrainSystemServer.NumVertsPerLine, HeightMapSettings.heightMultiplier, noiseOffset, in HeightMapSettings.noiseSettings, Allocator.Temp);
     }

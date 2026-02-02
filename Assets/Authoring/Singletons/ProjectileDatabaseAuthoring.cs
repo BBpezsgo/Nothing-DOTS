@@ -15,7 +15,7 @@ class ProjectileDatabaseAuthoring : MonoBehaviour
             if (Prefabs.Projectiles[i] != projectile) continue;
             return i;
         }
-        Debug.LogError($"Projectile {projectile} is not present in the database", projectile);
+        Debug.LogError($"Projectile `{projectile}` is not present in the database", projectile);
         return -1;
     }
 

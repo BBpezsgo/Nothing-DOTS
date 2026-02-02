@@ -414,13 +414,13 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (!entityManager.Exists(selected))
         {
-            Debug.LogWarning($"Cannot get unit commands for {selected}: Entity does not exists");
+            Debug.LogWarning($"Cannot get unit commands for `{selected}`: Entity does not exists");
             return false;
         }
 
         if (!entityManager.HasComponent<Processor>(selected))
         {
-            Debug.LogWarning($"Cannot get unit commands for {selected}: Entity does not have a Processor component");
+            Debug.Log($"Cannot get unit commands for `{selected}`: Entity does not have a Processor component");
             return false;
         }
 
@@ -429,7 +429,7 @@ public class SelectionManager : Singleton<SelectionManager>
             Dictionary<FileId, CompiledSourceClient> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
             if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceClient? source))
             {
-                Debug.LogWarning($"Cannot get unit commands for {selected}: Source `{entityManager.GetComponentData<Processor>(selected).SourceFile}` does not exists");
+                Debug.Log($"Cannot get unit commands for `{selected}`: Source \"{entityManager.GetComponentData<Processor>(selected).SourceFile}\" does not exists");
                 return false;
             }
 
@@ -441,7 +441,7 @@ public class SelectionManager : Singleton<SelectionManager>
             Dictionary<FileId, CompiledSourceServer> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
             if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceServer? source))
             {
-                Debug.LogWarning($"Cannot get unit commands for {selected}: Source `{entityManager.GetComponentData<Processor>(selected).SourceFile}` does not exists");
+                Debug.Log($"Cannot get unit commands for `{selected}`: Source \"{entityManager.GetComponentData<Processor>(selected).SourceFile}\" does not exists");
                 return false;
             }
 

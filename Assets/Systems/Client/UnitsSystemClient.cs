@@ -64,6 +64,6 @@ public partial struct UnitsSystemClient : ISystem
 
         NetcodeUtils.CreateRPC<UnitsRequestRpc>(world);
 
-        Debug.Log("[Client] Request avaliable units ...");
+        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable units ...");
     }
 }

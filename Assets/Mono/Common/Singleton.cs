@@ -14,7 +14,7 @@ public class Singleton<T> : MonoBehaviour where T : UnityEngine.Object
         get
         {
             if (_instance == null) _instance = FindFirstObjectByType<T>(FindObjectsInactive.Include);
-            return _instance == null ? throw new NullReferenceException($"Singleton {typeof(T).Name} is null") : _instance;
+            return _instance == null ? throw new NullReferenceException($"Singleton `{typeof(T).Name}` is null") : _instance;
         }
     }
 
@@ -22,7 +22,7 @@ public class Singleton<T> : MonoBehaviour where T : UnityEngine.Object
     {
         if (_instance != null)
         {
-            if (_instance != this) Debug.LogError($"Singleton {typeof(T).Name} already exists ({_instance})", gameObject);
+            if (_instance != this) Debug.LogError($"Singleton `{typeof(T).Name}` already exists (`{_instance}`)", gameObject);
             return;
         }
         _instance = Instance;

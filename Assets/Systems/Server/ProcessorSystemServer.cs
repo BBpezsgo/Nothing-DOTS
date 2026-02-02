@@ -273,7 +273,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
                 if (uiElements[i].Value.Id == 0)
                 {
-                    // Debug.Log(string.Format("[Server] {0} destroyed", uiElements[i]));
+                    // Debug.Log($"{DebugEx.ServerPrefix} {uiElements[i]} destroyed");
 
                     NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new UIElementDestroyRpc()
                     {
@@ -283,7 +283,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
                 }
                 else
                 {
-                    // Debug.Log(string.Format("[Server] {0} updated, {1}", uiElements[i], uiElements[i].Value.Label.Text.AsString()));
+                    // Debug.Log($"{DebugEx.ServerPrefix} {uiElements[i]} updated, {uiElements[i].Value.Label.Text.AsString()}");
 
                     NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new UIElementUpdateRpc()
                     {
@@ -425,19 +425,19 @@ partial struct ProcessorJob : IJobEntity
                         switch (processorState.Signal)
                         {
                             case Signal.UserCrash:
-                                Debug.LogError(string.Format("[Server] Crashed ({0})", processorState.Crash));
+                                Debug.LogError(string.Format($"{DebugEx.ServerPrefix} Crashed ({{0}})", processorState.Crash));
                                 break;
                             case Signal.StackOverflow:
-                                Debug.LogError("[Server] Stack Overflow");
+                                Debug.LogError($"{DebugEx.ServerPrefix} Stack Overflow");
                                 break;
                             case Signal.Halt:
-                                // Debug.LogError("[Server] Halted");
+                                // Debug.LogError($"{DebugEx.ServerPrefix} Halted");
                                 break;
                             case Signal.UndefinedExternalFunction:
-                                Debug.LogError(string.Format("[Server] Undefined external function {0}", processorState.Crash));
+                                Debug.LogError(string.Format($"{DebugEx.ServerPrefix} Undefined external function {{0}}", processorState.Crash));
                                 break;
                             case Signal.PointerOutOfRange:
-                                Debug.LogError("[Server] Pointer out of Range");
+                                Debug.LogError($"{DebugEx.ServerPrefix} Pointer out of Range");
                                 break;
                             case Signal.None:
                                 break;

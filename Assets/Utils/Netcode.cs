@@ -1,140 +1,142 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.NetCode;
 
+[BurstCompile]
 public static class NetcodeUtils
 {
-    public static bool IsLocal(this WorldUnmanaged world) => !world.IsServer() && !world.IsClient();
+    [BurstCompile]
+    public static bool IsLocal(this in WorldUnmanaged world) => !world.IsServer() && !world.IsClient();
 
-    public static Entity CreateRPC<T>(WorldUnmanaged world)
+    [BurstCompile]
+    public static void CreateRPC<T>(in WorldUnmanaged world)
         where T : unmanaged, IComponentData
     {
-        return CreateRPCImpl(world, ComponentType.ReadOnly<T>(), Entity.Null);
+        CreateRPCImpl(in world, ComponentType.ReadOnly<T>(), Entity.Null, out _);
     }
 
-    public static Entity CreateRPC<T>(WorldUnmanaged world, Entity connectionEntity)
+    [BurstCompile]
+    public static void CreateRPC<T>(in WorldUnmanaged world, in Entity connectionEntity)
         where T : unmanaged, IComponentData
     {
-        if (connectionEntity == Entity.Null) return Entity.Null;
-        return CreateRPCImpl(world, ComponentType.ReadOnly<T>(), connectionEntity);
+        if (connectionEntity == Entity.Null) return;
+        CreateRPCImpl(in world, ComponentType.ReadOnly<T>(), in connectionEntity, out _);
     }
 
-    public static Entity CreateRPC<T>(WorldUnmanaged world, T componentData)
+    [BurstCompile]
+    public static void CreateRPC<T>(in WorldUnmanaged world, in T componentData)
         where T : unmanaged, IComponentData
     {
-        Entity entity = CreateRPCImpl(in world, ComponentType.ReadWrite<T>(), Entity.Null);
+        CreateRPCImpl(in world, ComponentType.ReadWrite<T>(), Entity.Null, out Entity entity);
         world.EntityManager.SetComponentData(entity, componentData);
-        return entity;
     }
 
-    public static Entity CreateRPC<T>(WorldUnmanaged world, T componentData, Entity connectionEntity)
+    [BurstCompile]
+    public static void CreateRPC<T>(in WorldUnmanaged world, in T componentData, in Entity connectionEntity)
         where T : unmanaged, IComponentData
     {
-        if (connectionEntity == Entity.Null) return Entity.Null;
-        Entity entity = CreateRPCImpl(in world, ComponentType.ReadWrite<T>(), connectionEntity);
+        if (connectionEntity == Entity.Null) return;
+        CreateRPCImpl(in world, ComponentType.ReadWrite<T>(), in connectionEntity, out Entity entity);
         world.EntityManager.SetComponentData(entity, componentData);
-        return entity;
     }
 
-    static Entity CreateRPCImpl(in WorldUnmanaged world, ComponentType componentType, Entity connectionEntity = default)
+    [BurstCompile]
+    static void CreateRPCImpl(in WorldUnmanaged world, in ComponentType componentType, in Entity connectionEntity, out Entity result)
     {
         if (world.IsClient() || world.IsServer())
         {
-            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            result = world.EntityManager.CreateEntity(stackalloc ComponentType[]
             {
                 componentType,
                 ComponentType.ReadWrite<SendRpcCommandRequest>(),
             });
 
-            world.EntityManager.SetComponentData(entity, new SendRpcCommandRequest() { TargetConnection = connectionEntity });
-            return entity;
+            world.EntityManager.SetComponentData(result, new SendRpcCommandRequest() { TargetConnection = connectionEntity });
         }
         else
         {
-            Entity entity = world.EntityManager.CreateEntity(stackalloc ComponentType[]
+            result = world.EntityManager.CreateEntity(stackalloc ComponentType[]
             {
                 componentType,
                 ComponentType.ReadOnly<SendRpcCommandRequest>(),
                 ComponentType.ReadWrite<ReceiveRpcCommandRequest>(),
             });
 
-            world.EntityManager.SetComponentData(entity, new ReceiveRpcCommandRequest() { SourceConnection = connectionEntity });
-            return entity;
+            world.EntityManager.SetComponentData(result, new ReceiveRpcCommandRequest() { SourceConnection = connectionEntity });
         }
     }
 
-    public static Entity CreateRPC<T>(EntityCommandBuffer commandBuffer, in WorldUnmanaged world)
+    [BurstCompile]
+    public static void CreateRPC<T>(in EntityCommandBuffer commandBuffer, in WorldUnmanaged world)
         where T : unmanaged, IComponentData
     {
-        return CreateRPCImpl(commandBuffer, in world, ComponentType.ReadOnly<T>(), Entity.Null);
+        CreateRPCImpl(in commandBuffer, in world, ComponentType.ReadOnly<T>(), Entity.Null, out _);
     }
 
-    public static Entity CreateRPC<T>(EntityCommandBuffer commandBuffer, in WorldUnmanaged world, Entity connectionEntity)
+    [BurstCompile]
+    public static void CreateRPC<T>(in EntityCommandBuffer commandBuffer, in WorldUnmanaged world, in Entity connectionEntity)
         where T : unmanaged, IComponentData
     {
-        if (connectionEntity == Entity.Null) return Entity.Null;
-        return CreateRPCImpl(commandBuffer, in world, ComponentType.ReadOnly<T>(), connectionEntity);
+        if (connectionEntity == Entity.Null) return;
+        CreateRPCImpl(in commandBuffer, in world, ComponentType.ReadOnly<T>(), in connectionEntity, out _);
     }
 
-    public static Entity CreateRPC<T>(EntityCommandBuffer commandBuffer, in WorldUnmanaged world, T componentData)
+    [BurstCompile]
+    public static void CreateRPC<T>(in EntityCommandBuffer commandBuffer, in WorldUnmanaged world, in T componentData)
         where T : unmanaged, IComponentData
     {
-        Entity entity = CreateRPCImpl(commandBuffer, in world, ComponentType.ReadWrite<T>(), Entity.Null);
+        CreateRPCImpl(in commandBuffer, in world, ComponentType.ReadWrite<T>(), Entity.Null, out Entity entity);
         commandBuffer.SetComponent(entity, componentData);
-        return entity;
     }
 
-    public static Entity CreateRPC<T>(EntityCommandBuffer commandBuffer, in WorldUnmanaged world, T componentData, Entity connectionEntity)
+    [BurstCompile]
+    public static void CreateRPC<T>(in EntityCommandBuffer commandBuffer, in WorldUnmanaged world, in T componentData, in Entity connectionEntity)
         where T : unmanaged, IComponentData
     {
-        if (connectionEntity == Entity.Null) return Entity.Null;
-        Entity entity = CreateRPCImpl(commandBuffer, in world, ComponentType.ReadWrite<T>(), connectionEntity);
+        if (connectionEntity == Entity.Null) return;
+        CreateRPCImpl(in commandBuffer, in world, ComponentType.ReadWrite<T>(), in connectionEntity, out Entity entity);
         commandBuffer.SetComponent(entity, componentData);
-        return entity;
     }
 
-    static Entity CreateRPCImpl(EntityCommandBuffer commandBuffer, in WorldUnmanaged world, ComponentType componentType, Entity connectionEntity = default)
+    [BurstCompile]
+    static void CreateRPCImpl(in EntityCommandBuffer commandBuffer, in WorldUnmanaged world, in ComponentType componentType, in Entity connectionEntity, out Entity result)
     {
         if (world.Time.ElapsedTime < 1d)
         {
             if (world.IsClient() || world.IsServer())
             {
-                Entity _entity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(_entity, componentType);
-                commandBuffer.AddComponent<SendRpcCommandRequest>(_entity, new() { TargetConnection = connectionEntity });
-                return _entity;
+                result = commandBuffer.CreateEntity();
+                commandBuffer.AddComponent(result, componentType);
+                commandBuffer.AddComponent<SendRpcCommandRequest>(result, new() { TargetConnection = connectionEntity });
             }
             else
             {
-                Entity _entity = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(_entity, componentType);
-                commandBuffer.AddComponent<SendRpcCommandRequest>(_entity, new() { TargetConnection = connectionEntity });
-                commandBuffer.AddComponent<ReceiveRpcCommandRequest>(_entity, new() { SourceConnection = connectionEntity });
-                return _entity;
+                result = commandBuffer.CreateEntity();
+                commandBuffer.AddComponent(result, componentType);
+                commandBuffer.AddComponent<SendRpcCommandRequest>(result, new() { TargetConnection = connectionEntity });
+                commandBuffer.AddComponent<ReceiveRpcCommandRequest>(result, new() { SourceConnection = connectionEntity });
             }
         }
-
-        if (world.IsClient() || world.IsServer())
+        else if (world.IsClient() || world.IsServer())
         {
-            Entity entity = commandBuffer.CreateEntity(world.EntityManager.CreateArchetype(stackalloc ComponentType[]
+            result = commandBuffer.CreateEntity(world.EntityManager.CreateArchetype(stackalloc ComponentType[]
             {
                 componentType,
                 ComponentType.ReadWrite<SendRpcCommandRequest>(),
             }));
 
-            commandBuffer.SetComponent(entity, new SendRpcCommandRequest() { TargetConnection = connectionEntity });
-            return entity;
+            commandBuffer.SetComponent(result, new SendRpcCommandRequest() { TargetConnection = connectionEntity });
         }
         else
         {
-            Entity entity = commandBuffer.CreateEntity(world.EntityManager.CreateArchetype(stackalloc ComponentType[]
+            result = commandBuffer.CreateEntity(world.EntityManager.CreateArchetype(stackalloc ComponentType[]
             {
                 componentType,
                 ComponentType.ReadOnly<SendRpcCommandRequest>(),
                 ComponentType.ReadWrite<ReceiveRpcCommandRequest>(),
             }));
 
-            commandBuffer.SetComponent(entity, new ReceiveRpcCommandRequest() { SourceConnection = connectionEntity });
-            return entity;
+            commandBuffer.SetComponent(result, new ReceiveRpcCommandRequest() { SourceConnection = connectionEntity });
         }
     }
 }

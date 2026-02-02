@@ -64,6 +64,6 @@ public partial struct BuildingsSystemClient : ISystem
 
         NetcodeUtils.CreateRPC<BuildingsRequestRpc>(world);
 
-        Debug.Log("[Client] Request avaliable buildings ...");
+        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable buildings ...");
     }
 }

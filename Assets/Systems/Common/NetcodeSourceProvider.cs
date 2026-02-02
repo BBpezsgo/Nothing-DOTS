@@ -52,7 +52,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
                 return SourceProviderResultAsync.NextHandler();
             }
 
-            if (EnableLogging) Debug.Log($"Try load netcode file {fileId.Name} ...");
+            if (EnableLogging) Debug.Log($"Try load netcode file \"{fileId.Name}\" ...");
 
             if (fileId.Source.IsServer)
             {
@@ -62,7 +62,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
                 AwaitableCompletionSource<Stream> task = new();
                 task.SetResult(new MemoryStream(localFile.Value.Data));
-                if (EnableLogging) Debug.Log($"Successfully loaded {uri} from local files");
+                if (EnableLogging) Debug.Log($"Successfully loaded \"{uri}\" from local files");
                 return SourceProviderResultAsync.Success(uri, task.Awaitable);
             }
 
@@ -83,8 +83,8 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
             ProgressRecord<(int Current, int Total)> progress = new(v =>
             {
-                float total = progresses.Sum(v => v.Progress.Item2 == 0 ? 0f : (float)v.Progress.Item1 / (float)v.Progress.Item2);
-                source.Progress = total / (float)progresses.Count;
+                float total = progresses.Sum(v => v.Progress.Item2 == 0 ? 0f : (float)v.Progress.Item1 / v.Progress.Item2);
+                source.Progress = total / progresses.Count;
                 source.Diagnostics.Clear();
                 source.StatusChanged = true;
             });

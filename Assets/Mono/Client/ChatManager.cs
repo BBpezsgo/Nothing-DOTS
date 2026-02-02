@@ -79,7 +79,7 @@ public class ChatManager : Singleton<ChatManager>
         ReadOnlySpan<char> message = _inputMessage.value.Trim();
         if (message.Length is 0) return;
 
-        long time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        long time = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         while (!message.IsEmpty)
         {

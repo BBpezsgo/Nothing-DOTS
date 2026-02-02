@@ -1,13 +1,11 @@
-using Unity.Burst;
+#if UNITY_EDITOR
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
-[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation)]
 partial struct DisposeRpcSystemLocal : ISystem
 {
-    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
@@ -17,12 +15,12 @@ partial struct DisposeRpcSystemLocal : ISystem
         {
             if (command.ValueRO.Age >= 4)
             {
-                using NativeArray<ComponentType> components = state.GetEntityStorageInfoLookup()[entity].Chunk.Archetype.GetComponentTypes(Unity.Collections.Allocator.Temp);
+                using NativeArray<ComponentType> components = state.GetEntityStorageInfoLookup()[entity].Chunk.Archetype.GetComponentTypes(Allocator.Temp);
                 foreach (ComponentType item in components)
                 {
                     if (typeof(IRpcCommand).IsAssignableFrom(item.GetManagedType()))
                     {
-                        Debug.LogError($"RPC entity automatically destroyed {item.GetManagedType()}");
+                        Debug.LogError($"RPC entity automatically destroyed `{item.GetManagedType()}`");
                         goto k;
                     }
                 }
@@ -35,3 +33,4 @@ partial struct DisposeRpcSystemLocal : ISystem
         }
     }
 }
+#endif

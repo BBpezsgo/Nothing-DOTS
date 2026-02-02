@@ -14,7 +14,7 @@ public partial struct ChatSystemClient : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            ChatManager.Instance.AppendChatMessageElement(command.ValueRO.Sender, command.ValueRO.Message.ToString(), DateTimeOffset.FromUnixTimeMilliseconds(command.ValueRO.Time));
+            ChatManager.Instance.AppendChatMessageElement(command.ValueRO.Sender, command.ValueRO.Message.ToString(), DateTimeOffset.FromUnixTimeSeconds(command.ValueRO.Time));
         }
     }
 }

@@ -23,7 +23,10 @@ public class ThreadedDataRequester : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-    static ThreadedDataRequester() => UnityEditor.EditorApplication.update += DequeueResults;
+    static ThreadedDataRequester()
+    {
+        UnityEditor.EditorApplication.update += DequeueResults;
+    }
 #endif
 
     static void DequeueResults()

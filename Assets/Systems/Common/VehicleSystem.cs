@@ -6,7 +6,7 @@ using Unity.Transforms;
 [BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
-[UpdateBefore(typeof(TerrainCollisionSystem))]
+[UpdateBefore(typeof(TerrainCollisionSystemServer))]
 partial struct VehicleSystem : ISystem
 {
     [BurstCompile]

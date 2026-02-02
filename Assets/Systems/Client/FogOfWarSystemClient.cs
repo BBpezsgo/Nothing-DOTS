@@ -154,7 +154,7 @@ public partial class FogOfWarSystemClient : SystemBase
 
         if (bufferPixels.Length != targetPixels.Length)
         {
-            Debug.LogError("[Client] Fog plane texture buffer and target have different pixel counts");
+            Debug.LogError($"{DebugEx.ClientPrefix} Fog plane texture buffer and target have different pixel counts");
             return;
         }
 

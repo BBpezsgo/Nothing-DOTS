@@ -8,7 +8,7 @@ using Unity.NetCode;
 partial struct BufferedFileSenderSystem : ISystem
 {
     const bool DebugLog = false;
-    const int ChunkSendingLimit = 8;
+    const int ChunkSendingLimit = 16;
 
     void ISystem.OnCreate(ref SystemState state)
     {
@@ -82,7 +82,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     AutoSendEverything = true,
                     TotalLength = totalLength,
                 });
-                if (DebugLog) Debug.Log($"Sending file header \"{command.ValueRO.FileName}\": {{ id: {command.ValueRO.FileName.GetHashCode()} length: {totalLength}b }}");
+                if (DebugLog) Debug.Log($"Sending file header \"{command.ValueRO.FileName}\": {{ id: `{command.ValueRO.FileName.GetHashCode()}` length: `{totalLength}b` }}");
             }
         }
 

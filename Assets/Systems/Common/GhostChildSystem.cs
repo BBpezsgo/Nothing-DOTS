@@ -23,7 +23,7 @@ partial struct GhostChildSystem : ISystem
                     SystemAPI.Query<RefRO<GhostInstance>>()
                     .WithEntityAccess())
                 {
-                    if (parnetGhost.ValueRO.Equals(ghostChild.ValueRO.ParentEntity))
+                    if (ghostChild.ValueRO.ParentEntity.Equals(parnetGhost.ValueRO))
                     {
                         if (!SystemAPI.HasComponent<Parent>(entity))
                         {
@@ -46,7 +46,7 @@ partial struct GhostChildSystem : ISystem
                         goto good;
                     }
                 }
-                Debug.LogError(string.Format("Ghost parent {0} does not exists", ghostChild.ValueRO.ParentEntity));
+                Debug.LogError($"Ghost parent `{ghostChild.ValueRO.ParentEntity}` does not exists");
             good:;
             }
 

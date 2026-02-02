@@ -75,6 +75,6 @@ public partial struct ResearchSystemClient : ISystem
 
         NetcodeUtils.CreateRPC<ResearchesRequestRpc>(world);
 
-        Debug.Log("[Client] Request avaliable researches ...");
+        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable researches ...");
     }
 }

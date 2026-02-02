@@ -6,6 +6,12 @@ using Unity.Mathematics;
 
 public static partial class Utils
 {
+    public static unsafe Unity.Mathematics.Random GetRandom(this ref SystemState state)
+    {
+        float v = (float)state.WorldUnmanaged.Time.ElapsedTime;
+        return new Unity.Mathematics.Random(*(uint*)&v);
+    }
+
     public delegate void ModifyComponentCallback<T>(ref T component) where T : unmanaged, IComponentData;
 
     public static void ModifyComponent<T>(this EntityManager entityManager, Entity entity, ModifyComponentCallback<T> callback) where T : unmanaged, IComponentData
@@ -34,6 +40,9 @@ public static partial class Utils
             buffer[i] = random.NextAlphanumeric();
         }
     }
+
+    [BurstCompile]
+    public static byte NextByte(this ref Unity.Mathematics.Random random) => (byte)random.NextInt(byte.MinValue, byte.MaxValue);
 
     [BurstCompile]
     public static byte NextAlphanumeric(this ref Unity.Mathematics.Random random) => random.NextInt(0, 2) switch

@@ -260,7 +260,7 @@ static unsafe class BinaryReaderExtensions
         Entity serializedEntity = reader.ReadEntityUnsafe();
         if (!serializedEntities.TryGetValue(serializedEntity, out Entity entity))
         {
-            Debug.LogError($"Invalid serialized entity {serializedEntity}");
+            Debug.LogError($"Invalid serialized entity `{serializedEntity}`");
             return Entity.Null;
         }
         return entity;

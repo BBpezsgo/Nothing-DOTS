@@ -39,7 +39,7 @@ class NetcodeSourceProviderOffline : ISourceProviderSync
                 return SourceProviderResultSync.NextHandler();
             }
 
-            Debug.Log($"Try load netcode file {fileId.Name} ...");
+            Debug.Log($"Try load netcode file \"{fileId.Name}\" ...");
 
             if (FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).TryGetRemoteFile(fileId, out RemoteFile remoteFile))
             {

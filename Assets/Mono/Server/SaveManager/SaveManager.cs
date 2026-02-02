@@ -541,8 +541,8 @@ class SaveManager : MonoBehaviour
             TypeSerializer.ForDynamicBufferItem<BufferedWire>(
                 (writer, v) =>
                 {
-                    if (!serializedEntities.ContainsKey(v.EntityA)) Debug.LogError($"Referenced entity {v.EntityA} not serialized");
-                    if (!serializedEntities.ContainsKey(v.EntityB)) Debug.LogError($"Referenced entity {v.EntityB} not serialized");
+                    if (!serializedEntities.ContainsKey(v.EntityA)) Debug.LogError($"Referenced entity `{v.EntityA}` not serialized");
+                    if (!serializedEntities.ContainsKey(v.EntityB)) Debug.LogError($"Referenced entity `{v.EntityB}` not serialized");
                     writer.Write(v.EntityA);
                     writer.Write(v.EntityB);
                 },

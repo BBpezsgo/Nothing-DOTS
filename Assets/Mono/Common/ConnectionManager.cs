@@ -205,11 +205,11 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
     void SetInputEnabled(bool enabled)
     {
-        UI.rootVisualElement.Q<Button>("button-host").SetEnabled(enabled);
-        UI.rootVisualElement.Q<Button>("button-client").SetEnabled(enabled);
-        UI.rootVisualElement.Q<Button>("button-server").SetEnabled(enabled);
-        UI.rootVisualElement.Q<TextField>("input-host").SetEnabled(enabled);
-        UI.rootVisualElement.Q<TextField>("input-nickname").SetEnabled(enabled);
+        UI.rootVisualElement?.Q<Button>("button-host").SetEnabled(enabled);
+        UI.rootVisualElement?.Q<Button>("button-client").SetEnabled(enabled);
+        UI.rootVisualElement?.Q<Button>("button-server").SetEnabled(enabled);
+        UI.rootVisualElement?.Q<TextField>("input-host").SetEnabled(enabled);
+        UI.rootVisualElement?.Q<TextField>("input-nickname").SetEnabled(enabled);
     }
 
     public IEnumerator StartSingleplayerAsync(FixedString32Bytes nickname)
@@ -232,7 +232,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         ClientObjects.SetActive(true);
         yield return new WaitForEndOfFrame();
 
-        Debug.Log($" -> Set nickname to {nickname}");
+        Debug.Log($" -> Set nickname to \"{nickname}\"");
         PlayerSystemClient.GetInstance(LocalWorld!.Unmanaged).SetNickname(nickname);
 
         Debug.Log($" -> Disabling UI");

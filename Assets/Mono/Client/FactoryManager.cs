@@ -113,7 +113,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         using EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
         if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
         {
-            Debug.LogWarning($"Failed to get {nameof(UnitDatabase)} entity singleton");
+            Debug.LogWarning($"Failed to get `{nameof(UnitDatabase)}` entity singleton");
             return;
         }
 

@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Text;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -26,7 +28,6 @@ public partial struct PlayerSystemClient : ISystem
 
     void ISystem.OnCreate(ref SystemState state)
     {
-        SessionRequestSent = false;
         PlayerGuid = default;
         state.RequireForUpdate<NetworkStreamConnection>();
     }
@@ -42,8 +43,9 @@ public partial struct PlayerSystemClient : ISystem
             commandBuffer.DestroyEntity(entity);
 
             ServerGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
+            GuidRequestSent = false;
 
-            Debug.Log(string.Format("[Client] Server guid: {0}", ServerGuid));
+            Debug.Log($"{DebugEx.ClientPrefix} Server guid: `{ServerGuid}`");
         }
 
         foreach (var (_, command, entity) in
@@ -54,19 +56,20 @@ public partial struct PlayerSystemClient : ISystem
 
             SessionStatus = command.ValueRO.StatusCode;
             PlayerGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
+            SessionRequestSent = false;
 
-            Debug.Log(string.Format("[Client] Session status: {0}\n  guid: {1}\n  nickname: {2}", SessionStatus, PlayerGuid, Nickname));
+            Debug.Log($"{DebugEx.ClientPrefix} Session status: {SessionStatus}\n  Guid: {PlayerGuid}\n  Nickname: {Nickname}");
 
             if (command.ValueRO.StatusCode.IsOk())
             {
                 Nickname = command.ValueRO.Nickname;
                 SaveSession(ServerGuid, PlayerGuid);
+                Debug.Log($"{DebugEx.ClientPrefix} Successfully logged in");
             }
             else if (command.ValueRO.StatusCode == SessionStatusCode.InvalidGuid)
             {
-                Debug.Log(string.Format("[Client] Invalid guid, registering new player"));
+                Debug.Log($"{DebugEx.ClientPrefix} Invalid guid, resetting local player guid");
 
-                SessionRequestSent = false;
                 PlayerGuid = default;
             }
         }
@@ -75,19 +78,14 @@ public partial struct PlayerSystemClient : ISystem
 
         if (connection.CurrentState != ConnectionState.State.Connected) return;
 
-        if (TryGetLocalPlayer(ref state, out _))
-        {
-            SessionRequestSent = false;
-            GuidRequestSent = false;
-            return;
-        }
+        if (TryGetLocalPlayer(ref state, out _)) return;
 
         if (ServerGuid == default)
         {
             if (GuidRequestSent) return;
             GuidRequestSent = true;
 
-            Debug.Log(string.Format("[Client] Requesting server guid"));
+            Debug.Log($"{DebugEx.ClientPrefix} Requesting server guid");
 
             NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ServerGuidRequestRpc());
 
@@ -99,9 +97,9 @@ public partial struct PlayerSystemClient : ISystem
 
         if (PlayerGuid == default)
         {
-            if (FindSavedSession(ServerGuid, out Guid savedPlayerGuid) && SessionStatus != SessionStatusCode.InvalidGuid)
+            if (FindSavedSession(ServerGuid, out Guid savedPlayerGuid, out _) && SessionStatus != SessionStatusCode.InvalidGuid)
             {
-                Debug.Log(string.Format("[Client] No player found, logging in with saved session\nserver: {0}\nplayer: {1}", ServerGuid, savedPlayerGuid));
+                Debug.Log($"{DebugEx.ClientPrefix} No player found, logging in with saved session\nserver: {ServerGuid}\nplayer: {savedPlayerGuid}");
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
                 {
@@ -110,7 +108,7 @@ public partial struct PlayerSystemClient : ISystem
             }
             else
             {
-                Debug.Log(string.Format("[Client] No player found, registering"));
+                Debug.Log($"{DebugEx.ClientPrefix} No player found, registering");
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionRegisterRequestRpc()
                 {
@@ -120,7 +118,7 @@ public partial struct PlayerSystemClient : ISystem
         }
         else
         {
-            Debug.Log(string.Format("[Client] No player found, logging in with {0}", PlayerGuid));
+            Debug.Log($"{DebugEx.ClientPrefix} No player found, logging in with {PlayerGuid}");
 
             NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
             {
@@ -178,7 +176,6 @@ public partial struct PlayerSystemClient : ISystem
         }
 
         player = default;
-        //Debug.LogWarning("No local player found");
         return false;
     }
 
@@ -206,7 +203,6 @@ public partial struct PlayerSystemClient : ISystem
         }
 
         player = default;
-        //Debug.LogWarning("No local player found");
         return false;
     }
 
@@ -221,15 +217,20 @@ public partial struct PlayerSystemClient : ISystem
         }
     }
 
-    static bool FindSavedSession(Guid serverGuid, out Guid playerGuid)
+    static bool FindSavedSession(Guid serverGuid, out Guid playerGuid, [NotNullWhen(true)] out string? file)
     {
         playerGuid = default;
+        file = default;
 
         if (!Directory.Exists(SessionsDirectoryPath)) return false;
 
-        foreach (string file in Directory.GetFiles(SessionsDirectoryPath))
+        foreach (string _file in Directory.GetFiles(SessionsDirectoryPath))
         {
-            if (LoadSession(file, out Guid _serverGuid, out playerGuid) && _serverGuid == serverGuid) return true;
+            if (LoadSession(_file, out Guid _serverGuid, out playerGuid) && _serverGuid == serverGuid)
+            {
+                file = _file;
+                return true;
+            }
         }
 
         return false;
@@ -252,6 +253,26 @@ public partial struct PlayerSystemClient : ISystem
         }
     }
 
+    static string GetNonceFromIndex(uint index)
+    {
+        const string Chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        StringBuilder result = new();
+        while (true)
+        {
+            if (index < Chars.Length)
+            {
+                result.Insert(0, Chars[(int)index]);
+                return result.ToString();
+            }
+            else
+            {
+                int i = (int)(index % Chars.Length);
+                result.Insert(0, Chars[i]);
+                index /= (uint)Chars.Length;
+            }
+        }
+    }
+
     static void SaveSession(Guid serverGuid, Guid playerGuid)
     {
         if (!Directory.Exists(SessionsDirectoryPath))
@@ -261,7 +282,7 @@ public partial struct PlayerSystemClient : ISystem
 
         uint counter = 1;
         string fileName;
-        while (File.Exists(fileName = Path.Combine(SessionsDirectoryPath, $"{counter}.bin")))
+        while (File.Exists(fileName = Path.Combine(SessionsDirectoryPath, $"{GetNonceFromIndex(counter)}.bin")))
         {
             counter++;
             if (counter == 0) throw new Exception($"Failed to generate a session file name");
@@ -270,5 +291,7 @@ public partial struct PlayerSystemClient : ISystem
         using FileBinaryWriter writer = new(fileName);
         writer.Write(serverGuid);
         writer.Write(playerGuid);
+
+        Debug.Log($"{DebugEx.ClientPrefix} Session saved to file \"{fileName}\"");
     }
 }

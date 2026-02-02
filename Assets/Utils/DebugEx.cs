@@ -7,6 +7,9 @@ using UnityEngine;
 
 public static partial class DebugEx
 {
+    public const string ClientPrefix = "<color=#6899f9>[Client]</color>";
+    public const string ServerPrefix = "<color=#c787f2>[Server]</color>";
+
 #if UNITY_EDITOR && EDITOR_DEBUG
     readonly struct UnitSquare
     {

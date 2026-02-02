@@ -25,7 +25,7 @@ public class VisualEffectDatabaseAuthoring : MonoBehaviour
             if (VisualEffects[i].VisualEffect != visualEffect) continue;
             return i;
         }
-        Debug.LogError($"Visual effect {visualEffect} is not present in the database", visualEffect);
+        Debug.LogError($"Visual effect `{visualEffect}` is not present in the database", visualEffect);
         return -1;
     }
 
