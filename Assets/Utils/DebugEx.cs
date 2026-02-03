@@ -1,14 +1,27 @@
 using System;
 using System.Runtime.CompilerServices;
+using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
+using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using UnityEngine;
 
 public static partial class DebugEx
 {
+    public const string EditorPrefix = "<color=#bf748b>[Editor]</color>";
+    public const string BakingPrefix = "<color=#bf748b>[Baking]</color>";
+    public const string AnyPrefix = "<color=#969696>[Any]</color>";
+    public const string LocalPrefix = "<color=#71daf7>[Local]</color>";
     public const string ClientPrefix = "<color=#6899f9>[Client]</color>";
     public const string ServerPrefix = "<color=#c787f2>[Server]</color>";
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static FixedString32Bytes Prefix(WorldUnmanaged world) =>
+        world.IsServer() ? (FixedString32Bytes)ServerPrefix :
+        world.IsClient() ? (FixedString32Bytes)ClientPrefix :
+        LocalPrefix;
 
 #if UNITY_EDITOR && EDITOR_DEBUG
     readonly struct UnitSquare
@@ -251,6 +264,18 @@ public static partial class DebugEx
             prevPoint = point;
         }
         Debug.DrawLine(prevPoint, origin, color, duration, depthTest);
+#endif
+    }
+
+    public static void Label(Vector3 position, string text)
+    {
+#if UNITY_EDITOR
+        UnityEditor.Handles.BeginGUI();
+        UnityEditor.SceneView view = UnityEditor.SceneView.currentDrawingSceneView;
+        Vector3 screenPos = view.camera.WorldToScreenPoint(position);
+        Vector2 size = GUI.skin.label.CalcSize(new GUIContent(text));
+        GUI.Label(new Rect(screenPos.x - (size.x / 2), -screenPos.y + view.position.height + 4, size.x, size.y), text);
+        UnityEditor.Handles.EndGUI();
 #endif
     }
 }

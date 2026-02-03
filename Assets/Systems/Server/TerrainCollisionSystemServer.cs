@@ -64,8 +64,8 @@ partial struct TerrainCollisionSystemServer : ISystem
             terrainUnit.ValueRW.LastPosition = new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.z);
         }
 
-        foreach (var (transform, terrainBuilding, collider) in
-            SystemAPI.Query<RefRW<LocalTransform>, RefRW<TerrainBuilding>, RefRO<Collider>>())
+        foreach (var (transform, terrainBuilding, collider, e) in
+            SystemAPI.Query<RefRW<LocalTransform>, RefRW<TerrainBuilding>, RefRO<Collider>>().WithEntityAccess())
         {
             if (terrainBuilding.ValueRO.IsInitialized)
             { continue; }

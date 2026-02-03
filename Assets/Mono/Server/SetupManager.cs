@@ -8,32 +8,32 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
-[Serializable]
-public class UnitSetup
-{
-    [SerializeField, NotNull] public GameObject? Prefab = default;
-    [SerializeField] public float2 Spawn = default;
-    [SerializeField, NotNull] public string? Script = default;
-    [SerializeField] public int Team = default;
-}
-
 public class SetupManager : Singleton<SetupManager>
 {
+    [Serializable]
+    class UnitSetup
+    {
+        [SerializeField, NotNull] public GameObject? Prefab = default;
+        [SerializeField] public float2 Spawn = default;
+        [SerializeField, NotNull] public string? Script = default;
+        [SerializeField] public int Team = default;
+    }
+
     [Header("Exact Spawns")]
     [SerializeField] bool SpawnExactUnits = default;
-    [SerializeField, NotNull] public UnitSetup[]? Units = default;
+    [SerializeField, NotNull] UnitSetup[]? Units = default;
 
     [Header("Generator")]
-    [SerializeField] public int Team = default;
-    [SerializeField, NotNull] public string? GeneratedScript = default;
-    [SerializeField] public int GeneratedCount = default;
-    [SerializeField] public float Density = 0f;
-    [SerializeField] public Vector2 Start = default;
-    [SerializeField] public Vector2 End = default;
-    [SerializeField] public GameObject? RandomUnitPrefab = default;
+    [SerializeField] int Team = default;
+    [SerializeField, NotNull] string? GeneratedScript = default;
+    [SerializeField, Min(0)] int GeneratedCount = default;
+    [SerializeField, Min(0)] float Density = 0f;
+    [SerializeField] Vector2 Start = default;
+    [SerializeField] Vector2 End = default;
+    [SerializeField] GameObject? RandomUnitPrefab = default;
 
-    [SerializeField] public bool RandomRotation = default;
-    [SerializeField] public bool RandomPosition = default;
+    [SerializeField] bool RandomRotation = default;
+    [SerializeField] bool RandomPosition = default;
 
     [SerializeField] bool Deterministic = default;
     [ShowIf(nameof(Deterministic)), SerializeField] int RandomSeed = default;
@@ -54,12 +54,13 @@ public class SetupManager : Singleton<SetupManager>
 
         DynamicBuffer<BufferedUnit> units;
         DynamicBuffer<BufferedBuilding> buildings;
+        TerrainFeaturePrefabs terrainPrefabs;
 
         using (EntityQuery unitDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(UnitDatabase)))
         {
             if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
             {
-                Debug.LogError($"Failed to get {nameof(UnitDatabase)} entity singleton");
+                Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(UnitDatabase)} entity singleton");
                 return;
             }
             units = world.EntityManager.GetBuffer<BufferedUnit>(unitDatabase, true);
@@ -69,32 +70,48 @@ public class SetupManager : Singleton<SetupManager>
         {
             if (!buildingDatabaseQ.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
             {
-                Debug.LogError($"Failed to get {nameof(BuildingDatabase)} entity singleton");
+                Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(BuildingDatabase)} entity singleton");
                 return;
             }
             buildings = world.EntityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
+        }
+
+        using (EntityQuery terrainFeaturePrefabsQ = world.EntityManager.CreateEntityQuery(typeof(TerrainFeaturePrefabs)))
+        {
+            if (!terrainFeaturePrefabsQ.TryGetSingleton(out terrainPrefabs))
+            {
+                Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(TerrainFeaturePrefabs)} singleton");
+                return;
+            }
         }
 
         if (SpawnExactUnits)
         {
             foreach (UnitSetup unitSetup in Units)
             {
-                Entity prefab;
+                Entity prefab = Entity.Null;
 
-                BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
-                BufferedBuilding building = buildings.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
-
-                if (unit.Prefab != Entity.Null)
+                if (prefab == Entity.Null)
                 {
+                    BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
                     prefab = unit.Prefab;
                 }
-                else if (building.Prefab != Entity.Null)
+
+                if (prefab == Entity.Null)
                 {
+                    BufferedBuilding building = buildings.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
                     prefab = building.Prefab;
                 }
-                else
+
+                if (prefab == Entity.Null)
                 {
-                    Debug.LogError($"Prefab \"{unitSetup.Prefab.name}\" not found");
+                    if (unitSetup.Prefab.name == terrainPrefabs.ObstaclePrefabName) prefab = terrainPrefabs.ObstaclePrefab;
+                    else if (unitSetup.Prefab.name == terrainPrefabs.ResourcePrefabName) prefab = terrainPrefabs.ResourcePrefab;
+                }
+
+                if (prefab == Entity.Null)
+                {
+                    Debug.LogError($"{DebugEx.ServerPrefix} Prefab \"{unitSetup.Prefab.name}\" not found");
                     continue;
                 }
 
@@ -117,39 +134,36 @@ public class SetupManager : Singleton<SetupManager>
             }
         }
 
-        StartCoroutine(SpawnRandomUnits(units, world));
+        if (RandomUnitPrefab != null)
+        {
+            Entity prefab = Entity.Null;
+
+            if (prefab == Entity.Null)
+            {
+                prefab = units.FirstOrDefault(static (v, c) => v.Name == c, RandomUnitPrefab.name).Prefab;
+            }
+
+            if (prefab == Entity.Null)
+            {
+                Debug.LogError($"{DebugEx.ServerPrefix} Prefab \"{RandomUnitPrefab.name}\" not found");
+            }
+            else
+            {
+                StartCoroutine(SpawnRandomUnits(prefab, world));
+            }
+        }
     }
 
-    IEnumerator SpawnRandomUnits(DynamicBuffer<BufferedUnit> units, World world)
+    IEnumerator SpawnRandomUnits(Entity prefab, World world)
     {
-        System.Random random = Deterministic ? new System.Random(RandomSeed) : RandomManaged.Shared;
-
         if (RandomUnitPrefab == null)
         { yield break; }
-
-        Vector2 start = Start;
-        Vector2 end = End;
-
-        if (Density != 0f)
-        {
-            float width = MathF.Sqrt(UnitArea * Density * GeneratedCount);
-            start = new Vector2(width, width) * -0.5f;
-            end = new Vector2(width, width) * 0.5f;
-        }
-
-        BufferedUnit prefab = units.FirstOrDefault(static (v, c) => v.Name == c, RandomUnitPrefab.name);
-
-        if (prefab.Prefab == Entity.Null)
-        {
-            Debug.LogError($"Prefab \"{RandomUnitPrefab.name}\" not found");
-            yield break;
-        }
 
         yield return new WaitForSecondsRealtime(0.1f);
 
         int c = 0;
 
-        foreach (Vector2 generated in GetPositions())
+        foreach ((Vector2 position, float rotation) in GetPositions())
         {
             if (c++ > 50)
             {
@@ -157,19 +171,18 @@ public class SetupManager : Singleton<SetupManager>
                 c = 0;
             }
 
-
-            Entity newUnit = world.EntityManager.Instantiate(prefab.Prefab);
+            Entity newUnit = world.EntityManager.Instantiate(prefab);
             if (RandomRotation)
             {
                 world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPositionRotation(
-                    new float3(generated.x, PositionY, generated.y),
-                    quaternion.EulerXYZ(0f, random.Float(0f, math.TAU), 0f)
+                    new float3(position.x, PositionY, position.y),
+                    quaternion.EulerXYZ(0f, rotation, 0f)
                 ));
             }
             else
             {
                 world.EntityManager.SetComponentData(newUnit, LocalTransform.FromPosition(
-                    new float3(generated.x, PositionY, generated.y)
+                    new float3(position.x, PositionY, position.y)
                 ));
             }
             if (world.EntityManager.HasComponent<Processor>(newUnit))
@@ -189,7 +202,7 @@ public class SetupManager : Singleton<SetupManager>
         }
     }
 
-    IEnumerable<Vector2> GetPositions()
+    IEnumerable<(Vector2 Position, float Rotation)> GetPositions()
     {
         Vector2 start = Start;
         Vector2 end = End;
@@ -237,7 +250,7 @@ public class SetupManager : Singleton<SetupManager>
                     if (IsOccupied(generated)) continue;
 
                     spawned.Add(generated);
-                    yield return generated;
+                    yield return (generated, RandomRotation ? random.Float(0f, math.TAU) : 0f);
 
                     goto ok;
                 }
@@ -248,7 +261,7 @@ public class SetupManager : Singleton<SetupManager>
             ok:;
             }
 
-            //Debug.Log($"Spawned {GeneratedCount}");
+            //Debug.Log($"{DebugEx.ServerPrefix} Spawned {GeneratedCount}");
         }
         else if (GeneratedCount > 0)
         {
@@ -271,7 +284,7 @@ public class SetupManager : Singleton<SetupManager>
                     if (IsOccupied(generated)) continue;
 
                     spawned.Add(generated);
-                    yield return generated;
+                    yield return (generated, RandomRotation ? random.Float(0f, math.TAU) : 0f);
 
                     if (++i >= GeneratedCount) break;
                 }
@@ -281,13 +294,27 @@ public class SetupManager : Singleton<SetupManager>
 
     void OnDrawGizmosSelected()
     {
+        Gizmos.color = Color.gray;
+
         if (!RandomPosition || Deterministic)
         {
             int i = 0;
-            foreach (Vector2 position in GetPositions())
+            List<MeshFilter> meshes = RandomUnitPrefab == null ? new() : RandomUnitPrefab.GetAllComponents<MeshFilter>();
+            foreach ((Vector2 position, float rotation) in GetPositions())
             {
                 if (i++ > 100) break;
-                Gizmos.DrawSphere(new Vector3(position.x, 0.5f, position.y), UnitRadius);
+                bool v = false;
+                Vector3 p = new(position.x, PositionY, position.y);
+
+                foreach (MeshFilter item in meshes)
+                {
+                    Gizmos.DrawWireMesh(item.sharedMesh, item.transform.position + p, item.transform.rotation, item.transform.lossyScale);
+                    v = true;
+                }
+
+                if (v) continue;
+
+                Gizmos.DrawSphere(p, UnitRadius);
             }
         }
 
@@ -295,39 +322,50 @@ public class SetupManager : Singleton<SetupManager>
         {
             for (int i = 0; i < Units.Length; i++)
             {
-                Gizmos.DrawSphere(new Vector3(Units[i].Spawn.x, 0.5f, Units[i].Spawn.y), 1f);
+                bool v = false;
+                Vector3 p = new(Units[i].Spawn.x, PositionY, Units[i].Spawn.y);
+
+                foreach (MeshFilter item in Units[i].Prefab.GetAllComponents<MeshFilter>())
+                {
+                    Gizmos.DrawWireMesh(item.sharedMesh, item.transform.position + p, item.transform.rotation, item.transform.lossyScale);
+                    v = true;
+                }
+
+                if (v) continue;
+
+                Gizmos.DrawSphere(p, 1f);
             }
         }
     }
-}
 
 #if UNITY_EDITOR
-[UnityEditor.CustomEditor(typeof(SetupManager))]
-public class SetupManagerEditor : UnityEditor.Editor
-{
-    public void OnSceneGUI()
+    [UnityEditor.CustomEditor(typeof(SetupManager))]
+    public class SetupManagerEditor : UnityEditor.Editor
     {
-        SetupManager t = (SetupManager)target;
-
-        for (int i = 0; i < t.Units.Length; i++)
+        public void OnSceneGUI()
         {
-            Vector3 p = UnityEditor.Handles.PositionHandle(
-                new Vector3(t.Units[i].Spawn.x, 0f, t.Units[i].Spawn.y),
-                Quaternion.identity
-            );
-            t.Units[i].Spawn = new float2(p.x, p.z);
-        }
+            SetupManager t = (SetupManager)target;
 
-        Vector3 start = UnityEditor.Handles.PositionHandle(
-            new Vector3(t.Start.x, 0f, t.Start.y),
-            quaternion.identity
-        );
-        Vector3 end = UnityEditor.Handles.PositionHandle(
-            new Vector3(t.End.x, 0f, t.End.y),
-            quaternion.identity
-        );
-        t.Start = new Vector2(start.x, start.z);
-        t.End = new Vector2(end.x, end.z);
+            for (int i = 0; i < t.Units.Length; i++)
+            {
+                Vector3 p = UnityEditor.Handles.PositionHandle(
+                    new Vector3(t.Units[i].Spawn.x, PositionY, t.Units[i].Spawn.y),
+                    Quaternion.identity
+                );
+                t.Units[i].Spawn = new float2(p.x, p.z);
+            }
+
+            Vector3 start = UnityEditor.Handles.PositionHandle(
+                new Vector3(t.Start.x, PositionY, t.Start.y),
+                quaternion.identity
+            );
+            Vector3 end = UnityEditor.Handles.PositionHandle(
+                new Vector3(t.End.x, PositionY, t.End.y),
+                quaternion.identity
+            );
+            t.Start = new Vector2(start.x, start.z);
+            t.End = new Vector2(end.x, end.z);
+        }
     }
-}
 #endif
+}

@@ -19,7 +19,6 @@ public static class NetcodeUtils
     public static void CreateRPC<T>(in WorldUnmanaged world, in Entity connectionEntity)
         where T : unmanaged, IComponentData
     {
-        if (connectionEntity == Entity.Null) return;
         CreateRPCImpl(in world, ComponentType.ReadOnly<T>(), in connectionEntity, out _);
     }
 
@@ -35,7 +34,6 @@ public static class NetcodeUtils
     public static void CreateRPC<T>(in WorldUnmanaged world, in T componentData, in Entity connectionEntity)
         where T : unmanaged, IComponentData
     {
-        if (connectionEntity == Entity.Null) return;
         CreateRPCImpl(in world, ComponentType.ReadWrite<T>(), in connectionEntity, out Entity entity);
         world.EntityManager.SetComponentData(entity, componentData);
     }
@@ -77,7 +75,6 @@ public static class NetcodeUtils
     public static void CreateRPC<T>(in EntityCommandBuffer commandBuffer, in WorldUnmanaged world, in Entity connectionEntity)
         where T : unmanaged, IComponentData
     {
-        if (connectionEntity == Entity.Null) return;
         CreateRPCImpl(in commandBuffer, in world, ComponentType.ReadOnly<T>(), in connectionEntity, out _);
     }
 
@@ -93,7 +90,6 @@ public static class NetcodeUtils
     public static void CreateRPC<T>(in EntityCommandBuffer commandBuffer, in WorldUnmanaged world, in T componentData, in Entity connectionEntity)
         where T : unmanaged, IComponentData
     {
-        if (connectionEntity == Entity.Null) return;
         CreateRPCImpl(in commandBuffer, in world, ComponentType.ReadWrite<T>(), in connectionEntity, out Entity entity);
         commandBuffer.SetComponent(entity, componentData);
     }

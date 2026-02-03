@@ -962,7 +962,7 @@ static unsafe class ProcessorAPI
 
             if (building.Prefab == Entity.Null)
             {
-                Debug.LogWarning($"Building \"{command.BuildingName}\" not found in the database");
+                Debug.LogWarning($"{DebugEx.ServerPrefix} Building \"{command.BuildingName}\" not found in the database");
                 continue;
             }
 
@@ -978,14 +978,14 @@ static unsafe class ProcessorAPI
 
                 if (!can)
                 {
-                    Debug.LogWarning($"Can't place building \"{building.Name}\": not researched");
+                    Debug.LogWarning($"{DebugEx.ServerPrefix} Can't place building \"{building.Name}\": not researched");
                     continue;
                 }
             }
 
             if (requestPlayer.Player.Resources < building.RequiredResources)
             {
-                Debug.LogWarning($"Can't place building \"{building.Name}\": not enought resources ({requestPlayer.Player.Resources} < {building.RequiredResources})");
+                Debug.LogWarning($"{DebugEx.ServerPrefix} Can't place building \"{building.Name}\": not enought resources ({requestPlayer.Player.Resources} < {building.RequiredResources})");
                 break;
             }
 

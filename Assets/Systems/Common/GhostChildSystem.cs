@@ -34,7 +34,7 @@ partial struct GhostChildSystem : ISystem
                         }
                         else
                         {
-                            Debug.LogWarning("Parent component already added");
+                            Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} Parent component already added");
                             commandBuffer.SetComponent<Parent>(entity, new()
                             {
                                 Value = parentEntity,

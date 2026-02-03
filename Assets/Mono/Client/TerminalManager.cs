@@ -523,7 +523,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     if (_memoryDownloadTask == null)
                                     {
                                         GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
-                                        // Debug.Log($"Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
+                                        Debug.Log($"{DebugEx.ClientPrefix} Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
                                         _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld)
                                             .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}.{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
                                     }
@@ -531,7 +531,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     Awaitable<RemoteFile>.Awaiter awaiter = _memoryDownloadTask.GetAwaiter();
                                     if (awaiter.IsCompleted)
                                     {
-                                        // Debug.Log("Memory loaded");
+                                        Debug.Log($"{DebugEx.ClientPrefix} Memory loaded");
                                         RemoteFile result = awaiter.GetResult();
                                         switch (result.Kind)
                                         {

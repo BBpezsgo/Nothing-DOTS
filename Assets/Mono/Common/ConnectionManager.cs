@@ -214,7 +214,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
     public IEnumerator StartSingleplayerAsync(FixedString32Bytes nickname)
     {
-        Debug.Log($"START SINGLEPLAYER");
+        Debug.Log($"{DebugEx.AnyPrefix} Start singleplayer");
 
         SetInputEnabled(false);
 
@@ -249,7 +249,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
     public IEnumerator StartHostAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname, string? savefile)
     {
-        Debug.Log($"START HOST ({endpoint})");
+        Debug.Log($"{DebugEx.AnyPrefix} Start host on `{endpoint}`");
 
         SetInputEnabled(false);
 
@@ -296,7 +296,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
     public IEnumerator StartClientAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname)
     {
-        Debug.Log($"START CLIENT ({endpoint})");
+        Debug.Log($"{DebugEx.AnyPrefix} Start client on `{endpoint}`");
 
         SetInputEnabled(false);
 
@@ -320,7 +320,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
     public IEnumerator StartServerAsync(NetworkEndpoint endpoint, string? savefile)
     {
-        Debug.Log($"START SERVER ({endpoint})");
+        Debug.Log($"{DebugEx.EditorPrefix} Start server on `{endpoint}`");
 
         SetInputEnabled(false);
 

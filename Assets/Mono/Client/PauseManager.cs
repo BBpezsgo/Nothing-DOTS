@@ -63,7 +63,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
     {
         if (ConnectionManager.ServerWorld is null)
         {
-            Debug.LogWarning($"Cannot save: server world is null");
+            Debug.LogWarning($"{DebugEx.ClientPrefix} Cannot save: server world is null");
         }
         else
         {

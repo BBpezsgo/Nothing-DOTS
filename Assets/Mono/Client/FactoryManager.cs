@@ -113,7 +113,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         using EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase));
         if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
         {
-            Debug.LogWarning($"Failed to get `{nameof(UnitDatabase)}` entity singleton");
+            Debug.LogWarning($"{DebugEx.ClientPrefix} Failed to get `{nameof(UnitDatabase)}` entity singleton");
             return;
         }
 
@@ -123,7 +123,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
         if (unit.Prefab == Entity.Null)
         {
-            Debug.LogWarning($"Unit \"{unitName}\" not found in the database");
+            Debug.LogWarning($"{DebugEx.ClientPrefix} Unit \"{unitName}\" not found in the database");
             return;
         }
 

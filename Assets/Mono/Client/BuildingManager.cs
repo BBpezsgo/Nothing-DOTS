@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Unity.Entities;
@@ -20,7 +19,7 @@ class BuildingPlaceholderItem
 public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
 {
     BufferedBuilding SelectedBuilding = default;
-    [SerializeField, NotNull] List<BuildingPlaceholderItem> Holograms = new();
+    [SerializeField, NotNull] AllPrefabs? Prefabs = default;
     [SerializeField, SaintsField.ReadOnly, NotNull] GameObject? BuildingHologram = default;
 
     [SerializeField, NotNull] Material? HologramMaterial = default;
@@ -56,7 +55,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
         using EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
-            Debug.LogWarning($"Failed to get `{nameof(BuildingDatabase)}` entity singleton");
+            Debug.LogWarning($"{DebugEx.ClientPrefix} Failed to get `{nameof(BuildingDatabase)}` entity singleton");
             return;
         }
 
@@ -86,7 +85,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
         using EntityQuery buildingDatabaseQuery = entityManager.CreateEntityQuery(new ComponentType[] { typeof(BuildingDatabase) });
         if (!buildingDatabaseQuery.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
         {
-            Debug.LogWarning($"Failed to get {nameof(BuildingDatabase)} entity singleton");
+            Debug.LogWarning($"{DebugEx.ClientPrefix} Failed to get {nameof(BuildingDatabase)} entity singleton");
             return;
         }
 
@@ -103,7 +102,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
 
         if (building.Prefab == Entity.Null)
         {
-            Debug.LogWarning($"Building \"{buildingName}\" not found in the database");
+            Debug.LogWarning($"{DebugEx.ClientPrefix} Building \"{buildingName}\" not found in the database");
             return;
         }
 
@@ -218,13 +217,13 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
             Entity connector = hit.Entity.Entity;
             if (!SelectionManager.IsMine(connector))
             {
-                Debug.Log("Entity isn't mine");
+                Debug.Log($"{DebugEx.ClientPrefix} Entity isn't mine");
                 return;
             }
 
             if (!ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<Connector>(connector))
             {
-                Debug.Log("Entity isn't a connector");
+                Debug.Log($"{DebugEx.ClientPrefix} Entity isn't a connector");
                 return;
             }
 
@@ -235,7 +234,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
             }
             else
             {
-                GhostInstance otherSelectedConnector = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(connector);
+                SpawnedGhost otherSelectedConnector = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(connector);
 
                 if (ConnectionManager.ClientOrDefaultWorld.IsServer())
                 {
@@ -301,7 +300,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
             Destroy(BuildingHologram);
         }
 
-        BuildingHologram = Instantiate(Holograms.First(v => SelectedBuilding.Name.Equals(v.Name)).Prefab, transform);
+        BuildingHologram = Instantiate(Prefabs.Buildings.First(v => SelectedBuilding.Name.Equals(v.Prefab.name)).HologramPrefab, transform);
 
         UnityEngine.Ray ray = MainCamera.Camera.ScreenPointToRay(Mouse.current.position.value);
 
@@ -347,7 +346,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
             if (SelectedBuilding.Prefab == default) return;
             if (!IsValidPosition)
             {
-                Debug.Log($"Invalid building position");
+                Debug.Log($"{DebugEx.ClientPrefix} Invalid building position");
                 return;
             }
 

@@ -49,7 +49,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer.Entity == Entity.Null)
             {
-                Debug.LogWarning($"Failed to place building: requested by `{networkId}` but aint have a team");
+                Debug.LogWarning(string.Format($"{DebugEx.ServerPrefix} Failed to place building: requested by `{{0}}` but aint have a team", networkId));
                 continue;
             }
 
@@ -69,7 +69,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (building.Prefab == Entity.Null)
             {
-                Debug.LogWarning($"Building \"{command.ValueRO.BuildingName}\" not found in the database");
+                Debug.LogWarning(string.Format($"{DebugEx.ServerPrefix} Building \"{{0}}\" not found in the database", command.ValueRO.BuildingName));
                 continue;
             }
 
@@ -85,14 +85,14 @@ public partial struct BuildingSystemServer : ISystem
 
                 if (!can)
                 {
-                    Debug.Log($"Can't place building \"{building.Name}\": not researched");
+                    Debug.Log(string.Format($"{DebugEx.ServerPrefix} Can't place building \"{{0}}\": not researched", building.Name));
                     continue;
                 }
             }
 
             if (requestPlayer.Player.Resources < building.RequiredResources)
             {
-                Debug.Log($"Can't place building \"{building.Name}\": not enought resources ({requestPlayer.Player.Resources} < {building.RequiredResources})");
+                Debug.Log(string.Format($"{DebugEx.ServerPrefix} Can't place building \"{{0}}\": not enought resources ({{1}} < {{2}})", building.Name, requestPlayer.Player.Resources, building.RequiredResources));
                 break;
             }
 
@@ -135,7 +135,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer.Entity == Entity.Null)
             {
-                Debug.LogWarning($"Failed to place wire: requested by {networkId} but aint have a team");
+                Debug.LogWarning(string.Format($"{DebugEx.ServerPrefix} Failed to place wire: requested by `{{0}}` but aint have a team", networkId));
                 continue;
             }
 
@@ -158,13 +158,13 @@ public partial struct BuildingSystemServer : ISystem
 
             if (connectorA == default || connectorB == default)
             {
-                Debug.LogWarning("Failed to place wire: connectors not found");
+                Debug.LogWarning($"{DebugEx.ServerPrefix} Failed to place wire: connectors not found");
                 continue;
             }
 
             if (connectorA == default)
             {
-                Debug.Log("Failed to place wire: two connectors are the same");
+                Debug.Log($"{DebugEx.ServerPrefix} Failed to place wire: two connectors are the same");
                 continue;
             }
 
@@ -201,7 +201,7 @@ public partial struct BuildingSystemServer : ISystem
             continue;
 
         alreadyExists:;
-            Debug.Log("Failed to place wire: already exists");
+            Debug.Log($"{DebugEx.ServerPrefix} Failed to place wire: already exists");
         }
 
         foreach (var (placeholder, transform, owner, unitTeam, entity) in
@@ -233,6 +233,8 @@ public partial struct BuildingSystemServer : ISystem
             commandBuffer.DestroyEntity(entity);
             NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
 
+            Debug.Log(string.Format($"{DebugEx.ServerPrefix} Compiling buildings for client {{0}} ...", networkId));
+
             Entity requestPlayer = default;
 
             foreach (var (player, _entity) in
@@ -246,7 +248,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogWarning($"Player with network id {networkId} aint have a team");
+                Debug.LogWarning(string.Format($"{DebugEx.ServerPrefix} Player with network id `{{0}}` aint have a team", networkId));
                 continue;
             }
 
@@ -257,21 +259,19 @@ public partial struct BuildingSystemServer : ISystem
             {
                 if (!building.RequiredResearch.IsEmpty)
                 {
-                    bool can = false;
                     foreach (BufferedAcquiredResearch research in acquiredResearches)
                     {
                         if (research.Name != building.RequiredResearch) continue;
-                        can = true;
-                        break;
+                        goto _;
                     }
-
-                    if (!can) continue;
                 }
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new BuildingsResponseRpc()
                 {
                     Name = building.Name,
                 }, request.ValueRO.SourceConnection);
+
+            _:;
             }
         }
     }

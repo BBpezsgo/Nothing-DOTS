@@ -152,7 +152,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
         if (researchEntity == Entity.Null)
         {
-            Debug.LogWarning($"Research \"{name}\" not found in the database");
+            Debug.LogWarning($"{DebugEx.ClientPrefix} Research \"{name}\" not found in the database");
             return;
         }
 

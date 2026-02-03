@@ -94,7 +94,8 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 0}
-  m_LightingSettings: {fileID: 0}
+  m_LightingSettings: {fileID: 4890085278179872738, guid: e243e9218db92bbfa8f1c5b62d334cf6,
+    type: 2}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -210,7 +211,7 @@ Transform:
   m_GameObject: {fileID: 78294156}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -6.19, y: 0, z: -1.56}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1102,19 +1103,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a526ba7e3e335da6d8117647aa5c1632, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Holograms:
-  - Name: Facility
-    Prefab: {fileID: 7887398088158380673, guid: 841357fac3a20639f9ec495041562827,
-      type: 3}
-  - Name: Factory
-    Prefab: {fileID: 7887398088158380673, guid: 09f03e05c189b21969db6274a9140693,
-      type: 3}
-  - Name: RadarStation
-    Prefab: {fileID: 1289979656329170851, guid: bb7234899ae3b43dab53d80523410684,
-      type: 3}
-  - Name: Computer
-    Prefab: {fileID: 1289979656329170851, guid: 2b9330d212a4c7f7aa5d1b815c348bf4,
-      type: 3}
+  Prefabs: {fileID: 11400000, guid: 9fbd3be61b1b911759f2e0e4d52dafb8, type: 2}
   BuildingHologram: {fileID: 0}
   HologramMaterial: {fileID: 2100000, guid: e1038b4484b2a0ea8bae6de451e81c73, type: 2}
   IsValidPosition: 0
@@ -1646,84 +1635,6 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2fe1f6ac027eccc1d90cb6fd740ca3fb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!1 &1225234404
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1225234405}
-  - component: {fileID: 1225234407}
-  - component: {fileID: 1225234406}
-  - component: {fileID: 1225234408}
-  m_Layer: 5
-  m_Name: ConnectionStatus
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
-  m_IsActive: 1
---- !u!4 &1225234405
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1225234404}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 693748819}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1225234406
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1225234404}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4f32786c2a6607ef2af149035d3cf01a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &1225234407
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1225234404}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_PanelSettings: {fileID: 11400000, guid: e27247f89a346a617aef1483c286524b, type: 2}
-  m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: e9a93d88fa7f9ea1c83832e4838e3486,
-    type: 3}
-  m_SortingOrder: 0
-  m_WorldSpaceSizeMode: 1
-  m_WorldSpaceWidth: 1920
-  m_WorldSpaceHeight: 1080
---- !u!114 &1225234408
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1225234404}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 90c31296253f786e3b4c64f8f4ee20b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &1299890546
@@ -2597,17 +2508,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e2ac46f9a08bdec53a52e4015deff2d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxSpeed: 20
-  speed: 0
-  acceleration: 10
-  damping: 15
-  stepSize: 2
-  zoomDampening: 7.5
-  minHeight: 1
-  maxHeight: 1000
-  maxRotationSpeed: 0.2
-  edgeTolerance: 0.05
-  useScreenEdge: 0
+  MaxSpeed: 20
+  Speed: 0
+  Acceleration: 10
+  Damping: 10
+  KeyZoomSpeed: 0.2
+  WheelZoomSpeed: 40
+  ZoomDampening: 7.5
+  MinHeight: 0.5
+  MaxHeight: 500
+  MaxRotationSpeed: 0.2
+  EdgeTolerance: 0.05
+  UseScreenEdge: 0
 --- !u!4 &1768714746
 Transform:
   m_ObjectHideFlags: 0

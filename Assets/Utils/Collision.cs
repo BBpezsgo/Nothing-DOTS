@@ -141,7 +141,7 @@ public static class Collision
         }
         else
         {
-            Debug.LogWarning($"Unsupported collision combination: `{a.Type}` - `{b.Type}`");
+            Debug.LogWarning(string.Format($"{DebugEx.AnyPrefix} Unsupported collision combination: `{{0}}` - `{{1}}`", a.Type, b.Type));
             normal = default;
             depth = default;
             return false;
@@ -238,7 +238,7 @@ public static class Collision
         }
         else
         {
-            Debug.LogWarning($"Unsupported collision combination: `{a.Type}` - `{b.Type}`");
+            Debug.LogWarning(string.Format($"{DebugEx.AnyPrefix} Unsupported collision combination: `{{0}}` - `{{1}}`", a.Type, b.Type));
             return false;
         }
     }

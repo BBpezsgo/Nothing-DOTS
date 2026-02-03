@@ -40,7 +40,7 @@ partial struct WiredTransmissionSystemServer : ISystem
 
             if (!SystemAPI.HasComponent<Connector>(entity))
             {
-                Debug.LogWarning("Processor has no connector but tried to transmit data");
+                Debug.LogWarning($"{DebugEx.ServerPrefix} Processor has no connector but tried to transmit data");
                 continue;
             }
 

@@ -20,7 +20,7 @@ public readonly struct Ray
 #if UNITY_EDITOR && false
         if (distance == 0f)
         {
-            Debug.LogWarning("Ray length is the same");
+            Debug.LogWarning($"{DebugEx.AnyPrefix} Ray length is the same");
         }
 #endif
 
@@ -34,7 +34,7 @@ public readonly struct Ray
 #if UNITY_EDITOR && false
         if (start.Equals(end))
         {
-            Debug.LogWarning("Ray start and end point is the same");
+            Debug.LogWarning($"{DebugEx.AnyPrefix} Ray start and end point is the same");
         }
 #endif
 

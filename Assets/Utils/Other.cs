@@ -3,9 +3,23 @@ using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
 
 public static partial class Utils
 {
+    public static void GetAllComponents<T>(this GameObject o, List<T> result, bool includeInactive = false)
+    {
+        o.GetComponents(result);
+        o.GetComponentsInChildren(includeInactive, result);
+    }
+
+    public static List<T> GetAllComponents<T>(this GameObject o, bool includeInactive = false)
+    {
+        List<T> result = new();
+        o.GetAllComponents(result, includeInactive);
+        return result;
+    }
+
     public static unsafe Unity.Mathematics.Random GetRandom(this ref SystemState state)
     {
         float v = (float)state.WorldUnmanaged.Time.ElapsedTime;

@@ -31,24 +31,26 @@ public partial struct BuildingsSystemClient : ISystem
 
             DynamicBuffer<BufferedBuilding> buildings = SystemAPI.GetBuffer<BufferedBuilding>(SystemAPI.GetSingletonEntity<BuildingDatabase>());
 
-            bool alreadyAdded = false;
             for (int i = 0; i < Buildings.Length; i++)
             {
                 if (Buildings[i].Name != command.ValueRO.Name) continue;
-                alreadyAdded = true;
-                break;
+                goto _;
             }
 
-            if (!alreadyAdded)
+            for (int i = 0; i < buildings.Length; i++)
             {
-                for (int i = 0; i < buildings.Length; i++)
-                {
-                    if (command.ValueRO.Name != buildings[i].Name) continue;
-                    Buildings.Add(buildings[i]);
-                    LastSynced.Data = MonoTime.Now;
-                    break;
-                }
+                if (command.ValueRO.Name != buildings[i].Name) continue;
+
+                Debug.Log(string.Format($"{DebugEx.ClientPrefix} New building \"{{0}}\"", buildings[i].Name));
+                Buildings.Add(buildings[i]);
+                LastSynced.Data = MonoTime.Now;
+
+                goto _;
             }
+
+            Debug.LogWarning(string.Format($"{DebugEx.ClientPrefix} Unknown building \"{{0}}\" received", command.ValueRO.Name));
+
+        _:;
         }
     }
 

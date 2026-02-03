@@ -336,7 +336,7 @@ public partial class CompilerSystemServer : SystemBase
         {
             IExternalFunction[] externalFunctions = ProcessorAPI.GenerateManagedExternalFunctions();
 
-            Debug.Log($"Compiling {sourceUri} ...");
+            Debug.Log($"{DebugEx.ServerPrefix} Compiling {sourceUri} ...");
 
             lock (source)
             {

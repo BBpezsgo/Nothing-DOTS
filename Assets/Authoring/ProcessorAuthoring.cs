@@ -20,7 +20,7 @@ class ProcessorAuthoring : MonoBehaviour
     {
         public override void Bake(ProcessorAuthoring authoring)
         {
-            if (authoring.CyclesPerTick == 0) Debug.LogWarning($"{nameof(CyclesPerTick)} is `0` on `{authoring.gameObject}`", authoring);
+            if (authoring.CyclesPerTick == 0) Debug.LogWarning($"{DebugEx.BakingPrefix} {nameof(CyclesPerTick)} is `0` on `{authoring.gameObject}`", authoring);
             Entity entity = GetEntity(TransformUsageFlags.Dynamic);
             AddComponent<Processor>(entity, new()
             {

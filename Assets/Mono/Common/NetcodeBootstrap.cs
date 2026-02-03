@@ -63,7 +63,7 @@ class NetcodeBootstrap : ClientServerBootstrap
         using EntityQuery prefabsQ = LocalWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>());
         if (prefabsQ.TryGetSingleton(out PrefabDatabase prefabs))
         {
-            Debug.Log($"Local player created");
+            Debug.Log($"{DebugEx.LocalPrefix} Local player created");
             Entity newPlayer = LocalWorld.EntityManager.Instantiate(prefabs.Player);
             LocalWorld.EntityManager.SetComponentData<Player>(newPlayer, new()
             {
@@ -116,7 +116,7 @@ class NetcodeBootstrap : ClientServerBootstrap
             using EntityQuery prefabsQ = ServerWorld.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<PrefabDatabase>());
             if (prefabsQ.TryGetSingleton(out PrefabDatabase prefabs))
             {
-                Debug.Log($"Local player created");
+                Debug.Log($"{DebugEx.ServerPrefix} Local player created");
                 Entity newPlayer = ServerWorld.EntityManager.Instantiate(prefabs.Player);
                 ServerWorld.EntityManager.SetComponentData<Player>(newPlayer, new()
                 {

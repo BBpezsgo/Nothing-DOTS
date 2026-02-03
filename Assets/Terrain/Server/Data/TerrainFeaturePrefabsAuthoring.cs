@@ -5,7 +5,8 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Terrain Feature Prefabs")]
 public class TerrainFeaturePrefabsAuthoring : MonoBehaviour
 {
-    [SerializeField, NotNull] GameObject? ResourcePrefab = null;
+    [SerializeField, NotNull] public GameObject? ResourcePrefab = null;
+    [SerializeField, NotNull] public GameObject? ObstaclePrefab = null;
 
     class Baker : Baker<TerrainFeaturePrefabsAuthoring>
     {
@@ -15,6 +16,10 @@ public class TerrainFeaturePrefabsAuthoring : MonoBehaviour
             AddComponent<TerrainFeaturePrefabs>(entity, new()
             {
                 ResourcePrefab = GetEntity(authoring.ResourcePrefab, TransformUsageFlags.Dynamic),
+                ObstaclePrefab = GetEntity(authoring.ObstaclePrefab, TransformUsageFlags.Dynamic),
+
+                ResourcePrefabName = authoring.ResourcePrefab.name,
+                ObstaclePrefabName = authoring.ObstaclePrefab.name,
             });
         }
     }

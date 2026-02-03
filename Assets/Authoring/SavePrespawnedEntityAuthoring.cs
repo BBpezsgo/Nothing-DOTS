@@ -1,12 +1,9 @@
-using System.Diagnostics.CodeAnalysis;
 using Unity.Entities;
 using UnityEngine;
 
 [AddComponentMenu("Authoring/Save Prespawned Entity")]
 class SavePrespawnedEntityAuthoring : MonoBehaviour
 {
-    [SerializeField, NotNull] string? Id = default;
-
     class Baker : Baker<SavePrespawnedEntityAuthoring>
     {
         public override void Bake(SavePrespawnedEntityAuthoring authoring)

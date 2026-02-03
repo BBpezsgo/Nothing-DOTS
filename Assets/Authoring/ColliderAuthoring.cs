@@ -14,7 +14,7 @@ public class ColliderAuthoring : MonoBehaviour
 
             if (!authoring.gameObject.TryGetComponent<UnityEngine.Collider>(out UnityEngine.Collider? collider))
             {
-                Debug.LogWarning($"No collider attached to Game Object", authoring.gameObject);
+                Debug.LogWarning($"{DebugEx.BakingPrefix} No collider attached to Game Object", authoring.gameObject);
                 return;
             }
 

@@ -193,7 +193,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (startPoint.z <= 0f)
         {
-            //Debug.LogWarning($"Invalid selection box");
+            //Debug.LogWarning($"{DebugEx.ClientPrefix} Invalid selection box");
             SetSelectBoxVisible(false);
             return;
         }
@@ -254,7 +254,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (startPoint.z <= 0f)
         {
-            //Debug.LogWarning($"Invalid selection box");
+            //Debug.LogWarning($"{DebugEx.ClientPrefix} Invalid selection box");
             return;
         }
 
@@ -301,7 +301,7 @@ public class SelectionManager : Singleton<SelectionManager>
         Entity selectableHit = hit.Entity.Entity;
         if (!IsMine(selectableHit))
         {
-            Debug.Log("Unit isn't mine");
+            Debug.Log($"{DebugEx.ClientPrefix} Unit isn't mine");
             return;
         }
 
@@ -334,7 +334,7 @@ public class SelectionManager : Singleton<SelectionManager>
     {
         if (!IsMine(entity))
         {
-            Debug.Log("Unit isn't mine");
+            Debug.Log($"{DebugEx.ClientPrefix} Unit isn't mine");
             return false;
         }
 
@@ -414,13 +414,13 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (!entityManager.Exists(selected))
         {
-            Debug.LogWarning($"Cannot get unit commands for `{selected}`: Entity does not exists");
+            Debug.LogWarning($"{DebugEx.ClientPrefix} Cannot get unit commands for `{selected}`: Entity does not exists");
             return false;
         }
 
         if (!entityManager.HasComponent<Processor>(selected))
         {
-            Debug.Log($"Cannot get unit commands for `{selected}`: Entity does not have a Processor component");
+            Debug.Log($"{DebugEx.ClientPrefix} Cannot get unit commands for `{selected}`: Entity does not have a Processor component");
             return false;
         }
 
@@ -429,7 +429,7 @@ public class SelectionManager : Singleton<SelectionManager>
             Dictionary<FileId, CompiledSourceClient> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
             if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceClient? source))
             {
-                Debug.Log($"Cannot get unit commands for `{selected}`: Source \"{entityManager.GetComponentData<Processor>(selected).SourceFile}\" does not exists");
+                Debug.Log($"{DebugEx.ClientPrefix} Cannot get unit commands for `{selected}`: Source \"{entityManager.GetComponentData<Processor>(selected).SourceFile}\" does not exists");
                 return false;
             }
 
@@ -441,7 +441,7 @@ public class SelectionManager : Singleton<SelectionManager>
             Dictionary<FileId, CompiledSourceServer> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
             if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceServer? source))
             {
-                Debug.Log($"Cannot get unit commands for `{selected}`: Source \"{entityManager.GetComponentData<Processor>(selected).SourceFile}\" does not exists");
+                Debug.Log($"{DebugEx.ClientPrefix} Cannot get unit commands for `{selected}`: Source \"{entityManager.GetComponentData<Processor>(selected).SourceFile}\" does not exists");
                 return false;
             }
 

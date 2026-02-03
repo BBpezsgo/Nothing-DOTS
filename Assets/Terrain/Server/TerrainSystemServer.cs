@@ -123,22 +123,46 @@ partial struct TerrainSystemServer : ISystem
         ref EntityCommandBuffer commandBuffer)
     {
         ChunkToWorld(chunkCoord, out float2 chunkOrigin);
+
         Unity.Mathematics.Random random = Unity.Mathematics.Random.CreateFromIndex((uint)math.abs(chunkCoord.x) + (uint)math.abs(chunkCoord.y));
         int n = random.NextInt(1, 8);
+
         for (int j = 0; j < n; j++)
         {
             int2 dataCoord = random.NextInt2(default, new int2(NumVertsPerLine - 1));
             DataToWorld(dataCoord, out float2 randomPosition);
             randomPosition += chunkOrigin + random.NextFloat2(new float2(-cellSize / 2, -cellSize / 2), new float2(cellSize / 2, cellSize / 2));
             float height = Sample(heightmap, randomPosition, chunkCoord, dataCoord);
-            Entity newResource = commandBuffer.Instantiate(terrainFeatures.ResourcePrefab);
             float3 p = new(
                 randomPosition.x,
                 height,
                 randomPosition.y
             );
+
+            Entity newResource = commandBuffer.Instantiate(terrainFeatures.ResourcePrefab);
             commandBuffer.SetComponent(newResource, LocalTransform.FromPosition(p));
-            //DebugEx.DrawSphere(p, 5f, Color.red, 1000f);
+
+            DebugEx.DrawSphere(p, 5f, Color.red, 60f);
+        }
+
+        n = random.NextInt(1, 8);
+
+        for (int j = 0; j < n; j++)
+        {
+            int2 dataCoord = random.NextInt2(default, new int2(NumVertsPerLine - 1));
+            DataToWorld(dataCoord, out float2 randomPosition);
+            randomPosition += chunkOrigin + random.NextFloat2(new float2(-cellSize / 2, -cellSize / 2), new float2(cellSize / 2, cellSize / 2));
+            float height = Sample(heightmap, randomPosition, chunkCoord, dataCoord);
+            float3 p = new(
+                randomPosition.x,
+                height,
+                randomPosition.y
+            );
+
+            Entity newResource = commandBuffer.Instantiate(terrainFeatures.ObstaclePrefab);
+            commandBuffer.SetComponent(newResource, LocalTransform.FromPosition(p));
+
+            DebugEx.DrawBox(p, 5f, Color.red, 60f);
         }
     }
 

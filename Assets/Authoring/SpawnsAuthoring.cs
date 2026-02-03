@@ -4,9 +4,13 @@ using UnityEngine;
 [AddComponentMenu("Authoring/Spawns")]
 public class SpawnsAuthoring : MonoBehaviour
 {
-    [SerializeField] Vector3[] Spawns = new Vector3[0];
+    [SerializeField] Vector3[] Spawns = System.Array.Empty<Vector3>();
 
 #if UNITY_EDITOR
+    [Header("Debug")]
+    [SerializeField] GameObject? CoreComputer = default;
+    [SerializeField] GameObject? Builder = default;
+
     [UnityEditor.CustomEditor(typeof(SpawnsAuthoring))]
     class Editor : UnityEditor.Editor
     {
@@ -23,19 +27,38 @@ public class SpawnsAuthoring : MonoBehaviour
             }
         }
     }
-#endif
 
     void OnDrawGizmos()
     {
         for (int i = 0; i < Spawns.Length; i++)
         {
             Gizmos.color = Color.gray;
-            Gizmos.DrawWireCube(
-                new Vector3(Spawns[i].x, 0f, Spawns[i].z),
-                new Vector3(2f, 1f, 2f)
-            );
+
+            if (CoreComputer != null)
+            {
+                foreach (MeshFilter item in CoreComputer.GetAllComponents<MeshFilter>())
+                {
+                    Gizmos.DrawWireMesh(item.sharedMesh, item.transform.position + Spawns[i], item.transform.rotation, item.transform.lossyScale);
+                }
+            }
+            else
+            {
+                Gizmos.DrawWireCube(
+                    new Vector3(Spawns[i].x, 0f, Spawns[i].z),
+                    new Vector3(2f, 1f, 2f)
+                );
+            }
+
+            if (Builder != null)
+            {
+                foreach (MeshFilter item in Builder.GetAllComponents<MeshFilter>())
+                {
+                    Gizmos.DrawWireMesh(item.sharedMesh, item.transform.position + Spawns[i] + new Vector3(2f, 0f, 2f), item.transform.rotation, item.transform.lossyScale);
+                }
+            }
         }
     }
+#endif
 
     class Baker : Baker<SpawnsAuthoring>
     {
