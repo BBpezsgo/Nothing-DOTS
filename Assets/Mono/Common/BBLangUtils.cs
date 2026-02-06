@@ -1,14 +1,13 @@
 using System.IO;
 using System.Text;
 using LanguageCore.Runtime;
-using NaughtyAttributes;
 using UnityEngine;
 
 class BBLangUtils : MonoBehaviour
 {
     const string FilePath = "/home/bb/Projects/Nothing-DOTS/Assets/StreamingAssets/lib/bbl.conf";
 
-    [Button("Generate Config")]
+    [SaintsField.Playa.Button("Generate Config")]
     public void GenerateConfig()
     {
         StringBuilder result = new();

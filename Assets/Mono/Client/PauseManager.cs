@@ -4,7 +4,6 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.UIElements;
-using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
 public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 {
@@ -14,7 +13,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
     [Header("UI")]
 
-    [SerializeField, ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
 
     float refreshAt = default;
 

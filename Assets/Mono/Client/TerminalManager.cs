@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text;
 using LanguageCore;
 using LanguageCore.Runtime;
-using NaughtyAttributes;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
@@ -28,7 +27,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [SerializeField, NotNull] Texture2D? DiagnosticsInfoIcon = default;
     [SerializeField, NotNull] Texture2D? DiagnosticsHintIcon = default;
     [SerializeField, NotNull] Texture2D? DiagnosticsOptimizationNoticeIcon = default;
-    [SerializeField, ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
 
     [NotNull] Button? ui_ButtonSelect = default;
     [NotNull] Button? ui_ButtonCompile = default;

@@ -5,7 +5,6 @@ using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
-using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
 public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUICleanup
 {
@@ -16,7 +15,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
     [Header("UI")]
 
-    [SerializeField, ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
 
     Entity selectedEntity = Entity.Null;
     Facility selected = default;

@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,7 +9,7 @@ public class EntityInfoUIBar
 {
     [SerializeField, NotNull] public GameObject? Object = default;
     [SerializeField, NotNull] public Image? Foreground = default;
-    [ReadOnly] public bool IsVisible;
+    [SerializeField, SaintsField.ReadOnly] public bool IsVisible;
 }
 
 public class EntityInfoUI : MonoBehaviour
@@ -28,18 +27,18 @@ public class EntityInfoUI : MonoBehaviour
 
     [Header("Debug")]
 
-    [ReadOnly] public float HealthPercent = default;
-    [ReadOnly] public float BuildingProgressPercent = default;
-    [ReadOnly] public float TransporterLoadPercent = default;
-    [ReadOnly] public float TransporterProgressPercent = default;
-    [ReadOnly] public float ExtractorProgressPercent = default;
-    [ReadOnly] public float3 Position = default;
-    [ReadOnly] public quaternion Rotation = default;
-    [ReadOnly] public Bounds Bounds = default;
-    [ReadOnly] public SelectionStatus SelectionStatus = default;
+    [SerializeField, SaintsField.ReadOnly] public float HealthPercent = default;
+    [SerializeField, SaintsField.ReadOnly] public float BuildingProgressPercent = default;
+    [SerializeField, SaintsField.ReadOnly] public float TransporterLoadPercent = default;
+    [SerializeField, SaintsField.ReadOnly] public float TransporterProgressPercent = default;
+    [SerializeField, SaintsField.ReadOnly] public float ExtractorProgressPercent = default;
+    [SerializeField, SaintsField.ReadOnly] public float3 Position = default;
+    [SerializeField, SaintsField.ReadOnly] public quaternion Rotation = default;
+    [SerializeField, SaintsField.ReadOnly] public Bounds Bounds = default;
+    [SerializeField, SaintsField.ReadOnly] public SelectionStatus SelectionStatus = default;
 
-    [ReadOnly] public bool IsVisible = default;
-    [ReadOnly] public int Team = default;
+    [SerializeField, SaintsField.ReadOnly] public bool IsVisible = default;
+    [SerializeField, SaintsField.ReadOnly] public int Team = default;
 
     void Start()
     {

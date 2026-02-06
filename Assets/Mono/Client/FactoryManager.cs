@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
 using Unity.Entities;
 using Unity.NetCode;
 using UnityEngine;
@@ -14,7 +13,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
     [Header("UI")]
 
-    [SerializeField, ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
 
     Entity selectedFactoryEntity = Entity.Null;
     Factory selectedFactory = default;

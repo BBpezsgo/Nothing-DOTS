@@ -11,7 +11,7 @@ public class CombatTurretAuthoring : MonoBehaviour
     [SerializeField] Transform? ShootPosition = default;
     [SerializeField] VisualEffectAsset? ShootEffect = default;
 
-    [SerializeField, NaughtyAttributes.MinMaxSlider(-90f, 90f)] Vector2 AngleConstraint = new(-90f, 90f);
+    [SerializeField, SaintsField.MinMaxSlider(-90f, 90f)] Vector2 AngleConstraint = new(-90f, 90f);
 
     [SerializeField] float TurretRotationSpeed = default;
     [SerializeField] float CannonRotationSpeed = default;

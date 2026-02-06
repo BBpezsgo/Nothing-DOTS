@@ -29,7 +29,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
     float2 ViewerPositionOld;
 
     float MeshWorldSize;
-    [SerializeField, NaughtyAttributes.ReadOnly] int ChunksVisibleInViewDst;
+    [SerializeField, SaintsField.ReadOnly] int ChunksVisibleInViewDst;
 
     readonly Dictionary<int2, TerrainChunk> TerrainChunks = new();
     readonly List<TerrainChunk?> VisibleTerrainChunks = new();

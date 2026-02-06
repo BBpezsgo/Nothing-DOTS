@@ -3,13 +3,12 @@ using System.Text;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.UIElements;
-using ReadOnlyAttribute = NaughtyAttributes.ReadOnlyAttribute;
 
 public class DiskDriveManager : Singleton<DiskDriveManager>, IUISetup<Entity>, IUICleanup
 {
     [Header("UI")]
 
-    [SerializeField, ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
 
     Pendrive selected = default;
 

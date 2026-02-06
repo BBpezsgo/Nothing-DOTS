@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using NaughtyAttributes;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -77,8 +76,8 @@ public class UIManager : Singleton<UIManager>
     }
 
     [Header("Debug")]
-    [SerializeField, ReadOnly] bool _escPressed = false;
-    [SerializeField, ReadOnly] bool _escGrabbed = false;
+    [SerializeField, SaintsField.ReadOnly] bool _escPressed = false;
+    [SerializeField, SaintsField.ReadOnly] bool _escGrabbed = false;
 
     void Start()
     {

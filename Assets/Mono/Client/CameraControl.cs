@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -15,7 +14,7 @@ public class CameraControl : Singleton<CameraControl>
     [Header("Movement")]
 
     [SerializeField] float MaxSpeed = 20f;
-    [SerializeField, ReadOnly] float Speed;
+    [SerializeField, SaintsField.ReadOnly] float Speed;
     [SerializeField] float Acceleration = 10f;
     [SerializeField] float Damping = 10f;
 

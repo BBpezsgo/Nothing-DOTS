@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using NaughtyAttributes;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -36,7 +35,7 @@ public class SetupManager : Singleton<SetupManager>
     [SerializeField] bool RandomPosition = default;
 
     [SerializeField] bool Deterministic = default;
-    [ShowIf(nameof(Deterministic)), SerializeField] int RandomSeed = default;
+    [SaintsField.Playa.ShowIf(nameof(Deterministic)), SerializeField] int RandomSeed = default;
 
     const float UnitRadius = 1.45f;
     const float UnitArea = UnitRadius * UnitRadius * MathF.PI;
