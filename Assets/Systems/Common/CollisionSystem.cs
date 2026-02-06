@@ -207,9 +207,9 @@ unsafe partial struct CollisionSystem : ISystem
 
                 if (!a->ResolvedOffset.Equals(default))
                 {
-                    RefRW<LocalTransform> transform = localTransformQ.GetRefRWOptional(a->Entity);
-                    if (transform.IsValid)
+                    if (localTransformQ.HasComponent(a->Entity))
                     {
+                        RefRW<LocalTransform> transform = localTransformQ.GetRefRW(a->Entity);
 #if DEBUG_COLLISIONS
                         DebugEx.Label(transform.ValueRO.Position, a->ResolvedOffset.ToString());
                         UnityEngine.Debug.DrawLine(transform.ValueRO.Position, transform.ValueRO.Position + a->ResolvedOffset, Color.green, 0.1f, false);

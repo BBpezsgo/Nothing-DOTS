@@ -88,8 +88,9 @@ partial struct WiredTransmissionSystemServer : ISystem
             closedSet.Remove(entity);
             foreach (Entity connector in closedSet)
             {
-                RefRW<Processor> other = processorComponentQ.GetRefRWOptional(connector);
-                if (!other.IsValid || !other.ValueRO.Source.Code.IsCreated || other.ValueRO.Signal != LanguageCore.Runtime.Signal.None) continue;
+                if (!processorComponentQ.HasComponent(connector)) continue;
+                RefRW<Processor> other = processorComponentQ.GetRefRW(connector);
+                if (!other.ValueRO.Source.Code.IsCreated || other.ValueRO.Signal != LanguageCore.Runtime.Signal.None) continue;
 
                 other.ValueRW.NetworkReceiveLED.Blink();
 

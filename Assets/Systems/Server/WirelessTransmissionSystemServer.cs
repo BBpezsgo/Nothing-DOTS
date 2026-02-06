@@ -147,8 +147,9 @@ partial struct WirelessTransmissionSystemServer : ISystem
                                 }
                             }
 
-                            RefRW<Processor> other = processorComponentQ.GetRefRWOptional(cell[i].Entity);
-                            if (!other.IsValid || !other.ValueRO.Source.Code.IsCreated || other.ValueRO.Signal != LanguageCore.Runtime.Signal.None) continue;
+                            if (!processorComponentQ.HasComponent(cell[i].Entity)) continue;
+                            RefRW<Processor> other = processorComponentQ.GetRefRW(cell[i].Entity);
+                            if (!other.ValueRO.Source.Code.IsCreated || other.ValueRO.Signal != LanguageCore.Runtime.Signal.None) continue;
 
 #if DEBUG_LINES
                             DebugEx.DrawSphere(cell[i].Position, 1f, Color.cyan, 1f, false);
