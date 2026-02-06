@@ -52,12 +52,11 @@ public partial struct RelevancySphereISystemServer : ISystem
         var parallelRelevantSet = relevantSet.AsParallelWriter();
         int maxRelevantSize = GhostQuery.CalculateEntityCount() * ConnectionQuery.CalculateEntityCount();
 
-        ClearRelevancySet clearJob = new()
+        JobHandle clearHandle = new ClearRelevancySet()
         {
             MaxRelevantSize = maxRelevantSize,
             RelevantSet = relevantSet
-        };
-        JobHandle clearHandle = clearJob.Schedule(state.Dependency);
+        }.Schedule(state.Dependency);
 
         Connections.Clear();
 
@@ -72,13 +71,11 @@ public partial struct RelevancySphereISystemServer : ISystem
             });
         }
 
-        UpdateConnectionRelevancyJob updateJob = new()
+        state.Dependency = new UpdateConnectionRelevancyJob()
         {
             Connections = Connections,
             ParallelRelevantSet = parallelRelevantSet
-        };
-        state.Dependency = JobHandle.CombineDependencies(state.Dependency, clearHandle);
-        state.Dependency = updateJob.ScheduleParallel(state.Dependency);
+        }.ScheduleParallel(JobHandle.CombineDependencies(state.Dependency, clearHandle));
     }
 
     [BurstCompile]
@@ -88,9 +85,9 @@ public partial struct RelevancySphereISystemServer : ISystem
         [ReadOnly] public NativeList<ConnectionRelevancy> Connections;
         public NativeParallelHashMap<RelevantGhostForConnection, int>.ParallelWriter ParallelRelevantSet;
 
-        public void Execute(Entity entity, in GhostInstance ghost, in LocalTransform transform, in PossiblyIrrelevant possiblyIrrelevant)
+        public void Execute(in GhostInstance ghost, in LocalTransform transform, in PossiblyIrrelevant possiblyIrrelevant)
         {
-            for (int i = 0; i < Connections.Length; ++i)
+            for (int i = 0; i < Connections.Length; i++)
             {
                 if (math.distance(transform.Position, Connections[i].Position) > possiblyIrrelevant.RelevancyRadius)
                 { ParallelRelevantSet.TryAdd(new RelevantGhostForConnection(Connections[i].ConnectionId, ghost.ghostId), 1); }

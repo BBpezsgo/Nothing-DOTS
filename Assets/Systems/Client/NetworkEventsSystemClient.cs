@@ -13,7 +13,7 @@ partial struct NetworkEventsSystemClient : ISystem
         for (int i = 0; i < v.Length; i++)
         {
             NetCodeConnectionEvent e = v[i];
-            ConnectionManager.Instance.OnNetworkEvent(e);
+            ConnectionManager.Instance.OnNetworkEventClient(e);
             ChatManager.Instance.AppendChatMessageElement(-1, (string?)(e.State switch
             {
                 ConnectionState.State.Disconnected => $"Disconnected: {e.DisconnectReason}",

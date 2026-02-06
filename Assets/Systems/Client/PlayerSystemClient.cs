@@ -63,8 +63,12 @@ public partial struct PlayerSystemClient : ISystem
             if (command.ValueRO.StatusCode.IsOk())
             {
                 Nickname = command.ValueRO.Nickname;
-                SaveSession(ServerGuid, PlayerGuid);
                 Debug.Log($"{DebugEx.ClientPrefix} Successfully logged in");
+
+                if (!FindSavedSession(ServerGuid, out Guid savedPlayerGuid, out _) || savedPlayerGuid != PlayerGuid)
+                {
+                    SaveSession(ServerGuid, PlayerGuid);
+                }
             }
             else if (command.ValueRO.StatusCode == SessionStatusCode.InvalidGuid)
             {

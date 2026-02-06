@@ -33,7 +33,7 @@ public partial struct PlayerSystemServer : ISystem
             .WithNone<InitializedClient>()
             .WithEntityAccess())
         {
-            Debug.Log($"{DebugEx.ServerPrefix} Client `{id.ValueRO.Value}` initialized");
+            Debug.Log(string.Format($"{DebugEx.ServerPrefix} Client `{{0}}` initialized", id.ValueRO));
             commandBuffer.AddComponent<InitializedClient>(entity);
         }
 
@@ -46,7 +46,7 @@ public partial struct PlayerSystemServer : ISystem
             NetworkId source = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
             commandBuffer.DestroyEntity(entity);
 
-            Debug.Log($"{DebugEx.ServerPrefix} Received guid request from client {source}");
+            Debug.Log(string.Format($"{DebugEx.ServerPrefix} Received guid request from client `{{0}}`", source));
 
             if (ServerGuid == default)
             {
@@ -71,7 +71,7 @@ public partial struct PlayerSystemServer : ISystem
             NetworkId source = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
             commandBuffer.DestroyEntity(entity);
 
-            Debug.Log($"{DebugEx.ServerPrefix} Received register request from client {source.Value}\n  Nickname: \"{command.ValueRO.Nickname}\"");
+            Debug.Log($"{DebugEx.ServerPrefix} Received register request from client `{source}`\n  Nickname: \"{command.ValueRO.Nickname}\"");
 
             (bool, Player) exists = default;
 
@@ -138,7 +138,7 @@ public partial struct PlayerSystemServer : ISystem
 
             FixedBytes16 guid = command.ValueRO.Guid;
 
-            Debug.Log($"{DebugEx.ServerPrefix} Received login request from client {source}\n  Guid: {Marshal.As<FixedBytes16, Guid>(guid)}");
+            Debug.Log($"{DebugEx.ServerPrefix} Received login request from client `{source}`\n  Guid: {Marshal.As<FixedBytes16, Guid>(guid)}");
 
             bool exists = false;
             foreach (var player in

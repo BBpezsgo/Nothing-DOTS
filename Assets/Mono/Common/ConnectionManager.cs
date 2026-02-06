@@ -151,7 +151,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         };
     }
 
-    public void OnNetworkEvent(NetCodeConnectionEvent e)
+    public void OnNetworkEventClient(NetCodeConnectionEvent e)
     {
         string? text = GetText(e);
 
@@ -159,8 +159,18 @@ public class ConnectionManager : Singleton<ConnectionManager>
         {
             UI.enabled = true;
             UIManager.Instance.CloseAllUI(UI);
-            ServerObjects.SetActive(false);
+
+            Debug.Log($" -> Disabling client objects");
             ClientObjects.SetActive(false);
+        }
+        else if (e.State == ConnectionState.State.Connected)
+        {
+            UI.enabled = false;
+            UIManager.Instance.CloseAllUI(UI);
+
+            Debug.Log($" -> Enabling client objects");
+            ClientObjects.SetActive(true);
+
             if (UI.rootVisualElement is null)
             {
                 StartCoroutine(LateUIRefresh(e));
@@ -194,7 +204,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         {
             SetInputEnabled(true);
         }
-        else
+        else if (UI.rootVisualElement != null)
         {
             string? text = GetText(e);
             Label label = UI.rootVisualElement.Q<Label>("label-status");
@@ -227,8 +237,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= NetcodeBootstrap.LocalWorld!;
 
-        Debug.Log($" -> EnablingObjects");
+        Debug.Log($" -> Enabling server objects");
         ServerObjects.SetActive(true);
+        Debug.Log($" -> Enabling client objects");
         ClientObjects.SetActive(true);
         yield return new WaitForEndOfFrame();
 
@@ -280,8 +291,8 @@ public class ConnectionManager : Singleton<ConnectionManager>
         Debug.Log($" -> Set nickname to {nickname}");
         PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
 
-        Debug.Log($" -> EnablingClientObjects");
         yield return new WaitForEndOfFrame();
+        Debug.Log($" -> Enabling client objects");
         ClientObjects.SetActive(true);
         yield return new WaitForEndOfFrame();
 
@@ -309,8 +320,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ClientWorld!;
 
-        Debug.Log($" -> EnablingObjects");
+        Debug.Log($" -> Disabling server objects");
         ServerObjects.SetActive(false);
+        Debug.Log($" -> Enabling client objects");
         ClientObjects.SetActive(true);
         yield return new WaitForEndOfFrame();
 
@@ -333,8 +345,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         Debug.Log($" -> DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
-        Debug.Log($" -> EnablingObjects");
+        Debug.Log($" -> Enabling server objects");
         ServerObjects.SetActive(true);
+        Debug.Log($" -> Disabling client objects");
         ClientObjects.SetActive(false);
         yield return new WaitForEndOfFrame();
 

@@ -16,14 +16,14 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
     const float ViewerMoveThresholdForChunkUpdate = 25f;
     const float ViewerMoveThresholdForChunkUpdateSq = ViewerMoveThresholdForChunkUpdate * ViewerMoveThresholdForChunkUpdate;
 
-    [NotNull] public float[]? DetailLevels = null;
-    public float MaxViewDistance = 1000f;
+    [SerializeField, NotNull] float[]? DetailLevels = null;
+    const float MaxViewDistance = 1000f;
 
-    [NotNull] public HeightMapSettings? HeightMapSettings = null;
-    [NotNull] public TextureSettings? TextureSettings = null;
+    [SerializeField, NotNull] HeightMapSettings? HeightMapSettings = null;
+    [SerializeField, NotNull] TextureSettings? TextureSettings = null;
 
-    [NotNull] public Transform? Viewer = null;
-    [NotNull] public Material? MapMaterial = null;
+    [SerializeField, NotNull] Transform? Viewer = null;
+    [SerializeField, NotNull] Material? MapMaterial = null;
 
     float2 ViewerPosition;
     float2 ViewerPositionOld;
@@ -34,8 +34,12 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
     readonly Dictionary<int2, TerrainChunk> TerrainChunks = new();
     readonly List<TerrainChunk?> VisibleTerrainChunks = new();
 
-    void Start()
+    void OnEnable() => Reset();
+
+    public void Reset()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Resetting terrain");
+
         for (int i = transform.childCount - 1; i >= 0; i--)
         {
             Destroy(transform.GetChild(i).gameObject);
