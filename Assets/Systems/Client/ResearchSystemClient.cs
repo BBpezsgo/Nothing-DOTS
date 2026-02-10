@@ -77,4 +77,9 @@ public partial struct ResearchSystemClient : ISystem
 
         Debug.Log($"{DebugEx.ClientPrefix} Request avaliable researches ...");
     }
+
+    public void OnDisconnect()
+    {
+        AvaliableResearches.Clear();
+    }
 }

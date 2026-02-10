@@ -66,4 +66,9 @@ public partial struct UnitsSystemClient : ISystem
 
         Debug.Log($"{DebugEx.ClientPrefix} Request avaliable units ...");
     }
+
+    public void OnDisconnect()
+    {
+        Units.Clear();
+    }
 }

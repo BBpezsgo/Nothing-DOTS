@@ -82,4 +82,14 @@ public partial class WorldLabelSystemClientSystem : SystemBase
             break;
         }
     }
+
+
+    public void OnDisconnect()
+    {
+        foreach (WorldLabel item in _instances)
+        {
+            Object.Destroy(item.gameObject);
+        }
+        _instances.Clear();
+    }
 }

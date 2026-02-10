@@ -43,7 +43,7 @@ public partial class EntityInfoUISystemClient : SystemBase
             GameObject uiPrefab = SystemAPI.ManagedAPI.GetSingleton<UIPrefabs>().EntityInfo;
             float3 spawnPosition = transform.ValueRO.Position;
             GameObject newUi = Object.Instantiate(uiPrefab, spawnPosition, Quaternion.identity, _canvas);
-            var comp = newUi.GetComponent<EntityInfoUI>();
+            EntityInfoUI comp = newUi.GetComponent<EntityInfoUI>();
 
             if (SystemAPI.HasComponent<MeshBounds>(entity))
             {
@@ -110,5 +110,10 @@ public partial class EntityInfoUISystemClient : SystemBase
             Object.Destroy(uiRef.Value.gameObject);
             commandBuffer.RemoveComponent<EntityInfoUIReference>(entity);
         }
+    }
+
+    public void OnDisconnect()
+    {
+
     }
 }

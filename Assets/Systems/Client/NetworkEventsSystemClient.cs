@@ -13,7 +13,9 @@ partial struct NetworkEventsSystemClient : ISystem
         for (int i = 0; i < v.Length; i++)
         {
             NetCodeConnectionEvent e = v[i];
+
             ConnectionManager.Instance.OnNetworkEventClient(e);
+
             ChatManager.Instance.AppendChatMessageElement(-1, (string?)(e.State switch
             {
                 ConnectionState.State.Disconnected => $"Disconnected: {e.DisconnectReason}",
@@ -23,6 +25,26 @@ partial struct NetworkEventsSystemClient : ISystem
                 ConnectionState.State.Connected => $"Connected",
                 ConnectionState.State.Unknown or _ => e.ToFixedString().ToString(),
             }), DateTimeOffset.UtcNow);
+
+            if (e.State == ConnectionState.State.Disconnected)
+            {
+                Debug.Log($"{DebugEx.ClientPrefix} Clearing system states ...");
+
+                state.WorldUnmanaged.GetUnsafeSystemRef<BuildingsSystemClient>(state.WorldUnmanaged.GetExistingUnmanagedSystem<BuildingsSystemClient>()).OnDisconnect();
+                state.WorldUnmanaged.GetUnsafeSystemRef<DebugLinesClientSystem>(state.WorldUnmanaged.GetExistingUnmanagedSystem<DebugLinesClientSystem>()).OnDisconnect();
+                state.WorldUnmanaged.GetUnsafeSystemRef<PlayerPositionSystemClient>(state.WorldUnmanaged.GetExistingUnmanagedSystem<PlayerPositionSystemClient>()).OnDisconnect();
+                state.WorldUnmanaged.GetUnsafeSystemRef<PlayerSystemClient>(state.WorldUnmanaged.GetExistingUnmanagedSystem<PlayerSystemClient>()).OnDisconnect();
+                state.WorldUnmanaged.GetUnsafeSystemRef<ProjectileSystemClient>(state.WorldUnmanaged.GetExistingUnmanagedSystem<ProjectileSystemClient>()).OnDisconnect();
+                state.WorldUnmanaged.GetUnsafeSystemRef<ProcessorSystemClient>(state.WorldUnmanaged.GetExistingUnmanagedSystem<ProcessorSystemClient>()).OnDisconnect();
+                state.WorldUnmanaged.GetUnsafeSystemRef<ResearchSystemClient>(state.WorldUnmanaged.GetExistingUnmanagedSystem<ResearchSystemClient>()).OnDisconnect();
+                state.WorldUnmanaged.GetUnsafeSystemRef<UnitsSystemClient>(state.WorldUnmanaged.GetExistingUnmanagedSystem<UnitsSystemClient>()).OnDisconnect();
+
+                state.World.GetExistingSystemManaged<CompilerSystemClient>().OnDisconnect();
+                state.World.GetExistingSystemManaged<EntityInfoUISystemClient>().OnDisconnect();
+                state.World.GetExistingSystemManaged<VisualEffectSystemClient>().OnDisconnect();
+                state.World.GetExistingSystemManaged<WireRendererSystemClient>().OnDisconnect();
+                state.World.GetExistingSystemManaged<WorldLabelSystemClientSystem>().OnDisconnect();
+            }
         }
     }
 }

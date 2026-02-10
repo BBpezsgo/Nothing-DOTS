@@ -68,4 +68,10 @@ public partial struct BuildingsSystemClient : ISystem
 
         Debug.Log($"{DebugEx.ClientPrefix} Request avaliable buildings ...");
     }
+
+    public void OnDisconnect()
+    {
+        Buildings.Clear();
+        LastSynced.Data = default;
+    }
 }

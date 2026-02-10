@@ -26,7 +26,7 @@ public partial class VisualEffectSystemClient : SystemBase
                 int _i = i;
                 BufferedVisualEffect asset = database[_i];
                 Pools[_i] = new ObjectPool<VisualEffectHandlerComponent>(
-                    () =>
+                    createFunc: () =>
                     {
                         GameObject gameObject = new($"Effect {_i}");
 
@@ -49,16 +49,14 @@ public partial class VisualEffectSystemClient : SystemBase
 
                         return handlerComponent;
                     },
-                    (v) =>
+                    actionOnGet: static v =>
                     {
                         v.gameObject.SetActive(true);
                         v.GetComponent<VisualEffectHandlerComponent>().Reinit();
                         v.Reinit();
                     },
-                    (v) =>
-                    {
-                        v.gameObject.SetActive(false);
-                    });
+                    actionOnRelease: static v => v.gameObject.SetActive(false),
+                    actionOnDestroy: static v => Object.Destroy(v.gameObject));
             }
         }
 
@@ -97,6 +95,25 @@ public partial class VisualEffectSystemClient : SystemBase
             effect.transform.position = command.ValueRO.Position;
             if (effect.VisualEffect.HasVector3("direction")) effect.VisualEffect.SetVector3("direction", (command.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
             effect.VisualEffect.Play();
+        }
+    }
+
+    public void OnDisconnect()
+    {
+        if (Pools == null) return;
+
+        Debug.Log($"{DebugEx.ClientPrefix} Clearing VFX pools ...");
+
+        foreach (ObjectPool<VisualEffectHandlerComponent> item in Pools)
+        {
+            item.Clear();
+        }
+
+        Debug.Log($"{DebugEx.ClientPrefix} Destroying VFX instances ...");
+
+        foreach (VisualEffectHandlerComponent vfx in Object.FindObjectsByType<VisualEffectHandlerComponent>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            Object.Destroy(vfx.gameObject);
         }
     }
 }

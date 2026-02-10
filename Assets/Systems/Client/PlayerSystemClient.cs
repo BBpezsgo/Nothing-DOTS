@@ -298,4 +298,9 @@ public partial struct PlayerSystemClient : ISystem
 
         Debug.Log($"{DebugEx.ClientPrefix} Session saved to file \"{fileName}\"");
     }
+
+    public void OnDisconnect()
+    {
+
+    }
 }

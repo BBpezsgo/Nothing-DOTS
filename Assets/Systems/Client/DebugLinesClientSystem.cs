@@ -85,4 +85,26 @@ partial struct DebugLinesClientSystem : ISystem
 
         batches.Dispose();
     }
+
+    public void OnDisconnect()
+    {
+        NativeArray<Segments.Segment> batches = new(Batches.Length, Allocator.Temp);
+
+        for (int i = 0; i < Batches.Length; i++)
+        {
+            batches[i] = Segments.Core.GetSegment(ConnectionManager.ClientOrDefaultWorld.EntityManager, Batches[i]);
+        }
+
+        for (int i = 0; i < batches.Length; i++)
+        {
+            batches[i].Buffer.Clear();
+        }
+
+        for (int i = 0; i < batches.Length; i++)
+        {
+            Segments.Core.SetSegmentChanged(ConnectionManager.ClientOrDefaultWorld.EntityManager, Batches[i]);
+        }
+
+        batches.Dispose();
+    }
 }

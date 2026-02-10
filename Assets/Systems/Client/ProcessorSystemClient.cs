@@ -123,4 +123,9 @@ partial struct ProcessorSystemClient : ISystem
         SystemHandle handle = world.GetExistingUnmanagedSystem<ProcessorSystemClient>();
         return ref world.GetUnsafeSystemRef<ProcessorSystemClient>(handle);
     }
+
+    public void OnDisconnect()
+    {
+        uiElements.Clear();
+    }
 }

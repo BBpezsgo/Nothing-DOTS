@@ -63,7 +63,12 @@ public partial class CompilerSystemServer : SystemBase
                                 if (task.IsCanceled || (task.Exception is not null && task.Exception.InnerExceptions.Count == 1 && task.Exception.InnerExceptions[0] is TaskCanceledException))
                                 { Debug.LogWarning($"{DebugEx.ServerPrefix} Compilation task cancelled"); }
                                 else if (task.IsFaulted)
-                                { Debug.LogException(task.Exception); }
+                                {
+                                    foreach (Exception? ex in task.Exception!.Flatten().InnerExceptions)
+                                    {
+                                        Debug.LogException(ex);
+                                    }
+                                }
                             }), cancellationTokenSource));
                         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                         SendCompilationStatus(source, commandBuffer);

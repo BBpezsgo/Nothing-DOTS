@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -98,6 +99,21 @@ partial struct ProjectileSystemClient : ISystem
         // };
 
         // projectileJob.Schedule();
+    }
+
+    public void OnDisconnect()
+    {
+        WorldUnmanaged world = ConnectionManager.ClientOrDefaultWorld.Unmanaged;
+
+        EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(world);
+
+        using EntityQuery query = world.EntityManager.CreateEntityQuery(typeof(Projectile));
+        using NativeArray<Entity> projectiles = query.ToEntityArray(Allocator.Temp);
+
+        foreach (Entity projectile in projectiles)
+        {
+            commandBuffer.DestroyEntity(projectile);
+        }
     }
 }
 

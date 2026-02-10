@@ -34,4 +34,9 @@ public partial struct PlayerPositionSystemClient : ISystem
         SystemHandle handle = world.GetExistingUnmanagedSystem<PlayerPositionSystemClient>();
         return ref world.GetUnsafeSystemRef<PlayerPositionSystemClient>(handle);
     }
+
+    public void OnDisconnect()
+    {
+        SyncedPosition = default;
+    }
 }

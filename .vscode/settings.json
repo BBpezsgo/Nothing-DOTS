@@ -55,7 +55,7 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Nothing-DOTS.sln",
+    "dotnet.defaultSolution": "Nothing-DOTS.slnx",
     "files.autoSave": "afterDelay",
     "vstuc.refreshOnSave": false,
     "vstuc.displayBackgroundProcesses": true,
@@ -82,7 +82,7 @@
         "Textures": "images",
         "RPC": "messages",
         "VFX": "animation",
-        "ThinClient": "client",
+        "ThinClient": "client"
     },
     "material-icon-theme.files.associations": {
         "*.uxml": "xml",

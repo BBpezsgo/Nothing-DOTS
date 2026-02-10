@@ -95,26 +95,21 @@ public partial class WireRendererSystemClient : SystemBase
     readonly Dictionary<WireId, LineRenderer> Lines = new();
     [NotNull] ObjectPool<LineRenderer>? LinesPool = null;
 
-    static void OnReleaseLine(LineRenderer renderer)
-    {
-        renderer.gameObject.SetActive(false);
-    }
-    static void OnGetLine(LineRenderer renderer)
-    {
-        renderer.gameObject.SetActive(true);
-    }
-    LineRenderer CreateLine()
-    {
-        LineRenderer line = new GameObject("Wire").AddComponent<LineRenderer>();
-        line.material = Settings.Material;
-        line.widthCurve = AnimationCurve.Constant(0f, 1f, 0.05f);
-        return line;
-    }
-
     protected override void OnCreate()
     {
         RequireForUpdate<WiresSettings>();
-        LinesPool = new(CreateLine, OnGetLine, OnReleaseLine);
+        LinesPool = new ObjectPool<LineRenderer>(
+            createFunc: () =>
+            {
+                LineRenderer line = new GameObject("Wire").AddComponent<LineRenderer>();
+                line.material = Settings.Material;
+                line.widthCurve = AnimationCurve.Constant(0f, 1f, 0.05f);
+                return line;
+            },
+            actionOnGet: static v => v.gameObject.SetActive(true),
+            actionOnRelease: static v => v.gameObject.SetActive(false),
+            actionOnDestroy: static v => UnityEngine.Object.Destroy(v.gameObject)
+        );
     }
 
     const float WireResolution = 1f;
@@ -242,5 +237,11 @@ public partial class WireRendererSystemClient : SystemBase
                 line.SetPositions(points);
             }
         }
+    }
+
+    public void OnDisconnect()
+    {
+        Lines.Clear();
+        LinesPool.Clear();
     }
 }

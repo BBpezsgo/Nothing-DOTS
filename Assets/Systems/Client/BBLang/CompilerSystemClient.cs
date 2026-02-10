@@ -190,4 +190,10 @@ partial class CompilerSystemClient : SystemBase
     }
 
     public bool TryGetSource(in FileId file, [NotNullWhen(true)] out CompiledSourceClient source) => CompiledSources.TryGetValue(file, out source);
+
+    public void OnDisconnect()
+    {
+        CompiledSources.Clear();
+        StatusRequestTimestamps.Clear();
+    }
 }
