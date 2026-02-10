@@ -54,7 +54,7 @@ public partial struct TurretShootingSystemClient : ISystem
                 commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
                 {
                     Position = command.ValueRO.Position,
-                    Rotation = quaternion.LookRotation(math.normalizesafe(command.ValueRO.Velocity), new float3(0f, 1f, 0f)),
+                    Rotation = quaternion.LookRotation(math.normalizesafe(command.ValueRO.Velocity), new float3(0f, 1f, 0f)).ToEuler(),
                     Index = command.ValueRO.VisualEffectIndex,
                 });
             }

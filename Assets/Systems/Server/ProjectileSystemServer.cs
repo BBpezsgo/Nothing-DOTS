@@ -15,6 +15,7 @@ partial struct ProjectileSystemServer : ISystem
 {
     BufferLookup<BufferedDamage> damageQ;
     public const float Gravity = -9.82f;
+    public const float MinY = -5f;
 
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
@@ -42,15 +43,6 @@ partial struct ProjectileSystemServer : ISystem
             float3 direction = projectile.ValueRO.Velocity / travelDistance * t;
             transform.ValueRW.Position = newPosition;
             projectile.ValueRW.Velocity += new float3(0f, Gravity, 0f) * SystemAPI.Time.DeltaTime;
-
-            if (transform.ValueRO.Position.y < 0f)
-            {
-#if DEBUG_LINES
-                DebugEx.DrawPoint(transform.ValueRO.Position, 0.2f, Color.red, 1f);
-#endif
-                commandBuffer.DestroyEntity(entity);
-                continue;
-            }
 
             Ray ray = new(lastPosition, direction, travelDistance, Layers.BuildingOrUnit);
             DynamicBuffer<BufferedDamage> damage = default;
@@ -82,6 +74,15 @@ partial struct ProjectileSystemServer : ISystem
                     Amount = projectile.ValueRO.Damage,
                     Direction = math.normalize(projectile.ValueRO.Velocity),
                 });
+                commandBuffer.DestroyEntity(entity);
+                continue;
+            }
+
+            if (transform.ValueRO.Position.y < MinY)
+            {
+#if DEBUG_LINES
+                DebugEx.DrawPoint(transform.ValueRO.Position, 0.2f, Color.red, 1f);
+#endif
                 commandBuffer.DestroyEntity(entity);
                 continue;
             }

@@ -40,7 +40,7 @@ partial struct ProjectileSystemClient : ISystem
             transform.ValueRW.Position = newPosition;
             transform.ValueRW.Rotation = quaternion.LookRotation(direction, new float3(0f, 1f, 0f));
 
-            if (transform.ValueRO.Position.y < 0f)
+            if (transform.ValueRO.Position.y < ProjectileSystemServer.MinY)
             {
                 commandBuffer.DestroyEntity(entity);
                 continue;
@@ -79,7 +79,7 @@ partial struct ProjectileSystemClient : ISystem
                 commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
                 {
                     Position = ray.GetPoint(distance),
-                    Rotation = quaternion.LookRotation(normal, new float3(0f, 1f, 0f)),
+                    Rotation = normal.Equals(new float3(0f, 1f, 0f)) ? new float3(-math.PIHALF, 0f, 0f) : quaternion.LookRotation(normal, new float3(0f, 1f, 0f)).ToEuler(),
                     Index = effect,
                 });
             }

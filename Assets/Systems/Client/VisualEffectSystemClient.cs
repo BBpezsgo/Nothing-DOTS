@@ -77,7 +77,7 @@ public partial class VisualEffectSystemClient : SystemBase
 
             VisualEffectHandlerComponent effect = Pools[spawn.ValueRO.Index].Get();
             effect.transform.position = spawn.ValueRO.Position;
-            if (effect.VisualEffect.HasVector3("direction")) effect.VisualEffect.SetVector3("direction", (spawn.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
+            if (effect.VisualEffect.HasVector3("direction")) effect.VisualEffect.SetVector3("direction", (spawn.ValueRO.Rotation * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
             effect.VisualEffect.Play();
         }
 

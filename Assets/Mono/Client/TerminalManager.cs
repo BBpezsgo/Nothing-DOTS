@@ -356,7 +356,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             ICompiledSource? source = null;
             if (ConnectionManager.ClientOrDefaultWorld.IsClient())
             {
-                if (ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources.TryGetValue(processor.SourceFile, out CompiledSourceClient? clientSource))
+                if (ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().TryGetSource(processor.SourceFile, out CompiledSourceClient? clientSource, ConnectionManager.ClientOrDefaultWorld.Unmanaged))
                 {
                     source = clientSource;
                 }
@@ -538,6 +538,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                                 ui_progressCompilation.title = "Crashed (no memory)";
                                                 ui_progressCompilation.value = 1f;
                                                 break;
+                                            case FileResponseStatus.OK:
+                                            case FileResponseStatus.NotChanged:
                                             default:
                                                 _memory = result.File.Data;
                                                 break;

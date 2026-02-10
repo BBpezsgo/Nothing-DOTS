@@ -3,7 +3,6 @@
 /Temp
 /UserSettings
 /Build
-/.direnv
 
 /Assets/Packages
 /Assets/SceneDependencyCache
@@ -15,5 +14,5 @@
 /Packages/packages-lock.json
 
 *.csproj
-*.sln
+*.slnx
 *.meta

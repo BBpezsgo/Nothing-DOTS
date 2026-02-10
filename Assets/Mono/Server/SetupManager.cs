@@ -12,10 +12,11 @@ public class SetupManager : Singleton<SetupManager>
     [Serializable]
     class UnitSetup
     {
+        [SerializeField] public bool Enabled;
         [SerializeField, NotNull] public GameObject? Prefab = default;
-        [SerializeField] public float2 Spawn = default;
+        [SerializeField] public float2 Spawn;
         [SerializeField, NotNull] public string? Script = default;
-        [SerializeField] public int Team = default;
+        [SerializeField] public int Team;
     }
 
     [Header("Exact Spawns")]
@@ -88,6 +89,8 @@ public class SetupManager : Singleton<SetupManager>
         {
             foreach (UnitSetup unitSetup in Units)
             {
+                if (!unitSetup.Enabled) continue;
+
                 Entity prefab = Entity.Null;
 
                 if (prefab == Entity.Null)
@@ -223,6 +226,7 @@ public class SetupManager : Singleton<SetupManager>
             {
                 foreach (UnitSetup unit in Units)
                 {
+                    if (!unit.Enabled) continue;
                     if (math.distance(unit.Spawn, position) < 2f * UnitRadius) return true;
                 }
             }
@@ -319,12 +323,14 @@ public class SetupManager : Singleton<SetupManager>
 
         if (SpawnExactUnits)
         {
-            for (int i = 0; i < Units.Length; i++)
+            foreach (UnitSetup unit in Units)
             {
-                bool v = false;
-                Vector3 p = new(Units[i].Spawn.x, PositionY, Units[i].Spawn.y);
+                if (!unit.Enabled) continue;
 
-                foreach (MeshFilter item in Units[i].Prefab.GetAllComponents<MeshFilter>())
+                bool v = false;
+                Vector3 p = new(unit.Spawn.x, PositionY, unit.Spawn.y);
+
+                foreach (MeshFilter item in unit.Prefab.GetAllComponents<MeshFilter>())
                 {
                     Gizmos.DrawWireMesh(item.sharedMesh, item.transform.position + p, item.transform.rotation, item.transform.lossyScale);
                     v = true;
@@ -347,6 +353,8 @@ public class SetupManager : Singleton<SetupManager>
 
             for (int i = 0; i < t.Units.Length; i++)
             {
+                if (!t.Units[i].Enabled) continue;
+
                 Vector3 p = UnityEditor.Handles.PositionHandle(
                     new Vector3(t.Units[i].Spawn.x, PositionY, t.Units[i].Spawn.y),
                     Quaternion.identity

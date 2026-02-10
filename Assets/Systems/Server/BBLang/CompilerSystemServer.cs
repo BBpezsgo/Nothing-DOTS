@@ -15,6 +15,7 @@ using LanguageCore.Runtime;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Profiling;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
@@ -30,6 +31,21 @@ public partial class CompilerSystemServer : SystemBase
     {
         EntityCommandBuffer commandBuffer = default;
 
+        foreach ((RefRO<CompilerStatusRequestRpc> command, RefRO<ReceiveRpcCommandRequest> request, Entity entity) in
+            SystemAPI.Query<RefRO<CompilerStatusRequestRpc>, RefRO<ReceiveRpcCommandRequest>>()
+            .WithEntityAccess())
+        {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+            commandBuffer.DestroyEntity(entity);
+
+            Debug.Log($"{DebugEx.ClientPrefix} Received compilation status request for \"{command.ValueRO.FileName}\"");
+
+            if (!CompiledSources.TryGetValue(command.ValueRO.FileName, out var source))
+            { continue; }
+
+            SendCompilationStatus(source, commandBuffer, request.ValueRO.SourceConnection);
+        }
+
         foreach ((FileId file, CompiledSourceServer source) in CompiledSources)
         {
             lock (source)
@@ -44,10 +60,10 @@ public partial class CompilerSystemServer : SystemBase
                         Tasks.Add((Task.Factory.StartNew(static v => CompileSourceTask(((FileId, bool, CompiledSourceServer, CancellationToken))v), (file, false, source, cancellationTokenSource.Token))
                             .ContinueWith(task =>
                             {
-                                if (task.IsFaulted)
+                                if (task.IsCanceled || (task.Exception is not null && task.Exception.InnerExceptions.Count == 1 && task.Exception.InnerExceptions[0] is TaskCanceledException))
+                                { Debug.LogWarning($"{DebugEx.ServerPrefix} Compilation task cancelled"); }
+                                else if (task.IsFaulted)
                                 { Debug.LogException(task.Exception); }
-                                else if (task.IsCanceled)
-                                { Debug.LogError($"{DebugEx.ServerPrefix} Compilation task cancelled"); }
                             }), cancellationTokenSource));
                         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                         SendCompilationStatus(source, commandBuffer);
@@ -75,6 +91,7 @@ public partial class CompilerSystemServer : SystemBase
                     default:
                         throw new UnreachableException();
                 }
+
                 if (source.StatusChanged && source.LastStatusSync + 0.5d < SystemAPI.Time.ElapsedTime)
                 {
                     if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
@@ -102,7 +119,7 @@ public partial class CompilerSystemServer : SystemBase
         }
     }
 
-    void SendCompilationStatus(CompiledSourceServer source, EntityCommandBuffer commandBuffer)
+    void SendCompilationStatus(CompiledSourceServer source, EntityCommandBuffer commandBuffer, Entity connectionEntity = default)
     {
         source.LastStatusSync = SystemAPI.Time.ElapsedTime;
         source.StatusChanged = false;
@@ -119,7 +136,7 @@ public partial class CompilerSystemServer : SystemBase
                 CompiledVersion = source.CompiledVersion,
                 LatestVersion = source.LatestVersion,
                 UnitCommands = source.UnitCommandDefinitions?.Length ?? 0,
-            });
+            }, connectionEntity);
             if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} [{nameof(CompilerSystemServer)}] Sending compilation status for {source.SourceFile} to {source.SourceFile.Source}");
         }
 
@@ -142,7 +159,7 @@ public partial class CompilerSystemServer : SystemBase
                     Id = item.Id,
                     Label = item.Label,
                     Parameters = parameters,
-                });
+                }, connectionEntity);
             }
         }
 
@@ -154,7 +171,7 @@ public partial class CompilerSystemServer : SystemBase
                 SubFileName = name,
                 CurrentProgress = value.Progress.Current,
                 TotalProgress = value.Progress.Total,
-            });
+            }, connectionEntity);
         }
     }
 

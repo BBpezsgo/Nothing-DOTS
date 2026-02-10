@@ -426,8 +426,7 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (ConnectionManager.ClientOrDefaultWorld.IsClient())
         {
-            Dictionary<FileId, CompiledSourceClient> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().CompiledSources;
-            if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceClient? source))
+            if (!ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemClient>().TryGetSource(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceClient? source, ConnectionManager.ClientOrDefaultWorld.Unmanaged))
             {
                 Debug.Log($"{DebugEx.ClientPrefix} Cannot get unit commands for `{selected}`: Source \"{entityManager.GetComponentData<Processor>(selected).SourceFile}\" does not exists");
                 return false;
@@ -438,8 +437,7 @@ public class SelectionManager : Singleton<SelectionManager>
         }
         else
         {
-            Dictionary<FileId, CompiledSourceServer> compiledSources = ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources;
-            if (!compiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceServer? source))
+            if (!ConnectionManager.ClientOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>().CompiledSources.TryGetValue(entityManager.GetComponentData<Processor>(selected).SourceFile, out CompiledSourceServer? source))
             {
                 Debug.Log($"{DebugEx.ClientPrefix} Cannot get unit commands for `{selected}`: Source \"{entityManager.GetComponentData<Processor>(selected).SourceFile}\" does not exists");
                 return false;

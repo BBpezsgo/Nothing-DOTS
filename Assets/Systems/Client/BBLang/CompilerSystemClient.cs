@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using LanguageCore;
 using Unity.Collections;
@@ -8,7 +9,9 @@ using Unity.NetCode;
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 partial class CompilerSystemClient : SystemBase
 {
-    public readonly Dictionary<FileId, CompiledSourceClient> CompiledSources = new();
+    readonly Dictionary<FileId, CompiledSourceClient> CompiledSources = new();
+    readonly Dictionary<FileId, float> StatusRequestTimestamps = new();
+    const float StatusRequestCooldownSec = 2f;
 
     protected override void OnUpdate()
     {
@@ -153,4 +156,38 @@ partial class CompilerSystemClient : SystemBase
             }
         }
     }
+
+    public bool TryGetSource(in FileId file, [NotNullWhen(true)] out CompiledSourceClient source, in WorldUnmanaged world, in EntityCommandBuffer commandBuffer)
+    {
+        if (CompiledSources.TryGetValue(file, out source)) return true;
+
+        float now = MonoTime.Now;
+        if (StatusRequestTimestamps.TryGetValue(file, out float time) && now - time < StatusRequestCooldownSec) return false;
+        StatusRequestTimestamps[file] = now;
+
+        NetcodeUtils.CreateRPC(commandBuffer, world, new CompilerStatusRequestRpc()
+        {
+            FileName = file,
+        });
+
+        return false;
+    }
+
+    public bool TryGetSource(in FileId file, [NotNullWhen(true)] out CompiledSourceClient source, in WorldUnmanaged world)
+    {
+        if (CompiledSources.TryGetValue(file, out source)) return true;
+
+        float now = MonoTime.Now;
+        if (StatusRequestTimestamps.TryGetValue(file, out float time) && now - time < StatusRequestCooldownSec) return false;
+        StatusRequestTimestamps[file] = now;
+
+        NetcodeUtils.CreateRPC(world, new CompilerStatusRequestRpc()
+        {
+            FileName = file,
+        });
+
+        return false;
+    }
+
+    public bool TryGetSource(in FileId file, [NotNullWhen(true)] out CompiledSourceClient source) => CompiledSources.TryGetValue(file, out source);
 }

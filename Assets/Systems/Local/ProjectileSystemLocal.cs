@@ -46,12 +46,6 @@ partial struct ProjectileSystemLocal : ISystem
             projectile.ValueRW.Velocity += new float3(0f, Gravity, 0f) * SystemAPI.Time.DeltaTime;
             transform.ValueRW.Rotation = quaternion.LookRotation(direction, new float3(0f, 1f, 0f));
 
-            if (transform.ValueRO.Position.y < 0f)
-            {
-                commandBuffer.DestroyEntity(entity);
-                continue;
-            }
-
             Ray ray = new(lastPosition, direction, travelDistance, Layers.BuildingOrUnit);
             DynamicBuffer<BufferedDamage> damage = default;
 
@@ -91,7 +85,7 @@ partial struct ProjectileSystemLocal : ISystem
                 commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
                 {
                     Position = ray.GetPoint(distance),
-                    Rotation = quaternion.LookRotation(normal, new float3(0f, 1f, 0f)),
+                    Rotation = normal.Equals(new float3(0f, 1f, 0f)) ? new float3(-math.PIHALF, 0f, 0f) : quaternion.LookRotation(normal, new float3(0f, 1f, 0f)).ToEuler(),
                     Index = effect,
                 });
             }
