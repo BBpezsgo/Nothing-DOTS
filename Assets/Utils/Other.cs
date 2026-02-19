@@ -7,6 +7,11 @@ using UnityEngine;
 
 public static partial class Utils
 {
+    [BurstCompile]
+    public static ref T GetSystem<T>(this WorldUnmanaged world) where T : unmanaged, ISystem => ref world.GetUnsafeSystemRef<T>(world.GetExistingUnmanagedSystem<T>());
+
+    public static T GetSystem<T>(this World world) where T : ComponentSystemBase => world.GetExistingSystemManaged<T>();
+
     public static void GetAllComponents<T>(this GameObject o, List<T> result, bool includeInactive = false)
     {
         o.GetComponents(result);
@@ -76,6 +81,8 @@ public static partial class Utils
         float s = (a + b + c) / 2f;
         return 2f * math.sqrt(s * (s - a) * (s - b) * (s - c)) / a;
     }
+
+    public static float3 ToEuler(this in float3 direction) => new(-MathF.Asin(direction.y), MathF.Atan2(direction.x, direction.z), 0f);
 
     public static bool RayIntersectsTriangle(
         in float3 rayOrigin,

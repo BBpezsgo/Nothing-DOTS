@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -28,15 +29,15 @@ public class ChatManager : Singleton<ChatManager>
 
     [NotNull] TextField? _inputMessage = default;
     [NotNull] Button? _buttonSend = default;
-    [NotNull] VisualElement? _containerMessages = default;
+    [NotNull] ScrollView? _containerMessages = default;
     [NotNull] VisualElement? _containerInput = default;
     readonly List<ChatMessage> _chatMessages = new();
 
-    void Start()
+    void OnEnable()
     {
         _inputMessage = _ui.rootVisualElement.Q<TextField>("input-message");
         _buttonSend = _ui.rootVisualElement.Q<Button>("button-send");
-        _containerMessages = _ui.rootVisualElement.Q<VisualElement>("container-messages");
+        _containerMessages = _ui.rootVisualElement.Q<ScrollView>("container-messages");
         _containerInput = _ui.rootVisualElement.Q<VisualElement>("container-input");
 
         _buttonSend.clicked += OnButtonSend;
@@ -58,6 +59,12 @@ public class ChatManager : Singleton<ChatManager>
             }
         }
 
+        if (_containerInput.style.display != DisplayStyle.None && UIManager.Instance.GrapESC())
+        {
+            _containerInput.style.display = DisplayStyle.None;
+            _containerMessages.EnableInClassList("show", false);
+        }
+
         if (!Input.GetKeyDown(KeyCode.Return) || UIManager.Instance.AnyUIVisible || SelectionManager.Instance.IsUnitCommandsActive) return;
 
         if (_containerInput.style.display == DisplayStyle.None)
@@ -65,6 +72,7 @@ public class ChatManager : Singleton<ChatManager>
             _containerInput.style.display = DisplayStyle.Flex;
             _inputMessage.Focus();
             _containerMessages.EnableInClassList("show", true);
+            if (_containerMessages.childCount > 0) _containerMessages.ScrollTo(_containerMessages.Children().Last());
         }
         else
         {

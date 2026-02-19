@@ -646,7 +646,7 @@ class SaveManager : MonoBehaviour
 
         using BinaryWriter writer = new FileBinaryWriter(filename);
 
-        writer.Write(serverWorld.Unmanaged.GetUnsafeSystemRef<PlayerSystemServer>(serverWorld.GetExistingSystem<PlayerSystemServer>()).ServerGuid);
+        writer.Write(serverWorld.Unmanaged.GetSystem<PlayerSystemServer>().ServerGuid);
 
         {
             EntityQuery q = entityManager.CreateEntityQuery(typeof(Player));
@@ -811,7 +811,7 @@ class SaveManager : MonoBehaviour
 
         using BinaryReader reader = new FileBinaryReader(filename);
 
-        serverWorld.Unmanaged.GetUnsafeSystemRef<PlayerSystemServer>(serverWorld.GetExistingSystem<PlayerSystemServer>()).ServerGuid = reader.ReadGuid();
+        serverWorld.Unmanaged.GetSystem<PlayerSystemServer>().ServerGuid = reader.ReadGuid();
 
         {
             int playerCount = reader.ReadInt();

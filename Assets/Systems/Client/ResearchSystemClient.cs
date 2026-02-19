@@ -4,7 +4,7 @@ using Unity.Entities;
 using Unity.NetCode;
 
 [BurstCompile]
-[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct ResearchSystemClient : ISystem
 {
     public NativeList<FixedString64Bytes> AvaliableResearches;
@@ -63,23 +63,20 @@ public partial struct ResearchSystemClient : ISystem
         }
     }
 
-    public static ref ResearchSystemClient GetInstance(in WorldUnmanaged world)
-    {
-        SystemHandle handle = world.GetExistingUnmanagedSystem<ResearchSystemClient>();
-        return ref world.GetUnsafeSystemRef<ResearchSystemClient>(handle);
-    }
+    public static ref ResearchSystemClient GetInstance(in WorldUnmanaged world) => ref world.GetSystem<ResearchSystemClient>();
 
     public static void Refresh(in WorldUnmanaged world)
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable researches");
+
         GetInstance(world).AvaliableResearches.Clear();
-
         NetcodeUtils.CreateRPC<ResearchesRequestRpc>(world);
-
-        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable researches ...");
     }
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Clearing avaliable researches");
+
         AvaliableResearches.Clear();
     }
 }

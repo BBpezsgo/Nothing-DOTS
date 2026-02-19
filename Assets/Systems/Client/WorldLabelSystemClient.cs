@@ -86,6 +86,8 @@ public partial class WorldLabelSystemClientSystem : SystemBase
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Destroying debug labels");
+
         foreach (WorldLabel item in _instances)
         {
             Object.Destroy(item.gameObject);

@@ -17,7 +17,18 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
     public static World ClientOrDefaultWorld => NetcodeBootstrap.ClientWorld ?? NetcodeBootstrap.LocalWorld ?? World.DefaultGameObjectInjectionWorld;
     public static World ServerOrDefaultWorld => NetcodeBootstrap.ServerWorld ?? NetcodeBootstrap.LocalWorld ?? World.DefaultGameObjectInjectionWorld;
+
+    [SerializeField, NotNull] GameObject? ServerObjects = default;
+    [SerializeField, NotNull] GameObject? ClientObjects = default;
+
+    NetCodeConnectionEvent LatestEvent;
+
+    [Header("UI")]
+    [SerializeField, NotNull] UIDocument? MainMenuUI = default;
+    [SerializeField, NotNull] UIDocument? NetworkUI = default;
+
 #if UNITY_EDITOR && EDITOR_DEBUG
+    [Header("Debug")]
     [SerializeField] string DebugNickname = string.Empty;
     [SerializeField] string DebugSavefile = string.Empty;
     [SerializeField] ushort DebugPort = default;
@@ -26,23 +37,19 @@ public class ConnectionManager : Singleton<ConnectionManager>
     [SerializeField] bool NoClient = false;
 #endif
 
-    [SerializeField, NotNull] GameObject? ServerObjects = default;
-    [SerializeField, NotNull] GameObject? ClientObjects = default;
-    [SerializeField, NotNull] UIDocument? UI = default;
-
     void Start()
     {
-        UI.rootVisualElement.Q<Button>("button-host").clicked += () =>
+        MainMenuUI.rootVisualElement.Q<Button>("button-host").clicked += () =>
         {
             if (!HandleInput(out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
             StartCoroutine(StartHostAsync(endpoint, nickname, null));
         };
-        UI.rootVisualElement.Q<Button>("button-client").clicked += () =>
+        MainMenuUI.rootVisualElement.Q<Button>("button-client").clicked += () =>
         {
             if (!HandleInput(out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
             StartCoroutine(StartClientAsync(endpoint, nickname));
         };
-        UI.rootVisualElement.Q<Button>("button-server").clicked += () =>
+        MainMenuUI.rootVisualElement.Q<Button>("button-server").clicked += () =>
         {
             if (!HandleInput(out NetworkEndpoint endpoint, out _)) return;
             StartCoroutine(StartServerAsync(endpoint, null));
@@ -71,10 +78,10 @@ public class ConnectionManager : Singleton<ConnectionManager>
     {
         bool ok = true;
 
-        Label inputErrorLabel = UI.rootVisualElement.Q<Label>("input-error-host");
+        Label inputErrorLabel = MainMenuUI.rootVisualElement.Q<Label>("input-error-host");
         inputErrorLabel.style.display = DisplayStyle.None;
 
-        string inputNickname = UI.rootVisualElement.Q<TextField>("input-nickname").value.Trim();
+        string inputNickname = MainMenuUI.rootVisualElement.Q<TextField>("input-nickname").value.Trim();
 
         if (inputNickname.Length >= FixedString32Bytes.UTF8MaxLengthInBytes)
         {
@@ -91,7 +98,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         nickname = inputNickname;
 
-        string inputHost = UI.rootVisualElement.Q<TextField>("input-host").value;
+        string inputHost = MainMenuUI.rootVisualElement.Q<TextField>("input-host").value;
         if (!ParseInput(inputHost, out endpoint, out string? inputErrorHost))
         {
             inputErrorLabel.text = inputErrorHost;
@@ -137,96 +144,71 @@ public class ConnectionManager : Singleton<ConnectionManager>
         return true;
     }
 
-    static string? GetText(NetCodeConnectionEvent e)
-    {
-        return e.State switch
-        {
-            ConnectionState.State.Unknown => null,
-            ConnectionState.State.Disconnected => e.DisconnectReason.ToString(),
-            ConnectionState.State.Connecting => $"Connecting ...",
-            ConnectionState.State.Handshake => $"Handshaking ...",
-            ConnectionState.State.Approval => $"Approval ...",
-            ConnectionState.State.Connected => null,
-            _ => throw new UnreachableException(),
-        };
-    }
-
     public void OnNetworkEventClient(NetCodeConnectionEvent e)
     {
-        string? text = GetText(e);
+        LatestEvent = e;
+        RefreshUI();
+        StartCoroutine(LateUIRefresh());
+    }
 
-        if (e.State == ConnectionState.State.Disconnected)
+    IEnumerator LateUIRefresh()
+    {
+        yield return new WaitForEndOfFrame();
+        RefreshUI();
+    }
+
+    void RefreshUI()
+    {
+        if (LatestEvent.State == ConnectionState.State.Disconnected)
         {
-            UI.enabled = true;
-            UIManager.Instance.CloseAllUI(UI);
+            MainMenuUI.enabled = true;
+            NetworkUI.enabled = false;
+            UIManager.Instance.CloseAllUI(MainMenuUI);
 
             Debug.Log($" -> Disabling client objects");
             ClientObjects.SetActive(false);
         }
-        else if (e.State == ConnectionState.State.Connected)
+        else if (LatestEvent.State == ConnectionState.State.Connected)
         {
-            UI.enabled = false;
-            UIManager.Instance.CloseAllUI(UI);
+            MainMenuUI.enabled = false;
+            NetworkUI.enabled = false;
+            UIManager.Instance.CloseAllUI();
 
             Debug.Log($" -> Enabling client objects");
             ClientObjects.SetActive(true);
-
-            if (UI.rootVisualElement is null)
-            {
-                StartCoroutine(LateUIRefresh(e));
-            }
-            else
-            {
-                SetInputEnabled(true);
-            }
         }
-        else if (UI.enabled = text is not null)
+        else
         {
-            UIManager.Instance.CloseAllUI(UI);
-            if (UI.rootVisualElement is null)
+            MainMenuUI.enabled = false;
+            NetworkUI.enabled = true;
+            UIManager.Instance.CloseAllUI(NetworkUI);
+
+            string text = LatestEvent.State switch
             {
-                StartCoroutine(LateUIRefresh(e));
-            }
-            else
+                ConnectionState.State.Unknown => $"?",
+                ConnectionState.State.Disconnected => throw new UnreachableException(),
+                ConnectionState.State.Connecting => $"Connecting ...",
+                ConnectionState.State.Handshake => $"Handshaking ...",
+                ConnectionState.State.Approval => $"Approval ...",
+                ConnectionState.State.Connected => throw new UnreachableException(),
+                _ => throw new UnreachableException(),
+            };
+
+            if (NetworkUI.rootVisualElement is not null)
             {
-                Label label = UI.rootVisualElement.Q<Label>("label-status");
+                Label label = NetworkUI.rootVisualElement.Q<Label>("label-status");
                 label.text = text;
                 label.style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
             }
         }
     }
 
-    IEnumerator LateUIRefresh(NetCodeConnectionEvent e)
-    {
-        yield return new WaitForEndOfFrame();
-
-        if (e.State == ConnectionState.State.Disconnected)
-        {
-            SetInputEnabled(true);
-        }
-        else if (UI.rootVisualElement != null)
-        {
-            string? text = GetText(e);
-            Label label = UI.rootVisualElement.Q<Label>("label-status");
-            label.text = text;
-            label.style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
-        }
-    }
-
-    void SetInputEnabled(bool enabled)
-    {
-        UI.rootVisualElement?.Q<Button>("button-host").SetEnabled(enabled);
-        UI.rootVisualElement?.Q<Button>("button-client").SetEnabled(enabled);
-        UI.rootVisualElement?.Q<Button>("button-server").SetEnabled(enabled);
-        UI.rootVisualElement?.Q<TextField>("input-host").SetEnabled(enabled);
-        UI.rootVisualElement?.Q<TextField>("input-nickname").SetEnabled(enabled);
-    }
-
     public IEnumerator StartSingleplayerAsync(FixedString32Bytes nickname)
     {
         Debug.Log($"{DebugEx.AnyPrefix} Start singleplayer");
 
-        SetInputEnabled(false);
+        MainMenuUI.enabled = false;
+        NetworkUI.enabled = false;
 
         Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -247,7 +229,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         PlayerSystemClient.GetInstance(LocalWorld!.Unmanaged).SetNickname(nickname);
 
         Debug.Log($" -> Disabling UI");
-        UI.enabled = false;
+        MainMenuUI.enabled = false;
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled)
@@ -262,7 +244,8 @@ public class ConnectionManager : Singleton<ConnectionManager>
     {
         Debug.Log($"{DebugEx.AnyPrefix} Start host on `{endpoint}`");
 
-        SetInputEnabled(false);
+        MainMenuUI.enabled = false;
+        NetworkUI.enabled = true;
 
         Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -309,7 +292,8 @@ public class ConnectionManager : Singleton<ConnectionManager>
     {
         Debug.Log($"{DebugEx.AnyPrefix} Start client on `{endpoint}`");
 
-        SetInputEnabled(false);
+        MainMenuUI.enabled = false;
+        NetworkUI.enabled = true;
 
         Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -334,7 +318,8 @@ public class ConnectionManager : Singleton<ConnectionManager>
     {
         Debug.Log($"{DebugEx.EditorPrefix} Start server on `{endpoint}`");
 
-        SetInputEnabled(false);
+        MainMenuUI.enabled = false;
+        NetworkUI.enabled = true;
 
         Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -352,7 +337,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         yield return new WaitForEndOfFrame();
 
         Debug.Log($" -> Disabling UI");
-        UI.enabled = false;
+        MainMenuUI.enabled = false;
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled && savefile == null)

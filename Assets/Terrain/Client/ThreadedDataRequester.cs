@@ -1,13 +1,14 @@
-﻿using UnityEngine;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Collections;
+using Unity.EditorCoroutines.Editor;
 
 #if UNITY_EDITOR
 [UnityEditor.InitializeOnLoad]
 #endif
-public class ThreadedDataRequester : MonoBehaviour
+public class ThreadedDataRequester : Singleton<ThreadedDataRequester>
 {
     static readonly ConcurrentQueue<TaskInfo> DataQueue = new();
     static readonly List<Task> Tasks = new();
@@ -20,6 +21,31 @@ public class ThreadedDataRequester : MonoBehaviour
             DataQueue.Enqueue(new TaskInfo(v => callback.Invoke((T)v!), task.Invoke(), _task!));
         });
         Tasks.Add(_task);
+    }
+
+    public static void RequestData<T>(Func<Task<T>> task, Action<T> callback)
+    {
+        Task? _task = null;
+        _task = task.Invoke().ContinueWith((task) =>
+        {
+            if (task.IsFaulted) Debug.LogError(task.Exception);
+            else if (!task.IsCanceled) DataQueue.Enqueue(new TaskInfo(v => callback.Invoke((T)v!), task.Result, _task!));
+        });
+        Tasks.Add(_task);
+    }
+
+    public static void RequestDataCoroutine<T>(Func<Action<T>, IEnumerator> task, Action<T> callback)
+    {
+        void CallbackWrapper(T v) => DataQueue.Enqueue(new TaskInfo(v => callback.Invoke((T)v!), v, null));
+
+        if (InstanceOrNull == null)
+        {
+            EditorCoroutineUtility.StartCoroutineOwnerless(task.Invoke(CallbackWrapper));
+        }
+        else
+        {
+            InstanceOrNull.StartCoroutine(task.Invoke(CallbackWrapper));
+        }
     }
 
 #if UNITY_EDITOR
@@ -36,7 +62,7 @@ public class ThreadedDataRequester : MonoBehaviour
         {
             if (!DataQueue.TryDequeue(out TaskInfo taskInfo)) break;
             taskInfo.Callback(taskInfo.Parameter);
-            Tasks.Remove(taskInfo.Task);
+            if (taskInfo.Task != null) Tasks.Remove(taskInfo.Task);
         }
 
         for (int i = 0; i < Tasks.Count; i++)
@@ -59,16 +85,16 @@ public class ThreadedDataRequester : MonoBehaviour
 
     void OnDestroy()
     {
-        Task.WaitAll(Tasks.ToArray());
+        Task.WaitAll(Tasks.ToArray(), 10000);
     }
 
     readonly struct TaskInfo
     {
         public readonly Action<object?> Callback;
         public readonly object? Parameter;
-        public readonly Task Task;
+        public readonly Task? Task;
 
-        public TaskInfo(Action<object?> callback, object? parameter, Task task)
+        public TaskInfo(Action<object?> callback, object? parameter, Task? task)
         {
             Callback = callback;
             Parameter = parameter;

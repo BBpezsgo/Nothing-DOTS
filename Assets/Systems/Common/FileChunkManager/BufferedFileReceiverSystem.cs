@@ -6,7 +6,7 @@ using Unity.NetCode;
 
 partial struct BufferedFileReceiverSystem : ISystem
 {
-    const bool DebugLog = false;
+    const bool DebugLog = true;
     const int ChunkRequestsLimit = 1;
     const double ChunkRequestsCooldown = 1d;
 
@@ -27,7 +27,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             bool added = false;
@@ -50,14 +50,14 @@ partial struct BufferedFileReceiverSystem : ISystem
 
                 receivingFiles[i] = fileHeader;
                 added = true;
-                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" from {fileHeader.Source} (again)");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Received file header \"{fileHeader.FileName}\" from {fileHeader.Source} (again)");
 
                 break;
             }
 
             if (!added)
             {
-                if (DebugLog) Debug.Log($"Received file header \"{fileHeader.FileName}\" from {fileHeader.Source}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Received file header \"{fileHeader.FileName}\" from {fileHeader.Source}");
                 receivingFiles.Add(fileHeader);
             }
         }
@@ -67,7 +67,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             bool fileFound = false;
@@ -81,7 +81,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                     LastReceivedAt = SystemAPI.Time.ElapsedTime
                 };
                 fileFound = true;
-                if (DebugLog) Debug.Log($"{receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength)}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} {receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength)}");
 
                 break;
             }
@@ -92,13 +92,13 @@ partial struct BufferedFileReceiverSystem : ISystem
                 {
                     TransactionId = command.ValueRO.TransactionId,
                 }, request.ValueRO.SourceConnection);
-                Debug.LogWarning("Unexpected file chunk, closing transaction ...");
+                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} Unexpected file chunk, closing transaction ...");
                 continue;
             }
 
             if (command.ValueRO.Status == FileChunkStatus.InvalidFile)
             {
-                Debug.LogError("Failed to request file chunk: invalid file");
+                Debug.LogError($"{DebugEx.Prefix(state.WorldUnmanaged)} Failed to request file chunk: invalid file");
                 continue;
             }
 
@@ -119,14 +119,14 @@ partial struct BufferedFileReceiverSystem : ISystem
 
                 fileChunks[i] = fileChunk;
                 added = true;
-                if (DebugLog) Debug.Log($"Received chunk {fileChunk.ChunkIndex} (again)");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Received chunk {fileChunk.ChunkIndex} (again)");
                 break;
             }
 
             if (!added)
             {
                 fileChunks.Add(fileChunk);
-                if (DebugLog) Debug.Log($"Received chunk {fileChunk.ChunkIndex}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Received chunk {fileChunk.ChunkIndex}");
             }
         }
 
@@ -149,12 +149,25 @@ partial struct BufferedFileReceiverSystem : ISystem
             for (int j = 0; j < receivedChunks.Length; j++)
             {
                 if (receivedChunks[j]) continue;
+
+                Entity connection = receivingFiles[i].Source.GetEntity(ref state);
+
+                if (connection != Entity.Null && !SystemAPI.Exists(connection))
+                {
+                    if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Cannot request chunk `{j}` for file \"{receivingFiles[i].FileName}\": remote disconnected");
+                    receivingFiles[i] = receivingFiles[i] with
+                    {
+                        Kind = FileResponseStatus.ErrorDisconnected,
+                    };
+                    continue;
+                }
+
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileChunkRequestRpc()
                 {
                     TransactionId = receivingFiles[i].TransactionId,
                     ChunkIndex = j,
-                }, receivingFiles[i].Source.GetEntity(ref state));
-                if (DebugLog) Debug.Log($"Requesting chunk {j} for file \"{receivingFiles[i].FileName}\"");
+                }, connection);
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Requesting chunk `{j}` for file \"{receivingFiles[i].FileName}\"");
                 if (++requested >= ChunkRequestsLimit) break;
             }
 

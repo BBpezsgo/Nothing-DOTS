@@ -15,6 +15,18 @@ public partial class VisualEffectSystemClient : SystemBase
         RequireForUpdate<VisualEffectDatabase>();
     }
 
+    void SpawnEffect(in VisualEffectSpawn spawn)
+    {
+        //Vector3 p = MainCamera.Camera.WorldToViewportPoint(spawn.Position);
+        //if (p.z < -0.1f || p.x < -0.1f || p.y < -0.1f || p.x > 1.1f || p.y > 1.1f) return;
+        //if (math.distancesq(MainCamera.Camera.transform.position, spawn.Position) > 50f * 50f) return;
+
+        VisualEffectHandlerComponent effect = Pools![spawn.Index].Get();
+        effect.transform.position = spawn.Position;
+        if (effect.VisualEffect.HasVector3("direction")) effect.VisualEffect.SetVector3("direction", (spawn.Rotation * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
+        effect.VisualEffect.Play();
+    }
+
     protected override void OnUpdate()
     {
         if (Pools == null)
@@ -69,14 +81,7 @@ public partial class VisualEffectSystemClient : SystemBase
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            Vector3 p = MainCamera.Camera.WorldToViewportPoint(spawn.ValueRO.Position);
-            if (p.z < 0f || p.x < 0f || p.y < 0f || p.x > 1f || p.y > 1f) continue;
-            if (math.distancesq(MainCamera.Camera.transform.position, spawn.ValueRO.Position) > 50f * 50f) continue;
-
-            VisualEffectHandlerComponent effect = Pools[spawn.ValueRO.Index].Get();
-            effect.transform.position = spawn.ValueRO.Position;
-            if (effect.VisualEffect.HasVector3("direction")) effect.VisualEffect.SetVector3("direction", (spawn.ValueRO.Rotation * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
-            effect.VisualEffect.Play();
+            SpawnEffect(in spawn.ValueRO);
         }
 
         foreach (var (command, entity) in
@@ -87,14 +92,12 @@ public partial class VisualEffectSystemClient : SystemBase
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            Vector3 p = MainCamera.Camera.WorldToViewportPoint(command.ValueRO.Position);
-            if (p.z < 0f || p.x < 0f || p.y < 0f || p.x > 1f || p.y > 1f) continue;
-            if (math.distancesq(MainCamera.Camera.transform.position, command.ValueRO.Position) > 50f * 50f) continue;
-
-            VisualEffectHandlerComponent effect = Pools[command.ValueRO.Index].Get();
-            effect.transform.position = command.ValueRO.Position;
-            if (effect.VisualEffect.HasVector3("direction")) effect.VisualEffect.SetVector3("direction", (command.ValueRO.Rotation.ToEuler() * Mathf.Rad2Deg) + new float3(90f, 0f, 0f));
-            effect.VisualEffect.Play();
+            SpawnEffect(new VisualEffectSpawn()
+            {
+                Index = command.ValueRO.Index,
+                Position = command.ValueRO.Position,
+                Rotation = command.ValueRO.Rotation,
+            });
         }
     }
 

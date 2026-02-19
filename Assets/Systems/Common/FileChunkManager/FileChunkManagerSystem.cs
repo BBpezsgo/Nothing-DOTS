@@ -2,10 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
@@ -13,11 +13,11 @@ using UnityEngine;
 
 partial class FileChunkManagerSystem : SystemBase
 {
-    const bool EnableLogging = false;
+    const bool EnableLogging = true;
     public static string? BasePath => Application.streamingAssetsPath;
 
-    [NotNull] public readonly Dictionary<FileId, RemoteFile>? RemoteFiles = new();
-    [NotNull] public readonly List<FileRequest>? Requests = new();
+    public readonly Dictionary<FileId, RemoteFile> RemoteFiles = new();
+    public readonly List<FileRequest> Requests = new();
 
     public static FileChunkManagerSystem GetInstance(World world)
         => world.GetExistingSystemManaged<FileChunkManagerSystem>();
@@ -39,44 +39,61 @@ partial class FileChunkManagerSystem : SystemBase
 
         for (int i = Requests.Count - 1; i >= 0; i--)
         {
+            FileRequest request = Requests[i];
+
             HandleRequest(
-                commandBuffer,
+                ref commandBuffer,
                 fileHeaders,
                 fileChunks,
-                Requests[i],
+                request,
                 out bool shouldDelete,
                 out int headerIndex
             );
 
+            Debug.Assert(shouldDelete == request.Task.Awaitable.GetAwaiter().IsCompleted);
+
             if (shouldDelete)
             {
-                Requests.RemoveAt(i);
-                CleanupRequest(
+                CloseFile(
+                    ref commandBuffer,
+                    request.File,
                     headerIndex,
                     fileHeaders,
                     fileChunks
                 );
+                Requests.RemoveAt(i);
             }
         }
     }
 
-    static void CleanupRequest(
-        int headerIndex,
-        DynamicBuffer<BufferedReceivingFile> fileHeaders,
-        DynamicBuffer<BufferedReceivingFileChunk> fileChunks)
+    protected override void OnDestroy()
     {
-        BufferedReceivingFile header = fileHeaders[headerIndex];
-        fileHeaders.RemoveAt(headerIndex);
-        for (int i = fileChunks.Length - 1; i >= 0; i--)
+        Reset();
+    }
+
+    void Reset()
+    {
+        if (!SystemAPI.TryGetSingletonEntity<BufferedFiles>(out Entity databaseEntity)) return;
+
+        DynamicBuffer<BufferedReceivingFile> fileHeaders = World.EntityManager.GetBuffer<BufferedReceivingFile>(databaseEntity);
+        DynamicBuffer<BufferedReceivingFileChunk> fileChunks = World.EntityManager.GetBuffer<BufferedReceivingFileChunk>(databaseEntity);
+
+        Debug.Log($"{DebugEx.Prefix(World.Unmanaged)} Cancelling remote file requests");
+        foreach (FileRequest item in Requests)
         {
-            if (fileChunks[i].Source != header.Source) continue;
-            if (fileChunks[i].TransactionId != header.TransactionId) continue;
-            fileChunks.RemoveAt(i);
+            item.Task.SetCanceled();
         }
+
+        Debug.Log($"{DebugEx.Prefix(World.Unmanaged)} Disposing remote files");
+        Requests.Clear();
+        RemoteFiles.Clear();
+
+        fileHeaders.Clear();
+        fileChunks.Clear();
     }
 
     unsafe void HandleRequest(
-        EntityCommandBuffer commandBuffer,
+        ref EntityCommandBuffer commandBuffer,
         DynamicBuffer<BufferedReceivingFile> fileHeaders,
         DynamicBuffer<BufferedReceivingFileChunk> fileChunks,
         FileRequest request,
@@ -96,79 +113,96 @@ partial class FileChunkManagerSystem : SystemBase
 
             headerIndex = i;
 
-            if (header.Kind == FileResponseStatus.NotFound)
+            switch (header.Kind)
             {
-                shouldDelete = true;
-
-                Debug.LogWarning($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.ToUri()}\" not found");
-                RemoteFiles.Remove(request.File);
-                request.Task.SetException(new FileNotFoundException("Remote file not found", request.File.Name.ToString()));
-                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
-                CloseRemoteFile(commandBuffer, request.File);
-
-                return;
-            }
-            else if (header.Kind == FileResponseStatus.NotChanged)
-            {
-                if (RemoteFiles.TryGetValue(request.File, out RemoteFile remoteFile))
+                case FileResponseStatus.NotFound:
                 {
+                    Debug.LogWarning($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Remote file \"{request.File.ToUri()}\" not found");
+
+                    RemoteFiles.Remove(request.File);
                     shouldDelete = true;
-
-                    request.Task.SetResult(remoteFile);
-                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
-                    CloseRemoteFile(commandBuffer, request.File);
-
-                    if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.ToUri()}\" was not changed");
+                    request.Task.SetException(new FileNotFoundException("Remote file not found", request.File.Name.ToString()));
 
                     return;
                 }
-
-                Debug.LogWarning($"[{nameof(FileChunkManagerSystem)}]: Remote file \"{request.File.ToUri()}\" was not changed but not found locally, requesting without cache ...");
-                requestCached = false;
-            }
-            else if (header.Kind == FileResponseStatus.OK)
-            {
-                int totalLength = GetChunkLength(header.TotalLength);
-
-                FileChunk[] chunks = new FileChunk[totalLength];
-                bool[] received = new bool[totalLength];
-
-                for (int j = 0; j < fileChunks.Length; j++)
+                case FileResponseStatus.NotChanged:
                 {
-                    if (fileChunks[j].TransactionId != header.TransactionId) continue;
-                    chunks[fileChunks[j].ChunkIndex] = fileChunks[j].Data;
-                    received[fileChunks[j].ChunkIndex] = true;
+                    if (RemoteFiles.TryGetValue(request.File, out RemoteFile remoteFile))
+                    {
+                        if (EnableLogging) Debug.Log($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Remote file \"{request.File.ToUri()}\" was not changed");
+
+                        shouldDelete = true;
+                        request.Task.SetResult(remoteFile);
+
+                        return;
+                    }
+
+                    Debug.LogWarning($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Remote file \"{request.File.ToUri()}\" was not changed but not found locally, requesting without cache ...");
+                    requestCached = false;
+                    break;
                 }
-
-                int receivedLength = received.Count(v => v);
-
-                request.Progress?.Report((receivedLength, totalLength));
-
-                if (receivedLength < totalLength)
-                { return; }
-
-                byte[] data = new byte[header.TotalLength];
-                for (int j = 0; j < chunks.Length; j++)
+                case FileResponseStatus.OK:
                 {
-                    int chunkSize = GetChunkSize(header.TotalLength, j);
-                    Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[j]), chunkSize);
-                    chunk.CopyTo(data.AsSpan(j * FileChunkResponseRpc.ChunkSize));
+                    if (request.CancellationToken.IsCancellationRequested)
+                    {
+                        Debug.LogWarning($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Request for remote file \"{request.File.ToUri()}\" was cancelled");
+
+                        shouldDelete = true;
+                        request.Task.SetException(new OperationCanceledException("Request was cancelled"));
+
+                        return;
+                    }
+
+                    int totalLength = GetChunkLength(header.TotalLength);
+
+                    FileChunk[] chunks = new FileChunk[totalLength];
+                    bool[] received = new bool[totalLength];
+
+                    for (int j = 0; j < fileChunks.Length; j++)
+                    {
+                        if (fileChunks[j].TransactionId != header.TransactionId) continue;
+                        chunks[fileChunks[j].ChunkIndex] = fileChunks[j].Data;
+                        received[fileChunks[j].ChunkIndex] = true;
+                    }
+
+                    int receivedLength = received.Count(v => v);
+
+                    request.Progress?.Report((receivedLength, totalLength));
+
+                    if (receivedLength < totalLength) return;
+
+                    byte[] data = new byte[header.TotalLength];
+                    for (int j = 0; j < chunks.Length; j++)
+                    {
+                        int chunkSize = GetChunkSize(header.TotalLength, j);
+                        Span<byte> chunk = new(Unsafe.AsPointer(ref chunks[j]), chunkSize);
+                        chunk.CopyTo(data.AsSpan(j * FileChunkResponseRpc.ChunkSize));
+                    }
+
+                    RemoteFile remoteFile = new(
+                        header.Kind,
+                        new FileData(data, header.Version),
+                        new FileId(header.FileName, header.Source)
+                    );
+
+                    RemoteFiles[request.File] = remoteFile;
+                    shouldDelete = true;
+                    request.Task.SetResult(remoteFile);
+
+                    return;
                 }
+                case FileResponseStatus.ErrorDisconnected:
+                {
+                    Debug.LogWarning($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Failed to receive remote file \"{request.File.ToUri()}\": remote disconnected");
 
-                RemoteFile remoteFile = new(
-                    header.Kind,
-                    new FileData(data, header.Version),
-                    new FileId(header.FileName, header.Source)
-                );
+                    RemoteFiles.Remove(request.File);
+                    shouldDelete = true;
+                    request.Task.SetException(new NotImplementedException("Remote disconnected"));
 
-                shouldDelete = true;
-
-                RemoteFiles[request.File] = remoteFile;
-                request.Task.SetResult(remoteFile);
-                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
-                CloseRemoteFile(commandBuffer, request.File);
-
-                return;
+                    return;
+                }
+                case FileResponseStatus.Unknown: throw new NotImplementedException();
+                default: throw new UnreachableException();
             }
         }
 
@@ -176,23 +210,62 @@ partial class FileChunkManagerSystem : SystemBase
         {
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
 
+            if (request.CancellationToken.IsCancellationRequested)
+            {
+                Debug.LogWarning($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Request for remote file \"{request.File.ToUri()}\" was cancelled");
+
+                shouldDelete = true;
+                request.Task.SetException(new OperationCanceledException("Request was cancelled"));
+
+                return;
+            }
+
+            Entity connection = request.File.Source.GetEntity(World.EntityManager);
+
+            if (connection != Entity.Null && !SystemAPI.Exists(connection))
+            {
+                Debug.LogWarning($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Cannot send request for file \"{request.File.ToUri()}\": remote disconnected");
+                shouldDelete = true;
+                request.Task.SetException(new NotImplementedException("Remote disconnected"));
+                return;
+            }
+
             NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new FileHeaderRequestRpc()
             {
                 FileName = request.File.Name,
                 Version = requestCached && RemoteFiles.TryGetValue(request.File, out RemoteFile v) ? v.File.Version : 0,
-            }, request.File.Source.GetEntity(World.EntityManager));
+            }, connection);
 
             request.RequestSentAt = SystemAPI.Time.ElapsedTime;
-            if (EnableLogging) Debug.Log($"[{nameof(FileChunkManagerSystem)}]: Sending request for file \"{request.File.ToUri()}\"");
+            if (EnableLogging) Debug.Log($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Sending request for file \"{request.File.ToUri()}\"");
         }
     }
 
-    void CloseRemoteFile(EntityCommandBuffer commandBuffer, FileId fileId)
+    void CloseFile(
+        ref EntityCommandBuffer commandBuffer,
+        FileId fileId,
+        int headerIndex,
+        DynamicBuffer<BufferedReceivingFile> fileHeaders,
+        DynamicBuffer<BufferedReceivingFileChunk> fileChunks)
     {
+        if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
+
         NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CloseFileRpc()
         {
             FileName = fileId.Name,
         }, fileId.Source.GetEntity(World.EntityManager));
+
+        if (headerIndex != -1)
+        {
+            BufferedReceivingFile header = fileHeaders[headerIndex];
+            fileHeaders.RemoveAt(headerIndex);
+            for (int i = fileChunks.Length - 1; i >= 0; i--)
+            {
+                if (fileChunks[i].Source != header.Source) continue;
+                if (fileChunks[i].TransactionId != header.TransactionId) continue;
+                fileChunks.RemoveAt(i);
+            }
+        }
     }
 
     public bool TryGetRemoteFile(FileId fileId, out RemoteFile remoteFile)
@@ -200,17 +273,17 @@ partial class FileChunkManagerSystem : SystemBase
         if (!Requests.Any(v => v.File == fileId) &&
             RemoteFiles.TryGetValue(fileId, out RemoteFile cached))
         {
+            remoteFile = cached;
             if (cached.Kind == FileResponseStatus.OK)
             {
-                remoteFile = cached;
                 return true;
             }
             else if (cached.Kind == FileResponseStatus.NotFound)
             {
-                remoteFile = default;
                 return false;
             }
         }
+
         remoteFile = default;
         return false;
     }
@@ -229,6 +302,8 @@ partial class FileChunkManagerSystem : SystemBase
                 FileResponseStatus.OK => FileStatus.Received,
                 FileResponseStatus.NotFound => FileStatus.NotFound,
                 FileResponseStatus.NotChanged => FileStatus.Received,
+                FileResponseStatus.Unknown => throw new NotImplementedException(),
+                FileResponseStatus.ErrorDisconnected => FileStatus.Error,
                 _ => throw new UnreachableException(),
             };
         }
@@ -236,7 +311,7 @@ partial class FileChunkManagerSystem : SystemBase
         return FileStatus.NotRequested;
     }
 
-    public Awaitable<RemoteFile> RequestFile(FileId fileId, IProgress<(int Current, int Total)>? progress)
+    public Awaitable<RemoteFile> RequestFile(FileId fileId, IProgress<(int Current, int Total)>? progress, CancellationToken cancellationToken = default)
     {
         for (int i = 0; i < Requests.Count; i++)
         {
@@ -245,7 +320,7 @@ partial class FileChunkManagerSystem : SystemBase
         }
 
         AwaitableCompletionSource<RemoteFile> task = new();
-        Requests.Add(new FileRequest(fileId, task, progress));
+        Requests.Add(new FileRequest(fileId, task, progress, cancellationToken));
         return task.Awaitable;
     }
 
@@ -262,19 +337,19 @@ partial class FileChunkManagerSystem : SystemBase
             {
                 if (!_fileName.ConsumeInt(out int ghostId))
                 {
-                    Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Can't get ghost id");
+                    Debug.LogError($"{DebugEx.AnyPrefix} [{nameof(FileChunkManagerSystem)}] Can't get ghost id");
                     return null;
                 }
 
                 if (!_fileName.Consume('.'))
                 {
-                    Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Expected separator");
+                    Debug.LogError($"{DebugEx.AnyPrefix} [{nameof(FileChunkManagerSystem)}] Expected separator");
                     return null;
                 }
 
                 if (!_fileName.ConsumeUInt(out uint spawnTickValue))
                 {
-                    Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Can't get ghost spawn tick");
+                    Debug.LogError($"{DebugEx.AnyPrefix} [{nameof(FileChunkManagerSystem)}] Can't get ghost spawn tick");
                     return null;
                 }
 
@@ -303,7 +378,7 @@ partial class FileChunkManagerSystem : SystemBase
 
                 if (entity == Entity.Null)
                 {
-                    Debug.LogError($"[{nameof(FileChunkManagerSystem)}]: Ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} }} not found");
+                    Debug.LogError($"{DebugEx.AnyPrefix} [{nameof(FileChunkManagerSystem)}] Ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} }} not found");
                     return null;
                 }
 
@@ -336,7 +411,7 @@ partial class FileChunkManagerSystem : SystemBase
         if (File.Exists(fileName))
         { return FileData.FromLocal(fileName); }
 
-        Debug.LogWarning($"[{nameof(FileChunkManagerSystem)}]: Local file \"{fileName}\" does not exists");
+        Debug.LogWarning($"{DebugEx.AnyPrefix} [{nameof(FileChunkManagerSystem)}] Local file \"{fileName}\" does not exists");
         return null;
     }
 
@@ -355,5 +430,10 @@ partial class FileChunkManagerSystem : SystemBase
             return totalLength - (GetChunkLength(totalLength) - 1) * FileChunkResponseRpc.ChunkSize;
         }
         return FileChunkResponseRpc.ChunkSize;
+    }
+
+    public void OnDisconnect()
+    {
+        Reset();
     }
 }

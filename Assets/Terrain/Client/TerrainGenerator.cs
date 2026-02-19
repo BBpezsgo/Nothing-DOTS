@@ -28,7 +28,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
     float2 ViewerPosition;
     float2 ViewerPositionOld;
 
-    float MeshWorldSize;
+    internal float MeshWorldSize;
     [SerializeField, SaintsField.ReadOnly] int ChunksVisibleInViewDst;
 
     readonly Dictionary<int2, TerrainChunk> TerrainChunks = new();
@@ -53,29 +53,31 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         UpdateVisibleChunks();
     }
 
-    void Update()
+    void LateUpdate()
     {
         ViewerPosition = new float2(Viewer.position.x, Viewer.position.z);
-
         if (math.lengthsq(ViewerPositionOld - ViewerPosition) > ViewerMoveThresholdForChunkUpdateSq)
         {
             ViewerPositionOld = ViewerPosition;
             UpdateVisibleChunks();
         }
-
-        //foreach (var item in TerrainChunks)
-        //{
-        //    float2 p = TerrainSystemServer.ChunkToWorld(item.Value.Coord);
-        //    for (int i = 0; i < item.Value.LodMeshes.Length; i++)
-        //    {
-        //        if (item.Value.LodMeshes[i].Mesh != null ||
-        //            item.Value.LodMeshes[i].Texture != null)
-        //        {
-        //            DebugEx.DrawBoxAligned(new float3(p.x, item.Value.LodMeshes.Length - i, p.y), new float3(TerrainSystemServer.MeshWorldSize, 0f, TerrainSystemServer.MeshWorldSize), Color.green, 0f, false);
-        //        }
-        //    }
-        //}
     }
+
+    //void Update()
+    //{
+    //    //foreach (var item in TerrainChunks)
+    //    //{
+    //    //    float2 p = TerrainSystemServer.ChunkToWorld(item.Value.Coord);
+    //    //    for (int i = 0; i < item.Value.LodMeshes.Length; i++)
+    //    //    {
+    //    //        if (item.Value.LodMeshes[i].Mesh != null ||
+    //    //            item.Value.LodMeshes[i].Texture != null)
+    //    //        {
+    //    //            DebugEx.DrawBoxAligned(new float3(p.x, item.Value.LodMeshes.Length - i, p.y), new float3(TerrainSystemServer.MeshWorldSize, 0f, TerrainSystemServer.MeshWorldSize), Color.green, 0f, false);
+    //    //        }
+    //    //    }
+    //    //}
+    //}
 
     void CreateChunk(int2 chunkCoord)
     {
@@ -425,51 +427,39 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
         return false;
     }
 
-    static bool GetTerrainFeatureDeps(ref bool gotDeps, ref EntityCommandBuffer commandBuffer, ref TerrainFeaturePrefabs terrainFeatures)
+    static bool GetTerrainFeatureDeps(World world, ref EntityCommandBuffer commandBuffer, ref DynamicBuffer<TerrainFeaturePrefab> terrainFeatures)
     {
-        if (gotDeps || ConnectionManager.ClientWorld is null) return gotDeps;
-
         bool ok = true;
 
-        EntityQuery q1 = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(new ComponentType[]
+        if (!commandBuffer.IsCreated)
         {
-            ComponentType.ReadWrite<EndSimulationEntityCommandBufferSystem.Singleton>()
-        });
-        if (q1.TryGetSingletonRW(out RefRW<EndSimulationEntityCommandBufferSystem.Singleton> s1))
-        {
-            commandBuffer = s1.ValueRW.CreateCommandBuffer(ConnectionManager.ClientWorld.Unmanaged);
+            commandBuffer = new EntityCommandBuffer(Allocator.Temp);
         }
-        else
-        {
-            ok = false;
-        }
-        q1.Dispose();
 
-        //commandBuffer = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-
-        EntityQuery q2 = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(new ComponentType[]
+        if (!terrainFeatures.IsCreated)
         {
-            ComponentType.ReadOnly<TerrainFeaturePrefabs>()
-        });
-        if (q2.TryGetSingleton(out TerrainFeaturePrefabs s2))
-        {
-            terrainFeatures = s2;
+            using EntityQuery q2 = world.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<TerrainFeaturePrefab>());
+            if (q2.TryGetSingletonBuffer(out DynamicBuffer<TerrainFeaturePrefab> s2))
+            {
+                terrainFeatures = s2;
+            }
+            else
+            {
+                ok = false;
+                Debug.LogWarning($"{DebugEx.ClientPrefix} [Terrain] Singleton `{nameof(TerrainFeaturePrefabs)}` not found");
+            }
         }
-        else
-        {
-            ok = false;
-        }
-        q2.Dispose();
 
-        gotDeps = ok;
         return ok;
     }
 
     void UpdateVisibleChunks()
     {
-        bool gotDeps = default;
+        World? world = ConnectionManager.ClientWorld;
+        if (world == null) return;
+
         EntityCommandBuffer entityCommandBuffer = default;
-        TerrainFeaturePrefabs terrainFeatures = default;
+        DynamicBuffer<TerrainFeaturePrefab> terrainFeatures = default;
 
         HashSet<int2> alreadyUpdatedChunkCoords = new();
         for (int i = VisibleTerrainChunks.Count - 1; i >= 0; i--)
@@ -483,7 +473,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
 
             alreadyUpdatedChunkCoords.Add(terrainChunk.Coord);
             terrainChunk.UpdateTerrainChunk();
-            if (!terrainChunk.FeaturesGenerated && GetTerrainFeatureDeps(ref gotDeps, ref entityCommandBuffer, ref terrainFeatures))
+            if (!terrainChunk.FeaturesGenerated && GetTerrainFeatureDeps(world, ref entityCommandBuffer, ref terrainFeatures))
             {
                 terrainChunk.GenerateFeatures(in terrainFeatures, ref entityCommandBuffer);
             }
@@ -503,7 +493,7 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
                 if (TerrainChunks.TryGetValue(viewedChunkCoord, out TerrainChunk? chunk))
                 {
                     chunk.UpdateTerrainChunk();
-                    if (!chunk.FeaturesGenerated && GetTerrainFeatureDeps(ref gotDeps, ref entityCommandBuffer, ref terrainFeatures))
+                    if (!chunk.FeaturesGenerated && GetTerrainFeatureDeps(world, ref entityCommandBuffer, ref terrainFeatures))
                     {
                         chunk.GenerateFeatures(in terrainFeatures, ref entityCommandBuffer);
                     }
@@ -513,6 +503,12 @@ public class TerrainGenerator : Singleton<TerrainGenerator>
                     CreateChunk(viewedChunkCoord);
                 }
             }
+        }
+
+        if (entityCommandBuffer.IsCreated)
+        {
+            entityCommandBuffer.Playback(world.EntityManager);
+            entityCommandBuffer.Dispose();
         }
     }
 

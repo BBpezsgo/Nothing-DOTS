@@ -52,23 +52,20 @@ public partial struct UnitsSystemClient : ISystem
         }
     }
 
-    public static ref UnitsSystemClient GetInstance(in WorldUnmanaged world)
-    {
-        SystemHandle handle = world.GetExistingUnmanagedSystem<UnitsSystemClient>();
-        return ref world.GetUnsafeSystemRef<UnitsSystemClient>(handle);
-    }
+    public static ref UnitsSystemClient GetInstance(in WorldUnmanaged world) => ref world.GetSystem<UnitsSystemClient>();
 
     public static void Refresh(in WorldUnmanaged world)
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable units");
+
         GetInstance(world).Units.Clear();
-
         NetcodeUtils.CreateRPC<UnitsRequestRpc>(world);
-
-        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable units ...");
     }
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Clearing units");
+
         Units.Clear();
     }
 }

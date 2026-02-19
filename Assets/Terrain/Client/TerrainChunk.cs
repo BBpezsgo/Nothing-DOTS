@@ -39,10 +39,10 @@ public class TerrainChunk : IDisposable
         TextureSettings = textureSettings;
         Viewer = viewer;
 
-        NoiseSampleOffset = (float2)Coord * TerrainSystemServer.MeshWorldSize / TerrainSystemServer.meshScale;
-        TextureSampleOffset = Coord * textureSettings.Resolution;
+        NoiseSampleOffset = (float2)coord * TerrainSystemServer.MeshWorldSize / TerrainSystemServer.meshScale;
+        TextureSampleOffset = coord * textureSettings.Resolution;
 
-        float2 position = (float2)Coord * TerrainSystemServer.MeshWorldSize;
+        float2 position = (float2)coord * TerrainSystemServer.MeshWorldSize;
         Bounds = new Bounds(new Vector3(position.x, 0f, position.y), new Vector3(TerrainSystemServer.MeshWorldSize, 0f, TerrainSystemServer.MeshWorldSize));
 
         LodMeshes = new LODMesh[detailLevels.Length];
@@ -127,6 +127,27 @@ public class TerrainChunk : IDisposable
             () =>
             {
                 NativeArray<float> heightMap = new(TerrainSystemServer.NumVertsPerLine * TerrainSystemServer.NumVertsPerLine, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
+                //for (int y = 0; y < TerrainSystemServer.NumVertsPerLine; y++)
+                //{
+                //    for (int x = 0; x < TerrainSystemServer.NumVertsPerLine; x++)
+                //    {
+                //        int2 coord = new(x + (Coord.x * TerrainSystemServer.NumVertsPerLine), y + (Coord.y * TerrainSystemServer.NumVertsPerLine));
+
+                //        int tileX = (int)Mathf.Floor(coord.x / 256);
+                //        int tileY = (int)Mathf.Floor(coord.y / 256);
+
+                //        Mapzen.Tile tile = await Mapzen.Instance.GetTileAsync(new int2(tileX, tileY));
+
+                //        int pixelX = coord.x % 256;
+                //        int pixelY = coord.y % 256;
+                //        if (pixelX < 0) pixelX = 255 - pixelX;
+                //        if (pixelY < 0) pixelY = 255 - pixelY;
+
+                //        heightMap[x + (y * TerrainSystemServer.NumVertsPerLine)] = tile[pixelX, pixelY] * 0.3f;
+                //    }
+                //}
+
                 HeightMapGenerator.GenerateHeightMap(ref heightMap, TerrainSystemServer.NumVertsPerLine, TerrainSystemServer.NumVertsPerLine, HeightMapSettings.heightMultiplier, NoiseSampleOffset, in HeightMapSettings.noiseSettings, Allocator.TempJob);
                 return heightMap;
             },
@@ -214,7 +235,7 @@ public class TerrainChunk : IDisposable
         }
     }
 
-    public void GenerateFeatures(in TerrainFeaturePrefabs terrainFeatures, ref EntityCommandBuffer commandBuffer)
+    public void GenerateFeatures(in DynamicBuffer<TerrainFeaturePrefab> terrainFeatures, ref EntityCommandBuffer commandBuffer)
     {
         FeaturesGenerated = true;
         TerrainSystemServer.GenerateChunkFeatures(
@@ -228,77 +249,5 @@ public class TerrainChunk : IDisposable
     public void Dispose()
     {
         HeightMap.Dispose();
-    }
-}
-
-public class LODMesh
-{
-    public Mesh? Mesh;
-    public Texture2D? Texture;
-    public bool HasRequestedMesh;
-    public bool HasRequestedTexture;
-    readonly int LOD;
-    readonly Action UpdateCallback;
-
-    public LODMesh(int lod, Action onUpdate)
-    {
-        LOD = lod;
-        UpdateCallback = onUpdate;
-    }
-
-    static readonly ProfilerMarker _markerCreateMesh = new("Terrain.TerrainChunk.CreateMesh");
-    void OnMeshDataReceived(MeshGenerator.MeshData meshData)
-    {
-        using var _ = _markerCreateMesh.Auto();
-
-        Mesh.MeshDataArray meshDataArray = meshData.CreateNativeMesh(Allocator.Temp);
-        meshData.Dispose();
-
-        Mesh = new();
-        Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, Mesh);
-        Mesh.RecalculateBounds();
-        if (TerrainSystemServer.useFlatShading) Mesh.RecalculateNormals();
-
-        //Mesh = meshData.CreateManagedMesh(Unity.Collections.Allocator.Temp);
-        HasRequestedMesh = false;
-
-        UpdateCallback();
-    }
-
-    public void RequestMesh(NativeArray<float>.ReadOnly heightMap)
-    {
-        HasRequestedMesh = true;
-        ThreadedDataRequester.RequestData(() =>
-        {
-            return MeshGenerator.GenerateTerrainMesh(heightMap, TerrainSystemServer.NumVertsPerLine, LOD, Allocator.TempJob);
-        }, OnMeshDataReceived);
-    }
-
-    static readonly ProfilerMarker _markerCreateTexture = new("Terrain.TerrainChunk.CreateTexture");
-    void OnTextureReceived(Color32[] pixels)
-    {
-        using var _ = _markerCreateTexture.Auto();
-
-        int size = (int)math.sqrt(pixels.Length);
-        Texture2D texture = new(size, size, TextureFormat.RGBA32, false, false, true)
-        {
-            wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Point,
-        };
-        texture.SetPixels32(pixels);
-        texture.Apply();
-
-        Texture = texture;
-        HasRequestedTexture = false;
-        UpdateCallback();
-    }
-
-    public void RequestTexture(float[] heightMap, TextureSettings textureSettings, float2 offset)
-    {
-        HasRequestedTexture = true;
-        ThreadedDataRequester.RequestData(() =>
-        {
-            return TextureGenerator.GenerateTexture(heightMap, TerrainSystemServer.NumVertsPerLine, offset, textureSettings);
-        }, OnTextureReceived);
     }
 }

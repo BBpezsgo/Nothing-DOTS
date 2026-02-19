@@ -9,14 +9,13 @@ using Unity.Transforms;
 [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation)]
 partial struct ProjectileSystemLocal : ISystem
 {
-    BufferLookup<BufferedDamage> damageQ;
+    BufferLookup<BufferedDamage> DamageQ;
     EntityArchetype VisualEffectSpawnArchetype;
-    public const float Gravity = -9.82f;
 
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
-        damageQ = state.GetBufferLookup<BufferedDamage>();
+        DamageQ = state.GetBufferLookup<BufferedDamage>();
         VisualEffectSpawnArchetype = state.EntityManager.CreateArchetype(stackalloc ComponentType[]
         {
             ComponentType.ReadWrite<VisualEffectSpawn>(),
@@ -29,7 +28,7 @@ partial struct ProjectileSystemLocal : ISystem
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
         TerrainSystemServer terrainSystem = TerrainSystemServer.GetInstance(state.WorldUnmanaged);
 
-        damageQ.Update(ref state);
+        DamageQ.Update(ref state);
         var map = QuadrantSystem.GetMap(ref state);
 
         foreach (var (transform, projectile, entity) in
@@ -42,15 +41,21 @@ partial struct ProjectileSystemLocal : ISystem
             float3 newPosition = lastPosition + (projectile.ValueRO.Velocity * t);
             float3 direction = projectile.ValueRO.Velocity / travelDistance * t;
 
+            projectile.ValueRW.Velocity += new float3(0f, ProjectileSystemServer.Gravity, 0f) * t;
             transform.ValueRW.Position = newPosition;
-            projectile.ValueRW.Velocity += new float3(0f, Gravity, 0f) * SystemAPI.Time.DeltaTime;
             transform.ValueRW.Rotation = quaternion.LookRotation(direction, new float3(0f, 1f, 0f));
+
+            if (transform.ValueRO.Position.y < ProjectileSystemServer.MinY)
+            {
+                commandBuffer.DestroyEntity(entity);
+                continue;
+            }
 
             Ray ray = new(lastPosition, direction, travelDistance, Layers.BuildingOrUnit);
             DynamicBuffer<BufferedDamage> damage = default;
 
             bool didHitTerrain = terrainSystem.Raycast(ray.Start, ray.Direction, math.distance(lastPosition, newPosition), out float terrainHit, out float3 normal);
-            bool didHitUnit = QuadrantRayCast.RayCast(map, ray, out Hit unitHit) && damageQ.TryGetBuffer(unitHit.Entity.Entity, out damage);
+            bool didHitUnit = QuadrantRayCast.RayCast(map, ray, out Hit unitHit) && DamageQ.TryGetBuffer(unitHit.Entity.Entity, out damage);
 
             float distance;
             bool metalHit;
@@ -85,7 +90,7 @@ partial struct ProjectileSystemLocal : ISystem
                 commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
                 {
                     Position = ray.GetPoint(distance),
-                    Rotation = normal.Equals(new float3(0f, 1f, 0f)) ? new float3(-math.PIHALF, 0f, 0f) : quaternion.LookRotation(normal, new float3(0f, 1f, 0f)).ToEuler(),
+                    Rotation = normal.ToEuler(),
                     Index = effect,
                 });
             }

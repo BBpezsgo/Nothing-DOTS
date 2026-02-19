@@ -20,11 +20,7 @@ public partial struct PlayerSystemClient : ISystem
     Guid ServerGuid;
     FixedString32Bytes Nickname;
 
-    public static ref PlayerSystemClient GetInstance(in WorldUnmanaged world)
-    {
-        SystemHandle handle = world.GetExistingUnmanagedSystem<PlayerSystemClient>();
-        return ref world.GetUnsafeSystemRef<PlayerSystemClient>(handle);
-    }
+    public static ref PlayerSystemClient GetInstance(in WorldUnmanaged world) => ref world.GetSystem<PlayerSystemClient>();
 
     void ISystem.OnCreate(ref SystemState state)
     {
@@ -58,23 +54,29 @@ public partial struct PlayerSystemClient : ISystem
             PlayerGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
             SessionRequestSent = false;
 
-            Debug.Log($"{DebugEx.ClientPrefix} Session status: {SessionStatus}\n  Guid: {PlayerGuid}\n  Nickname: {Nickname}");
-
-            if (command.ValueRO.StatusCode.IsOk())
+            switch (command.ValueRO.StatusCode)
             {
-                Nickname = command.ValueRO.Nickname;
-                Debug.Log($"{DebugEx.ClientPrefix} Successfully logged in");
-
-                if (!FindSavedSession(ServerGuid, out Guid savedPlayerGuid, out _) || savedPlayerGuid != PlayerGuid)
+                case SessionStatusCode.AlreadyLoggedIn:
+                case SessionStatusCode.OK:
                 {
-                    SaveSession(ServerGuid, PlayerGuid);
-                }
-            }
-            else if (command.ValueRO.StatusCode == SessionStatusCode.InvalidGuid)
-            {
-                Debug.Log($"{DebugEx.ClientPrefix} Invalid guid, resetting local player guid");
+                    Nickname = command.ValueRO.Nickname;
+                    Debug.Log($"{DebugEx.ClientPrefix} Successfully logged in ({command.ValueRO.StatusCode})\n  Guid: {PlayerGuid}\n  Nickname: {Nickname}");
 
-                PlayerGuid = default;
+                    if (!FindSavedSession(ServerGuid, out Guid savedPlayerGuid, out _) || savedPlayerGuid != PlayerGuid)
+                    {
+                        SaveSession(ServerGuid, PlayerGuid);
+                    }
+
+                    break;
+                }
+                case SessionStatusCode.InvalidGuid:
+                {
+                    Debug.Log($"{DebugEx.ClientPrefix} Invalid guid, resetting local player guid");
+
+                    PlayerGuid = default;
+                    break;
+                }
+                default: throw new UnreachableException();
             }
         }
 

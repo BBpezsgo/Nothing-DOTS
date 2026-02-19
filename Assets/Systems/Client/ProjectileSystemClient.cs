@@ -1,8 +1,10 @@
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+[BurstCompile]
 [UpdateInGroup(typeof(TransformSystemGroup))]
 [UpdateBefore(typeof(LocalToWorldSystem))]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
@@ -11,6 +13,7 @@ partial struct ProjectileSystemClient : ISystem
     BufferLookup<BufferedDamage> DamageQ;
     EntityArchetype VisualEffectSpawnArchetype;
 
+    [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
         DamageQ = state.GetBufferLookup<BufferedDamage>(true);
@@ -80,29 +83,19 @@ partial struct ProjectileSystemClient : ISystem
                 commandBuffer.SetComponent<VisualEffectSpawn>(visualEffectSpawn, new()
                 {
                     Position = ray.GetPoint(distance),
-                    Rotation = normal.Equals(new float3(0f, 1f, 0f)) ? new float3(-math.PIHALF, 0f, 0f) : quaternion.LookRotation(normal, new float3(0f, 1f, 0f)).ToEuler(),
+                    Rotation = normal.ToEuler(),
                     Index = effect,
                 });
             }
 
             commandBuffer.DestroyEntity(entity);
         }
-
-        // EndSimulationEntityCommandBufferSystem.Singleton ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-
-        // ProjectileJob projectileJob = new()
-        // {
-        //     EntityCommandBuffer = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged),
-        //     DeltaTime = SystemAPI.Time.DeltaTime,
-        //     CollisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld,
-        //     DamageQ = damageQ,
-        // };
-
-        // projectileJob.Schedule();
     }
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Destroying projectiles");
+
         WorldUnmanaged world = ConnectionManager.ClientOrDefaultWorld.Unmanaged;
 
         EntityCommandBuffer commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(world);
@@ -116,55 +109,3 @@ partial struct ProjectileSystemClient : ISystem
         }
     }
 }
-
-/*
-[BurstCompile]
-public partial struct ProjectileJob : IJobEntity
-{
-    public EntityCommandBuffer EntityCommandBuffer;
-    public float DeltaTime;
-    public CollisionWorld CollisionWorld;
-    public BufferLookup<BufferedDamage> DamageQ;
-
-    [BurstCompile]
-    void Execute(Entity entity, ref Projectile projectile, ref LocalTransform transform)
-    {
-        float3 lastPosition = transform.Position;
-        transform.Position += projectile.Velocity * DeltaTime;
-        projectile.Velocity += new float3(0f, -9.82f, 0f) * DeltaTime;
-
-        if (transform.Position.y < 0f)
-        {
-            EntityCommandBuffer.DestroyEntity(entity);
-            return;
-        }
-
-        float3 lastPositionWorld = transform.TransformPoint(lastPosition);
-        float3 positionWorld = transform.TransformPoint(transform.Position);
-
-        RaycastInput input = new()
-        {
-            Start = lastPositionWorld,
-            End = positionWorld,
-            Filter = new CollisionFilter()
-            {
-                BelongsTo = Layers.All,
-                CollidesWith = Layers.All,
-                GroupIndex = 0,
-            },
-        };
-
-        if (!CollisionWorld.CastRay(input, out Unity.Physics.RaycastHit hit))
-        { return; }
-
-        Debug.Log("Bruh");
-
-        if (DamageQ.TryGetBuffer(hit.Entity, out var damage))
-        {
-            damage.Add(new BufferedDamage(1f, math.normalize(projectile.Velocity)));
-            EntityCommandBuffer.DestroyEntity(entity);
-            return;
-        }
-    }
-}
-*/

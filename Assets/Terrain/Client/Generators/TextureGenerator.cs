@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using Unity.Profiling;
 using UnityEngine;
 
@@ -6,7 +7,7 @@ static class TextureGenerator
 {
     static readonly ProfilerMarker _marker = new("Terrain.TextureGenerator");
 
-    public static Color32[] GenerateTexture(float[] heightMap, int heightMapSize, Vector2 offset, TextureSettings textureSettings)
+    public static Color32[] GenerateTexture(NativeArray<float> heightMap, int heightMapSize, Vector2 offset, TextureSettings textureSettings)
     {
         using var _ = _marker.Auto();
 

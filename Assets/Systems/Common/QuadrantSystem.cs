@@ -213,8 +213,7 @@ public partial struct QuadrantSystem : ISystem
     public static NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly GetMap(ref SystemState state) => GetMap(state.WorldUnmanaged);
     public static NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly GetMap(in WorldUnmanaged world)
     {
-        SystemHandle handle = world.GetExistingUnmanagedSystem<QuadrantSystem>();
-        QuadrantSystem system = world.GetUnsafeSystemRef<QuadrantSystem>(handle);
+        QuadrantSystem system = world.GetSystem<QuadrantSystem>();
         return system.HashMap.AsReadOnly();
     }
 

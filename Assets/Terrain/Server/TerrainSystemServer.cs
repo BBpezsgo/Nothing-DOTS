@@ -4,7 +4,6 @@ using Unity.Collections;
 using Unity.Burst;
 using System;
 using Unity.Jobs;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Transforms;
 
 [BurstCompile]
@@ -42,12 +41,7 @@ partial struct TerrainSystemServer : ISystem
     NativeList<int2> Queue;
     NativeHashSet<int2> Hashset;
 
-    [BurstCompile]
-    public static ref TerrainSystemServer GetInstance(in WorldUnmanaged world)
-    {
-        SystemHandle handle = world.GetExistingUnmanagedSystem<TerrainSystemServer>();
-        return ref world.GetUnsafeSystemRef<TerrainSystemServer>(handle);
-    }
+    public static ref TerrainSystemServer GetInstance(in WorldUnmanaged world) => ref world.GetSystem<TerrainSystemServer>();
 
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
@@ -69,7 +63,7 @@ partial struct TerrainSystemServer : ISystem
         if (Queue.Length == 0) return;
 
         if (!SystemAPI.TryGetSingleton(out NativeHeightMapSettings heightMapSettings)) return;
-        if (!SystemAPI.TryGetSingleton(out TerrainFeaturePrefabs terrainFeatures)) return;
+        if (!SystemAPI.TryGetSingletonBuffer(out DynamicBuffer<TerrainFeaturePrefab> terrainFeatures)) return;
 
         NativeArray<NativeArray<float>> results = new(Queue.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
         for (int i = 0; i < results.Length; i++)
@@ -119,50 +113,36 @@ partial struct TerrainSystemServer : ISystem
     public static void GenerateChunkFeatures(
         in int2 chunkCoord,
         in NativeArray<float>.ReadOnly heightmap,
-        in TerrainFeaturePrefabs terrainFeatures,
+        in DynamicBuffer<TerrainFeaturePrefab> terrainFeatures,
         ref EntityCommandBuffer commandBuffer)
     {
         ChunkToWorld(chunkCoord, out float2 chunkOrigin);
 
         Unity.Mathematics.Random random = Unity.Mathematics.Random.CreateFromIndex((uint)math.abs(chunkCoord.x) + (uint)math.abs(chunkCoord.y));
-        int n = random.NextInt(1, 8);
 
-        for (int j = 0; j < n; j++)
+        for (int i = 0; i < terrainFeatures.Length; i++)
         {
-            int2 dataCoord = random.NextInt2(default, new int2(NumVertsPerLine - 1));
-            DataToWorld(dataCoord, out float2 randomPosition);
-            randomPosition += chunkOrigin + random.NextFloat2(new float2(-cellSize / 2, -cellSize / 2), new float2(cellSize / 2, cellSize / 2));
-            float height = Sample(heightmap, randomPosition, chunkCoord, dataCoord);
-            float3 p = new(
-                randomPosition.x,
-                height,
-                randomPosition.y
-            );
+            TerrainFeaturePrefab feature = terrainFeatures[i];
 
-            Entity newResource = commandBuffer.Instantiate(terrainFeatures.ResourcePrefab);
-            commandBuffer.SetComponent(newResource, LocalTransform.FromPosition(p));
+            int n = random.NextInt(feature.Quantity.x, feature.Quantity.y);
 
-            DebugEx.DrawSphere(p, 5f, Color.red, 60f);
-        }
+            for (int j = 0; j < n; j++)
+            {
+                int2 dataCoord = random.NextInt2(default, new int2(NumVertsPerLine - 1));
+                DataToWorld(dataCoord, out float2 randomPosition);
+                randomPosition += chunkOrigin + random.NextFloat2(new float2(-cellSize / 2, -cellSize / 2), new float2(cellSize / 2, cellSize / 2));
+                float height = Sample(heightmap, randomPosition, chunkCoord, dataCoord);
+                float3 p = new(
+                    randomPosition.x,
+                    height,
+                    randomPosition.y
+                );
 
-        n = random.NextInt(1, 8);
+                Entity newResource = commandBuffer.Instantiate(feature.Prefab);
+                commandBuffer.SetComponent(newResource, LocalTransform.FromPosition(p));
 
-        for (int j = 0; j < n; j++)
-        {
-            int2 dataCoord = random.NextInt2(default, new int2(NumVertsPerLine - 1));
-            DataToWorld(dataCoord, out float2 randomPosition);
-            randomPosition += chunkOrigin + random.NextFloat2(new float2(-cellSize / 2, -cellSize / 2), new float2(cellSize / 2, cellSize / 2));
-            float height = Sample(heightmap, randomPosition, chunkCoord, dataCoord);
-            float3 p = new(
-                randomPosition.x,
-                height,
-                randomPosition.y
-            );
-
-            Entity newResource = commandBuffer.Instantiate(terrainFeatures.ObstaclePrefab);
-            commandBuffer.SetComponent(newResource, LocalTransform.FromPosition(p));
-
-            DebugEx.DrawBox(p, 5f, Color.red, 60f);
+                DebugEx.DrawSphere(p, 1f, Color.red, 60f);
+            }
         }
     }
 
@@ -642,23 +622,5 @@ partial struct TerrainSystemServer : ISystem
         distance = default;
         normal = default;
         return false;
-    }
-}
-
-[BurstCompile(CompileSynchronously = true)]
-partial struct TerrainGeneratorJobServer : IJobFor
-{
-    [ReadOnly] public NativeArray<int2>.ReadOnly Queue;
-    [NativeDisableContainerSafetyRestriction] public NativeArray<NativeArray<float>>.ReadOnly Result;
-    public NativeHeightMapSettings HeightMapSettings;
-
-    [BurstCompile(CompileSynchronously = true)]
-    public void Execute(int index)
-    {
-        int2 coord = Queue[index];
-        float2 noiseOffset = new float2(coord.x, coord.y) * TerrainSystemServer.MeshWorldSize / TerrainSystemServer.meshScale;
-        //Debug.Log($"Generating chunk at {coord.x} {coord.y}");
-        NativeArray<float> chunk = Result[index];
-        HeightMapGenerator.GenerateHeightMap(ref chunk, TerrainSystemServer.NumVertsPerLine, TerrainSystemServer.NumVertsPerLine, HeightMapSettings.heightMultiplier, noiseOffset, in HeightMapSettings.noiseSettings, Allocator.Temp);
     }
 }

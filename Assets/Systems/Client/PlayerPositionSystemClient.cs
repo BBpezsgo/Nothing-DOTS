@@ -29,11 +29,7 @@ public partial struct PlayerPositionSystemClient : ISystem
         });
     }
 
-    public static ref PlayerPositionSystemClient GetInstance(in WorldUnmanaged world)
-    {
-        SystemHandle handle = world.GetExistingUnmanagedSystem<PlayerPositionSystemClient>();
-        return ref world.GetUnsafeSystemRef<PlayerPositionSystemClient>(handle);
-    }
+    public static ref PlayerPositionSystemClient GetInstance(in WorldUnmanaged world) => ref world.GetSystem<PlayerPositionSystemClient>();
 
     public void OnDisconnect()
     {

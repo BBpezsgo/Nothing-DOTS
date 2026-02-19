@@ -4,9 +4,11 @@ using Unity.NetCode;
 
 public enum FileResponseStatus
 {
+    Unknown,
     OK,
     NotFound,
     NotChanged,
+    ErrorDisconnected,
 }
 
 [BurstCompile]

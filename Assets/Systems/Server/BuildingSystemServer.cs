@@ -158,7 +158,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (connectorA == default || connectorB == default)
             {
-                Debug.LogWarning($"{DebugEx.ServerPrefix} Failed to place wire: connectors not found");
+                Debug.Log($"{DebugEx.ServerPrefix} Failed to place wire: connectors not found");
                 continue;
             }
 

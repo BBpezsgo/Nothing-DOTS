@@ -7,5 +7,5 @@ public struct VisualEffectRpc : IRpcCommand
 {
     public required int Index;
     public required float3 Position;
-    public required quaternion Rotation;
+    public required float3 Rotation;
 }

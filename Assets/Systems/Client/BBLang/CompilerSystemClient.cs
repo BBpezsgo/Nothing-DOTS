@@ -193,6 +193,8 @@ partial class CompilerSystemClient : SystemBase
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Clearing compiled sources");
+
         CompiledSources.Clear();
         StatusRequestTimestamps.Clear();
     }

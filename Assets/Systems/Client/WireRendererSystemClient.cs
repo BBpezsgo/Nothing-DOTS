@@ -241,6 +241,8 @@ public partial class WireRendererSystemClient : SystemBase
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Destroying wires");
+
         Lines.Clear();
         LinesPool.Clear();
     }

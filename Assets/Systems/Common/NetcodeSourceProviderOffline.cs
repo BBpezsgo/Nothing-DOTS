@@ -35,11 +35,11 @@ class NetcodeSourceProviderOffline : ISourceProviderSync
 
             if (!FileId.FromUri(uri, out FileId fileId))
             {
-                Debug.LogError($"[{nameof(CompilerSystemServer)}]: Uri \"{uri}\" aint a netcode uri");
+                Debug.LogError($"[{nameof(CompilerSystemServer)}] Uri \"{uri}\" aint a netcode uri");
                 return SourceProviderResultSync.NextHandler();
             }
 
-            Debug.Log($"Try load netcode file \"{fileId.Name}\" ...");
+            Debug.Log($"{DebugEx.AnyPrefix} Try load netcode file \"{fileId.Name}\" ...");
 
             if (FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).TryGetRemoteFile(fileId, out RemoteFile remoteFile))
             {

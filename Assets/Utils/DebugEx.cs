@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.CompilerServices;
-using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
 using Unity.Entities;
@@ -18,9 +17,9 @@ public static partial class DebugEx
     public const string ServerPrefix = "<color=#c787f2>[Server]</color>";
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static FixedString32Bytes Prefix(WorldUnmanaged world) =>
-        world.IsServer() ? (FixedString32Bytes)ServerPrefix :
-        world.IsClient() ? (FixedString32Bytes)ClientPrefix :
+    public static FixedString64Bytes Prefix(WorldUnmanaged world) =>
+        world.IsServer() ? (FixedString64Bytes)ServerPrefix :
+        world.IsClient() ? (FixedString64Bytes)ClientPrefix :
         LocalPrefix;
 
 #if UNITY_EDITOR && EDITOR_DEBUG

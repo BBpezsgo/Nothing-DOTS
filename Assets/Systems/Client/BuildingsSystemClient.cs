@@ -54,23 +54,20 @@ public partial struct BuildingsSystemClient : ISystem
         }
     }
 
-    public static ref BuildingsSystemClient GetInstance(in WorldUnmanaged world)
-    {
-        SystemHandle handle = world.GetExistingUnmanagedSystem<BuildingsSystemClient>();
-        return ref world.GetUnsafeSystemRef<BuildingsSystemClient>(handle);
-    }
+    public static ref BuildingsSystemClient GetInstance(in WorldUnmanaged world) => ref world.GetSystem<BuildingsSystemClient>();
 
     public static void Refresh(in WorldUnmanaged world)
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable buildings");
+
         GetInstance(world).Buildings.Clear();
-
         NetcodeUtils.CreateRPC<BuildingsRequestRpc>(world);
-
-        Debug.Log($"{DebugEx.ClientPrefix} Request avaliable buildings ...");
     }
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Clearing buildings");
+
         Buildings.Clear();
         LastSynced.Data = default;
     }

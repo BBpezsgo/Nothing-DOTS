@@ -1,3 +1,5 @@
+#pragma warning disable CS0162 // Unreachable code detected
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -21,7 +23,7 @@ using Unity.Profiling;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial class CompilerSystemServer : SystemBase
 {
-    static readonly bool EnableLogging = false;
+    const bool EnableLogging = false;
 
     [NotNull] public readonly Dictionary<FileId, CompiledSourceServer>? CompiledSources = new();
 
@@ -118,7 +120,7 @@ public partial class CompilerSystemServer : SystemBase
             }
 
             Debug.Log($"{DebugEx.ServerPrefix} Waiting for {Tasks.Count} compilation tasks to finish ...");
-            Task.WaitAll(Tasks.Select(v => v.Item1).ToArray());
+            Task.WaitAll(Tasks.Select(v => v.Item1).ToArray(), 10000);
 
             Debug.Log($"{DebugEx.ServerPrefix} Compilation tasks completed");
         }
@@ -228,7 +230,7 @@ public partial class CompilerSystemServer : SystemBase
         // .ToArray() because the collection can be modified somewhere idk
         foreach (DiagnosticAt item in source.Diagnostics.Diagnostics.ToArray())
         {
-            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{DebugEx.ServerPrefix} [{nameof(CompilerSystemServer)}]: {item}\r\n{item.GetArrows()}");
+            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{DebugEx.ServerPrefix} [{nameof(CompilerSystemServer)}] {item}\r\n{item.GetArrows()}");
 
             SendDiagnostic(item, source, commandBuffer, diagnosticIds, ref diagnosticIdCounter, 0);
         }
@@ -236,7 +238,7 @@ public partial class CompilerSystemServer : SystemBase
         // .ToArray() because the collection can be modified somewhere idk
         foreach (Diagnostic item in source.Diagnostics.DiagnosticsWithoutContext.ToArray())
         {
-            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{DebugEx.ServerPrefix} [{nameof(CompilerSystemServer)}]: {item}");
+            if (item.Level == DiagnosticsLevel.Error) Debug.LogWarning($"{DebugEx.ServerPrefix} [{nameof(CompilerSystemServer)}] {item}");
 
             NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new CompilationAnalysticsRpc()
             {

@@ -522,10 +522,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c521dbe3c32c95b4093886ffdcac280e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ResourcePrefab: {fileID: 5149663897553547423, guid: c1c816a40b9670446ae86e279d6c0e8f,
-    type: 3}
-  ObstaclePrefab: {fileID: 1287691938842737703, guid: b686aecd0774a0eb98551c108a20bb36,
-    type: 3}
+  Prefabs:
+  - Quantity: {x: 5, y: 20}
+    Prefab: {fileID: 1287691938842737703, guid: b686aecd0774a0eb98551c108a20bb36,
+      type: 3}
+  - Quantity: {x: 1, y: 10}
+    Prefab: {fileID: 5149663897553547423, guid: c1c816a40b9670446ae86e279d6c0e8f,
+      type: 3}
 --- !u!1 &1025330176
 GameObject:
   m_ObjectHideFlags: 0

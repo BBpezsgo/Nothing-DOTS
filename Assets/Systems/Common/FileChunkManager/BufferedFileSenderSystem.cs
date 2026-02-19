@@ -7,7 +7,7 @@ using Unity.NetCode;
 
 partial struct BufferedFileSenderSystem : ISystem
 {
-    const bool DebugLog = false;
+    const bool DebugLog = true;
     const int ChunkSendingLimit = 16;
 
     void ISystem.OnCreate(ref SystemState state)
@@ -27,7 +27,7 @@ partial struct BufferedFileSenderSystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             FileData? localFile = FileChunkManagerSystem.GetFileData(command.ValueRO.FileName.ToString());
@@ -43,7 +43,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     Version = MonoTime.Ticks,
                 });
 
-                if (DebugLog) Debug.LogWarning($"File \"{command.ValueRO.FileName}\" does not exists");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] File \"{command.ValueRO.FileName}\" doesn't exists");
                 continue;
             }
 
@@ -82,7 +82,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     AutoSendEverything = true,
                     TotalLength = totalLength,
                 });
-                if (DebugLog) Debug.Log($"Sending file header \"{command.ValueRO.FileName}\": {{ id: `{command.ValueRO.FileName.GetHashCode()}` length: `{totalLength}b` }}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Sending file header \"{command.ValueRO.FileName}\": {{ id: `{command.ValueRO.FileName.GetHashCode()}` length: `{totalLength}` }}");
             }
         }
 
@@ -91,7 +91,7 @@ partial struct BufferedFileSenderSystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
             bool found = false;
@@ -115,7 +115,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     });
                 }
                 found = true;
-                if (DebugLog) Debug.Log($"Sending chunk {command.ValueRO.ChunkIndex} for file {sendingFiles[i].FileName}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Sending chunk `{command.ValueRO.ChunkIndex}` of file \"{sendingFiles[i].FileName}\"");
 
                 break;
             }
@@ -130,7 +130,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     Data = default,
                 });
 
-                if (DebugLog) Debug.LogWarning($"Can't send requested chunk for file {command.ValueRO.TransactionId}: File does not exists");
+                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Chunk requested for transaction `{command.ValueRO.TransactionId}` but it doesn't exists");
             }
         }
 
@@ -139,8 +139,10 @@ partial struct BufferedFileSenderSystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
+
+            if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Closing file \"{command.ValueRO.FileName}\"");
 
             for (int i = sendingFiles.Length - 1; i >= 0; i--)
             {
@@ -164,8 +166,10 @@ partial struct BufferedFileSenderSystem : ISystem
             .WithEntityAccess())
         {
             commandBuffer.DestroyEntity(entity);
-            NetcodeEndPoint ep = new(SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
+            NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
+
+            if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Closing transaction `{command.ValueRO.TransactionId}`");
 
             for (int i = sendingFiles.Length - 1; i >= 0; i--)
             {
@@ -225,7 +229,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     ChunkIndex = j,
                 });
 
-                if (DebugLog) Debug.Log($"Sending chunk {j} for file {sendingFiles[i].FileName}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Sending chunk `{j}` for file \"{sendingFiles[i].FileName}\"");
 
                 if (++sent >= ChunkSendingLimit) break;
             }

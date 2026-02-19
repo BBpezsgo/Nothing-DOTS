@@ -517,38 +517,47 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 SetProgressStatus("error");
                                 if (_memory is null)
                                 {
-                                    _memoryDownloadProgress ??= new ProgressRecord<(int, int)>(null);
-
-                                    if (_memoryDownloadTask == null)
+                                    if (ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal())
                                     {
-                                        GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
-                                        Debug.Log($"{DebugEx.ClientPrefix} Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
-                                        _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld)
-                                            .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}.{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
-                                    }
-
-                                    Awaitable<RemoteFile>.Awaiter awaiter = _memoryDownloadTask.GetAwaiter();
-                                    if (awaiter.IsCompleted)
-                                    {
-                                        Debug.Log($"{DebugEx.ClientPrefix} Memory loaded");
-                                        RemoteFile result = awaiter.GetResult();
-                                        switch (result.Kind)
-                                        {
-                                            case FileResponseStatus.NotFound:
-                                                ui_progressCompilation.title = "Crashed (no memory)";
-                                                ui_progressCompilation.value = 1f;
-                                                break;
-                                            case FileResponseStatus.OK:
-                                            case FileResponseStatus.NotChanged:
-                                            default:
-                                                _memory = result.File.Data;
-                                                break;
-                                        }
+                                        _memory = processor.Memory.Memory.ToBytes();
                                     }
                                     else
                                     {
-                                        ui_progressCompilation.title = "Crashed (loading memory)";
-                                        ui_progressCompilation.value = (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2;
+                                        _memoryDownloadProgress ??= new ProgressRecord<(int, int)>(null);
+
+                                        if (_memoryDownloadTask == null)
+                                        {
+                                            GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
+                                            Debug.Log($"{DebugEx.ClientPrefix} Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
+                                            _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld)
+                                                .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}.{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
+                                        }
+
+                                        Awaitable<RemoteFile>.Awaiter awaiter = _memoryDownloadTask.GetAwaiter();
+                                        if (awaiter.IsCompleted)
+                                        {
+                                            Debug.Log($"{DebugEx.ClientPrefix} Memory loaded");
+                                            RemoteFile result = awaiter.GetResult();
+                                            switch (result.Kind)
+                                            {
+                                                case FileResponseStatus.NotFound:
+                                                case FileResponseStatus.Unknown:
+                                                case FileResponseStatus.ErrorDisconnected:
+                                                    ui_progressCompilation.title = "Crashed (no memory)";
+                                                    ui_progressCompilation.value = 1f;
+                                                    break;
+                                                case FileResponseStatus.OK:
+                                                case FileResponseStatus.NotChanged:
+                                                default:
+                                                    _memory = result.File.Data;
+                                                    break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            ui_progressCompilation.title = "Crashed (loading memory)";
+                                            ui_progressCompilation.value = (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2;
+                                        }
                                     }
                                 }
                                 else

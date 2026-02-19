@@ -613,18 +613,6 @@ public class SelectionManager : Singleton<SelectionManager>
         _candidates.Add(unit);
     }
 
-    void DeselectUnitCandidate(Entity unit)
-    {
-        if (GetUnitStatus(unit).Status == SelectionStatus.Candidate)
-        {
-            SetUnitStatus(unit, new()
-            {
-                Status = SelectionStatus.None,
-            });
-        }
-        _candidates.Remove(unit);
-    }
-
     void ClearSelectionCandidates()
     {
         if (_candidates.Count == 0) return;
@@ -647,7 +635,9 @@ public class SelectionManager : Singleton<SelectionManager>
             Status = status,
         });
         _selected.Add(unit);
+
         HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
+        HUDManager.Instance._labelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
     }
 
     void DeselectUnit(VirtualGhostEntity unit)
@@ -657,7 +647,9 @@ public class SelectionManager : Singleton<SelectionManager>
             Status = SelectionStatus.None,
         });
         _selected.Remove(unit);
+
         HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
+        HUDManager.Instance._labelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
     }
 
     void ClearSelection()
@@ -670,7 +662,9 @@ public class SelectionManager : Singleton<SelectionManager>
             });
         }
         _selected.Clear();
+
         HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
+        HUDManager.Instance._labelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
     }
 
     public static bool WorldRaycast(UnityEngine.Ray ray, out float distance)

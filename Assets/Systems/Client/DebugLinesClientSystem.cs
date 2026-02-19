@@ -88,6 +88,8 @@ partial struct DebugLinesClientSystem : ISystem
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Clearing debug lines");
+
         NativeArray<Segments.Segment> batches = new(Batches.Length, Allocator.Temp);
 
         for (int i = 0; i < Batches.Length; i++)

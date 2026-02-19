@@ -100,21 +100,21 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
         for (int i = 0; i < avaliable.Length; i++)
         {
-            bool inQueue = false;
             if (!selected.Current.Name.IsEmpty &&
                 selected.Current.Name == avaliable[i])
             {
-                inQueue = true;
+                goto inQueue;
             }
-            if (inQueue) continue;
+
             for (int j = 0; j < queue.Length; j++)
             {
                 if (queue[j].Name != avaliable[i]) continue;
-                inQueue = true;
-                break;
+                goto inQueue;
             }
-            if (inQueue) continue;
+
             avaliableNotInQueue.Add(avaliable[i]);
+
+        inQueue:;
         }
 
         avaliableList.SyncList(avaliableNotInQueue, UI_AvaliableResearch, (item, element, recycled) =>

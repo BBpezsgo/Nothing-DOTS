@@ -9,7 +9,7 @@ public class Tooltips : Singleton<Tooltips>
     [NotNull] Label? label = null;
     bool visible;
 
-    void Start()
+    void OnEnable()
     {
         ui = GetComponent<UIDocument>();
         label = ui.rootVisualElement.Q<Label>("tooltip");
@@ -88,7 +88,7 @@ public class Tooltips : Singleton<Tooltips>
 
     void OnElementMouseLeave(MouseLeaveEvent e)
     {
-        if (e.currentTarget is not VisualElement t) return;
+        if (e.currentTarget is not VisualElement) return;
         SetTooltip(null);
     }
 }

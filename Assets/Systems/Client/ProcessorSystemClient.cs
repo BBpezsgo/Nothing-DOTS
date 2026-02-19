@@ -118,14 +118,12 @@ partial struct ProcessorSystemClient : ISystem
         }
     }
 
-    public static ref ProcessorSystemClient GetInstance(in WorldUnmanaged world)
-    {
-        SystemHandle handle = world.GetExistingUnmanagedSystem<ProcessorSystemClient>();
-        return ref world.GetUnsafeSystemRef<ProcessorSystemClient>(handle);
-    }
+    public static ref ProcessorSystemClient GetInstance(in WorldUnmanaged world) => ref world.GetSystem<ProcessorSystemClient>();
 
     public void OnDisconnect()
     {
+        Debug.Log($"{DebugEx.ClientPrefix} Clearing user UI elements");
+
         uiElements.Clear();
     }
 }

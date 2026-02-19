@@ -2,20 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using LanguageCore;
 using Unity.Entities;
 using UnityEngine;
 
 class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 {
-    readonly CompiledSourceServer source;
-    readonly List<ProgressRecord<(int, int)>> progresses;
+    readonly CompiledSourceServer Source;
+    readonly List<ProgressRecord<(int, int)>> Progresses;
     readonly bool EnableLogging;
 
     public NetcodeSourceProvider(CompiledSourceServer source, List<ProgressRecord<(int, int)>> progresses, bool enableLogging)
     {
-        this.source = source;
-        this.progresses = progresses;
+        Source = source;
+        Progresses = progresses;
         EnableLogging = enableLogging;
     }
 
@@ -38,7 +39,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
         }
     }
 
-    public SourceProviderResultAsync TryLoad(string requestedFile, Uri? currentFile)
+    public SourceProviderResultAsync TryLoad(string requestedFile, Uri? currentFile, CancellationToken cancellationToken)
     {
         Uri? lastUri = null;
 
@@ -48,11 +49,11 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
             if (!FileId.FromUri(uri, out FileId fileId))
             {
-                Debug.LogError($"[{nameof(CompilerSystemServer)}]: Uri \"{uri}\" aint a netcode uri");
+                Debug.LogError($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Uri \"{uri}\" aint a netcode uri");
                 return SourceProviderResultAsync.NextHandler();
             }
 
-            if (EnableLogging) Debug.Log($"Try load netcode file \"{fileId.Name}\" ...");
+            if (EnableLogging) Debug.Log($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Try load netcode file \"{fileId.Name}\" ...");
 
             if (fileId.Source.IsServer)
             {
@@ -62,7 +63,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
                 AwaitableCompletionSource<Stream> task = new();
                 task.SetResult(new MemoryStream(localFile.Value.Data));
-                if (EnableLogging) Debug.Log($"Successfully loaded \"{uri}\" from local files");
+                if (EnableLogging) Debug.Log($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Successfully loaded \"{uri}\" from local files");
                 return SourceProviderResultAsync.Success(uri, task.Awaitable);
             }
 
@@ -77,36 +78,34 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
             if (status == FileStatus.NotFound)
             {
-                Debug.LogError($"[{nameof(CompilerSystemServer)}]: Remote file \"{uri}\" not found");
+                Debug.LogError($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Remote file \"{uri}\" not found");
                 return SourceProviderResultAsync.NotFound(uri);
             }
 
             ProgressRecord<(int Current, int Total)> progress = new(v =>
             {
-                float total = progresses.Sum(v => v.Progress.Item2 == 0 ? 0f : (float)v.Progress.Item1 / v.Progress.Item2);
-                source.Progress = total / progresses.Count;
-                source.Diagnostics.Clear();
-                source.StatusChanged = true;
+                float total = Progresses.Sum(v => v.Progress.Item2 == 0 ? 0f : (float)v.Progress.Item1 / v.Progress.Item2);
+                Source.Progress = total / Progresses.Count;
+                Source.Diagnostics.Clear();
+                Source.StatusChanged = true;
             });
 
-            source.SubFiles[fileId] = progress;
-            progresses.Add(progress);
+            Source.SubFiles[fileId] = progress;
+            Progresses.Add(progress);
 
-            if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source needs file \"{fileId}\" ...");
+            if (EnableLogging) Debug.Log($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Source needs file \"{fileId}\" ...");
 
             {
                 AwaitableCompletionSource<Stream> result = new();
-                Awaitable<RemoteFile> task = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).RequestFile(fileId, progress);
+                Awaitable<RemoteFile> task = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).RequestFile(fileId, progress, cancellationToken);
                 task.GetAwaiter().OnCompleted(() =>
                 {
                     progress.Report((1, 1));
                     try
                     {
-                        result.SetResult(new MemoryStream(task.GetAwaiter().GetResult().File.Data));
-                        if (EnableLogging) Debug.Log($"[{nameof(CompilerSystemServer)}]: Source \"{fileId}\" downloaded ...");
-                        // if (source.Status == CompilationStatus.Secuedued &&
-                        //     source.CompileSecuedued != 1f)
-                        // { source.CompileSecuedued = 1f; }
+                        RemoteFile remoteFile = task.GetAwaiter().GetResult();
+                        result.SetResult(new MemoryStream(remoteFile.File.Data));
+                        if (EnableLogging) Debug.Log($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Source \"{remoteFile.Source}\" downloaded ...");
                     }
                     catch (Exception ex)
                     {
@@ -114,7 +113,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
                     }
                 });
 
-                if (EnableLogging) Debug.Log($"Successfully loaded {uri}");
+                if (EnableLogging) Debug.Log($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}]Successfully loaded {uri}");
                 return SourceProviderResultAsync.Success(uri, result.Awaitable);
             }
 

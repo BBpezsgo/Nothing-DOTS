@@ -48,42 +48,97 @@ public class SetupManager : Singleton<SetupManager>
         if (Start.y > End.y) Start.y = End.y;
     }
 
+    readonly struct Prefabs
+    {
+        readonly DynamicBuffer<BufferedUnit> units;
+        readonly DynamicBuffer<BufferedBuilding> buildings;
+        readonly DynamicBuffer<TerrainFeaturePrefab> terrainPrefabs;
+
+        Prefabs(DynamicBuffer<BufferedUnit> units, DynamicBuffer<BufferedBuilding> buildings, DynamicBuffer<TerrainFeaturePrefab> terrainPrefabs)
+        {
+            this.units = units;
+            this.buildings = buildings;
+            this.terrainPrefabs = terrainPrefabs;
+        }
+
+        public static bool From(EntityManager entityManager, out Prefabs prefabs)
+        {
+            prefabs = default;
+
+            DynamicBuffer<BufferedUnit> units;
+            DynamicBuffer<BufferedBuilding> buildings;
+            DynamicBuffer<TerrainFeaturePrefab> terrainPrefabs;
+
+            using (EntityQuery unitDatabaseQ = entityManager.CreateEntityQuery(typeof(UnitDatabase)))
+            {
+                if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
+                {
+                    Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(UnitDatabase)} entity singleton");
+                    return false;
+                }
+                units = entityManager.GetBuffer<BufferedUnit>(unitDatabase, true);
+            }
+
+            using (EntityQuery buildingDatabaseQ = entityManager.CreateEntityQuery(typeof(BuildingDatabase)))
+            {
+                if (!buildingDatabaseQ.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
+                {
+                    Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(BuildingDatabase)} entity singleton");
+                    return false;
+                }
+                buildings = entityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
+            }
+
+            using (EntityQuery terrainFeaturePrefabsQ = entityManager.CreateEntityQuery(typeof(TerrainFeaturePrefabs)))
+            {
+                if (!terrainFeaturePrefabsQ.TryGetSingletonEntity<TerrainFeaturePrefabs>(out Entity terrainPrefabsEntity))
+                {
+                    Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(TerrainFeaturePrefabs)} singleton");
+                    return false;
+                }
+                terrainPrefabs = entityManager.GetBuffer<TerrainFeaturePrefab>(terrainPrefabsEntity, true);
+            }
+
+            prefabs = new Prefabs(units, buildings, terrainPrefabs);
+            return true;
+        }
+
+        public Entity GetPrefab(string name)
+        {
+            Entity prefab = Entity.Null;
+
+            if (prefab == Entity.Null)
+            {
+                BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, name);
+                prefab = unit.Prefab;
+            }
+
+            if (prefab == Entity.Null)
+            {
+                BufferedBuilding building = buildings.FirstOrDefault(static (v, c) => v.Name == c, name);
+                prefab = building.Prefab;
+            }
+
+            if (prefab == Entity.Null)
+            {
+                for (int i = 0; i < terrainPrefabs.Length; i++)
+                {
+                    if (name != terrainPrefabs[i].PrefabName) continue;
+
+                    prefab = terrainPrefabs[i].Prefab;
+                    break;
+                }
+            }
+
+            return prefab;
+        }
+    }
+
     public void Setup()
     {
         World world = ConnectionManager.ServerOrDefaultWorld;
 
-        DynamicBuffer<BufferedUnit> units;
-        DynamicBuffer<BufferedBuilding> buildings;
-        TerrainFeaturePrefabs terrainPrefabs;
-
-        using (EntityQuery unitDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(UnitDatabase)))
-        {
-            if (!unitDatabaseQ.TryGetSingletonEntity<UnitDatabase>(out Entity unitDatabase))
-            {
-                Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(UnitDatabase)} entity singleton");
-                return;
-            }
-            units = world.EntityManager.GetBuffer<BufferedUnit>(unitDatabase, true);
-        }
-
-        using (EntityQuery buildingDatabaseQ = world.EntityManager.CreateEntityQuery(typeof(BuildingDatabase)))
-        {
-            if (!buildingDatabaseQ.TryGetSingletonEntity<BuildingDatabase>(out Entity buildingDatabase))
-            {
-                Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(BuildingDatabase)} entity singleton");
-                return;
-            }
-            buildings = world.EntityManager.GetBuffer<BufferedBuilding>(buildingDatabase, true);
-        }
-
-        using (EntityQuery terrainFeaturePrefabsQ = world.EntityManager.CreateEntityQuery(typeof(TerrainFeaturePrefabs)))
-        {
-            if (!terrainFeaturePrefabsQ.TryGetSingleton(out terrainPrefabs))
-            {
-                Debug.LogError($"{DebugEx.ServerPrefix} Failed to get {nameof(TerrainFeaturePrefabs)} singleton");
-                return;
-            }
-        }
+        if (!Prefabs.From(world.EntityManager, out var prefabs)) return;
 
         if (SpawnExactUnits)
         {
@@ -91,25 +146,7 @@ public class SetupManager : Singleton<SetupManager>
             {
                 if (!unitSetup.Enabled) continue;
 
-                Entity prefab = Entity.Null;
-
-                if (prefab == Entity.Null)
-                {
-                    BufferedUnit unit = units.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
-                    prefab = unit.Prefab;
-                }
-
-                if (prefab == Entity.Null)
-                {
-                    BufferedBuilding building = buildings.FirstOrDefault(static (v, c) => v.Name == c, unitSetup.Prefab.name);
-                    prefab = building.Prefab;
-                }
-
-                if (prefab == Entity.Null)
-                {
-                    if (unitSetup.Prefab.name == terrainPrefabs.ObstaclePrefabName) prefab = terrainPrefabs.ObstaclePrefab;
-                    else if (unitSetup.Prefab.name == terrainPrefabs.ResourcePrefabName) prefab = terrainPrefabs.ResourcePrefab;
-                }
+                Entity prefab = prefabs.GetPrefab(unitSetup.Prefab.name);
 
                 if (prefab == Entity.Null)
                 {
@@ -138,12 +175,7 @@ public class SetupManager : Singleton<SetupManager>
 
         if (RandomUnitPrefab != null)
         {
-            Entity prefab = Entity.Null;
-
-            if (prefab == Entity.Null)
-            {
-                prefab = units.FirstOrDefault(static (v, c) => v.Name == c, RandomUnitPrefab.name).Prefab;
-            }
+            Entity prefab = prefabs.GetPrefab(RandomUnitPrefab.name);
 
             if (prefab == Entity.Null)
             {
