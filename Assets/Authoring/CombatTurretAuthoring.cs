@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.VFX;
 
@@ -16,6 +17,8 @@ public class CombatTurretAuthoring : MonoBehaviour
     [SerializeField] float TurretRotationSpeed = default;
     [SerializeField] float CannonRotationSpeed = default;
 
+    [SerializeField, Range(0f, 0.99f)] float Spread = default;
+
     class Baker : Baker<CombatTurretAuthoring>
     {
         public override void Bake(CombatTurretAuthoring authoring)
@@ -32,7 +35,22 @@ public class CombatTurretAuthoring : MonoBehaviour
                 Projectile = FindFirstObjectByType<ProjectileDatabaseAuthoring>().Find(authoring.Projectile),
                 ShootPosition = authoring.ShootPosition != null ? GetEntity(authoring.ShootPosition, TransformUsageFlags.Dynamic) : Entity.Null,
                 ShootEffect = FindFirstObjectByType<VisualEffectDatabaseAuthoring>().Find(authoring.ShootEffect),
+                Spread = authoring.Spread,
             });
+        }
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Unity.Mathematics.Random random = Unity.Mathematics.Random.CreateFromIndex(42);
+        if (ShootPosition != null)
+        {
+            Gizmos.color = Color.red;
+            for (int i = 0; i < 50; i++)
+            {
+                float3 direction = math.normalize((random.NextFloat3Direction() * Spread) + (float3)ShootPosition.forward);
+                Gizmos.DrawRay(ShootPosition.position, direction);
+            }
         }
     }
 }

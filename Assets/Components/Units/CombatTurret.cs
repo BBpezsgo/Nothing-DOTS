@@ -13,4 +13,6 @@ public struct CombatTurret : IComponentData
 
     public float TurretRotationSpeed;
     public float CannonRotationSpeed;
+
+    public float Spread;
 }
