@@ -1,22 +1,25 @@
 {
   "dependencies": {
-    "com.andrewraphaellukasik.segments": "https://github.com/andrew-raphael-lukasik/segments.git#upm",
+    "com.andrewraphaellukasik.segments": "file:/home/bb/Projects/Segments",
     "com.banszky.bblang": "file:/home/bb/Projects/BBLang/Core/Unity",
-    "com.dbrizov.naughtyattributes": "https://github.com/dbrizov/NaughtyAttributes.git#upm",
     "com.unity.2d.sprite": "1.0.0",
-    "com.unity.editorcoroutines": "1.0.0",
-    "com.unity.entities.graphics": "1.4.12",
+    "com.unity.editorcoroutines": "1.0.1",
+    "com.unity.entities.graphics": "1.4.18",
     "com.unity.ext.nunit": "2.0.5",
-    "com.unity.ide.visualstudio": "2.0.23",
-    "com.unity.inputsystem": "1.14.2",
-    "com.unity.netcode": "1.6.2",
-    "com.unity.render-pipelines.universal": "17.2.0",
-    "com.unity.toolchain.linux-x86_64": "2.0.10",
+    "com.unity.ide.visualstudio": "2.0.27",
+    "com.unity.inputsystem": "1.18.0",
+    "com.unity.memoryprofiler": "1.1.11",
+    "com.unity.netcode": "1.11.0",
+    "com.unity.render-pipelines.universal": "17.3.0",
     "com.unity.ugui": "2.0.0",
-    "com.unity.visualeffectgraph": "17.2.0",
+    "com.unity.visualeffectgraph": "17.3.0",
+    "today.comes.saintsfield": "https://github.com/TylerTemp/SaintsField.git",
+    "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.imgui": "1.0.0",
     "com.unity.modules.ui": "1.0.0",
     "com.unity.modules.uielements": "1.0.0",
-    "com.unity.modules.umbra": "1.0.0"
+    "com.unity.modules.umbra": "1.0.0",
+    "com.unity.modules.unitywebrequesttexture": "1.0.0",
+    "com.unity.modules.vectorgraphics": "1.0.0"
   }
 }
