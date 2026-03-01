@@ -64,6 +64,24 @@ public partial class EntityInfoUISystemClient : SystemBase
             uiRef.Value.HealthPercent = damageable.ValueRO.Health / damageable.ValueRO.MaxHealth;
         }
 
+        foreach (var (uiRef, turret) in
+            SystemAPI.Query<EntityInfoUIReference, RefRO<CombatTurret>>())
+        {
+            if (turret.ValueRO.MagazineSize == 1 && turret.ValueRO.MagazineReload == 0f)
+            {
+                uiRef.Value.ReloadProgressPercent = uiRef.Value.MagazineProgressPercent = turret.ValueRO.BulletReload == 0f ? 1f : turret.ValueRO.BulletReloadProgress / turret.ValueRO.BulletReload;
+            }
+            else if (turret.ValueRO.CurrentMagazineSize == 0)
+            {
+                uiRef.Value.ReloadProgressPercent = uiRef.Value.MagazineProgressPercent = turret.ValueRO.MagazineReload == 0f ? 1f : turret.ValueRO.MagazineReloadProgress / turret.ValueRO.MagazineReload;
+            }
+            else
+            {
+                uiRef.Value.MagazineProgressPercent = turret.ValueRO.MagazineSize == 0 ? 1f : (float)turret.ValueRO.CurrentMagazineSize / (float)turret.ValueRO.MagazineSize;
+                uiRef.Value.ReloadProgressPercent = turret.ValueRO.BulletReload == 0f ? 1f : turret.ValueRO.BulletReloadProgress / turret.ValueRO.BulletReload;
+            }
+        }
+
         foreach (var (uiRef, buildingPlaceholder) in
             SystemAPI.Query<EntityInfoUIReference, RefRO<BuildingPlaceholder>>())
         {

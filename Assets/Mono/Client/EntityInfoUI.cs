@@ -12,6 +12,15 @@ public class EntityInfoUIBar
     [SerializeField, SaintsField.ReadOnly] public bool IsVisible;
 }
 
+[Serializable]
+public class EntityInfoUIBar2
+{
+    [SerializeField, NotNull] public GameObject? Object = default;
+    [SerializeField, NotNull] public Image? Foreground1 = default;
+    [SerializeField, NotNull] public Image? Foreground2 = default;
+    [SerializeField, SaintsField.ReadOnly] public bool IsVisible;
+}
+
 public class EntityInfoUI : MonoBehaviour
 {
     [Header("UI")]
@@ -21,6 +30,7 @@ public class EntityInfoUI : MonoBehaviour
     [SerializeField, NotNull] public EntityInfoUIBar? TransporterLoad = default;
     [SerializeField, NotNull] public EntityInfoUIBar? TransporterProgress = default;
     [SerializeField, NotNull] public EntityInfoUIBar? ExtractorProgress = default;
+    [SerializeField, NotNull] public EntityInfoUIBar2? ReloadProgress = default;
     [SerializeField, NotNull] public CanvasGroup? CanvasGroup = default;
     [SerializeField, NotNull] public Image? SelectionStatusIndicator = default;
     [SerializeField, NotNull] public Text? Label = default;
@@ -32,6 +42,8 @@ public class EntityInfoUI : MonoBehaviour
     [SerializeField, SaintsField.ReadOnly] public float TransporterLoadPercent = default;
     [SerializeField, SaintsField.ReadOnly] public float TransporterProgressPercent = default;
     [SerializeField, SaintsField.ReadOnly] public float ExtractorProgressPercent = default;
+    [SerializeField, SaintsField.ReadOnly] public float ReloadProgressPercent = default;
+    [SerializeField, SaintsField.ReadOnly] public float MagazineProgressPercent = default;
     [SerializeField, SaintsField.ReadOnly] public float3 Position = default;
     [SerializeField, SaintsField.ReadOnly] public quaternion Rotation = default;
     [SerializeField, SaintsField.ReadOnly] public Bounds Bounds = default;

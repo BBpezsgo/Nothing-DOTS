@@ -3,6 +3,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Burst;
 using System;
+using Unity.NetCode;
 
 [BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
@@ -26,8 +27,9 @@ partial struct CombatTurretProcessorSystem : ISystem
             random = Unity.Mathematics.Random.CreateFromIndex(*(uint*)&v);
         }
 
-        foreach (var (processor, turret) in
-            SystemAPI.Query<RefRW<Processor>, RefRW<CombatTurret>>())
+        foreach (var (processor, turret, entity) in
+            SystemAPI.Query<RefRW<Processor>, RefRW<CombatTurret>>()
+            .WithEntityAccess())
         {
             ref MappedMemory mapped = ref processor.ValueRW.Memory.MappedMemory;
 
@@ -55,11 +57,35 @@ partial struct CombatTurretProcessorSystem : ISystem
                 cannonTransform.ValueRW.Rotation = quaternion.EulerXYZ(x, 0, 0);
             }
 
+            if (turret.ValueRO.MagazineReloadProgress < turret.ValueRO.MagazineReload || turret.ValueRW.CurrentMagazineSize == 0)
+            {
+                turret.ValueRW.MagazineReloadProgress += SystemAPI.Time.DeltaTime;
+                if (turret.ValueRO.MagazineReloadProgress >= turret.ValueRO.MagazineReload)
+                {
+                    turret.ValueRW.CurrentMagazineSize = turret.ValueRO.MagazineSize;
+                }
+            }
+
+            if (turret.ValueRO.BulletReloadProgress < turret.ValueRO.BulletReload)
+            {
+                turret.ValueRW.BulletReloadProgress += SystemAPI.Time.DeltaTime;
+            }
+
             if (mapped.CombatTurret.InputShoot != 0)
             {
                 int projectileIndex = turret.ValueRO.Projectile;
-
                 if (projectileIndex == -1) continue;
+
+                if (turret.ValueRO.CurrentMagazineSize <= 0 || turret.ValueRO.BulletReloadProgress < turret.ValueRO.BulletReload)
+                { continue; }
+
+                turret.ValueRW.CurrentMagazineSize--;
+                turret.ValueRW.BulletReloadProgress = 0f;
+
+                if (turret.ValueRW.CurrentMagazineSize <= 0)
+                {
+                    turret.ValueRW.MagazineReloadProgress = 0f;
+                }
 
                 mapped.CombatTurret.InputShoot = 0;
 
@@ -85,6 +111,7 @@ partial struct CombatTurretProcessorSystem : ISystem
                         Velocity = velocity,
                         ProjectileIndex = projectileIndex,
                         VisualEffectIndex = turret.ValueRO.ShootEffect,
+                        Source = SystemAPI.GetComponentRO<GhostInstance>(entity).ValueRO,
                     });
                 }
             }

@@ -18,6 +18,9 @@ public class CombatTurretAuthoring : MonoBehaviour
     [SerializeField] float CannonRotationSpeed = default;
 
     [SerializeField, Range(0f, 0.99f)] float Spread = default;
+    [SerializeField, Min(0f)] float BulletReload = default;
+    [SerializeField, Min(0f)] float MagazineReload = default;
+    [SerializeField, Min(1)] int MagazineSize = default;
 
     class Baker : Baker<CombatTurretAuthoring>
     {
@@ -36,6 +39,9 @@ public class CombatTurretAuthoring : MonoBehaviour
                 ShootPosition = authoring.ShootPosition != null ? GetEntity(authoring.ShootPosition, TransformUsageFlags.Dynamic) : Entity.Null,
                 ShootEffect = FindFirstObjectByType<VisualEffectDatabaseAuthoring>().Find(authoring.ShootEffect),
                 Spread = authoring.Spread,
+                BulletReload = authoring.BulletReload,
+                MagazineReload = authoring.MagazineReload,
+                MagazineSize = authoring.MagazineSize,
             });
         }
     }

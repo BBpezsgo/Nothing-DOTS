@@ -48,11 +48,24 @@ public class EntityInfoUIManager : Singleton<EntityInfoUIManager>
                 }
             }
 
+            static void HandleBar2(EntityInfoUIBar2 bar, float percent1, float percent2)
+            {
+                bar.Foreground1.fillAmount = percent1;
+                bar.Foreground2.fillAmount = percent2;
+                bool barVisible = percent1 != default || percent2 != default;
+                if (bar.IsVisible != barVisible)
+                {
+                    bar.IsVisible = barVisible;
+                    bar.Object.SetActive(barVisible);
+                }
+            }
+
             HandleBar(item.HealthBar, item.HealthPercent);
             HandleBar(item.BuildingProgress, item.BuildingProgressPercent);
             HandleBar(item.TransporterLoad, item.TransporterLoadPercent);
             HandleBar(item.TransporterProgress, item.TransporterProgressPercent);
             HandleBar(item.ExtractorProgress, item.ExtractorProgressPercent);
+            HandleBar2(item.ReloadProgress, item.ReloadProgressPercent, item.MagazineProgressPercent);
 
             item.CanvasGroup.alpha = math.clamp(1f - ((screenPoint.z - StartFadeDistance) / (DisappearDistance - StartFadeDistance)), 0f, 1f);
 

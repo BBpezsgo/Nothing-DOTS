@@ -13,6 +13,9 @@
 
 /Packages/packages-lock.json
 
+/sessions
+/tiles
+
 *.csproj
 *.slnx
 *.meta
