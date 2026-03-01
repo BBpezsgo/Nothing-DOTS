@@ -256,7 +256,7 @@ public partial class CompilerSystemServer : SystemBase
 
     static readonly ConcurrentDictionary<Uri, CacheItem> CompilerCache = new();
 
-    public static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSourceServer Source, CancellationToken CancellationToken) args)
+    static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSourceServer Source, CancellationToken CancellationToken) args)
     {
         using ProfilerMarker.AutoScope _m = _markerCompiler.Auto();
 

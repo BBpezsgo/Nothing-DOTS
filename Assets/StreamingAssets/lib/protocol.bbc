@@ -15,7 +15,7 @@ export const f32 DistanceThresholdLargeSq = DistanceThresholdLarge * DistanceThr
 export const bool Debug = false;
 export const bool Logs = true;
 
-const int MaxUnits = 16;
+export const int MaxUnits = 8;
 
 export struct VerificationRequestPacket
 {
@@ -147,7 +147,7 @@ export int update_unit(List<Unit>* units, Unit unit)
     {
         if (units.length() >= MaxUnits)
         {
-            printline("Too many units");
+            printline("TMU!");
         }
         else
         {

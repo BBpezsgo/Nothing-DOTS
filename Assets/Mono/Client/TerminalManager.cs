@@ -399,7 +399,15 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                             _ => new StyleBackground(DiagnosticsInfoIcon),
                         };
 
-                        label.text = item.Message;
+                        if (item is DiagnosticAt diagnosticAt)
+                        {
+                            label.text = $"{item.Message} <color=#888>{diagnosticAt.File}:{diagnosticAt.Position.Range.Start.ToStringMin()}</color>";
+                        }
+                        else
+                        {
+                            label.text = item.Message;
+                        }
+
                         if (item.SubErrors.Any())
                         {
                             SyncDiagnosticItems(foldout, item.SubErrors, fixedLevel);

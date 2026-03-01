@@ -29,7 +29,7 @@ class VisualEffectHandlerComponent : MonoBehaviour
     {
         Age += Time.deltaTime;
 
-        if (Age >= Lifetime && VisualEffect.aliveParticleCount == 0)
+        if (Age >= Lifetime && (VisualEffect.aliveParticleCount == 0 || VisualEffect.culled))
         {
             if (Light != null)
             {

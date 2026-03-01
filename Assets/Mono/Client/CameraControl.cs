@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using SaintsField;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -14,7 +15,6 @@ public class CameraControl : Singleton<CameraControl>
     [Header("Movement")]
 
     [SerializeField] float MaxSpeed = 20f;
-    [SerializeField, SaintsField.ReadOnly] float Speed;
     [SerializeField] float Acceleration = 10f;
     [SerializeField] float Damping = 10f;
 
@@ -64,13 +64,15 @@ public class CameraControl : Singleton<CameraControl>
         }
     }
 
-    Vector3 velocity;
-    float ZoomHeight;
-    Vector3 horizontalVelocity;
-    Vector3 lastPosition;
-    Vector3 startDragWorld;
-    Vector2 startDragScreen;
-    Vector2 startDragZoomScreen;
+    [Header("Debug")]
+    [SerializeField, ReadOnly] float Speed;
+    [SerializeField, ReadOnly] Vector3 velocity;
+    [SerializeField, ReadOnly] float ZoomHeight;
+    [SerializeField, ReadOnly] Vector3 horizontalVelocity;
+    [SerializeField, ReadOnly] Vector3 lastPosition;
+    [SerializeField, ReadOnly] Vector3 startDragWorld;
+    [SerializeField, ReadOnly] Vector2 startDragScreen;
+    [SerializeField, ReadOnly] Vector2 startDragZoomScreen;
 
     protected override void Awake()
     {

@@ -200,7 +200,7 @@ export u8 targetat_simple(float2 target, float2* targetedPosition)
 
         CombatTurret.target_rotation = calculate_rotation(target);
 
-        CombatTurret.target_angle = 0.00001f; // TODO: fix this
+        CombatTurret.target_angle = 0.00001f; // todo: fix this
     }
 
     f32 diff = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);

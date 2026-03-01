@@ -145,8 +145,8 @@ void Receive()
 float3 targetedPosition = new float3;
 float3 currentTarget = new float3;
 float3 currentUserTarget = new float3;
-List<Unit> enemies = new List<Unit>(4);
-List<Unit> allies = new List<Unit>(4);
+List<Unit> enemies = new List<Unit>(MaxUnits);
+List<Unit> allies = new List<Unit>(MaxUnits);
 float2 currentDestination = new float2;
 u8 shouldShoot = false;
 f32 turretLastUseTime = 0f;

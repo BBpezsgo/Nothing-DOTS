@@ -1,20 +1,16 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using LanguageCore;
 
-public class ClientSimpleDiagnostic : Diagnostic
+public class ClientSimpleDiagnostic : DiagnosticAt
 {
     public uint Id { get; }
-    public Position Position { get; }
-    public Uri? File { get; }
-    public new List<ClientSimpleDiagnostic> SubErrors { get; }
+    public new ImmutableArray<ClientSimpleDiagnostic> SubErrors { get; }
 
-    public ClientSimpleDiagnostic(uint id, DiagnosticsLevel level, string message, Position position, Uri? file, List<ClientSimpleDiagnostic> suberrors)
-        : base(level, message, System.Collections.Immutable.ImmutableArray<Diagnostic>.Empty)
+    public ClientSimpleDiagnostic(uint id, DiagnosticsLevel level, string message, Position position, Uri file, ImmutableArray<ClientSimpleDiagnostic> suberrors)
+        : base(level, message, position, file, false, suberrors.As<Diagnostic>())
     {
         Id = id;
-        Position = position;
-        File = file;
         SubErrors = suberrors;
     }
 }

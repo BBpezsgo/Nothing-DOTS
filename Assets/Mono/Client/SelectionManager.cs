@@ -80,7 +80,7 @@ public class SelectionManager : Singleton<SelectionManager>
                 {
                     screenPoint.z = 0f;
                     screenPoint.y = MainCamera.Camera.pixelHeight - screenPoint.y;
-                    UnitCommandsUI.rootVisualElement.transform.position = screenPoint;
+                    UnitCommandsUI.rootVisualElement.style.translate = screenPoint;
                 }
             }
         }
@@ -104,7 +104,14 @@ public class SelectionManager : Singleton<SelectionManager>
 
         if (Input.GetMouseButtonDown(0))
         {
-            BeginBoxSelect();
+            if (UnitCommandsUI.gameObject.activeSelf)
+            {
+                HideUnitCommandsUI();
+            }
+            else
+            {
+                BeginBoxSelect();
+            }
         }
 
         if (Input.GetMouseButtonUp(0))
@@ -243,10 +250,10 @@ public class SelectionManager : Singleton<SelectionManager>
 
     void FinishBoxSelect()
     {
-        if (!Input.GetKey(KeyCode.LeftShift)) ClearSelection();
         SetSelectBoxVisible(false);
-
         if (_selectionStart == default) return;
+
+        if (!Input.GetKey(KeyCode.LeftShift)) ClearSelection();
 
         Vector3 startPoint = MainCamera.Camera.WorldToScreenPoint(_selectionStart);
         Vector3 endPoint = Input.mousePosition;
@@ -466,7 +473,7 @@ public class SelectionManager : Singleton<SelectionManager>
         {
             screenPoint.z = 0f;
             screenPoint.y = MainCamera.Camera.pixelHeight - screenPoint.y;
-            UnitCommandsUI.rootVisualElement.transform.position = screenPoint;
+            UnitCommandsUI.rootVisualElement.style.translate = screenPoint;
         }
 
         VisualElement container = UnitCommandsUI.rootVisualElement.Q("container-unit-commands");

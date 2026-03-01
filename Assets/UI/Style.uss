@@ -5,7 +5,7 @@
 
 Label {
     color: rgb(207, 207, 207);
-    -unity-font-definition: resource('FlatSkin/Font/Roboto-Bold');
+    -unity-font-definition: resource("FlatSkin/Font/Roboto-Bold");
 }
 
 Label.error {
@@ -55,7 +55,7 @@ Button {
     padding-right: 3px;
     padding-top: 0;
     padding-bottom: 0;
-    -unity-font-definition: resource('FlatSkin/Font/Roboto-Medium');
+    -unity-font-definition: resource("FlatSkin/Font/Roboto-Medium");
     border-top-color: rgb(48, 48, 48);
 }
 
@@ -551,19 +551,24 @@ ProgressBar Label {
 }
 
 .diagnostics-item {
-    border-top-width: 1px;
-    border-right-width: 1px;
-    border-bottom-width: 1px;
-    border-left-width: 1px;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
     border-bottom-left-radius: 4px;
-    border-left-color: rgb(26, 26, 26);
-    border-right-color: rgb(26, 26, 26);
-    border-top-color: rgb(26, 26, 26);
-    border-bottom-color: rgb(26, 26, 26);
-    background-color: rgb(56, 56, 56);
+    flex-grow: 1;
+    background-color: rgb(0, 0, 0);
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    border-left-color: rgb(0, 0, 0);
+    border-right-color: rgb(0, 0, 0);
+    border-top-color: rgb(0, 0, 0);
+    border-bottom-color: rgb(0, 0, 0);
 }
 
 .diagnostics-item > .unity-foldout > Toggle {

@@ -437,7 +437,7 @@ MonoBehaviour:
   AngleConstraint: {x: -20, y: 5}
   TurretRotationSpeed: 5
   CannonRotationSpeed: 3
-  Spread: 0
+  Spread: 0.002
   BulletReload: 0.1
   MagazineReload: 0
   MagazineSize: 1

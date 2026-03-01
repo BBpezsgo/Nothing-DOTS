@@ -1,119 +1,41 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using Unity.Collections;
-using Unity.Entities;
+using SaintsField;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public static class UIExtensions
+public class UI : PrivateSingleton<UI>
 {
-    public static void SyncList<T>(
-        this VisualElement container,
-        DynamicBuffer<T> collection,
-        VisualTreeAsset itemAsset,
-        Action<T, VisualElement, bool> updater)
-        where T : unmanaged
-        => SyncList(
-            container,
-            collection.AsNativeArray(),
-            itemAsset,
-            updater
-        );
+    [SerializeField, ReadOnly] UIDocument?[]? _uiDocuments;
+    [SerializeField, ReadOnly] UIDocument? _focusedDocument;
+    [SerializeField, ReadOnly] bool _isUiFocused;
+    float _uiDocumentsTime;
 
-    public static void SyncList<T>(
-        this VisualElement container,
-        NativeList<T> collection,
-        VisualTreeAsset itemAsset,
-        Action<T, VisualElement, bool> updater)
-        where T : unmanaged
-        => SyncList(
-            container,
-            collection.AsArray(),
-            itemAsset,
-            updater
-        );
-
-    public static void SyncList<T>(
-        this VisualElement container,
-        NativeArray<T> collection,
-        VisualTreeAsset itemAsset,
-        Action<T, VisualElement, bool> updater)
-        where T : unmanaged
+    void Update()
     {
-        VisualElement[] childrenElement = container.Children().ToArray();
-        int i;
-
-        for (i = 0; i < collection.Length; i++)
+        _focusedDocument = null;
+        foreach (UIDocument? uiDocument in UIDocuments)
         {
-            if (i < childrenElement.Length)
-            {
-                VisualElement element = childrenElement[i];
-                updater.Invoke(collection[i], element, true);
-            }
-            else
-            {
-                VisualElement element = itemAsset.Instantiate();
-                container.Add(element);
-                updater.Invoke(collection[i], element, false);
-            }
+            if (uiDocument == null || uiDocument.rootVisualElement?.focusController?.focusedElement == null) continue;
+            _focusedDocument = uiDocument;
+            break;
         }
-
-        for (; i < childrenElement.Length; i++)
-        {
-            container.Remove(childrenElement[i]);
-        }
+        _isUiFocused = IsUIFocused;
     }
-
-    public static void SyncList<T>(
-        this VisualElement container,
-        IReadOnlyList<T> collection,
-        VisualTreeAsset itemAsset,
-        Action<T, VisualElement, bool> updater)
-    {
-        VisualElement[] childrenElement = container.Children().ToArray();
-        int i;
-
-        for (i = 0; i < collection.Count; i++)
-        {
-            if (i < childrenElement.Length)
-            {
-                VisualElement element = childrenElement[i];
-                updater.Invoke(collection[i], element, true);
-            }
-            else
-            {
-                VisualElement element = itemAsset.Instantiate();
-                container.Add(element);
-                updater.Invoke(collection[i], element, false);
-            }
-        }
-
-        for (; i < childrenElement.Length; i++)
-        {
-            container.Remove(childrenElement[i]);
-        }
-    }
-}
-
-public static class UI
-{
-    static ImmutableArray<UIDocument?> _uiDocuments;
-    static float _uiDocumentsTime;
 
     static ImmutableArray<UIDocument?> UIDocuments
     {
         get
         {
-            if (_uiDocuments.IsDefault || Time.time - _uiDocumentsTime > 10f)
+            UI v = Instance;
+            if (v._uiDocuments == null || Time.time - v._uiDocumentsTime > 10f)
             {
-                _uiDocumentsTime = Time.time;
-                return _uiDocuments = UnityEngine.Object.FindObjectsByType<UIDocument?>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToImmutableArray();
+                v._uiDocumentsTime = Time.time;
+                return (v._uiDocuments = FindObjectsByType<UIDocument?>(FindObjectsInactive.Include, FindObjectsSortMode.None)).ToImmutableArray();
             }
             else
             {
-                return _uiDocuments;
+                return v._uiDocuments.ToImmutableArray();
             }
         }
     }
@@ -138,7 +60,6 @@ public static class UI
     }
 
     static readonly List<VisualElement> _picked = new();
-
     public static bool IsPointerOverUI()
     {
         Vector2 pointerUiPos = new(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
