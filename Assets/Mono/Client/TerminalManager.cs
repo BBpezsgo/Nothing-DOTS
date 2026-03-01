@@ -441,12 +441,14 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 case CompilationStatus.Secuedued:
                 {
                     ui_progressCompilation.title = "Secuedued ...";
+                    ui_progressCompilation.value = 0f;
                     SetProgressStatus(null);
                     break;
                 }
                 case CompilationStatus.Compiling:
                 {
                     ui_progressCompilation.title = "Compiling ...";
+                    ui_progressCompilation.value = 1f;
                     SetProgressStatus(null);
                     break;
                 }
@@ -459,12 +461,14 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 case CompilationStatus.Generating:
                 {
                     ui_progressCompilation.title = "Generating ...";
+                    ui_progressCompilation.value = 1f;
                     SetProgressStatus(null);
                     break;
                 }
                 case CompilationStatus.Generated:
                 {
                     ui_progressCompilation.title = "Generated";
+                    ui_progressCompilation.value = 1f;
                     SetProgressStatus(null);
                     break;
                 }
@@ -603,7 +607,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     else if (source == null)
                     {
                         ui_progressCompilation.title = "Remote source";
-                        ui_progressCompilation.value = 0f;
+                        ui_progressCompilation.value = 1f;
                         SetProgressStatus(null);
                     }
                     else if (!source.IsSuccess)
