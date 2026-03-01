@@ -1,6 +1,6 @@
-using "lib/turret.bbc";
-using "lib/api.bbc";
-using "lib/protocol.bbc";
+using "lib/turret";
+using "lib/api";
+using "lib/protocol";
 
 [UnitCommand(1, "Attack at")]
 struct CommandAttackAt

@@ -52,6 +52,32 @@ struct ProcessorMemory
     [FieldOffset(Processor.MappedMemoryStart)] public MappedMemory MappedMemory;
 }
 
+readonly struct AttributeMeta : IEquatable<AttributeMeta>
+{
+    public readonly byte Offset;
+    public readonly byte Size;
+
+    public AttributeMeta(byte offset, byte size)
+    {
+        Offset = offset;
+        Size = size;
+    }
+
+    public override bool Equals(object? obj) => obj is AttributeMeta meta && Equals(meta);
+    public bool Equals(AttributeMeta other) => Offset == other.Offset && Size == other.Size;
+    public override int GetHashCode() => HashCode.Combine(Offset, Size);
+
+    public static bool operator ==(AttributeMeta left, AttributeMeta right) => left.Equals(right);
+    public static bool operator !=(AttributeMeta left, AttributeMeta right) => !left.Equals(right);
+}
+
+[ChunkSerializable]
+struct UnitAttributesPack
+{
+    public UnsafeList<AttributeMeta>.ReadOnly Fields;
+    public UnsafeList<byte>.ReadOnly Data;
+}
+
 [ChunkSerializable]
 struct ProcessorSource
 {
@@ -81,6 +107,7 @@ struct Processor : IComponentData
     [GhostField] public FileId SourceFile;
     public long CompiledSourceVersion;
     public ProcessorSource Source;
+    public UnitAttributesPack Attributes;
 
     public int CyclesPerTick;
     public Registers Registers;

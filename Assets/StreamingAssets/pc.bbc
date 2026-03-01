@@ -1,5 +1,5 @@
-using "lib/api.bbc";
-using "lib/protocol.bbc";
+using "lib/api";
+using "lib/protocol";
 
 void Receive()
 {

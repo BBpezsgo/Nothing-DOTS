@@ -1,4 +1,4 @@
-using "api.bbc";
+using "api";
 
 export void stop_moving()
 {

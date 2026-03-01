@@ -1,4 +1,4 @@
-using api;
+using "lib/api";
 
 TechnologyHash hashPtr = new u8[30];
 

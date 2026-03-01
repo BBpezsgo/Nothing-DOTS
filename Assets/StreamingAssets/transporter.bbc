@@ -1,5 +1,5 @@
-using "move.bbc";
-using "api.bbc";
+using "lib/move";
+using "lib/api";
 
 [UnitCommand(1, "In")]
 struct CommandIn

@@ -1,4 +1,4 @@
-using "api.bbc";
+using "api";
 
 const f32 G = 9.82f;
 const f32 PROJECTILE_V = 40f;

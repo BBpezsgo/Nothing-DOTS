@@ -196,6 +196,17 @@ export inline void ldebug_label(float2 localPosition, temp string text)
 
 [External("dequeue_command")] export int dequeue_command(any* data);
 
+[External("attributes_query")] export bool try_query_attribute(int attribute, any* data);
+
+export void query_attribute(int attribute, any* data)
+{
+    if (!try_query_attribute(attribute, data)) crash "Failed to query attribute";
+}
+
+export const int ATTRIBUTE_TURRET_MAGAZINE = 0;
+export const int ATTRIBUTE_TURRET_PROJECTILE_VELOCITY = 1;
+export const int ATTRIBUTE_TURRET_PROJECTILE_DAMAGE = 2;
+
 [External("gui_create")] void gui_create(any* ptr);
 [External("gui_update")] void gui_update(any* ptr);
 [External("gui_destroy")] void gui_destroy(int id);
