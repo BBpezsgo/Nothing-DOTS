@@ -63,7 +63,7 @@ static unsafe class ProcessorAPI
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.Read).Value, Pendrive.Prefix + 3, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.Write).Value, Pendrive.Prefix + 4, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
 
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Pendrive.Write).Value, Pendrive.Prefix + 4, ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Attributes.QueryAttribute).Value, Attributes.Prefix + 1, ExternalFunctionGenerator.SizeOf<int, int>(), ExternalFunctionGenerator.SizeOf<byte>(), default));
     }
 
     public static IExternalFunction[] GenerateManagedExternalFunctions()
@@ -111,6 +111,8 @@ static unsafe class ProcessorAPI
             new ExternalFunctionStub(Pendrive.Prefix + 2,          "pendrive_unplug", 0, 0),
             new ExternalFunctionStub(Pendrive.Prefix + 3,          "pendrive_read", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
             new ExternalFunctionStub(Pendrive.Prefix + 4,          "pendrive_write", ExternalFunctionGenerator.SizeOf<int, int, int>(), ExternalFunctionGenerator.SizeOf<int>()),
+
+            new ExternalFunctionStub(Attributes.Prefix + 1,        "attributes_query", ExternalFunctionGenerator.SizeOf<int, int>(), ExternalFunctionGenerator.SizeOf<byte>()),
         };
     }
 
@@ -1011,4 +1013,33 @@ static unsafe class ProcessorAPI
         }
     }
     */
+
+    [BurstCompile]
+    public static class Attributes
+    {
+        public const int Prefix = 0x000A0000;
+
+        [BurstCompile]
+        [MonoPInvokeCallback(typeof(ExternalFunctionUnity))]
+        public static void QueryAttribute(nint _scope, nint arguments, nint returnValue)
+        {
+            FunctionScope* scope = (FunctionScope*)_scope;
+            (int attributeId, int destination) = ExternalFunctionGenerator.TakeParameters<int, int>(arguments);
+
+            if (destination is < 0 or >= Processor.TotalMemorySize) goto bad;
+
+            UnitAttributesPack attributes = scope->EntityRef.Processor->Attributes;
+            if (attributeId < 0 || attributeId >= attributes.Fields.Length) goto bad;
+
+            AttributeMeta attribute = attributes.Fields.Ptr[attributeId];
+
+            scope->ProcessorRef.MemorySpan.Set(destination, new ReadOnlySpan<byte>(attributes.Data.Ptr + attribute.Offset, attribute.Size));
+
+            returnValue.Set(true);
+            return;
+        bad:
+            returnValue.Set(false);
+            return;
+        }
+    }
 }
