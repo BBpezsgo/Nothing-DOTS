@@ -21,8 +21,8 @@ static unsafe class ProcessorAPI
     [BurstCompile]
     public static void GenerateExternalFunctions(ref NativeList<ExternalFunctionScopedSync> buffer)
     {
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(IO.StdOut).Value, IO.Prefix + 1, ExternalFunctionGenerator.SizeOf<char>(), 0, default));
-        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(IO.StdIn).Value, IO.Prefix + 2, 0, ExternalFunctionGenerator.SizeOf<char>(), default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(IO.StdOut).Value, IO.Prefix + 1, ExternalFunctionGenerator.SizeOf<byte>(), 0, default));
+        buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(IO.StdIn).Value, IO.Prefix + 2, 0, ExternalFunctionGenerator.SizeOf<byte>(), default));
 
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Sqrt).Value, Math.Prefix + 1, ExternalFunctionGenerator.SizeOf<float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
         buffer.Add(new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)BurstCompiler.CompileFunctionPointer<ExternalFunctionUnity>(Math.Atan2).Value, Math.Prefix + 2, ExternalFunctionGenerator.SizeOf<float, float>(), ExternalFunctionGenerator.SizeOf<float>(), default));
@@ -68,8 +68,8 @@ static unsafe class ProcessorAPI
 
     public static IExternalFunction[] GenerateManagedExternalFunctions() => new IExternalFunction[]
     {
-        new ExternalFunctionStub(IO.Prefix + 1,                "stdout", ExternalFunctionGenerator.SizeOf<char>(), 0),
-        new ExternalFunctionStub(IO.Prefix + 2,                "stdin", 0, ExternalFunctionGenerator.SizeOf<char>()),
+        new ExternalFunctionStub(IO.Prefix + 1,                "stdout", ExternalFunctionGenerator.SizeOf<byte>(), 0),
+        new ExternalFunctionStub(IO.Prefix + 2,                "stdin", 0, ExternalFunctionGenerator.SizeOf<byte>()),
 
         ExternalFunctionSync.Create<float, float>(Math.Prefix + 1,        "sqrt", MathF.Sqrt),
         ExternalFunctionSync.Create<float, float, float>(Math.Prefix + 2, "atan2", MathF.Atan2),
@@ -222,10 +222,10 @@ static unsafe class ProcessorAPI
             using ProfilerMarker.AutoScope marker = MarkerStdout.Auto();
 #endif
 
-            char output = arguments.To<char>();
+            byte output = arguments.To<byte>();
             if (output == '\r') return;
             Processor* p = ((FunctionScope*)_scope)->EntityRef.Processor;
-            p->StdOutBuffer.AppendShift(output);
+            p->StdOutBuffer.AppendShift((char)output);
             p->StdOutBufferCursor++;
         }
 

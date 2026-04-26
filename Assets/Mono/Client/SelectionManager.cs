@@ -85,7 +85,7 @@ public class SelectionManager : Singleton<SelectionManager>
             }
         }
 
-        if (BuildingManager.Instance.IsWireConnecting)
+        if (BuildingManager.Instance.IsBuilding)
         {
             SetSelectBoxVisible(false);
             _firstHit = Entity.Null;

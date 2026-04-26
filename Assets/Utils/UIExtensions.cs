@@ -12,14 +12,16 @@ public static class UIExtensions
         DynamicBuffer<T> collection,
         VisualTreeAsset itemAsset,
         Action<T, VisualElement, bool> updater,
-        Predicate<T>? predicate = null)
+        Predicate<T>? predicate = null,
+        int startIndex = 0)
         where T : unmanaged
         => SyncList(
             container,
             collection.AsNativeArray(),
             itemAsset,
             updater,
-            predicate
+            predicate,
+            startIndex
         );
 
     public static void SyncList<T>(
@@ -27,14 +29,16 @@ public static class UIExtensions
         NativeList<T> collection,
         VisualTreeAsset itemAsset,
         Action<T, VisualElement, bool> updater,
-        Predicate<T>? predicate = null)
+        Predicate<T>? predicate = null,
+        int startIndex = 0)
         where T : unmanaged
         => SyncList(
             container,
             collection.AsArray(),
             itemAsset,
             updater,
-            predicate
+            predicate,
+            startIndex
         );
 
     public static void SyncList<T>(
@@ -42,10 +46,11 @@ public static class UIExtensions
         NativeArray<T> collection,
         VisualTreeAsset itemAsset,
         Action<T, VisualElement, bool> updater,
-        Predicate<T>? predicate = null)
+        Predicate<T>? predicate = null,
+        int startIndex = 0)
         where T : unmanaged
     {
-        VisualElement[] childrenElement = container.Children().ToArray();
+        VisualElement[] childrenElement = container.Children().Skip(startIndex).ToArray();
         int n = 0;
 
         for (int i = 0; i < collection.Length; i++)
@@ -78,9 +83,10 @@ public static class UIExtensions
         IReadOnlyList<T> collection,
         VisualTreeAsset itemAsset,
         Action<T, VisualElement, bool> updater,
-        Predicate<T>? predicate = null)
+        Predicate<T>? predicate = null,
+        int startIndex = 0)
     {
-        VisualElement[] childrenElement = container.Children().ToArray();
+        VisualElement[] childrenElement = container.Children().Skip(startIndex).ToArray();
         int n = 0;
 
         for (int i = 0; i < collection.Count; i++)
@@ -112,9 +118,10 @@ public static class UIExtensions
         this VisualElement container,
         IEnumerable<T> collection,
         VisualTreeAsset itemAsset,
-        Action<T, VisualElement, bool> updater)
+        Action<T, VisualElement, bool> updater,
+        int startIndex = 0)
     {
-        VisualElement[] childrenElement = container.Children().ToArray();
+        VisualElement[] childrenElement = container.Children().Skip(startIndex).ToArray();
         int i = 0;
 
         foreach (T item in collection)

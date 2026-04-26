@@ -116,6 +116,41 @@ public partial struct BuildingSystemServer : ISystem
         }
 
         foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<DestroyBuildingRpc>>()
+            .WithEntityAccess())
+        {
+            if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            commandBuffer.DestroyEntity(entity);
+            NetworkId networkId = request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO;
+
+            (Entity Entity, Player Player) requestPlayer = default;
+
+            foreach (var (player, _entity) in
+                SystemAPI.Query<RefRO<Player>>()
+                .WithEntityAccess())
+            {
+                if (player.ValueRO.ConnectionId != networkId.Value) continue;
+                requestPlayer = (_entity, player.ValueRO);
+                break;
+            }
+
+            if (requestPlayer.Entity == Entity.Null)
+            {
+                Debug.LogWarning(string.Format($"{DebugEx.ServerPrefix} Failed to destroy building: requested by `{{0}}` but doesn't have a team", networkId));
+                continue;
+            }
+
+            foreach (var (buildingGhost, buildingEntity) in SystemAPI.Query<RefRO<GhostInstance>>().WithAll<Building>().WithEntityAccess())
+            {
+                if (command.ValueRO.Entity.Equals(buildingGhost.ValueRO))
+                {
+                    if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+                    commandBuffer.DestroyEntity(buildingEntity);
+                }
+            }
+        }
+
+        foreach (var (request, command, entity) in
             SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<PlaceWireRequestRpc>>()
             .WithEntityAccess())
         {
@@ -173,41 +208,44 @@ public partial struct BuildingSystemServer : ISystem
             DynamicBuffer<BufferedWire> wiresA = SystemAPI.GetBuffer<BufferedWire>(connectorA.Entity);
             DynamicBuffer<BufferedWire> wiresB = SystemAPI.GetBuffer<BufferedWire>(connectorB.Entity);
 
-            foreach (BufferedWire item in wiresA)
+            bool isRemove = false;
+            for (int i = 0; i < wiresA.Length; i++)
             {
+                BufferedWire item = wiresA[i];
                 if ((item.PortIdentifierA == connectorA && item.PortIdentifierB == connectorB) ||
                     (item.PortIdentifierA == connectorB && item.PortIdentifierB == connectorA))
                 {
-                    goto alreadyExists;
+                    wiresA.RemoveAtSwapBack(i);
+                    isRemove = true;
                 }
             }
 
-            foreach (BufferedWire item in wiresB)
+            for (int i = 0; i < wiresB.Length; i++)
             {
+                BufferedWire item = wiresB[i];
                 if ((item.PortIdentifierA == connectorA && item.PortIdentifierB == connectorB) ||
                     (item.PortIdentifierA == connectorB && item.PortIdentifierB == connectorA))
                 {
-                    goto alreadyExists;
+                    wiresB.RemoveAtSwapBack(i);
+                    isRemove = true;
                 }
             }
 
-            BufferedWire wire = new()
+            if (!isRemove)
             {
-                EntityA = connectorA.Entity,
-                EntityB = connectorB.Entity,
-                PortA = connectorA.Port,
-                PortB = connectorB.Port,
-                GhostA = command.ValueRO.EntityA,
-                GhostB = command.ValueRO.EntityB,
-            };
+                BufferedWire wire = new()
+                {
+                    EntityA = connectorA.Entity,
+                    EntityB = connectorB.Entity,
+                    PortA = connectorA.Port,
+                    PortB = connectorB.Port,
+                    GhostA = command.ValueRO.EntityA,
+                    GhostB = command.ValueRO.EntityB,
+                };
 
-            wiresA.Add(wire);
-            wiresB.Add(wire);
-
-            continue;
-
-        alreadyExists:;
-            Debug.Log($"{DebugEx.ServerPrefix} Failed to place wire: already exists");
+                wiresA.Add(wire);
+                wiresB.Add(wire);
+            }
         }
 
         foreach (var (placeholder, transform, owner, unitTeam, entity) in

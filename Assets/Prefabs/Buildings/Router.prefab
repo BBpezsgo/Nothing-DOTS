@@ -197,7 +197,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Prefabs: {fileID: 11400000, guid: 9fbd3be61b1b911759f2e0e4d52dafb8, type: 2}
-  Prefab: {fileID: 11400000, guid: 16902f19e2053636ea4ce7c1fd7f6ccc, type: 2}
+  Prefab: {fileID: 11400000, guid: 52f9e7c941b34e9a9a4530d03c394592, type: 2}
   Team: 0
 --- !u!114 &3894392865319758894
 MonoBehaviour:

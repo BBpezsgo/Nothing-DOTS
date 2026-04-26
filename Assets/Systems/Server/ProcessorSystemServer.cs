@@ -513,6 +513,7 @@ partial struct ProcessorJob : IJobEntity
         scope.ProcessorRef.Registers = &processorState.Registers;
 
         //using (var _2 = __ProcessorJobInner.Auto())
+        try
         {
             for (int i = 0; i < processor.CyclesPerTick; i++)
             {
@@ -553,12 +554,16 @@ partial struct ProcessorJob : IJobEntity
                     char key = processor.InputKey[0];
                     processor.InputKey.RemoveAt(0);
                     processor.IsKeyRequested = false;
-                    processorState.Pop(2);
-                    processorState.Push(key.AsBytes());
+                    processorState.Pop(1);
+                    processorState.Push((byte)key);
                 }
 
                 processorState.Process();
             }
+        }
+        catch (RuntimeException ex)
+        {
+            Debug.LogError(ex.ToString());
         }
 
         if (processor.Source.GeneratedFunctions.IsCreated)

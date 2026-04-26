@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using LanguageCore;
-using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 using Unity.Collections;
 
@@ -15,11 +14,9 @@ public class CompiledSourceClient : ICompiledSource
 
     public bool IsSuccess;
 
-    public NativeArray<Instruction>? Code;
     public NativeArray<ExternalFunctionScopedSync>? GeneratedFunction;
     public NativeArray<UnitCommandDefinition>? UnitCommandDefinitions;
     public List<ClientSimpleDiagnostic> ClientDiagnostics;
-    public CompilerResult Compiled;
     public Dictionary<FileId, ProgressRecord<(int Current, int Total)>> SubFiles;
     public readonly List<CompilationAnalysticsRpc> OrphanDiagnostics = new();
 
@@ -46,7 +43,6 @@ public class CompiledSourceClient : ICompiledSource
         IsSuccess = isSuccess;
         UnitCommandDefinitions = unitCommandDefinitions;
         Status = status;
-        Compiled = CompilerResult.MakeEmpty(sourceFile.ToUri());
         SubFiles = new();
         ClientDiagnostics = new();
     }

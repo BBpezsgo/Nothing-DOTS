@@ -191,17 +191,29 @@ public partial class WireRendererSystemClient : SystemBase
             bool a = false;
             bool b = false;
 
-            foreach (RefRO<GhostInstance> ghost in SystemAPI.Query<RefRO<GhostInstance>>())
+            foreach (var (ghost, wires) in SystemAPI.Query<RefRO<GhostInstance>, DynamicBuffer<BufferedWire>>())
             {
                 if (line.Key.EntityA.Equals(ghost.ValueRO))
                 {
-                    a = true;
-                    if (b) break;
+                    foreach (var wire in wires)
+                    {
+                        if (line.Key.Equals(wire))
+                        {
+                            a = true;
+                            if (b) goto ok;
+                        }
+                    }
                 }
                 else if (line.Key.EntityB.Equals(ghost.ValueRO))
                 {
-                    b = true;
-                    if (a) break;
+                    foreach (var wire in wires)
+                    {
+                        if (line.Key.Equals(wire))
+                        {
+                            b = true;
+                            if (a) goto ok;
+                        }
+                    }
                 }
             }
 
@@ -211,6 +223,8 @@ public partial class WireRendererSystemClient : SystemBase
                 Lines.Remove(line.Key);
                 break;
             }
+
+        ok:;
         }
 
         foreach (var (connectorA, connectorPosA, wires, ghostA, entity) in SystemAPI.Query<RefRO<Connector>, RefRO<LocalTransform>, DynamicBuffer<BufferedWire>, RefRO<GhostInstance>>().WithEntityAccess())

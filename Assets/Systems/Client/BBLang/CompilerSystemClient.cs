@@ -31,11 +31,9 @@ partial class CompilerSystemClient : SystemBase
             {
                 Debug.Log($"{DebugEx.ClientPrefix} Disposing old source \"{command.ValueRO.FileName}\"");
 
-                source.Code?.Dispose();
                 source.GeneratedFunction?.Dispose();
                 source.UnitCommandDefinitions?.Dispose();
 
-                source.Code = default;
                 source.GeneratedFunction = default;
                 source.UnitCommandDefinitions = default;
             }
