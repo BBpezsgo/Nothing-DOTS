@@ -1,0 +1,28 @@
+using "lib/api";
+using "lib/protocol";
+
+int fg = 30;
+while (1)
+{
+    for (int y = 0; y < 10; y++)
+    {
+        for (int x = 0; x < 30; x++)
+        {
+            float h = sin(x * 0.3f);
+            int hy = (int)((h + 1) * 5);
+            if (hy == y)
+            {
+                fg++;
+                if (fg > 39) fg = 31;
+                print('\e');
+                print('[');
+                print(fg);
+                print('m');
+
+                print('x');
+            }
+            else print(' ');
+        }
+        printline();
+    }
+}

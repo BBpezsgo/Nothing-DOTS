@@ -4,31 +4,31 @@ using "lib/api";
 [UnitCommand(1, "In")]
 struct CommandIn
 {
-    [Context("position")] float2 position;
+    [Context("position")] float3 position;
 }
 
 [UnitCommand(2, "Out")]
 struct CommandOut
 {
-    [Context("position")] float2 position;
+    [Context("position")] float3 position;
 }
 
 [UnitCommand(3, "Move to")]
 struct CommandMoveTo
 {
-    [Context("position")] float2 position;
+    [Context("position")] float3 position;
 }
 
 [UnitCommand(4, "Set Source")]
 struct CommandSetSource
 {
-    [Context("position")] float2 position;
+    [Context("position")] float3 position;
 }
 
 [UnitCommand(5, "Set Destination")]
 struct CommandSetDestination
 {
-    [Context("position")] float2 position;
+    [Context("position")] float3 position;
 }
 
 const int MaxCommandDataSize = 8;
@@ -43,7 +43,7 @@ void Receive()
         i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)REQUEST_HEADER &&
+        if (v[0] == (u8)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
@@ -52,7 +52,7 @@ void Receive()
             {
                 printline(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-                responsePacket.header = (u8)RESPONSE_HEADER;
+                responsePacket.header = PacketHeader.response;
                 responsePacket.position = packet.position;
                 debug(packet.position, CYAN);
                 wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
@@ -61,11 +61,11 @@ void Receive()
     }
 }
 
-float2 currentDestination = new float2;
+float3 currentDestination = new float3;
 u8 currentDirectionAtDestination = (u8)0;
 
-float2 _loadSource = new float2;
-float2 _loadDestination = new float2;
+float3 _loadSource = new float3;
+float3 _loadDestination = new float3;
 int _state = 0;
 
 while (1)
@@ -98,17 +98,17 @@ while (1)
     {
         CommandSetSource* command = &_command as CommandSetSource*;
         _loadSource = command.position;
-        currentDestination = new float2;
+        currentDestination = new float3;
     }
     else if (commandId == 5)
     {
         CommandSetDestination* command = &_command as CommandSetDestination*;
         _loadDestination = command.position;
-        currentDestination = new float2;
+        currentDestination = new float3;
     }
 
     if (currentDestination.x != 0f &&
-        currentDestination.y != 0f)
+        currentDestination.z != 0f)
     {
         float d = distancesqr(GPS.position, currentDestination);
         if (d < 2f * 2f)
@@ -118,13 +118,13 @@ while (1)
         }
         else
         {
-            move_to(currentDestination.x, currentDestination.y);
+            move_to(currentDestination.x, currentDestination.z);
         }
     }
     else if (_loadSource.x != 0f &&
-             _loadSource.y != 0f &&
+             _loadSource.z != 0f &&
              _loadDestination.x != 0f &&
-             _loadDestination.y != 0f)
+             _loadDestination.z != 0f)
     {
         if (_state == 0)
         {
@@ -135,7 +135,7 @@ while (1)
             }
             else
             {
-                move_to(_loadSource.x, _loadSource.y);
+                move_to(_loadSource.x, _loadSource.z);
             }
         }
         else if (_state == 1)
@@ -156,7 +156,7 @@ while (1)
             }
             else
             {
-                move_to(_loadDestination.x, _loadDestination.y);
+                move_to(_loadDestination.x, _loadDestination.z);
             }
         }
         else if (_state == 3)

@@ -1,4 +1,4 @@
-using "~/Projects/BBLang/Core/StandardLibrary/System.bbc";
+using "stdlib/System.bbc";
 using "mm.bbc";
 using "utils.bbc";
 
@@ -50,8 +50,8 @@ export const u8 WHITE = (u8)0b111;
 [External("acos")] export f32 acos(f32 v);
 [External("atan")] export f32 atan(f32 v);
 
-[External("wreceive")] export i32 wreceive(any* buffer, i32 length, float3* direction);
-[External("wsend")] export void wsend(any* buffer, i32 length, float3* direction, f32 angle);
+[External("wreceive")] export i32 wreceive(any* buffer, i32 length, float3& direction);
+[External("wsend")] export void wsend(any* buffer, i32 length, float3& direction, f32 angle);
 
 [External("receive")] export i32 receive(any* buffer, i32 length, u8 port = 0);
 [External("send")] export void send(any* buffer, i32 length, u8 port = 0);
@@ -61,7 +61,7 @@ export inline void wsend(any* buffer, i32 length, float3 direction, f32 angle)
     wsend(buffer, length, &direction, angle);
 }
 
-export inline void wsend(any* buffer, i32 length, float3* direction)
+export inline void wsend(any* buffer, i32 length, float3& direction)
 {
     wsend(buffer, length, direction, 0.1f);
 }

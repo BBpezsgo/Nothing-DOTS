@@ -27,13 +27,13 @@ void Receive()
         i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)REQUEST_HEADER &&
+        if (v[0] == (u8)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-            responsePacket.header = (u8)RESPONSE_HEADER;
+            responsePacket.header = PacketHeader.response;
             responsePacket.position = packet.position;
 
             if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)

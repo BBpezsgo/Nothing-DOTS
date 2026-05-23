@@ -4,13 +4,13 @@ using "lib/api";
 [UnitCommand(1, "Extract")]
 struct CommandExtract
 {
-    [Context("position")] float2 position;
+    [Context("position")] float3 position;
 }
 
 [UnitCommand(2, "Move to")]
 struct CommandMoveTo
 {
-    [Context("position")] float2 position;
+    [Context("position")] float3 position;
 }
 
 const int MaxCommandDataSize = 8;
@@ -25,7 +25,7 @@ void Receive()
         i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)REQUEST_HEADER &&
+        if (v[0] == (u8)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
@@ -34,7 +34,7 @@ void Receive()
             {
                 printline(" M");
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-                responsePacket.header = (u8)RESPONSE_HEADER;
+                responsePacket.header = PacketHeader.response;
                 responsePacket.position = packet.position;
                 debug(packet.position, CYAN);
                 wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
@@ -43,8 +43,8 @@ void Receive()
     }
 }
 
-float2 currentDestination = new float2;
-float2 currentExtract = new float2;
+float3 currentDestination = new float3;
+float3 currentExtract = new float3;
 
 while (1)
 {
@@ -58,23 +58,23 @@ while (1)
     {
         CommandExtract* command = &_command as CommandExtract*;
         currentExtract = command.position;
-        currentDestination = new float2;
+        currentDestination = new float3;
     }
     else if (commandId == 2)
     {
         CommandMoveTo* command = &_command as CommandMoveTo*;
-        currentExtract = new float2;
+        currentExtract = new float3;
         currentDestination = command.position;
     }
 
     if (currentDestination.x != 0f &&
-        currentDestination.y != 0f)
+        currentDestination.z != 0f)
     {
-        move_to(currentDestination.x, currentDestination.y);
+        move_to(currentDestination.x, currentDestination.z);
     }
 
     if (currentExtract.x != 0f &&
-        currentExtract.y != 0f)
+        currentExtract.z != 0f)
     {
         float d = distancesqr(GPS.position, currentExtract);
         if (d < 2f * 2f)
@@ -86,7 +86,7 @@ while (1)
         }
         else
         {
-            move_to(currentExtract.x, currentExtract.y);
+            move_to(currentExtract.x, currentExtract.z);
         }
     }
 }

@@ -5,7 +5,7 @@ while (1)
     float3 radarPoint = radar();
     if (!empty(radarPoint))
     {
-        ldebug(radarPoint, 0b100);
+        ldebug(radarPoint, RED);
     }
     Radar.direction = (Radar.direction + 0.05f) % TAU;
 }

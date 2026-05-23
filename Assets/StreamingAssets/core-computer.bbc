@@ -19,13 +19,13 @@ void Receive()
         i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)REQUEST_HEADER &&
+        if (v[0] == (u8)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-            responsePacket.header = (u8)RESPONSE_HEADER;
+            responsePacket.header = PacketHeader.response;
 
             if (distancesqr(packet.position, GPS.position) < DistanceThresholdLargeSq)
             {
@@ -41,7 +41,7 @@ void Receive()
                     if (distanceSqr < DistanceThresholdSq)
                     {
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
-                        indirectResponsePacket.header = (u8)INDIRECT_RESPONSE_HEADER;
+                        indirectResponsePacket.header = PacketHeader.indirect_response;
                         indirectResponsePacket.position = (&allies).raw()[i].position;
                         indirectResponsePacket.expires = (&allies).raw()[i].expires;
                         wsend(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction, 0.1f);
@@ -50,7 +50,7 @@ void Receive()
                 }
             }
         }
-        else if (v[0] == (u8)RESPONSE_HEADER &&
+        else if (v[0] == (u8)PacketHeader.response &&
                  receivedLength == sizeof(VerificationResponsePacket))
         {
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
@@ -63,7 +63,7 @@ void Receive()
             remove_unit_at(&enemies, unit.position);
             update_unit(&allies, unit);
         }
-        else if (v[0] == (u8)ENEMY_HEADER &&
+        else if (v[0] == (u8)PacketHeader.enemy &&
                  receivedLength == sizeof(EnemyNotificationPacket))
         {
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
@@ -89,7 +89,7 @@ void Receive()
                 }
             }
         }
-        else if (v[0] == (u8)INDIRECT_RESPONSE_HEADER &&
+        else if (v[0] == (u8)PacketHeader.indirect_response &&
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
         {
             IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
@@ -174,7 +174,7 @@ while (1)
         debug(command.position, RED);
 
         EnemyNotificationPacket notificationPacket;
-        notificationPacket.header = ENEMY_HEADER;
+        notificationPacket.header = PacketHeader.enemy;
         notificationPacket.position = command.position;
         wsend(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
     }

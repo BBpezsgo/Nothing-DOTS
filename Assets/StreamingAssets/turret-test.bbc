@@ -20,13 +20,13 @@ void Receive()
         i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)REQUEST_HEADER &&
+        if (v[0] == (u8)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
 
             VerificationResponsePacket responsePacket = new VerificationResponsePacket;
-            responsePacket.header = (u8)RESPONSE_HEADER;
+            responsePacket.header = PacketHeader.response;
 
             if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
@@ -69,7 +69,7 @@ while (1)
     {
         turretLastUseTime = time();
         shootat(currentTarget, &targetedPosition);
-        debug(currentTarget, 0b100);
+        debug(currentTarget, RED);
     }
     else if (time() - turretLastUseTime > 5f)
     {
