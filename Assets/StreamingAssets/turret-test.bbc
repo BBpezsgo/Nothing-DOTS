@@ -12,15 +12,15 @@ const int MaxCommandDataSize = 24;
 
 void Receive()
 {
-    u8[MaxPacketLength] v;
+    byte[MaxPacketLength] v;
     float3 direction;
 
     while (1)
     {
-        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
+        int receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)PacketHeader.request &&
+        if (v[0] == (byte)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
@@ -31,8 +31,8 @@ void Receive()
             if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
             {
                 responsePacket.position = GPS.position;
-                debug(packet.position, CYAN);
-                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
+                debug(packet.position, Color.Cyan);
+                wsend(&responsePacket as byte[]*, sizeof(VerificationResponsePacket), &direction);
             }
         }
     }
@@ -40,7 +40,7 @@ void Receive()
 
 float3 targetedPosition = new float3;
 float3 currentTarget = new float3;
-f32 turretLastUseTime = 0f;
+float turretLastUseTime = 0f;
 
 printline("Started ...");
 
@@ -69,7 +69,7 @@ while (1)
     {
         turretLastUseTime = time();
         shootat(currentTarget, &targetedPosition);
-        debug(currentTarget, RED);
+        debug(currentTarget, Color.Red);
     }
     else if (time() - turretLastUseTime > 5f)
     {

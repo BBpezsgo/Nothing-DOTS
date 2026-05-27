@@ -1,8 +1,15 @@
 using "api";
 
-export const int MaxPacketLength = 17 + 1;
+export const int MaxPacketLength = 1 +
+    max(sizeof(VerificationRequestPacket),
+    max(sizeof(VerificationResponsePacket),
+    max(sizeof(IndirectVerificationResponsePacket),
+    max(sizeof(EnemyNotificationPacket),
+    max(sizeof(RadarPointPacket),
+    max(sizeof(PcAdPacket),
+    0))))));
 
-export enum PacketHeader : u8
+export enum PacketHeader : byte
 {
     request           = 0b_11110000,
     response          = 0b_01111000,
@@ -12,11 +19,11 @@ export enum PacketHeader : u8
     pc_ad             = 0b_10000111,
 }
 
-export const f32 DistanceThreshold = 2f;
-export const f32 DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
+export const float DistanceThreshold = 2f;
+export const float DistanceThresholdSq = DistanceThreshold * DistanceThreshold;
 
-export const f32 DistanceThresholdLarge = 5f;
-export const f32 DistanceThresholdLargeSq = DistanceThresholdLarge * DistanceThresholdLarge;
+export const float DistanceThresholdLarge = 5f;
+export const float DistanceThresholdLargeSq = DistanceThresholdLarge * DistanceThresholdLarge;
 
 export const bool Debug = false;
 export const bool Logs = false;
@@ -52,10 +59,10 @@ export struct RadarPointPacket
 {
     PacketHeader header;
     float3 position;
-    u8 speedSignal;
-    u8 clutter;
-    u8 fingerprint;
-    u8 meta;
+    byte speedSignal;
+    byte clutter;
+    byte fingerprint;
+    byte meta;
 }
 
 export struct PcAdPacket
@@ -67,11 +74,11 @@ export struct PcAdPacket
 export struct Unit
 {
     float3 position;
-    f32 recorded;
-    f32 expires;
-    f32 verification_sent_at;
-    u8 position_records;
-    f32 notified_at;
+    float recorded;
+    float expires;
+    float verification_sent_at;
+    byte position_records;
+    float notified_at;
 }
 
 export void try_send_verification_request(Unit* unit)
@@ -99,7 +106,7 @@ export void send_verification_request(Unit* unit)
             printline();
         }
 
-        send(&packet as u8[]*, sizeof(VerificationRequestPacket));
+        send(&packet as byte[]*, sizeof(VerificationRequestPacket));
     }
 
     if (true)
@@ -112,17 +119,17 @@ export void send_verification_request(Unit* unit)
         }
 
         tolocal(&point);
-        if (Debug) ldebug(point, BLUE);
+        if (Debug) ldebug(point, Color.Blue);
         float distance = sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
         normalise(&point);
         float angle = 2f * atan(3f / (2 * distance));
 
-        wsend(&packet as u8[]*, sizeof(VerificationRequestPacket), &point, angle);
+        wsend(&packet as byte[]*, sizeof(VerificationRequestPacket), &point, angle);
     }
     else
     {
-        wsend(&packet as u8[]*, sizeof(VerificationRequestPacket));
-        if (Debug) debug(point, BLUE);
+        wsend(&packet as byte[]*, sizeof(VerificationRequestPacket));
+        if (Debug) debug(point, Color.Blue);
     }
 
     unit.verification_sent_at = time();
@@ -179,7 +186,7 @@ export int update_unit(List<Unit>* units, Unit unit)
         existingUnit.position.y = ((existingUnit.position.y * (n - 1)) / n) + (unit.position.y / n);
         existingUnit.position.z = ((existingUnit.position.z * (n - 1)) / n) + (unit.position.z / n);
         existingUnit.expires = unit.expires;
-        debug(unit.position, MAGENTA);
+        debug(unit.position, Color.Magenta);
     }
     else
     {
@@ -214,10 +221,10 @@ export int set_unit(List<Unit>* units, Unit unit)
 
 export void remove_unit_at(List<Unit>* units, float3 unit)
 {
-    u8 isNotDone = true;
+    byte isNotDone = true;
     for (int i = 0; isNotDone && i < units.length(); i++)
     {
-        f32 distanceSqr = distancesqr(units[i].position, unit);
+        float distanceSqr = distancesqr(units[i].position, unit);
         if (distanceSqr < DistanceThresholdSq)
         {
             isNotDone = false;

@@ -13,36 +13,36 @@ struct MappedMemory_Vehicle
 
 struct MappedMemory_CombatTurret
 {
-    u8 shoot;
-    f32 target_rotation;
-    f32 target_angle;
-    f32 current_rotation;
-    f32 current_angle;
+    byte shoot;
+    float target_rotation;
+    float target_angle;
+    float current_rotation;
+    float current_angle;
 }
 
 struct MappedMemory_Extractor
 {
-    u8 extract;
+    byte extract;
 }
 
 struct MappedMemory_Transporter
 {
-    u8 load_direction;
-    i32 current_load;
+    byte load_direction;
+    int current_load;
 }
 
 struct RadarResponse
 {
     float3 point;
-    u8 speedSignal;
-    u8 clutter;
-    u8 fingerprint;
-    u8 meta;
+    byte speedSignal;
+    byte clutter;
+    byte fingerprint;
+    byte meta;
 }
 
 struct MappedMemory_Radar
 {
-    f32 direction;
+    float direction;
     RadarResponse response;
 }
 
@@ -54,16 +54,16 @@ struct MappedMemory_GPS
 
 struct MappedMemory_Pendrive
 {
-    u8 plugged;
+    byte plugged;
 }
 
 struct MappedMemory_Facility
 {
-    u8 signal;
+    byte signal;
     TechnologyHash* hash_location;
 }
 
-export alias TechnologyHash u8[30];
+export alias TechnologyHash byte[30];
 
 
 const int TotalMemorySize = 2048;

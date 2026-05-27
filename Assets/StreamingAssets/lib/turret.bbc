@@ -1,11 +1,11 @@
 using "api";
 
-const f32 G = 9.82f;
-const f32 PROJECTILE_V = 40f;
-const f32 PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
-const f32 HEIGHT_OFFSET = 0;
+const float G = 9.82f;
+const float PROJECTILE_V = 40f;
+const float PROJECTILE_V2 = PROJECTILE_V * PROJECTILE_V;
+const float HEIGHT_OFFSET = 0;
 
-f32 calculate_angle(f32 targetDistance)
+float calculate_angle(float targetDistance)
 {
     float a = (G * targetDistance) / PROJECTILE_V2;
     if (a < -1f || a > 1f)
@@ -18,9 +18,9 @@ f32 calculate_angle(f32 targetDistance)
     }
 }
 
-f32 calculate_angle(f32 targetDistance, f32 height)
+float calculate_angle(float targetDistance, float height)
 {
-    f32 discriminant = (
+    float discriminant = (
         (PROJECTILE_V2 * PROJECTILE_V2) -
         (G * (G * targetDistance * targetDistance + ((HEIGHT_OFFSET + height) * 2f * PROJECTILE_V2)))
     );
@@ -45,16 +45,16 @@ f32 calculate_angle(f32 targetDistance, f32 height)
     }
 }
 
-u8 calculate_angle(f32 targetDistance, f32 height, f32* angle)
+byte calculate_angle(float targetDistance, float height, float* angle)
 {
-    f32 discriminant = (
+    float discriminant = (
         (PROJECTILE_V2 * PROJECTILE_V2) -
         (G * (G * targetDistance * targetDistance + (height * 2f * PROJECTILE_V2)))
     );
 
     if (discriminant < 0f)
     {
-        return (u8)0;
+        return (byte)0;
     }
     else if (1)
     {
@@ -62,7 +62,7 @@ u8 calculate_angle(f32 targetDistance, f32 height, f32* angle)
             (PROJECTILE_V2 + sqrt(discriminant)) /
             (G * targetDistance)
         ) - (PI * 0.5f);
-        return (u8)1;
+        return (byte)1;
     }
     else
     {
@@ -70,25 +70,25 @@ u8 calculate_angle(f32 targetDistance, f32 height, f32* angle)
             (PROJECTILE_V2 - sqrt(discriminant)) /
             (G * targetDistance)
         ) - (PI * 0.5f);
-        return (u8)1;
+        return (byte)1;
     }
 }
 
-f32 calculate_rotation(float2 target)
+float calculate_rotation(float2 target)
 {
     float2 targetDirection = normalise(target);
-    f32 targetAngle = atan2(targetDirection.y, targetDirection.x);
+    float targetAngle = atan2(targetDirection.y, targetDirection.x);
     if (targetAngle < 0f) { targetAngle += TAU; }
     if (targetAngle >= TAU) { targetAngle -= TAU; }
     return targetAngle;
 }
 
-export u8 targetat(float2 target, float2* targetedPosition)
+export byte targetat(float2 target, float2* targetedPosition)
 {
     if (target.x == 0f &&
         target.y == 0f)
     {
-        return (u8)0;
+        return (byte)0;
     }
 
     if (targetedPosition.x != target.x ||
@@ -99,29 +99,29 @@ export u8 targetat(float2 target, float2* targetedPosition)
 
         CombatTurret.target_rotation = calculate_rotation(target);
 
-        f32 targetDistance = length(target);
+        float targetDistance = length(target);
         // targetDistance -= cos(CombatTurret.current_angle) * 2.5f;
-        // f32 height = sin(CombatTurret.current_angle) * 2.5f;
+        // float height = sin(CombatTurret.current_angle) * 2.5f;
 
         CombatTurret.target_angle = calculate_angle(targetDistance);
     }
 
-    f32 diff1 = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);
-    f32 diff2 = abs(CombatTurret.current_angle - CombatTurret.target_angle);
+    float diff1 = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);
+    float diff2 = abs(CombatTurret.current_angle - CombatTurret.target_angle);
 
     if ((diff1 < 0.1f || TAU - diff1 < 0.1f) && (diff2 < 0.01f || TAU - diff2 < 0.01f))
     {
-        return (u8)1;
+        return (byte)1;
     }
 
-    return (u8)0;
+    return (byte)0;
 }
 
 //const float ProjectileV = 110f;
 //const float ProjectileV2 = ProjectileV * ProjectileV;
 //const float ProjectileV4 = ProjectileV2 * ProjectileV2;
 
-u8 solve_ballistic_arc(float3 selfWorldPosition, float3 targetWorldPosition, float3* shootDirection)
+byte solve_ballistic_arc(float3 selfWorldPosition, float3 targetWorldPosition, float3* shootDirection)
 {
     float ProjectileV;
     query_attribute(1, &ProjectileV);
@@ -133,7 +133,7 @@ u8 solve_ballistic_arc(float3 selfWorldPosition, float3 targetWorldPosition, flo
 
     float root = ProjectileV4 - G * (G * groundDistance * groundDistance + 2.0 * diff.y * ProjectileV2);
 
-    if (root < 0) return (u8)0;
+    if (root < 0) return (byte)0;
 
     root = sqrt(root);
     float gx = G * groundDistance;
@@ -144,15 +144,15 @@ u8 solve_ballistic_arc(float3 selfWorldPosition, float3 targetWorldPosition, flo
     float3 groundDir = new float3(diff.x, 0f, diff.z) / groundDistance;
     *shootDirection = groundDir * cos(lowAng) + new float3(0.0, 1.0, 0.0) * sin(lowAng);
 
-    return (u8)1;
+    return (byte)1;
 }
 
-export u8 targetat(float3 target, float3* targetedPosition)
+export byte targetat(float3 target, float3* targetedPosition)
 {
     if (target.x == 0f &&
         target.z == 0f)
     {
-        return (u8)0;
+        return (byte)0;
     }
 
     float3 targetLocal = target;
@@ -164,7 +164,7 @@ export u8 targetat(float3 target, float3* targetedPosition)
         float3 result;
         if (!solve_ballistic_arc(toglobal(new float3(0.0, 0.436 + 0.073, 0.077)), target, &result))
         {
-            return (u8)0;
+            return (byte)0;
         }
 
         tolocald(&result);
@@ -178,23 +178,23 @@ export u8 targetat(float3 target, float3* targetedPosition)
         *targetedPosition = targetLocal;
     }
 
-    f32 diff1 = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);
-    f32 diff2 = abs(CombatTurret.current_angle - CombatTurret.target_angle);
+    float diff1 = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);
+    float diff2 = abs(CombatTurret.current_angle - CombatTurret.target_angle);
 
     if ((diff1 < 0.1f || TAU - diff1 < 0.1f) && (diff2 < 0.01f || TAU - diff2 < 0.01f))
     {
-        return (u8)1;
+        return (byte)1;
     }
 
-    return (u8)0;
+    return (byte)0;
 }
 
-export u8 targetat_simple(float2 target, float2* targetedPosition)
+export byte targetat_simple(float2 target, float2* targetedPosition)
 {
     if (target.x == 0f &&
         target.y == 0f)
     {
-        return (u8)0;
+        return (byte)0;
     }
 
     if (targetedPosition.x != target.x ||
@@ -208,22 +208,22 @@ export u8 targetat_simple(float2 target, float2* targetedPosition)
         CombatTurret.target_angle = 0.00001f; // todo: fix this
     }
 
-    f32 diff = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);
+    float diff = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);
 
     if (diff < 0.1f || TAU - diff < 0.1f)
     {
-        return (u8)1;
+        return (byte)1;
     }
 
-    return (u8)0;
+    return (byte)0;
 }
 
-export u8 targetat_simple(float3 target, float3* targetedPosition)
+export byte targetat_simple(float3 target, float3* targetedPosition)
 {
     if (target.x == 0f &&
         target.z == 0f)
     {
-        return (u8)0;
+        return (byte)0;
     }
 
     tolocal(&target);
@@ -234,7 +234,7 @@ export u8 targetat_simple(float3 target, float3* targetedPosition)
         *targetedPosition = target;
 
         float3 targetDirection3 = normalise(target);
-        f32 targetAngle = atan2(targetDirection3.x, targetDirection3.z);
+        float targetAngle = atan2(targetDirection3.x, targetDirection3.z);
         if (targetAngle < 0f) { targetAngle += TAU; }
         if (targetAngle >= TAU) { targetAngle -= TAU; }
         CombatTurret.target_rotation = targetAngle;
@@ -245,14 +245,14 @@ export u8 targetat_simple(float3 target, float3* targetedPosition)
         CombatTurret.target_angle = pitch;
     }
 
-    f32 diff1 = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);
+    float diff1 = abs(CombatTurret.current_rotation - CombatTurret.target_rotation);
 
     if ((diff1 < 0.1f || TAU - diff1 < 0.1f))
     {
-        return (u8)1;
+        return (byte)1;
     }
 
-    return (u8)0;
+    return (byte)0;
 }
 
 export void shootat(float2 target, float2* targetedPosition)

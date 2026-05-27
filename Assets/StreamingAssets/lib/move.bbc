@@ -6,7 +6,7 @@ export void stop_moving()
     Vehicle.forward = (i8)0;
 }
 
-export void move_to(f32 targetX, f32 targetZ)
+export void move_to(float targetX, float targetZ)
 {
     float2 forward = new float2(GPS.forward.x, GPS.forward.z);
     float2 position = new float2(GPS.position.x, GPS.position.z);
@@ -16,11 +16,11 @@ export void move_to(f32 targetX, f32 targetZ)
     dirMove.y = targetZ - position.y;
     normalise(&dirMove);
 
-    f32 d = distance(position, new float2(targetX, targetZ));
+    float d = distance(position, new float2(targetX, targetZ));
 
-    f32 t1 = cross(forward, dirMove);
-    f32 t2 = dot(forward, dirMove);
-    f32 t4 = atan2(t1, t2);
+    float t1 = cross(forward, dirMove);
+    float t2 = dot(forward, dirMove);
+    float t4 = atan2(t1, t2);
 
     if (d < 1f)
     {
@@ -48,6 +48,6 @@ export void move_to(f32 targetX, f32 targetZ)
         Vehicle.steer = (i8)0;
         d += 10f;
         if (d > 127f) { d = 127f; }
-        Vehicle.forward = (i8)(i32)d;
+        Vehicle.forward = (i8)(int)d;
     }
 }

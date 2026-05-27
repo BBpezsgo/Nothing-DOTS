@@ -11,15 +11,15 @@ const int MaxCommandDataSize = 8;
 
 void Receive()
 {
-    u8[MaxPacketLength] v;
+    byte[MaxPacketLength] v;
     float3 direction;
 
     while (1)
     {
-        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
+        int receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)PacketHeader.request &&
+        if (v[0] == (byte)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
@@ -30,27 +30,27 @@ void Receive()
             if (distancesqr(packet.position, GPS.position) < DistanceThresholdLargeSq)
             {
                 responsePacket.position = packet.position;
-                debug(packet.position, CYAN);
-                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
+                debug(packet.position, Color.Cyan);
+                wsend(&responsePacket as byte[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
             else
             {
                 for (int i = 0; i < (&allies).length(); i++)
                 {
-                    f32 distanceSqr = distancesqr((&allies).raw()[i].position, packet.position);
+                    float distanceSqr = distancesqr((&allies).raw()[i].position, packet.position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
                         IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
                         indirectResponsePacket.header = PacketHeader.indirect_response;
                         indirectResponsePacket.position = (&allies).raw()[i].position;
                         indirectResponsePacket.expires = (&allies).raw()[i].expires;
-                        wsend(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction, 0.1f);
+                        wsend(&indirectResponsePacket as byte[]*, sizeof(IndirectVerificationResponsePacket), &direction, 0.1f);
                         return;
                     }
                 }
             }
         }
-        else if (v[0] == (u8)PacketHeader.response &&
+        else if (v[0] == (byte)PacketHeader.response &&
                  receivedLength == sizeof(VerificationResponsePacket))
         {
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
@@ -63,7 +63,7 @@ void Receive()
             remove_unit_at(&enemies, unit.position);
             update_unit(&allies, unit);
         }
-        else if (v[0] == (u8)PacketHeader.enemy &&
+        else if (v[0] == (byte)PacketHeader.enemy &&
                  receivedLength == sizeof(EnemyNotificationPacket))
         {
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
@@ -85,11 +85,11 @@ void Receive()
 
                     printline("NTFY");
 
-                    wsend(&packet as u8[]*, sizeof(EnemyNotificationPacket), &direction);
+                    wsend(&packet as byte[]*, sizeof(EnemyNotificationPacket), &direction);
                 }
             }
         }
-        else if (v[0] == (u8)PacketHeader.indirect_response &&
+        else if (v[0] == (byte)PacketHeader.indirect_response &&
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
         {
             IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
@@ -123,8 +123,8 @@ while (1)
 {
     Receive();
 
-    (&_minimap).fill((u8)0);
-    (&_minimap).set(new float2(11f, 11f), (u8)0b_111_111_11);
+    (&_minimap).fill((byte)0);
+    (&_minimap).set(new float2(11f, 11f), (byte)0b_111_111_11);
 
     for (int i = (&enemies).length() - 1; i >= 0; i--)
     {
@@ -140,8 +140,8 @@ while (1)
             tolocal(&p);
             if (time() >= enemy.recorded + 4f)
             {
-                ldebug(p, RED);
-                (&_minimap).set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)((int)(0b_111 * max(0f, enemy.expires - time()) / 10f) << 5));
+                ldebug(p, Color.Red);
+                (&_minimap).set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (byte)((int)(0b_111 * max(0f, enemy.expires - time()) / 10f) << 5));
                 printline(p.x);
             }
         }
@@ -158,9 +158,9 @@ while (1)
         else
         {
             float3 p = ally.position;
-            debug(p, GREEN);
+            debug(p, Color.Green);
             tolocal(&p);
-            (&_minimap).set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (u8)((int)(0b_111 * max(0f, ally.expires - time()) / 10f) << 2));
+            (&_minimap).set((new float2(p.x, p.z) * (0.5f * MinimapScale) + new float2(11f, 11f)), (byte)((int)(0b_111 * max(0f, ally.expires - time()) / 10f) << 2));
         }
     }
 
@@ -171,12 +171,12 @@ while (1)
     if (commandId == 1)
     {
         CommandAttackAt* command = &_command as CommandAttackAt*;
-        debug(command.position, RED);
+        debug(command.position, Color.Red);
 
         EnemyNotificationPacket notificationPacket;
         notificationPacket.header = PacketHeader.enemy;
         notificationPacket.position = command.position;
-        wsend(&notificationPacket as u8[]*, sizeof(EnemyNotificationPacket));
+        wsend(&notificationPacket as byte[]*, sizeof(EnemyNotificationPacket));
     }
 
     (&_minimap).update();

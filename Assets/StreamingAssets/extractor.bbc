@@ -17,15 +17,15 @@ const int MaxCommandDataSize = 8;
 
 void Receive()
 {
-    u8[MaxPacketLength] v;
+    byte[MaxPacketLength] v;
     float3 direction;
 
     while (1)
     {
-        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
+        int receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)PacketHeader.request &&
+        if (v[0] == (byte)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
@@ -36,8 +36,8 @@ void Receive()
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
                 responsePacket.header = PacketHeader.response;
                 responsePacket.position = packet.position;
-                debug(packet.position, CYAN);
-                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
+                debug(packet.position, Color.Cyan);
+                wsend(&responsePacket as byte[]*, sizeof(VerificationResponsePacket), &direction, 0.1f);
             }
         }
     }
@@ -80,9 +80,9 @@ while (1)
         if (d < 2f * 2f)
         {
             stop_moving();
-            debug(currentExtract, WHITE);
+            debug(currentExtract, Color.White);
 
-            CombatTurret.shoot = (u8)1;
+            CombatTurret.shoot = (byte)1;
         }
         else
         {

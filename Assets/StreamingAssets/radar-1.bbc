@@ -3,15 +3,15 @@ using "lib/protocol";
 
 void Receive()
 {
-    u8[MaxPacketLength] v;
+    byte[MaxPacketLength] v;
     float3 direction;
 
     while (1)
     {
-        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
+        int receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)PacketHeader.request &&
+        if (v[0] == (byte)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
@@ -29,18 +29,18 @@ void Receive()
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
                 responsePacket.header = PacketHeader.response;
                 responsePacket.position = GPS.position;
-                if (Debug) debug(packet.position, CYAN);
-                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
+                if (Debug) debug(packet.position, Color.Cyan);
+                wsend(&responsePacket as byte[]*, sizeof(VerificationResponsePacket), &direction);
             }
         }
     }
 
     while (1)
     {
-        i32 receivedLength = receive(&v, MaxPacketLength);
+        int receivedLength = receive(&v, MaxPacketLength);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)PacketHeader.request &&
+        if (v[0] == (byte)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
@@ -58,8 +58,8 @@ void Receive()
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
                 responsePacket.header = PacketHeader.response;
                 responsePacket.position = GPS.position;
-                if (Debug) debug(packet.position, CYAN);
-                send(&responsePacket as u8[]*, sizeof(VerificationResponsePacket));
+                if (Debug) debug(packet.position, Color.Cyan);
+                send(&responsePacket as byte[]*, sizeof(VerificationResponsePacket));
             }
         }
     }
@@ -67,7 +67,7 @@ void Receive()
 
 void PerformRadar()
 {
-    //ldebug(new float3(cos(Radar.direction), 0f, sin(Radar.direction)) * 10f, CYAN);
+    //ldebug(new float3(cos(Radar.direction), 0f, sin(Radar.direction)) * 10f, Color.Cyan);
     float3 radarPoint = radar();
     if (!empty(radarPoint))
     {
@@ -80,9 +80,9 @@ void PerformRadar()
         radarPointPacket.clutter = Radar.response.clutter;
         radarPointPacket.fingerprint = Radar.response.fingerprint;
         radarPointPacket.meta = Radar.response.meta;
-        send(&radarPointPacket as u8[]*, sizeof(RadarPointPacket));
+        send(&radarPointPacket as byte[]*, sizeof(RadarPointPacket));
     }
-    Radar.direction = (Radar.direction + 0.03f) % TAU;
+    Radar.direction = (Radar.direction + 0.01f) % TAU;
 }
 
 printline("Started ...");

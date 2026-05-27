@@ -25,15 +25,15 @@ const int MaxCommandDataSize = 8;
 
 void Receive()
 {
-    u8[MaxPacketLength] v;
+    byte[MaxPacketLength] v;
     float3 direction;
 
     while (1)
     {
-        i32 receivedLength = wreceive(&v, MaxPacketLength, &direction);
+        int receivedLength = wreceive(&v, MaxPacketLength, &direction);
         if (!receivedLength) { break; }
 
-        if (v[0] == (u8)PacketHeader.request &&
+        if (v[0] == (byte)PacketHeader.request &&
             receivedLength == sizeof(VerificationRequestPacket))
         {
             VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
@@ -51,14 +51,14 @@ void Receive()
                 VerificationResponsePacket responsePacket = new VerificationResponsePacket;
                 responsePacket.header = PacketHeader.response;
                 responsePacket.position = GPS.position;
-                if (Debug) debug(packet.position, CYAN);
-                wsend(&responsePacket as u8[]*, sizeof(VerificationResponsePacket), &direction);
+                if (Debug) debug(packet.position, Color.Cyan);
+                wsend(&responsePacket as byte[]*, sizeof(VerificationResponsePacket), &direction);
             }
             else
             {
                 for (int i = 0; i < allies.length(); i++)
                 {
-                    f32 distanceSqr = distancesqr(allies[i].position, packet.position);
+                    float distanceSqr = distancesqr(allies[i].position, packet.position);
                     if (distanceSqr < DistanceThresholdSq)
                     {
                         if (Logs) printline(" K");
@@ -66,13 +66,13 @@ void Receive()
                         indirectResponsePacket.header = PacketHeader.indirect_response;
                         indirectResponsePacket.position = allies[i].position;
                         indirectResponsePacket.expires = allies[i].expires;
-                        wsend(&indirectResponsePacket as u8[]*, sizeof(IndirectVerificationResponsePacket), &direction);
+                        wsend(&indirectResponsePacket as byte[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                         return;
                     }
                 }
             }
         }
-        else if (v[0] == (u8)PacketHeader.response &&
+        else if (v[0] == (byte)PacketHeader.response &&
                  receivedLength == sizeof(VerificationResponsePacket))
         {
             VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
@@ -93,7 +93,7 @@ void Receive()
             remove_unit_at(&enemies, unit.position);
             update_unit(&allies, unit);
         }
-        else if (v[0] == (u8)PacketHeader.enemy &&
+        else if (v[0] == (byte)PacketHeader.enemy &&
                  receivedLength == sizeof(EnemyNotificationPacket))
         {
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
@@ -112,7 +112,7 @@ void Receive()
             }
             update_unit(&enemies, unit);
         }
-        else if (v[0] == (u8)PacketHeader.indirect_response &&
+        else if (v[0] == (byte)PacketHeader.indirect_response &&
                  receivedLength == sizeof(IndirectVerificationResponsePacket))
         {
             IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
@@ -193,9 +193,9 @@ float3 currentUserTarget = new float3;
 List<Unit> enemies = new List<Unit>(MaxUnits);
 List<Unit> allies = new List<Unit>(MaxUnits);
 float2 currentDestination = new float2;
-u8 shouldShoot = false;
-f32 turretLastUseTime = 0f;
-f32 radarProgress = 0f;
+byte shouldShoot = false;
+float turretLastUseTime = 0f;
+float radarProgress = 0f;
 
 printline("Started ...");
 
@@ -253,7 +253,7 @@ while (1)
             else
             {
                 toglobal(&p);
-                debug(p, RED);
+                debug(p, Color.Red);
                 currentTarget = p;
                 shouldShoot = true;
             }
@@ -261,13 +261,13 @@ while (1)
         else
         {
             float3 p = enemies[i].position;
-            debug(p, YELLOW);
+            debug(p, Color.Yellow);
         }
     }
 
     for (int i = allies.length() - 1; i >= 0; i--)
     {
-        debug(allies[i].position, GREEN);
+        debug(allies[i].position, Color.Green);
        
         if (time() >= allies[i].expires - 3f)
         {

@@ -2,17 +2,17 @@ using "lib/api";
 
 while (1)
 {
-    u8[2] v;
+    byte[2] v;
 
     float3 receivedDirection;
-    i32 receivedLength = wreceive(&v, 2, &receivedDirection);
+    int receivedLength = wreceive(&v, 2, &receivedDirection);
     if (receivedLength == 2) {
-        if (v[0] == (u8)1 &&
-            v[1] == (u8)2)
+        if (v[0] == (byte)1 &&
+            v[1] == (byte)2)
         {
             printline("Sending response ...");
-            v[0] = (u8)3;
-            v[1] = (u8)4;
+            v[0] = (byte)3;
+            v[1] = (byte)4;
             wsend(&v, 2, &receivedDirection, 1f);
         }
     }

@@ -1,6 +1,6 @@
 using "lib/api";
 
-TechnologyHash hashPtr = new u8[30];
+TechnologyHash hashPtr = new byte[30];
 
 [UnitCommand(1, "Extract From USB")]
 struct ExtractUSB
