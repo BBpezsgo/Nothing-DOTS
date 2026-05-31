@@ -51,3 +51,6 @@ dotnet_diagnostic.CA2241.severity = error
 
 # IDE0011: Add braces
 dotnet_diagnostic.IDE0011.severity = silent
+
+# IDE0037: Use inferred member name
+dotnet_diagnostic.IDE0037.severity = silent

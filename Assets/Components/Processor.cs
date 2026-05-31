@@ -79,11 +79,20 @@ struct UnitAttributesPack
 }
 
 [ChunkSerializable]
-struct ProcessorSource
+struct ProcessorSource : IEquatable<ProcessorSource>
 {
     public UnsafeList<Instruction>.ReadOnly Code;
     public UnsafeList<UnitCommandDefinition>.ReadOnly UnitCommandDefinitions;
     public UnsafeList<ExternalFunctionScopedSync> GeneratedFunctions;
+
+    public override bool Equals(object? obj) => obj is ProcessorSource other && Equals(other);
+    public readonly unsafe bool Equals(ProcessorSource other) =>
+        Code.Ptr == other.Code.Ptr &&
+        UnitCommandDefinitions.Ptr == other.UnitCommandDefinitions.Ptr &&
+        GeneratedFunctions.Ptr == other.GeneratedFunctions.Ptr;
+
+    public static bool operator ==(ProcessorSource left, ProcessorSource right) => left.Equals(right);
+    public static bool operator !=(ProcessorSource left, ProcessorSource right) => !left.Equals(right);
 }
 
 public enum ProcessorStatus : byte
@@ -108,6 +117,7 @@ struct Processor : IComponentData
     public long CompiledSourceVersion;
     public ProcessorSource Source;
     public UnitAttributesPack Attributes;
+    public ProcessorJob.DebugContext DebugContext;
 
     public int CyclesPerTick;
     public Registers Registers;

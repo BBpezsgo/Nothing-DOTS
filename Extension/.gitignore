@@ -1,0 +1,10 @@
+/node_modules
+/debug-server
+/language-server
+/out
+
+/BBLangExtension.vsix
+/package-lock.json
+
+syntax_generator/bin
+syntax_generator/obj

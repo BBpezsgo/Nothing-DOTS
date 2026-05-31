@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+npm run compile
+
+npm run package
+
+code --profile "bb" --install-extension NothingameExtension.vsix --force

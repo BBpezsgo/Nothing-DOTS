@@ -1,0 +1,101 @@
+{
+    "name": "nothingame",
+    "description": "Extension for my RTS game",
+    "author": "Bánszky",
+    "version": "0.0.1",
+    "displayName": "NothinGame",
+    "private": true,
+    "preview": true,
+    "engines": {
+        "vscode": "^1.88.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "pricing": "Free",
+    "publisher": "banszky",
+    "markdown": "github",
+    "icon": "icons/extension.png",
+    "homepage": "https://github.com/banszkyy",
+    "galleryBanner": {
+        "color": "#2d1d37",
+        "theme": "dark"
+    },
+    "repository": {
+        "url": "https://github.com/banszkyy/Nothing-DOTS",
+        "type": "github"
+    },
+    "main": "./out/extension",
+    "contributes": {
+        "debuggers": [
+            {
+                "type": "nothingame",
+                "label": "Debug Unit"
+            }
+        ],
+        "views": {
+            "explorer": [
+                {
+                    "id": "gameUnits",
+                    "name": "Game Units",
+                    "type": "tree"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "nothingame.units.refresh",
+                    "when": "view == gameUnits",
+                    "group": "navigation"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "nothingame.debug.attach",
+                    "when": "viewItem == nothingameEntity"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "Nothingame",
+            "type": "object",
+            "properties": {}
+        },
+        "commands": [
+            {
+                "command": "nothingame.server.restart",
+                "category": "Nothingame",
+                "title": "Restart Language Server"
+            },
+            {
+                "command": "nothingame.units.refresh",
+                "category": "Nothingame",
+                "icon": "$(refresh)",
+                "title": "Refresh units"
+            },
+            {
+                "command": "nothingame.debug.attach",
+                "category": "Nothingame",
+                "title": "Debug unit"
+            }
+        ]
+    },
+    "scripts": {
+        "compile": "./clean && tsc --project ./",
+        "package": "vsce package --out NothingameExtension.vsix",
+        "list": "vsce ls"
+    },
+    "devDependencies": {
+        "@types/adm-zip": "latest",
+        "@types/node": "latest",
+        "@types/vscode": "^1.88.0",
+        "@vscode/vsce": "latest",
+        "typescript": "latest",
+        "vsce": "latest"
+    },
+    "dependencies": {
+        "adm-zip": "latest",
+        "vscode-languageclient": "^9.0.1"
+    }
+}

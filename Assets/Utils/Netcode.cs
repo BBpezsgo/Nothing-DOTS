@@ -9,6 +9,9 @@ public static class NetcodeUtils
     public static bool IsLocal(this in WorldUnmanaged world) => !world.IsServer() && !world.IsClient();
 
     [BurstCompile]
+    public static bool IsLocal(this World world) => !world.IsServer() && !world.IsClient();
+
+    [BurstCompile]
     public static void CreateRPC<T>(in WorldUnmanaged world)
         where T : unmanaged, IComponentData
     {

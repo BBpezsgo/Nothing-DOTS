@@ -513,6 +513,47 @@ partial struct ProcessorJob : IJobEntity
         scope.ProcessorRef.Registers = &processorState.Registers;
 
         //using (var _2 = __ProcessorJobInner.Auto())
+        if (processor.DebugContext.IsBeingDebugged)
+        {
+            HandleTickDebug(ref processor, ref processorState);
+        }
+        else
+        {
+            HandleTick(ref processor, ref processorState);
+        }
+
+        if (processor.Source.GeneratedFunctions.IsCreated)
+        {
+            for (int i = start; i < scopedExternalFunctions.Length; i++)
+            {
+                processor.Source.GeneratedFunctions.Ptr[i - start].Flags = scopedExternalFunctions[i].Flags;
+            }
+        }
+
+        if (((ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory)))->MappedMemory.Leds.CustomLED != 0)
+        {
+            ((ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory)))->MappedMemory.Leds.CustomLED = 0;
+            processor.CustomLED.Blink();
+        }
+
+        //processor.Memory = *(ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory));
+        processor.Registers = processorState.Registers;
+        processor.Signal = processorState.Signal;
+        processor.Crash = processorState.Crash;
+        processor.HotFunctions = processorState.HotFunctions;
+#pragma warning disable IDE0072 // Add missing cases
+        processor.StatusLED.Status = processorState.Signal switch
+        {
+            Signal.None => ProcessorStatus.Running,
+            Signal.Halt => ProcessorStatus.Halted,
+            _ => ProcessorStatus.Error,
+        };
+#pragma warning restore IDE0072
+        scopedExternalFunctions.Dispose();
+    }
+
+    static void HandleTick(ref Processor processor, ref ProcessorState processorState)
+    {
         try
         {
             for (int i = 0; i < processor.CyclesPerTick; i++)
@@ -565,34 +606,73 @@ partial struct ProcessorJob : IJobEntity
         {
             Debug.LogError(ex.ToString());
         }
+    }
 
-        if (processor.Source.GeneratedFunctions.IsCreated)
+    public enum StopReason
+    {
+        No,
+        Pause,
+        Breakpoint,
+        Signal,
+        RuntimeException,
+    }
+
+    public struct DebugContext
+    {
+        public required bool IsBeingDebugged;
+        public required StopReason Stopped;
+        public required bool IsStopUnhandled;
+        public required FixedList128Bytes<ushort> Breakpoints;
+    }
+
+    static void HandleTickDebug(ref Processor processor, ref ProcessorState processorState)
+    {
+        if (processor.DebugContext.Stopped != StopReason.No) return;
+
+        try
         {
-            for (int i = start; i < scopedExternalFunctions.Length; i++)
+            for (int i = 0; i < processor.CyclesPerTick; i++)
             {
-                processor.Source.GeneratedFunctions.Ptr[i - start].Flags = scopedExternalFunctions[i].Flags;
+                for (int j = 0; j < processor.DebugContext.Breakpoints.Length; j++)
+                {
+                    if (processor.DebugContext.Breakpoints[j] != processorState.Registers.CodePointer) continue;
+
+                    processor.DebugContext.Stopped = StopReason.Breakpoint;
+                    processor.DebugContext.IsStopUnhandled = true;
+                    return;
+                }
+
+                if (processorState.Signal != Signal.None)
+                {
+                    if (!processor.SignalNotified)
+                    {
+                        processor.SignalNotified = true;
+                    }
+                    processor.DebugContext.Stopped = StopReason.Signal;
+                    processor.DebugContext.IsStopUnhandled = true;
+                    break;
+                }
+
+                processor.SignalNotified = false;
+
+                if (processor.IsKeyRequested)
+                {
+                    if (processor.InputKey.Length == 0) break;
+                    char key = processor.InputKey[0];
+                    processor.InputKey.RemoveAt(0);
+                    processor.IsKeyRequested = false;
+                    processorState.Pop(1);
+                    processorState.Push((byte)key);
+                }
+
+                processorState.Tick();
             }
         }
-
-        if (((ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory)))->MappedMemory.Leds.CustomLED != 0)
+        catch (RuntimeException ex)
         {
-            ((ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory)))->MappedMemory.Leds.CustomLED = 0;
-            processor.CustomLED.Blink();
+            Debug.LogError(ex.ToString());
+            processor.DebugContext.Stopped = StopReason.RuntimeException;
+            processor.DebugContext.IsStopUnhandled = true;
         }
-
-        //processor.Memory = *(ProcessorMemory*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory));
-        processor.Registers = processorState.Registers;
-        processor.Signal = processorState.Signal;
-        processor.Crash = processorState.Crash;
-        processor.HotFunctions = processorState.HotFunctions;
-#pragma warning disable IDE0072 // Add missing cases
-        processor.StatusLED.Status = processorState.Signal switch
-        {
-            Signal.None => ProcessorStatus.Running,
-            Signal.Halt => ProcessorStatus.Halted,
-            _ => ProcessorStatus.Error,
-        };
-#pragma warning restore IDE0072
-        scopedExternalFunctions.Dispose();
     }
 }

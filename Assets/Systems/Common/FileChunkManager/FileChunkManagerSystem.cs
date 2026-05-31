@@ -324,6 +324,29 @@ partial class FileChunkManagerSystem : SystemBase
         return task.Awaitable;
     }
 
+    public static string? ResolveFile(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName)) return null;
+        if (fileName.StartsWith("/i")) return null;
+
+        if (fileName[0] == '~')
+        { fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + fileName[1..]); }
+
+        if (!string.IsNullOrWhiteSpace(BasePath))
+        {
+            if (File.Exists(Path.Combine(BasePath, "." + fileName)))
+            { return Path.GetFullPath(Path.Combine(BasePath, "." + fileName)); }
+
+            if (File.Exists(Path.Combine(BasePath, fileName)))
+            { return Path.GetFullPath(Path.Combine(BasePath, fileName)); }
+        }
+
+        if (File.Exists(fileName))
+        { return fileName; }
+
+        return null;
+    }
+
     public static FileData? GetFileData(string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName)) return null;
@@ -396,23 +419,16 @@ partial class FileChunkManagerSystem : SystemBase
             return null;
         }
 
-        if (fileName[0] == '~')
-        { fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + fileName[1..]); }
-
-        if (!string.IsNullOrWhiteSpace(BasePath))
+        string? path = ResolveFile(fileName);
+        if (path != null)
         {
-            if (File.Exists(Path.Combine(BasePath, "." + fileName)))
-            { return FileData.FromLocal(Path.Combine(BasePath, "." + fileName)); }
-
-            if (File.Exists(Path.Combine(BasePath, fileName)))
-            { return FileData.FromLocal(Path.Combine(BasePath, fileName)); }
+            return FileData.FromLocal(Path.Combine(BasePath, "." + fileName));
         }
-
-        if (File.Exists(fileName))
-        { return FileData.FromLocal(fileName); }
-
-        Debug.LogWarning($"{DebugEx.AnyPrefix} [{nameof(FileChunkManagerSystem)}] Local file \"{fileName}\" does not exists");
-        return null;
+        else
+        {
+            Debug.LogWarning($"{DebugEx.AnyPrefix} [{nameof(FileChunkManagerSystem)}] Local file \"{fileName}\" does not exists");
+            return null;
+        }
     }
 
     public static int GetChunkLength(int bytes)

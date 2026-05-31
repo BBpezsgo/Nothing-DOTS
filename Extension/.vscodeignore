@@ -1,0 +1,11 @@
+**/*.map
+**/*.ts
+
+.github/**
+.vscode/**
+src/**
+
+install
+.gitignore
+.vscode-test.mjs
+tsconfig.json
