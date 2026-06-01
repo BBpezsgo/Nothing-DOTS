@@ -694,9 +694,10 @@ class SaveManager : MonoBehaviour
             {
                 writer.Write(v.Key.Name);
                 writer.Write(v.Key.Source.ConnectionId.Value);
-                writer.Write(v.Value.Kind);
-                writer.Write(v.Value.File.Data);
-                writer.Write(v.Value.File.Version);
+                writer.Write(v.Value.Status);
+                writer.Write(v.Value.Data.Data);
+                writer.Write(v.Value.Data.Version);
+                writer.Write(v.Value.RemotePath);
             });
         }
 
@@ -871,7 +872,7 @@ class SaveManager : MonoBehaviour
             foreach (KeyValuePair<FileId, RemoteFile> item in reader.ReadArray((reader) =>
             {
                 FileId key = new(reader.ReadFixedString128(), new NetcodeEndPoint(new Unity.NetCode.NetworkId() { Value = reader.ReadInt() }, Entity.Null));
-                RemoteFile value = new((FileResponseStatus)reader.ReadInt(), new FileData(reader.ReadArray(v => v.ReadByte()), reader.ReadLong()), key);
+                RemoteFile value = new((FileResponseStatus)reader.ReadInt(), new FileData(reader.ReadArray(v => v.ReadByte()), reader.ReadLong()), key, reader.ReadFixedString128());
                 return new KeyValuePair<FileId, RemoteFile>(key, value);
             }))
             {

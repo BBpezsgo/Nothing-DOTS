@@ -113,7 +113,7 @@ partial class FileChunkManagerSystem : SystemBase
 
             headerIndex = i;
 
-            switch (header.Kind)
+            switch (header.Status)
             {
                 case FileResponseStatus.NotFound:
                 {
@@ -180,9 +180,10 @@ partial class FileChunkManagerSystem : SystemBase
                     }
 
                     RemoteFile remoteFile = new(
-                        header.Kind,
+                        header.Status,
                         new FileData(data, header.Version),
-                        new FileId(header.FileName, header.Source)
+                        new FileId(header.FileName, header.Source),
+                        header.RemotePath
                     );
 
                     RemoteFiles[request.File] = remoteFile;
@@ -233,7 +234,7 @@ partial class FileChunkManagerSystem : SystemBase
             NetcodeUtils.CreateRPC(commandBuffer, World.Unmanaged, new FileHeaderRequestRpc()
             {
                 FileName = request.File.Name,
-                Version = requestCached && RemoteFiles.TryGetValue(request.File, out RemoteFile v) ? v.File.Version : 0,
+                Version = requestCached && RemoteFiles.TryGetValue(request.File, out RemoteFile v) ? v.Data.Version : 0,
             }, connection);
 
             request.RequestSentAt = SystemAPI.Time.ElapsedTime;
@@ -274,11 +275,11 @@ partial class FileChunkManagerSystem : SystemBase
             RemoteFiles.TryGetValue(fileId, out RemoteFile cached))
         {
             remoteFile = cached;
-            if (cached.Kind == FileResponseStatus.OK)
+            if (cached.Status == FileResponseStatus.OK)
             {
                 return true;
             }
-            else if (cached.Kind == FileResponseStatus.NotFound)
+            else if (cached.Status == FileResponseStatus.NotFound)
             {
                 return false;
             }
@@ -297,7 +298,7 @@ partial class FileChunkManagerSystem : SystemBase
 
         if (RemoteFiles.TryGetValue(fileId, out RemoteFile status))
         {
-            return status.Kind switch
+            return status.Status switch
             {
                 FileResponseStatus.OK => FileStatus.Received,
                 FileResponseStatus.NotFound => FileStatus.NotFound,

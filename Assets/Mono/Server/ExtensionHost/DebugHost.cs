@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -14,13 +15,16 @@ using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Utilities;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.NetCode;
 
 partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
 {
     ProcessorSource _originalSource;
     FileId _originalFile;
+    int _entityTeam;
     Entity _entity;
     readonly DebugHostManager _manager;
+    StopContext? _lastStopContext;
 
     public DebugHost(DebugHostManager manager, Stream stdIn, Stream stdOut, Logger log) : base(stdIn, stdOut, log)
     {
@@ -93,6 +97,12 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         return new DisconnectResponse();
     }
 
+    protected override TerminateResponse HandleTerminateRequest(TerminateArguments arguments)
+    {
+        Log.Trace($"[Handler] Terminate");
+        throw new ProtocolException($"Terminate isn't supported.");
+    }
+
     protected override SetExceptionBreakpointsResponse HandleSetExceptionBreakpointsRequest(SetExceptionBreakpointsArguments arguments)
     {
         return new SetExceptionBreakpointsResponse()
@@ -108,9 +118,9 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         return res;
     }
 
-    protected override LaunchResponse HandleLaunchRequest(LaunchArguments arguments)
+    protected override AttachResponse HandleAttachRequest(AttachArguments arguments)
     {
-        Log.Trace($"[Handler] Launch");
+        Log.Trace($"[Handler] Attach");
 
         Entity entity;
 
@@ -118,7 +128,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             string entityId = arguments.ConfigurationProperties.GetValueAsString("entity");
             if (string.IsNullOrEmpty(entityId))
             {
-                throw new ProtocolException("Launch failed because launch configuration did not specify 'entity'.");
+                throw new ProtocolException("Attach failed because launch configuration did not specify 'entity'.");
             }
 
             string[] parts = entityId.Split(':');
@@ -126,7 +136,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                 || !int.TryParse(parts[0], out int entityIndex)
                 || !int.TryParse(parts[1], out int entityVersion))
             {
-                throw new ProtocolException($"Launch failed because the entity is invalid.");
+                throw new ProtocolException($"Attach failed because the entity is invalid.");
             }
 
             entity = new Entity()
@@ -140,24 +150,28 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
 
         if (!e.Exists(entity))
         {
-            Log.Error($"Entity {entity} doesn't exists");
-            throw new ProtocolException($"Launch failed because entity {entity} doesn't exist.");
+            throw new ProtocolException($"Attach failed because entity {entity} doesn't exist.");
         }
 
         if (!e.HasComponent<Processor>(entity))
         {
-            Log.Error($"Entity {entity} doesn't have a {typeof(Processor)} component");
-            throw new ProtocolException($"Launch failed because entity {entity} doesn't have a {typeof(Processor)} component.");
+            throw new ProtocolException($"Attach failed because entity {entity} doesn't have a {typeof(Processor)} component.");
         }
 
         Log.Trace($"Disposing previous session");
         DisposeSession();
 
-        NoDebug = arguments.NoDebug ?? false;
+        NoDebug = false;
 
         Processor _processor = e.GetComponentData<Processor>(entity);
 
+        if (_processor.DebugContext.IsBeingDebugged)
+        {
+            throw new ProtocolException($"Attach failed because entity {entity} is currently being debugged by someone else.");
+        }
+
         _entity = entity;
+        _entityTeam = !e.HasComponent<UnitTeam>(entity) ? -1 : e.GetComponentData<UnitTeam>(entity).Team;
         _originalFile = _processor.SourceFile;
         _originalSource = _processor.Source;
         _processor.DebugContext = new ProcessorJob.DebugContext()
@@ -166,11 +180,37 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             Breakpoints = new FixedList128Bytes<ushort>(),
             Stopped = ProcessorJob.StopReason.No,
             IsStopUnhandled = false,
+            SkipCurrentBreakpoint = false,
         };
 
         e.SetComponentData(_entity, _processor);
 
-        return new LaunchResponse();
+        return new AttachResponse();
+    }
+
+    protected override LaunchResponse HandleLaunchRequest(LaunchArguments arguments)
+    {
+        Log.Trace($"[Handler] Launch");
+        throw new ProtocolException($"Launch isn't supported.");
+    }
+
+    protected override RestartResponse HandleRestartRequest(RestartArguments arguments)
+    {
+        Log.Trace($"[Handler] Restart");
+        EntityManager e = ConnectionManager.ServerOrDefaultWorld.EntityManager;
+        if (e.Exists(_entity))
+        {
+            Processor processor = e.GetComponentData<Processor>(_entity);
+            ProcessorSourceSystemServer.ResetProcessor(ref processor);
+            processor.DebugContext.Stopped = ProcessorJob.StopReason.No;
+            processor.DebugContext.IsStopUnhandled = true;
+            e.SetComponentData(_entity, processor);
+            return new RestartResponse();
+        }
+        else
+        {
+            throw new ProtocolException($"Entity {_entity} got destroyed");
+        }
     }
 
     protected override SetBreakpointsResponse HandleSetBreakpointsRequest(SetBreakpointsArguments arguments)
@@ -206,6 +246,75 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         }
     }
 
+    public static string? GetFilePath(FileId fileId, int team)
+    {
+        if (fileId == default) return null;
+
+        if (ConnectionManager.ServerOrDefaultWorld.IsServer() || ConnectionManager.ServerOrDefaultWorld.IsLocal())
+        {
+            if (fileId.Source.IsServer)
+            {
+                return FileChunkManagerSystem.ResolveFile(fileId.Name.ToString());
+            }
+            else
+            {
+                if (team < 0)
+                {
+                    goto authenticated;
+                }
+                else
+                {
+                    using EntityQuery playerQ = ConnectionManager.ServerOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(Player));
+                    using NativeArray<Entity> playerEntities = playerQ.ToEntityArray(Allocator.Temp);
+
+                    for (int i = 0; i < playerEntities.Length; i++)
+                    {
+                        Player player = ConnectionManager.ServerOrDefaultWorld.EntityManager.GetComponentData<Player>(playerEntities[i]);
+                        if (player.ConnectionId == fileId.Source.ConnectionId.Value)
+                        {
+                            if (player.Team == team)
+                            {
+                                goto authenticated;
+                            }
+                            break;
+                        }
+                    }
+
+                    return null;
+                }
+
+            authenticated:
+                FileChunkManagerSystem fileManager = ConnectionManager.ServerOrDefaultWorld.GetExistingSystemManaged<FileChunkManagerSystem>();
+                if (fileManager.TryGetRemoteFile(fileId, out RemoteFile remoteFile))
+                {
+                    return remoteFile.RemotePath.ToString(); // FIXME: this will expose all other client's local paths
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError($"Not implemented: ServerOrDefaultWorld is neither a server or a local world");
+        }
+        //else if (ConnectionManager.ServerOrDefaultWorld.IsClient())
+        //{
+        //    using EntityQuery q = ConnectionManager.ServerOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(LocalConnection));
+        //    if (q.TryGetSingletonEntity<LocalConnection>(out var localConnection))
+        //    {
+        //        NetworkId localNetworkId = ConnectionManager.ServerOrDefaultWorld.EntityManager.GetComponentData<NetworkId>(localConnection);
+        //        if (fileId.Source.ConnectionId == localNetworkId)
+        //        {
+        //            return FileChunkManagerSystem.ResolveFile(fileId.Name.ToString());
+        //        }
+        //    }
+        //    else
+        //    {
+        //        Debug.LogError($"Failed to get LocalConnection singleton entity");
+        //    }
+        //}
+
+        return null;
+    }
+
     protected override Source ToSource(Uri file)
     {
         if (!FileId.FromUri(file, out FileId fileId))
@@ -214,21 +323,22 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             {
                 Name = Path.GetFileName(file.ToString()),
                 Path = file.ToString(),
+                Origin = null,
+                AdapterData = file.ToString(),
             };
         }
 
-        if (fileId.Source.IsServer)
+        string? localFile = GetFilePath(fileId, _entityTeam);
+
+        if (localFile is not null)
         {
-            string? localFile = FileChunkManagerSystem.ResolveFile(fileId.Name.ToString());
-            if (localFile is not null)
+            return new Source()
             {
-                return new Source()
-                {
-                    Name = Path.GetFileName(file.ToString()),
-                    Path = localFile,
-                    Origin = fileId.Source.ToString(),
-                };
-            }
+                Name = Path.GetFileName(file.ToString()),
+                Path = localFile,
+                Origin = fileId.Source.ToString(),
+                AdapterData = file.ToString(),
+            };
         }
 
         return new Source()
@@ -236,48 +346,45 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             Name = Path.GetFileName(file.ToString()),
             Path = file.ToString(),
             Origin = fileId.Source.ToString(),
+            AdapterData = file.ToString(),
         };
     }
 
     protected override Uri ToUri(Source source)
     {
-        CompilerSystemServer compilerSystem = ConnectionManager.ServerOrDefaultWorld.GetExistingSystemManaged<CompilerSystemServer>();
-
-        foreach (var item in Compiled.RawStatements.Select(v => v.File))
+        if (source.AdapterData is string adapterData && Uri.TryCreate(adapterData, UriKind.Absolute, out Uri? result))
         {
-            if (FileId.FromUri(item, out FileId fileId))
-            {
-                if (fileId.Source.IsServer)
-                {
-                    string? localFile = FileChunkManagerSystem.ResolveFile(fileId.Name.ToString());
-                    if (localFile == source.Path)
-                    {
-                        return fileId.ToUri();
-                    }
-                }
-            }
+            return result;
         }
 
+        Debug.LogWarning($"Invalid source {source.Path} (adapterData: {source.AdapterData})");
         return base.ToUri(source);
     }
 
     protected override void Continue(StopReason? step)
     {
+        EntityManager e = ConnectionManager.ServerOrDefaultWorld.EntityManager;
+        if (!e.Exists(_entity)) return;
+
+        Processor processor = e.GetComponentData<Processor>(_entity);
+
         if (step is not null)
         {
-            RequestStop(step);
+            processor.DebugContext.SkipCurrentBreakpoint = true;
+            RequestStop(step, ref processor);
         }
         else
         {
-            EntityManager e = ConnectionManager.ServerOrDefaultWorld.EntityManager;
             if (e.Exists(_entity))
             {
-                Processor processor = e.GetComponentData<Processor>(_entity);
                 processor.DebugContext.Stopped = ProcessorJob.StopReason.No;
                 processor.DebugContext.IsStopUnhandled = false;
-                e.SetComponentData(_entity, processor);
+                processor.DebugContext.SkipCurrentBreakpoint = true;
+                _lastStopContext = null;
             }
         }
+
+        e.SetComponentData(_entity, processor);
     }
 
     protected override void RequestStop(StopReason reason)
@@ -288,20 +395,25 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         if (e.Exists(_entity))
         {
             Processor processor = e.GetComponentData<Processor>(_entity);
-            processor.DebugContext.Stopped = reason switch
-            {
-                StopReason_Crash => ProcessorJob.StopReason.Signal,
-                StopReason_Breakpoint => ProcessorJob.StopReason.Breakpoint,
-                StopReason_StepForward => ProcessorJob.StopReason.Pause,
-                StopReason_StepIn => ProcessorJob.StopReason.Pause,
-                StopReason_StepOut => ProcessorJob.StopReason.Pause,
-                StopReason_StepInstruction => ProcessorJob.StopReason.Pause,
-                StopReason_Pause => ProcessorJob.StopReason.Pause,
-                _ => throw new NotImplementedException(),
-            };
-            processor.DebugContext.IsStopUnhandled = true;
+            RequestStop(reason, ref processor);
             e.SetComponentData(_entity, processor);
         }
+    }
+
+    void RequestStop(StopReason reason, ref Processor processor)
+    {
+        processor.DebugContext.Stopped = reason switch
+        {
+            StopReason_Crash => ProcessorJob.StopReason.Signal,
+            StopReason_Breakpoint => ProcessorJob.StopReason.Breakpoint,
+            StopReason_StepForward => ProcessorJob.StopReason.StepForwardUnfinished,
+            StopReason_StepIn => ProcessorJob.StopReason.StepInUnfinished,
+            StopReason_StepOut => ProcessorJob.StopReason.StepOutUnfinished,
+            StopReason_StepInstruction => ProcessorJob.StopReason.StepInstructionUnfinished,
+            StopReason_Pause => ProcessorJob.StopReason.Pause,
+            _ => throw new NotImplementedException(),
+        };
+        processor.DebugContext.IsStopUnhandled = true;
     }
 
     protected override void SendKey(byte c)
@@ -351,11 +463,37 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         }
 
         Processor processor = e.GetComponentData<Processor>(_entity);
-        if (processor.DebugContext.Stopped != ProcessorJob.StopReason.No && processor.DebugContext.IsStopUnhandled)
+
+        if (!processor.DebugContext.IsBeingDebugged)
+        {
+            Protocol.SendEvent(new ExitedEvent() { ExitCode = 1 });
+            Protocol.SendEvent(new TerminatedEvent());
+            _entity = Entity.Null;
+            return;
+        }
+
+        if (processor.DebugContext.IsStopUnhandled)
         {
             processor.DebugContext.IsStopUnhandled = false;
 
             GatherInformation();
+
+            List<CallTraceItem> stacktrace = new();
+            DebugUtils.TraceStack(global::Processor.GetMemorySpan(ref processor), processor.Registers.BasePointer, DebugInformation.StackOffsets, stacktrace);
+            FunctionInformation function = DebugInformation.GetFunctionInformation(processor.Registers.CodePointer);
+            if (!DebugInformation.TryGetSourceLocation(processor.Registers.CodePointer, out SourceCodeLocation sourceLocation))
+            {
+                sourceLocation = default;
+            }
+
+            StopContext stopContext = new()
+            {
+                CodePointer = processor.Registers.CodePointer,
+                Function = function,
+                Location = sourceLocation,
+                StackTrace = stacktrace.ToImmutableArray(),
+            };
+
             switch (processor.DebugContext.Stopped)
             {
                 case ProcessorJob.StopReason.Pause:
@@ -365,6 +503,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                         AllThreadsStopped = true,
                         ThreadId = 1,
                     });
+                    _lastStopContext = stopContext;
                     break;
                 case ProcessorJob.StopReason.Breakpoint:
                     bool shouldContinue = true;
@@ -472,6 +611,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                         ThreadId = 1,
                         HitBreakpointIds = hitBreakpoints,
                     });
+                    _lastStopContext = stopContext;
                     break;
                 case ProcessorJob.StopReason.Signal:
                     if (processor.Signal == Signal.Halt)
@@ -502,6 +642,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                             },
                         });
                     }
+                    _lastStopContext = stopContext;
                     break;
                 case ProcessorJob.StopReason.RuntimeException:
                     Protocol.SendEvent(new StoppedEvent()
@@ -511,8 +652,104 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                         ThreadId = 1,
                         Description = "Unhandled RuntimeException",
                     });
+                    _lastStopContext = stopContext;
+                    break;
+                case ProcessorJob.StopReason.StepForward:
+                    if (sourceLocation.Location.IsDefault)
+                    {
+                        Log.Warn($"Cannot get source location at {processor.Registers.CodePointer}");
+                        processor.DebugContext.Stopped = ProcessorJob.StopReason.StepForwardUnfinished;
+                        break;
+                    }
+
+                    if (_lastStopContext is not null)
+                    {
+                        if (sourceLocation.Location == _lastStopContext.Location.Location || stacktrace.Count > _lastStopContext.StackTrace.Length)
+                        {
+                            processor.DebugContext.Stopped = ProcessorJob.StopReason.StepForwardUnfinished;
+                            break;
+                        }
+                    }
+
+                    Protocol.SendEvent(new StoppedEvent()
+                    {
+                        Reason = StoppedEvent.ReasonValue.Step,
+                        AllThreadsStopped = true,
+                        ThreadId = 1,
+                    });
+                    _lastStopContext = stopContext;
+                    break;
+                case ProcessorJob.StopReason.StepIn:
+                    if (sourceLocation.Location.IsDefault)
+                    {
+                        Log.Warn($"Cannot get source location at {processor.Registers.CodePointer}");
+                        processor.DebugContext.Stopped = ProcessorJob.StopReason.StepInUnfinished;
+                        break;
+                    }
+
+                    if (_lastStopContext is not null)
+                    {
+                        if (sourceLocation.Location == _lastStopContext.Location.Location)
+                        {
+                            processor.DebugContext.Stopped = ProcessorJob.StopReason.StepInUnfinished;
+                            break;
+                        }
+                    }
+
+                    Protocol.SendEvent(new StoppedEvent()
+                    {
+                        Reason = StoppedEvent.ReasonValue.Step,
+                        AllThreadsStopped = true,
+                        ThreadId = 1,
+                    });
+                    _lastStopContext = stopContext;
+                    break;
+                case ProcessorJob.StopReason.StepOut:
+                    if (sourceLocation.Location.IsDefault)
+                    {
+                        Log.Warn($"Cannot get source location at {processor.Registers.CodePointer}");
+                        processor.DebugContext.Stopped = ProcessorJob.StopReason.StepOutUnfinished;
+                        break;
+                    }
+
+                    if (_lastStopContext is not null)
+                    {
+                        if (sourceLocation.Location == _lastStopContext.Location.Location || stacktrace.Count >= _lastStopContext.StackTrace.Length)
+                        {
+                            processor.DebugContext.Stopped = ProcessorJob.StopReason.StepOutUnfinished;
+                            break;
+                        }
+                    }
+
+                    Protocol.SendEvent(new StoppedEvent()
+                    {
+                        Reason = StoppedEvent.ReasonValue.Step,
+                        AllThreadsStopped = true,
+                        ThreadId = 1,
+                    });
+                    _lastStopContext = stopContext;
+                    break;
+                case ProcessorJob.StopReason.StepInstruction:
+                    Protocol.SendEvent(new StoppedEvent()
+                    {
+                        Reason = StoppedEvent.ReasonValue.Step,
+                        AllThreadsStopped = true,
+                        ThreadId = 1,
+                    });
+                    _lastStopContext = stopContext;
+                    break;
+                case ProcessorJob.StopReason.StepForwardUnfinished:
+                case ProcessorJob.StopReason.StepInUnfinished:
+                case ProcessorJob.StopReason.StepOutUnfinished:
+                case ProcessorJob.StopReason.StepInstructionUnfinished:
                     break;
                 case ProcessorJob.StopReason.No:
+                    Protocol.SendEvent(new ContinuedEvent()
+                    {
+                        AllThreadsContinued = true,
+                        ThreadId = 1,
+                    });
+                    break;
                 default:
                     throw new UnreachableException();
             }
@@ -520,8 +757,17 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         }
     }
 
+    protected override void ResetSession()
+    {
+        base.ResetSession();
+
+        _lastStopContext = null;
+    }
+
     protected override void DisposeSession()
     {
+        base.DisposeSession();
+
         EntityManager e = ConnectionManager.ServerOrDefaultWorld.EntityManager;
         if (e.Exists(_entity))
         {

@@ -43,7 +43,7 @@ class NetcodeSourceProviderOffline : ISourceProviderSync
 
             if (FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld).TryGetRemoteFile(fileId, out RemoteFile remoteFile))
             {
-                return SourceProviderResultSync.Success(uri, Encoding.UTF8.GetString(remoteFile.File.Data));
+                return SourceProviderResultSync.Success(uri, Encoding.UTF8.GetString(remoteFile.Data.Data));
             }
         }
 

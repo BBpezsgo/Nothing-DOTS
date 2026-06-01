@@ -361,6 +361,20 @@ unsafe partial struct ProcessorSystemServer : ISystem
             }
         }
 
+        foreach (var (request, command, entity) in
+            SystemAPI.Query<RefRO<ReceiveRpcCommandRequest>, RefRO<StopDebugRequestRpc>>()
+            .WithEntityAccess())
+        {
+            commandBuffer.DestroyEntity(entity);
+
+            foreach (var (ghost, processor) in SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
+            {
+                if (!command.ValueRO.Entity.Equals(ghost.ValueRO)) continue;
+                processor.ValueRW.DebugContext.IsBeingDebugged = false;
+                break;
+            }
+        }
+
         for (int i = 0; i < subscribedTerminals.Length; i++)
         {
             TerminalSubscriptionServer subscription = subscribedTerminals[i];
@@ -615,31 +629,57 @@ partial struct ProcessorJob : IJobEntity
         Breakpoint,
         Signal,
         RuntimeException,
+
+        StepForward,
+        StepIn,
+        StepOut,
+        StepInstruction,
+
+        StepForwardUnfinished,
+        StepInUnfinished,
+        StepOutUnfinished,
+        StepInstructionUnfinished,
     }
 
     public struct DebugContext
     {
-        public required bool IsBeingDebugged;
-        public required StopReason Stopped;
-        public required bool IsStopUnhandled;
-        public required FixedList128Bytes<ushort> Breakpoints;
+        [GhostField] public required bool IsBeingDebugged;
+        [GhostField(SendData = false)] public required StopReason Stopped;
+        [GhostField(SendData = false)] public required bool SkipCurrentBreakpoint;
+        [GhostField(SendData = false)] public required bool IsStopUnhandled;
+        [GhostField(SendData = false)] public required FixedList128Bytes<ushort> Breakpoints;
     }
 
     static void HandleTickDebug(ref Processor processor, ref ProcessorState processorState)
     {
-        if (processor.DebugContext.Stopped != StopReason.No) return;
+        if (processor.DebugContext.Stopped
+            is StopReason.Breakpoint
+            or StopReason.Pause
+            or StopReason.RuntimeException
+            or StopReason.Signal
+            or StopReason.StepForward
+            or StopReason.StepIn
+            or StopReason.StepOut
+            or StopReason.StepInstruction) return;
 
         try
         {
             for (int i = 0; i < processor.CyclesPerTick; i++)
             {
-                for (int j = 0; j < processor.DebugContext.Breakpoints.Length; j++)
+                if (!processor.DebugContext.SkipCurrentBreakpoint)
                 {
-                    if (processor.DebugContext.Breakpoints[j] != processorState.Registers.CodePointer) continue;
+                    for (int j = 0; j < processor.DebugContext.Breakpoints.Length; j++)
+                    {
+                        if (processor.DebugContext.Breakpoints[j] != processorState.Registers.CodePointer) continue;
 
-                    processor.DebugContext.Stopped = StopReason.Breakpoint;
-                    processor.DebugContext.IsStopUnhandled = true;
-                    return;
+                        processor.DebugContext.Stopped = StopReason.Breakpoint;
+                        processor.DebugContext.IsStopUnhandled = true;
+                        return;
+                    }
+                }
+                else
+                {
+                    processor.DebugContext.SkipCurrentBreakpoint = false;
                 }
 
                 if (processorState.Signal != Signal.None)
@@ -666,6 +706,24 @@ partial struct ProcessorJob : IJobEntity
                 }
 
                 processorState.Tick();
+
+                if (processor.DebugContext.Stopped
+                    is StopReason.StepForwardUnfinished
+                    or StopReason.StepInUnfinished
+                    or StopReason.StepOutUnfinished
+                    or StopReason.StepInstructionUnfinished)
+                {
+                    processor.DebugContext.Stopped = processor.DebugContext.Stopped switch
+                    {
+                        StopReason.StepForwardUnfinished => StopReason.StepForward,
+                        StopReason.StepInUnfinished => StopReason.StepIn,
+                        StopReason.StepOutUnfinished => StopReason.StepOut,
+                        StopReason.StepInstructionUnfinished => StopReason.StepInstruction,
+                        _ => processor.DebugContext.Stopped,
+                    };
+                    processor.DebugContext.IsStopUnhandled = true;
+                    return;
+                }
             }
         }
         catch (RuntimeException ex)

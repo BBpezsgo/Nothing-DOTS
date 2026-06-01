@@ -382,8 +382,10 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [NotNull] Button? ui_ButtonHalt = default;
     [NotNull] Button? ui_ButtonReset = default;
     [NotNull] Button? ui_ButtonContinue = default;
+    [NotNull] Button? ui_ButtonDebugStop = default;
     [NotNull] Label? ui_LabelTerminal = default;
     [NotNull] Label? ui_LabelBasePath = default;
+    [NotNull] VisualElement? ui_PanelDebug = default;
 
     [NotNull] ScrollView? ui_ScrollTerminal = default;
     [NotNull] ScrollView? ui_ScrollFiles = default;
@@ -450,7 +452,9 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonHalt = ui.rootVisualElement.Q<Button>("button-halt");
         ui_ButtonReset = ui.rootVisualElement.Q<Button>("button-reset");
         ui_ButtonContinue = ui.rootVisualElement.Q<Button>("button-continue");
+        ui_ButtonDebugStop = ui.rootVisualElement.Q<Button>("button-stop-debug");
         ui_LabelTerminal = ui.rootVisualElement.Q<Label>("label-terminal");
+        ui_PanelDebug = ui.rootVisualElement.Q<VisualElement>("panel-debug");
         ui_ScrollTerminal = ui.rootVisualElement.Q<ScrollView>("scroll-terminal");
         ui_ScrollFiles = ui.rootVisualElement.Q<ScrollView>("scroll-files");
         ui_FilesContainer = ui.rootVisualElement.Q<VisualElement>("files-container");
@@ -603,6 +607,15 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             });
         });
 
+        ui_ButtonDebugStop.clickable = new Clickable(() =>
+        {
+            World world = ConnectionManager.ClientOrDefaultWorld;
+            NetcodeUtils.CreateRPC(world.Unmanaged, new StopDebugRequestRpc()
+            {
+                Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
+            });
+        });
+
         ui_LabelTerminal.RegisterCallback<FocusInEvent>(e =>
         {
             _terminalCursorBlinkRestart = Time.time;
@@ -735,6 +748,11 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
     public void RefreshUI(Entity unitEntity)
     {
+        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
+        Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
+
+        ui_PanelDebug.style.display = processor.DebugContext.IsBeingDebugged ? DisplayStyle.Flex : DisplayStyle.None;
+
         if (!selectingFile.IsEmpty)
         {
             ui_LabelBasePath.text = FileChunkManagerSystem.BasePath;
@@ -772,8 +790,6 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             }
         }
 
-        EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
-        Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
         ReadOnlySpan<byte> stdout = ReadOnlySpan<byte>.Empty;
 
         if (ConnectionManager.ClientOrDefaultWorld.IsClient())
@@ -1159,6 +1175,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             ui_ButtonHalt.clickable = null;
             ui_ButtonReset.clickable = null;
             ui_ButtonContinue.clickable = null;
+            ui_ButtonDebugStop.clickable = null;
             ui_LabelTerminal.text = string.Empty;
             EndFileSelection();
         }

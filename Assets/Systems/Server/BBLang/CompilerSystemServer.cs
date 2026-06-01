@@ -365,7 +365,7 @@ public partial class CompilerSystemServer : SystemBase
         {
             IExternalFunction[] externalFunctions = ProcessorAPI.GenerateManagedExternalFunctions();
 
-            Debug.Log($"{DebugEx.ServerPrefix} Compiling {sourceUri} ...");
+            //Debug.Log($"{DebugEx.ServerPrefix} Compiling {sourceUri} ...");
 
             lock (source)
             {
@@ -398,7 +398,7 @@ public partial class CompilerSystemServer : SystemBase
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            Debug.Log($"{DebugEx.ServerPrefix} Generating \"{sourceUri}\" ...");
+            //Debug.Log($"{DebugEx.ServerPrefix} Generating \"{sourceUri}\" ...");
 
             using (ProfilerMarker.AutoScope _2 = _markerCompilerGeneration.Auto())
             {
@@ -437,7 +437,7 @@ public partial class CompilerSystemServer : SystemBase
             //    }
             //}
 
-            Debug.Log($"{DebugEx.ServerPrefix} {sourceUri} done");
+            //Debug.Log($"{DebugEx.ServerPrefix} {sourceUri} done");
         }
         catch (LanguageExceptionAt exception)
         {
@@ -536,7 +536,7 @@ public partial class CompilerSystemServer : SystemBase
                 source.UnitCommandDefinitions = new(commandDefinitions.ToArray(), Allocator.Persistent);
 
                 source.Status = CompilationStatus.Generated;
-                Debug.Log($"{DebugEx.ServerPrefix} Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
+                //Debug.Log($"{DebugEx.ServerPrefix} Updating source version ({source.CompiledVersion} -> {source.LatestVersion})");
                 source.CompiledVersion = source.LatestVersion;
                 source.IsSuccess = true;
                 source.Progress = float.NaN;

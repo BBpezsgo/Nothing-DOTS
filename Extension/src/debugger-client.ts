@@ -81,7 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.debug.startDebugging(undefined, {
             type: extensionId,
             name: 'Debug Entity',
-            request: 'launch',
+            request: 'attach',
             entity: entity,
         })
             .then(result => {

@@ -31,7 +31,7 @@ partial class ProcessorSourceSystemServer : SystemBase
                         processor.ValueRW.Signal = Signal.Halt;
                         break;
                     case ProcessorCommand.Reset:
-                        ResetProcessor(processor);
+                        ResetProcessor(ref processor.ValueRW);
                         break;
                     case ProcessorCommand.Continue:
                         processor.ValueRW.Signal = Signal.None;
@@ -142,7 +142,7 @@ partial class ProcessorSourceSystemServer : SystemBase
                 else
                 {
                     if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} New source version avaliable ({processor.ValueRO.CompiledSourceVersion} -> {source.CompiledVersion}), reloading processor ...");
-                    ResetProcessor(processor);
+                    ResetProcessor(ref processor.ValueRW);
                 }
                 processor.ValueRW.CompiledSourceVersion = source.CompiledVersion;
                 processor.ValueRW.Source.Code = source.Code.Value.AsUnsafe().AsReadOnly();
@@ -163,21 +163,21 @@ partial class ProcessorSourceSystemServer : SystemBase
         }
     }
 
-    public static void ResetProcessor(RefRW<Processor> processor)
+    public static void ResetProcessor(ref Processor processor)
     {
-        ProcessorState processorState_ = new(
+        ProcessorState processorState = new(
             ProcessorSystemServer.BytecodeInterpreterSettings,
             default,
             default,
             default,
             default
         );
-        processorState_.Setup();
+        processorState.Setup();
 
-        processor.ValueRW.StdOutBuffer.Clear();
-        processor.ValueRW.StdOutBufferCursor = 0;
-        processor.ValueRW.Registers = processorState_.Registers;
-        processor.ValueRW.Signal = processorState_.Signal;
-        processor.ValueRW.Crash = processorState_.Crash;
+        processor.StdOutBuffer.Clear();
+        processor.StdOutBufferCursor = 0;
+        processor.Registers = processorState.Registers;
+        processor.Signal = processorState.Signal;
+        processor.Crash = processorState.Crash;
     }
 }

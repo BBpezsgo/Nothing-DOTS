@@ -117,7 +117,7 @@ struct Processor : IComponentData
     public long CompiledSourceVersion;
     public ProcessorSource Source;
     public UnitAttributesPack Attributes;
-    public ProcessorJob.DebugContext DebugContext;
+    [GhostField] public ProcessorJob.DebugContext DebugContext;
 
     public int CyclesPerTick;
     public Registers Registers;
@@ -156,5 +156,7 @@ struct Processor : IComponentData
     public float3 USBPosition;
     public quaternion USBRotation;
 
-    public static unsafe nint GetMemoryPtr(ref Processor processor) => (nint)Unsafe.AsPointer(ref processor.Memory);
+    public static unsafe nint GetMemoryPtr(ref Processor processor) => (nint)Unsafe.AsPointer(ref processor.Memory.Memory);
+    public static unsafe Span<byte> GetMemorySpan(ref Processor processor) => new(Unsafe.AsPointer(ref processor.Memory.Memory), 2048);
+    public static unsafe ReadOnlySpan<byte> GetMemorySpan(Processor processor) => new(Unsafe.AsPointer(ref processor.Memory.Memory), 2048);
 }

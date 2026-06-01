@@ -42,11 +42,14 @@ partial struct BufferedFileSenderSystem : ISystem
                     TransactionId = default,
                     TotalLength = default,
                     Version = MonoTime.Ticks,
+                    RemotePath = default,
                 });
 
                 if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] File \"{command.ValueRO.FileName}\" doesn't exists");
                 continue;
             }
+
+            string? path = FileChunkManagerSystem.ResolveFile(command.ValueRO.FileName.ToString());
 
             if (command.ValueRO.Version != 0 &&
                 command.ValueRO.Version == localFile.Value.Version)
@@ -58,6 +61,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     TransactionId = default,
                     TotalLength = localFile.Value.Data.Length,
                     Version = localFile.Value.Version,
+                    RemotePath = path is null ? default : new FixedString128Bytes(path),
                 });
                 continue;
             }
@@ -73,6 +77,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     TransactionId = transactionId,
                     TotalLength = totalLength,
                     Version = localFile.Value.Version,
+                    RemotePath = path is null ? default : new FixedString128Bytes(path),
                 });
 
                 sendingFiles.Add(new()

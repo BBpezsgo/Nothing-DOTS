@@ -6,7 +6,7 @@ using Unity.Entities;
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial class UnitAttributePackCompilerSystemServer : SystemBase
 {
-    const bool EnableLogging = true;
+    const bool EnableLogging = false;
 
     delegate void AttributeCompiler(Entity entity, ref UnitAttributesPackBuilder builder);
     delegate void AttributeCompiler<T>(T component, ref UnitAttributesPackBuilder builder) where T : unmanaged, IComponentData;

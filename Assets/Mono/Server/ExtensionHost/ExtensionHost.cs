@@ -10,7 +10,6 @@ using System;
 using Unity.Collections;
 using System.Collections.Generic;
 using Unity.Entities;
-using Unity.NetCode;
 
 class ExtensionHost : MonoBehaviour
 {
@@ -120,19 +119,23 @@ class ExtensionHost : MonoBehaviour
                     {
                         Entity entity = entities[i];
                         Processor processor = ConnectionManager.ServerOrDefaultWorld.EntityManager.GetComponentData<Processor>(entity);
+                        int team = ConnectionManager.ServerOrDefaultWorld.EntityManager.HasComponent<UnitTeam>(entity) ? ConnectionManager.ServerOrDefaultWorld.EntityManager.GetComponentData<UnitTeam>(entity).Team : -1;
 
-                        string? source = null;
-                        if (processor.SourceFile != default
-                            && processor.SourceFile.Source.IsServer
-                            && (ConnectionManager.ServerOrDefaultWorld.IsServer() || ConnectionManager.ServerOrDefaultWorld.IsLocal()))
-                        {
-                            source = FileChunkManagerSystem.ResolveFile(processor.SourceFile.Name.ToString());
-                        }
+                        string? source = DebugHost.GetFilePath(processor.SourceFile, team) ?? processor.SourceFile.ToString();
 
                         res.Add(new
                         {
                             id = $"{entity.Index}:{entity.Version}",
-                            signal = processor.StatusLED.Status.ToString(),
+                            signal = !processor.Source.Code.IsCreated ? "off" : processor.DebugContext.IsBeingDebugged ? "debugged" : processor.Signal switch
+                            {
+                                LanguageCore.Runtime.Signal.None => "running",
+                                LanguageCore.Runtime.Signal.UserCrash => "crashed",
+                                LanguageCore.Runtime.Signal.StackOverflow => "crashed",
+                                LanguageCore.Runtime.Signal.Halt => "halted",
+                                LanguageCore.Runtime.Signal.UndefinedExternalFunction => "crashed",
+                                LanguageCore.Runtime.Signal.PointerOutOfRange => "crashed",
+                                _ => null,
+                            },
                             source = source,
                         });
                     }

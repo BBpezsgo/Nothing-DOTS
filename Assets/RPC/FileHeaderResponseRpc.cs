@@ -17,6 +17,7 @@ public struct FileHeaderResponseRpc : IRpcCommand
     public required FileResponseStatus Status;
     public required int TransactionId;
     public required FixedString128Bytes FileName;
+    public required FixedString128Bytes RemotePath;
     public required int TotalLength;
     public required long Version;
 }

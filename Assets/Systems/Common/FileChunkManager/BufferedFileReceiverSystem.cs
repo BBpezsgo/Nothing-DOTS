@@ -34,13 +34,14 @@ partial struct BufferedFileReceiverSystem : ISystem
             bool added = false;
             BufferedReceivingFile fileHeader = new()
             {
-                Kind = command.ValueRO.Status,
+                Status = command.ValueRO.Status,
                 Source = ep,
                 TransactionId = command.ValueRO.TransactionId,
                 FileName = command.ValueRO.FileName,
                 TotalLength = command.ValueRO.TotalLength,
                 LastReceivedAt = SystemAPI.Time.ElapsedTime,
                 Version = command.ValueRO.Version,
+                RemotePath = command.ValueRO.RemotePath,
             };
 
             for (int i = 0; i < receivingFiles.Length; i++)
@@ -136,7 +137,7 @@ partial struct BufferedFileReceiverSystem : ISystem
         for (int i = 0; i < receivingFiles.Length; i++)
         {
             if (SystemAPI.Time.ElapsedTime - receivingFiles[i].LastReceivedAt < ChunkRequestsCooldown) continue;
-            if (receivingFiles[i].Kind != FileResponseStatus.OK) continue;
+            if (receivingFiles[i].Status != FileResponseStatus.OK) continue;
 
             NativeArray<bool> receivedChunks = new(FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength), Allocator.Temp);
 
@@ -159,7 +160,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                     if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Cannot request chunk `{j}` for file \"{receivingFiles[i].FileName}\": remote disconnected");
                     receivingFiles[i] = receivingFiles[i] with
                     {
-                        Kind = FileResponseStatus.ErrorDisconnected,
+                        Status = FileResponseStatus.ErrorDisconnected,
                     };
                     continue;
                 }

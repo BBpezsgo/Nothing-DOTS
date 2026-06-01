@@ -104,7 +104,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
                     try
                     {
                         RemoteFile remoteFile = task.GetAwaiter().GetResult();
-                        result.SetResult(new MemoryStream(remoteFile.File.Data));
+                        result.SetResult(new MemoryStream(remoteFile.Data.Data));
                         if (EnableLogging) Debug.Log($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Source \"{remoteFile.Source}\" downloaded ...");
                     }
                     catch (Exception ex)
