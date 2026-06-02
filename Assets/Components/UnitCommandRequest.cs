@@ -5,13 +5,11 @@ using Unity.Collections;
 public readonly struct UnitCommandRequest
 {
     public readonly int Id;
-    public readonly ushort DataLength;
-    public readonly FixedBytes30 Data;
+    public readonly FixedList32Bytes<byte> Data;
 
-    public UnitCommandRequest(int id, ushort dataLength, FixedBytes30 data)
+    public UnitCommandRequest(int id, FixedList32Bytes<byte> data)
     {
         Id = id;
-        DataLength = dataLength;
         Data = data;
     }
 }

@@ -74,8 +74,8 @@ public partial struct UnitCommandSystemServer : ISystem
     [BurstCompile]
     unsafe void HandleCommand(ref SystemState _, int sourceTeam, in SpawnedGhost entity, int commandId, in UnitCommandArguments arguments)
     {
-        foreach (var (ghostInstance, processor, team) in
-            SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, RefRO<UnitTeam>>())
+        foreach (var (ghostInstance, processor, team, logBuffer, log) in
+            SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>, RefRO<UnitTeam>, DynamicBuffer<BufferedLogPiece>, RefRW<LogPieces>>())
         {
             if (!entity.Equals(ghostInstance.ValueRO)) continue;
 
@@ -101,8 +101,8 @@ public partial struct UnitCommandSystemServer : ISystem
                 return;
             }
 
-            FixedBytes30 data = default;
-            nint dataPtr = (nint)(&data);
+            FixedBytes30 rawData = default;
+            nint dataPtr = (nint)(&rawData);
             int dataLength = 0;
             for (int j = 0; j < commandDefinitions[k].ParameterCount; j++)
             {
@@ -145,7 +145,15 @@ public partial struct UnitCommandSystemServer : ISystem
                 processor.ValueRW.CommandQueue.RemoveAt(0);
             }
 
-            processor.ValueRW.CommandQueue.Add(new UnitCommandRequest(commandId, (ushort)dataLength, data));
+            FixedList32Bytes<byte> data = new();
+            for (int i = 0; i < dataLength; i++)
+            {
+                data.Add(rawData.AsBytes()[i]);
+            }
+
+            new UnitLog_Command(MonoTime.UnixSeconds, ++log.ValueRW.LastIndex, commandId, data).Write(logBuffer);
+
+            processor.ValueRW.CommandQueue.Add(new UnitCommandRequest(commandId, data));
 
             return;
         }

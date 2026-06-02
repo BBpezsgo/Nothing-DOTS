@@ -18,6 +18,12 @@ static unsafe class FixedListExtensions
     public static Span<T> AsSpan<T>(ref this FixedList512Bytes<T> list) where T : unmanaged => new(list.GetUnsafePtr(), list.Length);
     public static Span<T> AsSpan<T>(ref this FixedList4096Bytes<T> list) where T : unmanaged => new(list.GetUnsafePtr(), list.Length);
 
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this FixedList32Bytes<T> list) where T : unmanaged => new(list.GetUnsafePtr(), list.Length);
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this FixedList64Bytes<T> list) where T : unmanaged => new(list.GetUnsafePtr(), list.Length);
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this FixedList128Bytes<T> list) where T : unmanaged => new(list.GetUnsafePtr(), list.Length);
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this FixedList512Bytes<T> list) where T : unmanaged => new(list.GetUnsafePtr(), list.Length);
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this FixedList4096Bytes<T> list) where T : unmanaged => new(list.GetUnsafePtr(), list.Length);
+
     public static T* GetUnsafePtr<T>(ref this FixedList32Bytes<T> list) where T : unmanaged => (T*)((byte*)Unsafe.AsPointer(ref list) + UnsafeUtility.SizeOf<ushort>());
     public static T* GetUnsafePtr<T>(ref this FixedList64Bytes<T> list) where T : unmanaged => (T*)((byte*)Unsafe.AsPointer(ref list) + UnsafeUtility.SizeOf<ushort>());
     public static T* GetUnsafePtr<T>(ref this FixedList128Bytes<T> list) where T : unmanaged => (T*)((byte*)Unsafe.AsPointer(ref list) + UnsafeUtility.SizeOf<ushort>());

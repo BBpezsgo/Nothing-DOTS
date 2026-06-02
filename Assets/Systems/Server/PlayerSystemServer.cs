@@ -274,4 +274,23 @@ public partial struct PlayerSystemServer : ISystem
             }
         }
     }
+
+    public static bool FindPlayer(WorldUnmanaged world, Guid token, out Player player, Allocator allocator = Allocator.Temp)
+    {
+        using EntityQuery q = world.EntityManager.CreateEntityQuery(typeof(Player));
+        using NativeArray<Entity> playerEntities = q.ToEntityArray(allocator);
+
+        for (int i = 0; i < playerEntities.Length; i++)
+        {
+            Player item = world.EntityManager.GetComponentData<Player>(playerEntities[i]);
+            if (item.Guid == token)
+            {
+                player = item;
+                return true;
+            }
+        }
+
+        player = default;
+        return false;
+    }
 }

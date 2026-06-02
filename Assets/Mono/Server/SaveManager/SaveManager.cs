@@ -395,7 +395,7 @@ class SaveManager : MonoBehaviour
                     writer.Write(v.CommandQueue, (writer, v) =>
                     {
                         writer.WriteUnsafe(v.Id);
-                        writer.WriteBytes(&v.Data, v.DataLength);
+                        writer.WriteUnsafe(v.Data);
                     });
                     writer.Write(v.PendrivePlugRequested);
                     writer.Write(v.PendriveUnplugRequested);
@@ -434,10 +434,8 @@ class SaveManager : MonoBehaviour
                     v.CommandQueue = reader.ReadFixedList128<UnitCommandRequest>(reader =>
                     {
                         int id = reader.ReadInt();
-                        int dataLength = reader.ReadInt();
-                        FixedBytes30 data;
-                        reader.ReadBytes(&data, dataLength);
-                        return new UnitCommandRequest(id, (ushort)dataLength, data);
+                        FixedList32Bytes<byte> data = reader.ReadFixedList32Unsafe<byte>();
+                        return new UnitCommandRequest(id, data);
                     });
                     v.PendrivePlugRequested = reader.ReadBool();
                     v.PendriveUnplugRequested = reader.ReadBool();

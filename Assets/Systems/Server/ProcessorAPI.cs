@@ -495,7 +495,10 @@ static unsafe class ProcessorAPI
             UnitCommandRequest first = queue[0];
             queue.RemoveAt(0);
 
-            Buffer.MemoryCopy(&first.Data, (byte*)scope->ProcessorRef.Memory + dataPtr, first.DataLength, first.DataLength);
+            for (int i = 0; i < first.Data.Length; i++)
+            {
+                *((byte*)scope->ProcessorRef.Memory + dataPtr + i) = first.Data[i];
+            }
 
             returnValue.Set(first.Id);
         }

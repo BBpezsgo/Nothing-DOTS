@@ -17,6 +17,7 @@ partial struct WirelessTransmissionSystemServer : ISystem
     public const float TransmissionRadius = 100f;
 
     ComponentLookup<Processor> processorComponentQ;
+    BufferLookup<BufferedLogPiece> logsBufferQ;
 
     static readonly ProfilerMarker _CellVisibilityCheck = new(ProfilerCategory.Scripts, "TransmissionSystem.CellVisibilityCheck");
     static readonly ProfilerMarker _CellOperation = new(ProfilerCategory.Scripts, "TransmissionSystem.CellOperation");
@@ -25,15 +26,17 @@ partial struct WirelessTransmissionSystemServer : ISystem
     void ISystem.OnCreate(ref SystemState state)
     {
         processorComponentQ = state.GetComponentLookup<Processor>(false);
+        logsBufferQ = state.GetBufferLookup<BufferedLogPiece>(false);
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         processorComponentQ.Update(ref state);
+        logsBufferQ.Update(ref state);
 
-        foreach (var (processor, transform, entity) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>>()
+        foreach (var (processor, transform, logBuffer, log, entity) in
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>, DynamicBuffer<BufferedLogPiece>, RefRW<LogPieces>>()
             .WithEntityAccess())
         {
             if (processor.ValueRW.OutgoingTransmissions.Length == 0) continue;
@@ -41,6 +44,8 @@ partial struct WirelessTransmissionSystemServer : ISystem
             if (!transmission.Metadata.IsWireless) continue;
 
             processor.ValueRW.OutgoingTransmissions.RemoveAt(0);
+
+            new UnitLog_Transmission_WirelessOut(MonoTime.UnixSeconds, ++log.ValueRW.LastIndex, transmission.Metadata.Wireless, transmission.Data).Write(logBuffer);
 
             NativeParallelHashMap<uint, NativeList<QuadrantEntity>>.ReadOnly map = QuadrantSystem.GetMap(state.WorldUnmanaged);
             Cell grid = Cell.ToGrid(transform.ValueRO.Position);
@@ -159,6 +164,16 @@ partial struct WirelessTransmissionSystemServer : ISystem
 
                             ref FixedList128Bytes<BufferedUnitTransmission> transmissions = ref other.ValueRW.IncomingTransmissions;
 
+                            IncomingWirelessUnitTransmissionMetadata otherIncomingMetadata = new()
+                            {
+                                Source = transform.ValueRO.Position,
+                            };
+
+                            if (logsBufferQ.TryGetBuffer(cell[i].Entity, out DynamicBuffer<BufferedLogPiece> otherLog))
+                            {
+                                new UnitLog_Transmission_WirelessIn(MonoTime.UnixSeconds, ++log.ValueRW.LastIndex, otherIncomingMetadata, transmission.Data).Write(logBuffer);
+                            }
+
                             if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
                             transmissions.Add(new()
                             {
@@ -166,10 +181,7 @@ partial struct WirelessTransmissionSystemServer : ISystem
                                 Metadata = new IncomingUnitTransmissionMetadata()
                                 {
                                     IsWireless = true,
-                                    Wireless = new()
-                                    {
-                                        Source = transform.ValueRO.Position,
-                                    },
+                                    Wireless = otherIncomingMetadata,
                                 },
                             });
                         }

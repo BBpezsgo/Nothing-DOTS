@@ -27,8 +27,8 @@ partial struct CombatTurretProcessorSystem : ISystem
             random = Unity.Mathematics.Random.CreateFromIndex(*(uint*)&v);
         }
 
-        foreach (var (processor, turret, entity) in
-            SystemAPI.Query<RefRW<Processor>, RefRW<CombatTurret>>()
+        foreach (var (processor, turret, logBuffer, log, entity) in
+            SystemAPI.Query<RefRW<Processor>, RefRW<CombatTurret>, DynamicBuffer<BufferedLogPiece>, RefRW<LogPieces>>()
             .WithEntityAccess())
         {
             ref MappedMemory mapped = ref processor.ValueRW.Memory.MappedMemory;
@@ -104,6 +104,8 @@ partial struct CombatTurretProcessorSystem : ISystem
                     MetalImpactEffect = projectiles[projectileIndex].MetalImpactEffect,
                     DustImpactEffect = projectiles[projectileIndex].DustImpactEffect,
                 });
+
+                new UnitLog_CombatTurret_Shoot(MonoTime.UnixSeconds, ++log.ValueRW.LastIndex).Write(logBuffer);
 
                 if (turret.ValueRO.ShootEffect != -1)
                 {

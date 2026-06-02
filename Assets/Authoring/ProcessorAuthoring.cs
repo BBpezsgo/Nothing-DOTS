@@ -37,6 +37,8 @@ class ProcessorAuthoring : MonoBehaviour
                 SourceFile = authoring.Script is not null ? new FileId(authoring.Script, NetcodeEndPoint.Server) : default,
 #endif
             });
+            AddBuffer<BufferedLogPiece>(entity);
+            AddComponent<LogPieces>(entity);
         }
     }
 }

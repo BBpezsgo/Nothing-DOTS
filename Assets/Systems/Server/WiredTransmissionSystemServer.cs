@@ -33,29 +33,34 @@ public readonly struct EntityPortIdentifier : IEquatable<EntityPortIdentifier>
 partial struct WiredTransmissionSystemServer : ISystem
 {
     ComponentLookup<Processor> processorComponentQ;
+    BufferLookup<BufferedLogPiece> logsBufferQ;
 
     [BurstCompile]
     void ISystem.OnCreate(ref SystemState state)
     {
         processorComponentQ = state.GetComponentLookup<Processor>(false);
+        logsBufferQ = state.GetBufferLookup<BufferedLogPiece>(false);
     }
 
     [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         processorComponentQ.Update(ref state);
+        logsBufferQ.Update(ref state);
 
         NativeQueue<EntityPortIdentifier> openSet = new(Allocator.Temp);
         NativeHashSet<EntityPortIdentifier> closedSet = new(16, Allocator.Temp);
 
-        foreach (var (processor, transform, originEntity) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>>()
+        foreach (var (processor, transform, logBuffer, log, originEntity) in
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>, DynamicBuffer<BufferedLogPiece>, RefRW<LogPieces>>()
             .WithEntityAccess())
         {
             if (processor.ValueRW.OutgoingTransmissions.Length == 0) continue;
             BufferedUnitTransmissionOutgoing transmission = processor.ValueRW.OutgoingTransmissions[0];
             if (transmission.Metadata.IsWireless) continue;
             OutgoingWiredUnitTransmissionMetadata metadata = transmission.Metadata.Wired;
+
+            //new UnitLog_Transmission_WiredOut(MonoTime.UnixSeconds, metadata, transmission.Data).Write(log);
 
             processor.ValueRW.OutgoingTransmissions.RemoveAt(0);
 
@@ -131,6 +136,16 @@ partial struct WiredTransmissionSystemServer : ISystem
 
                 ref FixedList128Bytes<BufferedUnitTransmission> transmissions = ref other.ValueRW.IncomingTransmissions;
 
+                IncomingWiredUnitTransmissionMetadata otherIncomingMetadata = new()
+                {
+                    Port = connector.Port,
+                };
+
+                if (logsBufferQ.TryGetBuffer(connector.Entity, out DynamicBuffer<BufferedLogPiece> otherLog))
+                {
+                    new UnitLog_Transmission_WiredIn(MonoTime.UnixSeconds, ++log.ValueRW.LastIndex, otherIncomingMetadata, transmission.Data).Write(logBuffer);
+                }
+
                 if (transmissions.Length >= transmissions.Capacity) transmissions.RemoveAt(0);
                 transmissions.Add(new()
                 {
@@ -138,10 +153,7 @@ partial struct WiredTransmissionSystemServer : ISystem
                     Metadata = new IncomingUnitTransmissionMetadata()
                     {
                         IsWireless = false,
-                        Wired = new()
-                        {
-                            Port = connector.Port,
-                        },
+                        Wired = otherIncomingMetadata,
                     },
                 });
             }

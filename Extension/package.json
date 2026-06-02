@@ -26,6 +26,9 @@
         "type": "github"
     },
     "main": "./out/extension",
+    "activationEvents": [
+        "onUri"
+    ],
     "contributes": {
         "debuggers": [
             {
@@ -39,6 +42,14 @@
                     "id": "gameUnits",
                     "name": "Game Units",
                     "type": "tree"
+                }
+            ],
+            "debug": [
+                {
+                    "id": "unitLog",
+                    "name": "Unit Logs",
+                    "type": "tree",
+                    "when": "inDebugMode && debugType == 'nothingame'"
                 }
             ]
         },
@@ -73,6 +84,12 @@
                 "category": "Nothingame",
                 "icon": "$(refresh)",
                 "title": "Refresh units"
+            },
+            {
+                "command": "nothingame.authenticate",
+                "category": "Nothingame",
+                "icon": "$(key)",
+                "title": "Authenticate with token"
             },
             {
                 "command": "nothingame.debug.attach",

@@ -13,20 +13,22 @@ public partial struct PlayerSystemClient : ISystem
 {
     const string SessionsDirectoryPath = "sessions";
 
-    bool GuidRequestSent;
-    bool SessionRequestSent;
-    SessionStatusCode SessionStatus;
-    Guid PlayerGuid;
-    Guid ServerGuid;
-    FixedString32Bytes Nickname;
+    bool _guidRequestSent;
+    bool _sessionRequestSent;
+    SessionStatusCode _sessionStatus;
+    Guid _playerGuid;
+    Guid _serverGuid;
+    FixedString32Bytes _nickname;
     EntityQuery playersQ;
     EntityQuery connectionsQ;
+
+    public Guid PlayerGuid => _playerGuid;
 
     public static ref PlayerSystemClient GetInstance(in WorldUnmanaged world) => ref world.GetSystem<PlayerSystemClient>();
 
     void ISystem.OnCreate(ref SystemState state)
     {
-        PlayerGuid = default;
+        _playerGuid = default;
         state.RequireForUpdate<NetworkStreamConnection>();
     }
 
@@ -41,10 +43,10 @@ public partial struct PlayerSystemClient : ISystem
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            ServerGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
-            GuidRequestSent = false;
+            _serverGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
+            _guidRequestSent = false;
 
-            Debug.Log($"{DebugEx.ClientPrefix} Server guid: `{ServerGuid}`");
+            Debug.Log($"{DebugEx.ClientPrefix} Server guid: `{_serverGuid}`");
         }
 
         foreach (var (_, command, entity) in
@@ -54,21 +56,21 @@ public partial struct PlayerSystemClient : ISystem
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            SessionStatus = command.ValueRO.StatusCode;
-            PlayerGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
-            SessionRequestSent = false;
+            _sessionStatus = command.ValueRO.StatusCode;
+            _playerGuid = Marshal.As<FixedBytes16, Guid>(command.ValueRO.Guid);
+            _sessionRequestSent = false;
 
             switch (command.ValueRO.StatusCode)
             {
                 case SessionStatusCode.AlreadyLoggedIn:
                 case SessionStatusCode.OK:
                 {
-                    Nickname = command.ValueRO.Nickname;
-                    Debug.Log($"{DebugEx.ClientPrefix} Successfully logged in ({command.ValueRO.StatusCode})\n  Guid: {PlayerGuid}\n  Nickname: {Nickname}");
+                    _nickname = command.ValueRO.Nickname;
+                    Debug.Log($"{DebugEx.ClientPrefix} Successfully logged in ({command.ValueRO.StatusCode})\n  Guid: {_playerGuid}\n  Nickname: {_nickname}");
 
-                    if (!FindSavedSession(ServerGuid, out Guid savedPlayerGuid, out _) || savedPlayerGuid != PlayerGuid)
+                    if (!FindSavedSession(_serverGuid, out Guid savedPlayerGuid, out _) || savedPlayerGuid != _playerGuid)
                     {
-                        SaveSession(ServerGuid, PlayerGuid);
+                        SaveSession(_serverGuid, _playerGuid);
                     }
 
                     return;
@@ -77,7 +79,7 @@ public partial struct PlayerSystemClient : ISystem
                 {
                     Debug.Log($"{DebugEx.ClientPrefix} Invalid guid, resetting local player guid");
 
-                    PlayerGuid = default;
+                    _playerGuid = default;
                     break;
                 }
                 default: throw new UnreachableException();
@@ -90,10 +92,10 @@ public partial struct PlayerSystemClient : ISystem
 
         if (TryGetLocalPlayer(ref state, out _)) return;
 
-        if (ServerGuid == default)
+        if (_serverGuid == default)
         {
-            if (GuidRequestSent) return;
-            GuidRequestSent = true;
+            if (_guidRequestSent) return;
+            _guidRequestSent = true;
 
             Debug.Log($"{DebugEx.ClientPrefix} Requesting server guid");
 
@@ -103,16 +105,16 @@ public partial struct PlayerSystemClient : ISystem
             return;
         }
 
-        if (SessionRequestSent) return;
-        SessionRequestSent = true;
+        if (_sessionRequestSent) return;
+        _sessionRequestSent = true;
 
         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
 
-        if (PlayerGuid == default)
+        if (_playerGuid == default)
         {
-            if (FindSavedSession(ServerGuid, out Guid savedPlayerGuid, out _) && SessionStatus != SessionStatusCode.InvalidGuid)
+            if (FindSavedSession(_serverGuid, out Guid savedPlayerGuid, out _) && _sessionStatus != SessionStatusCode.InvalidGuid)
             {
-                Debug.Log($"{DebugEx.ClientPrefix} No player found, logging in with saved session\nserver: {ServerGuid}\nplayer: {savedPlayerGuid}");
+                Debug.Log($"{DebugEx.ClientPrefix} No player found, logging in with saved session\nserver: {_serverGuid}\nplayer: {savedPlayerGuid}");
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
                 {
@@ -125,17 +127,17 @@ public partial struct PlayerSystemClient : ISystem
 
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionRegisterRequestRpc()
                 {
-                    Nickname = Nickname,
+                    Nickname = _nickname,
                 });
             }
         }
         else
         {
-            Debug.Log($"{DebugEx.ClientPrefix} No player found, logging in with {PlayerGuid}");
+            Debug.Log($"{DebugEx.ClientPrefix} No player found, logging in with {_playerGuid}");
 
             NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new SessionLoginRequestRpc()
             {
-                Guid = Marshal.As<Guid, FixedBytes16>(PlayerGuid),
+                Guid = Marshal.As<Guid, FixedBytes16>(_playerGuid),
             });
         }
     }
@@ -223,7 +225,7 @@ public partial struct PlayerSystemClient : ISystem
 
     public void SetNickname(FixedString32Bytes nickname)
     {
-        Nickname = nickname;
+        _nickname = nickname;
 
         if (ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal())
         {

@@ -23,8 +23,8 @@ public partial struct UnitRadarSystemServer : ISystem
     {
         var map = QuadrantSystem.GetMap(ref state);
 
-        foreach (var (processor, localTransform, transform) in
-            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>, RefRO<LocalToWorld>>()
+        foreach (var (processor, localTransform, transform, logBuffer, log) in
+            SystemAPI.Query<RefRW<Processor>, RefRO<LocalTransform>, RefRO<LocalToWorld>, DynamicBuffer<BufferedLogPiece>, RefRW<LogPieces>>()
             .WithAll<Radar>())
         {
             float2 direction = processor.ValueRO.RadarRequest;
@@ -49,6 +49,8 @@ public partial struct UnitRadarSystemServer : ISystem
 
             if (!RadarCast(map, ray, out RadarHit hit))
             {
+                new UnitLog_Radar(MonoTime.UnixSeconds, ++log.ValueRW.LastIndex, false, default).Write(logBuffer);
+
                 processor.ValueRW.RadarResponse = new RadarResponse(float.NaN, 0, 0, 0, 0);
                 return;
             }
@@ -57,6 +59,8 @@ public partial struct UnitRadarSystemServer : ISystem
 
             if (distance >= Radar.RadarRadius)
             {
+                new UnitLog_Radar(MonoTime.UnixSeconds, ++log.ValueRW.LastIndex, false, default).Write(logBuffer);
+
                 processor.ValueRW.RadarResponse = new RadarResponse(float.NaN, 0, 0, 0, 0);
                 return;
             }
@@ -93,6 +97,8 @@ public partial struct UnitRadarSystemServer : ISystem
             }
 
             processor.ValueRW.RadarResponse = new RadarResponse(localTransform.ValueRO.InverseTransformPoint(hit.Point), speedSignal, clutter, fingerprint, meta);
+
+            new UnitLog_Radar(MonoTime.UnixSeconds, ++log.ValueRW.LastIndex, true, processor.ValueRO.RadarResponse).Write(logBuffer);
         }
     }
 

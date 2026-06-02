@@ -15,16 +15,20 @@ using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Utilities;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 
 partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
 {
     ProcessorSource _originalSource;
     FileId _originalFile;
-    int _entityTeam;
     Entity _entity;
+    Guid _playerGuid;
+    int _playerConnectionId;
+    Entity _playerEntity;
     readonly DebugHostManager _manager;
     StopContext? _lastStopContext;
+    uint _unitLogPosition;
 
     public DebugHost(DebugHostManager manager, Stream stdIn, Stream stdOut, Logger log) : base(stdIn, stdOut, log)
     {
@@ -123,30 +127,85 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         Log.Trace($"[Handler] Attach");
 
         Entity entity;
+        Guid guid;
+        int playerConnectionId;
+        Entity playerEntity;
+        int playerTeam;
+
+        {
+            string guidValue = arguments.ConfigurationProperties.GetValueAsString("token");
+            if (string.IsNullOrEmpty(guidValue))
+            {
+                throw new ProtocolException("Attach failed because launch configuration did not specify 'token'.");
+            }
+
+            if (!Guid.TryParse(guidValue, out guid))
+            {
+                throw new ProtocolException("Attach failed because couldn't parse the token.");
+            }
+        }
+
+        EntityManager e = ConnectionManager.ServerOrDefaultWorld.EntityManager;
+
+        {
+            using var q = e.CreateEntityQuery(typeof(Player));
+            using var playerEntities = q.ToEntityArray(Allocator.Temp);
+
+            for (int i = 0; i < playerEntities.Length; i++)
+            {
+                var player = e.GetComponentData<Player>(playerEntities[i]);
+                if (player.Guid != guid) continue;
+
+                playerConnectionId = player.ConnectionId;
+                playerEntity = playerEntities[i];
+                playerTeam = player.Team;
+
+                goto ok;
+            }
+
+            throw new ProtocolException("Attach failed because the token is invalid.");
+        ok:;
+        }
 
         {
             string entityId = arguments.ConfigurationProperties.GetValueAsString("entity");
             if (string.IsNullOrEmpty(entityId))
             {
-                throw new ProtocolException("Attach failed because launch configuration did not specify 'entity'.");
-            }
+                string ghostId = arguments.ConfigurationProperties.GetValueAsString("ghost");
+                if (string.IsNullOrEmpty(ghostId))
+                {
+                    throw new ProtocolException("Attach failed because launch configuration did not specify 'entity' or 'ghost'.");
+                }
 
-            string[] parts = entityId.Split(':');
-            if (parts.Length != 2
-                || !int.TryParse(parts[0], out int entityIndex)
-                || !int.TryParse(parts[1], out int entityVersion))
-            {
-                throw new ProtocolException($"Attach failed because the entity is invalid.");
-            }
+                if (!ExtensionHostUtils.TryParseGhost(ghostId, out var ghost))
+                {
+                    throw new ProtocolException($"Attach failed because the ghost is invalid.");
+                }
 
-            entity = new Entity()
+                using var q = e.CreateEntityQuery(typeof(Processor), typeof(GhostInstance));
+                using var entities = q.ToEntityArray(Allocator.Temp);
+
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    if (ghost.Equals(e.GetComponentData<GhostInstance>(entities[i])))
+                    {
+                        entity = entities[i];
+                        goto ok;
+                    }
+                }
+
+                throw new ProtocolException($"Attach failed because the ghost {ghost} not found.");
+
+            ok:;
+            }
+            else
             {
-                Index = entityIndex,
-                Version = entityVersion,
-            };
+                if (!ExtensionHostUtils.TryParseEntity(entityId, out entity))
+                {
+                    throw new ProtocolException($"Attach failed because the entity is invalid.");
+                }
+            }
         }
-
-        EntityManager e = ConnectionManager.ServerOrDefaultWorld.EntityManager;
 
         if (!e.Exists(entity))
         {
@@ -170,10 +229,22 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             throw new ProtocolException($"Attach failed because entity {entity} is currently being debugged by someone else.");
         }
 
+        var entityTeam = !e.HasComponent<UnitTeam>(entity) ? -1 : e.GetComponentData<UnitTeam>(entity).Team;
+
+        if (entityTeam != playerTeam)
+        {
+            throw new ProtocolException($"Attach failed because you cannot debug your opponent's units.");
+        }
+
+        Log.Info($"Debug session started: {{ entity: {entity}, token: {guid}, connection: {playerConnectionId} }}");
+
         _entity = entity;
-        _entityTeam = !e.HasComponent<UnitTeam>(entity) ? -1 : e.GetComponentData<UnitTeam>(entity).Team;
+        _playerGuid = guid;
+        _playerConnectionId = playerConnectionId;
+        _playerEntity = playerEntity;
         _originalFile = _processor.SourceFile;
         _originalSource = _processor.Source;
+        _unitLogPosition = 0;
         _processor.DebugContext = new ProcessorJob.DebugContext()
         {
             IsBeingDebugged = true,
@@ -246,7 +317,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         }
     }
 
-    public static string? GetFilePath(FileId fileId, int team)
+    public static string? GetFilePath(FileId fileId, Guid playerGuid)
     {
         if (fileId == default) return null;
 
@@ -258,7 +329,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             }
             else
             {
-                if (team < 0)
+                if (playerGuid == default)
                 {
                     goto authenticated;
                 }
@@ -272,7 +343,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                         Player player = ConnectionManager.ServerOrDefaultWorld.EntityManager.GetComponentData<Player>(playerEntities[i]);
                         if (player.ConnectionId == fileId.Source.ConnectionId.Value)
                         {
-                            if (player.Team == team)
+                            if (player.Guid == playerGuid)
                             {
                                 goto authenticated;
                             }
@@ -328,7 +399,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             };
         }
 
-        string? localFile = GetFilePath(fileId, _entityTeam);
+        string? localFile = GetFilePath(fileId, _playerGuid);
 
         if (localFile is not null)
         {
@@ -470,6 +541,182 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             Protocol.SendEvent(new TerminatedEvent());
             _entity = Entity.Null;
             return;
+        }
+
+        {
+            ReadOnlySpan<byte> logBuffer = e.GetBuffer<BufferedLogPiece>(_entity, true).AsNativeArray().Reinterpret<byte>().AsReadOnlySpan();
+
+            for (int i = 0; i < logBuffer.Length;)
+            {
+                LogPieceType type = (LogPieceType)logBuffer[i];
+                switch (type)
+                {
+                    case LogPieceType.Message:
+                    {
+                        break;
+                    }
+                    case LogPieceType.CombatTurret_Shoot:
+                    {
+                        UnitLog_CombatTurret_Shoot log = UnitLog_CombatTurret_Shoot.Read(logBuffer, ref i);
+                        if (log.Header.Index <= _unitLogPosition) continue;
+                        _unitLogPosition = log.Header.Index;
+                        Protocol.SendEvent(new UnitLogEvent(log.Header));
+                        break;
+                    }
+                    case LogPieceType.Command:
+                    {
+                        UnitLog_Command log = UnitLog_Command.Read(logBuffer, ref i);
+                        if (log.Header.Index <= _unitLogPosition) continue;
+                        _unitLogPosition = log.Header.Index;
+
+                        ReadOnlySpan<UnitCommandDefinition> commandDefinitions = processor.Source.UnitCommandDefinitions.AsSpan();
+                        var data = log.Data.AsReadOnlySpan();
+                        for (int j = 0; j < commandDefinitions.Length; j++)
+                        {
+                            if (commandDefinitions[j].Id == log.CommandId)
+                            {
+                                object[] parameters = new object[commandDefinitions[j].ParameterCount];
+                                int ptr = 0;
+                                for (int k = 0; k < commandDefinitions[j].ParameterCount; k++)
+                                {
+                                    switch (commandDefinitions[j].GetParameter(k))
+                                    {
+                                        case UnitCommandParameter.Position2:
+                                        {
+                                            var v = data.Get<float2>(ptr);
+                                            unsafe
+                                            {
+                                                ptr += sizeof(float2);
+                                            }
+
+                                            parameters[k] = new { v.x, v.y };
+                                            break;
+                                        }
+                                        case UnitCommandParameter.Position3:
+                                        {
+                                            var v = data.Get<float3>(ptr);
+                                            unsafe
+                                            {
+                                                ptr += sizeof(float3);
+                                            }
+
+                                            parameters[k] = new { v.x, v.y, v.z };
+                                            break;
+                                        }
+                                        default:
+                                            throw new UnreachableException();
+                                    }
+                                }
+                                Protocol.SendEvent(new UnitLogEvent(log.Header, new
+                                {
+                                    id = log.CommandId,
+                                    parameters,
+                                }));
+                                goto ok;
+                            }
+                        }
+
+                        Protocol.SendEvent(new UnitLogEvent(log.Header, new
+                        {
+                            id = log.CommandId,
+                            data = Convert.ToBase64String(data),
+                        }));
+                    ok:
+                        break;
+                    }
+                    case LogPieceType.Radar:
+                    {
+                        UnitLog_Radar log = UnitLog_Radar.Read(logBuffer, ref i);
+                        if (log.Header.Index <= _unitLogPosition) continue;
+                        _unitLogPosition = log.Header.Index;
+                        Protocol.SendEvent(new UnitLogEvent(log.Header, new
+                        {
+                            response = log.Success ? new
+                            {
+                                point = new { log.RadarResponse.Point.x, log.RadarResponse.Point.y, log.RadarResponse.Point.z },
+                                speedSignal = log.RadarResponse.SpeedSignal,
+                                clutter = log.RadarResponse.Clutter,
+                                fingerprint = log.RadarResponse.Fingerprint,
+                                meta = log.RadarResponse.Meta,
+                            } : null,
+                        }));
+                        break;
+                    }
+                    case LogPieceType.Transmission_WiredOut:
+                    {
+                        UnitLog_Transmission_WiredOut log = UnitLog_Transmission_WiredOut.Read(logBuffer, ref i);
+                        if (log.Header.Index <= _unitLogPosition) continue;
+                        _unitLogPosition = log.Header.Index;
+                        Protocol.SendEvent(new UnitLogEvent(log.Header, new
+                        {
+                            data = Convert.ToBase64String(log.Data.ToArray()),
+                            meta = new
+                            {
+                                port = log.Metadata.Port,
+                            },
+                        }));
+                        break;
+                    }
+                    case LogPieceType.Transmission_WiredIn:
+                    {
+                        UnitLog_Transmission_WiredIn log = UnitLog_Transmission_WiredIn.Read(logBuffer, ref i);
+                        if (log.Header.Index <= _unitLogPosition) continue;
+                        _unitLogPosition = log.Header.Index;
+                        Protocol.SendEvent(new UnitLogEvent(log.Header, new
+                        {
+                            data = Convert.ToBase64String(log.Data.ToArray()),
+                            meta = new
+                            {
+                                port = log.Metadata.Port,
+                            },
+                        }));
+                        break;
+                    }
+                    case LogPieceType.Transmission_WirelessOut:
+                    {
+                        UnitLog_Transmission_WirelessOut log = UnitLog_Transmission_WirelessOut.Read(logBuffer, ref i);
+                        if (log.Header.Index <= _unitLogPosition) continue;
+                        _unitLogPosition = log.Header.Index;
+                        Protocol.SendEvent(new UnitLogEvent(log.Header, new
+                        {
+                            data = Convert.ToBase64String(log.Data.ToArray()),
+                            meta = new
+                            {
+                                source = new { log.Metadata.Source.x, log.Metadata.Source.y, log.Metadata.Source.z },
+                                direction = new { log.Metadata.Direction.x, log.Metadata.Direction.y, log.Metadata.Direction.z },
+                                cosAngle = log.Metadata.CosAngle,
+                                angle = log.Metadata.Angle,
+                            },
+                        }));
+                        break;
+                    }
+                    case LogPieceType.Transmission_WirelessIn:
+                    {
+                        UnitLog_Transmission_WirelessIn log = UnitLog_Transmission_WirelessIn.Read(logBuffer, ref i);
+                        if (log.Header.Index <= _unitLogPosition) continue;
+                        _unitLogPosition = log.Header.Index;
+                        Protocol.SendEvent(new UnitLogEvent(log.Header, new
+                        {
+                            data = Convert.ToBase64String(log.Data.ToArray()),
+                            meta = new
+                            {
+                                source = new { log.Metadata.Source.x, log.Metadata.Source.y, log.Metadata.Source.z },
+                            },
+                        }));
+                        break;
+                    }
+                    case LogPieceType.ProcessorSignal:
+                    {
+                        break;
+                    }
+                    case LogPieceType.Unknown0:
+                    case LogPieceType.Unknown1:
+                    default:
+                        goto invalid;
+                }
+            }
+
+        invalid:;
         }
 
         if (processor.DebugContext.IsStopUnhandled)
@@ -775,6 +1022,14 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             _processor.DebugContext = default;
             e.SetComponentData(_entity, _processor);
         }
+
+        _originalSource = default;
+        _originalFile = default;
+        _entity = default;
+        _playerGuid = default;
+        _playerConnectionId = default;
+        _playerEntity = default;
+        _unitLogPosition = 0;
     }
 
     public void Dispose()

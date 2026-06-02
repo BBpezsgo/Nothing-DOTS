@@ -157,6 +157,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
         public required NativeList<OwnedData<UserUIElement>>.ParallelWriter UIElements;
         public required ProcessorRef ProcessorRef;
         public required EntityRef EntityRef;
+        public required FixedList128Bytes<BufferedLogPiece>* Log;
     }
 
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
@@ -451,6 +452,7 @@ partial struct ProcessorJob : IJobEntity
         in UnitTeam team,
         in LocalToWorld worldTransform,
         in LocalTransform localTransform,
+        ref DynamicBuffer<BufferedLogPiece> _log,
         Entity entity)
     {
         //using var _1 = __ProcessorJobOuter.Auto();
@@ -467,6 +469,7 @@ partial struct ProcessorJob : IJobEntity
 
         processor.Memory.MappedMemory.Pendrive.IsPlugged = processor.PluggedPendrive.Entity != Entity.Null;
 
+        FixedList128Bytes<BufferedLogPiece> log = new();
         ProcessorSystemServer.FunctionScope scope = new()
         {
             DebugLines = debugLines,
@@ -487,6 +490,7 @@ partial struct ProcessorJob : IJobEntity
                 LocalTransform = localTransform,
                 Team = team,
             },
+            Log = &log,
         };
 
         NativeList<ExternalFunctionScopedSync> scopedExternalFunctions = new(this.scopedExternalFunctions.Length + processor.Source.GeneratedFunctions.Length, Allocator.Temp);
@@ -564,6 +568,11 @@ partial struct ProcessorJob : IJobEntity
         };
 #pragma warning restore IDE0072
         scopedExternalFunctions.Dispose();
+
+        for (int i = 0; i < log.Length; i++)
+        {
+            _log.Add(log[i]);
+        }
     }
 
     static void HandleTick(ref Processor processor, ref ProcessorState processorState)

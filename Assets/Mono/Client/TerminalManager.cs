@@ -374,6 +374,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [SerializeField, NotNull] Texture2D? DiagnosticsInfoIcon = default;
     [SerializeField, NotNull] Texture2D? DiagnosticsHintIcon = default;
     [SerializeField, NotNull] Texture2D? DiagnosticsOptimizationNoticeIcon = default;
+    [SerializeField, NotNull] VisualTreeAsset? LogItem = default;
     [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
 
     [NotNull] Button? ui_ButtonSelect = default;
@@ -382,7 +383,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [NotNull] Button? ui_ButtonHalt = default;
     [NotNull] Button? ui_ButtonReset = default;
     [NotNull] Button? ui_ButtonContinue = default;
-    [NotNull] Button? ui_ButtonDebugStop = default;
+    [NotNull] Button? ui_ButtonDebugAttach = default;
+    [NotNull] Button? ui_ButtonDebugDetach = default;
     [NotNull] Label? ui_LabelTerminal = default;
     [NotNull] Label? ui_LabelBasePath = default;
     [NotNull] VisualElement? ui_PanelDebug = default;
@@ -392,10 +394,14 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [NotNull] VisualElement? ui_FilesContainer = default;
     [NotNull] ScrollView? ui_ScrollProgresses = default;
     [NotNull] ScrollView? ui_ScrollDiagnostics = default;
+    [NotNull] ScrollView? ui_LogsScrollView = default;
     [NotNull] TabView? ui_TabView = default;
 
     [NotNull] TextField? ui_InputSourcePath = default;
     [NotNull] ProgressBar? ui_ProgressCompilation = default;
+    [NotNull] ProgressBar? ui_ProgressMemory = default;
+    [NotNull] Button? ui_ButtonMemoryAnalyze = default;
+    [NotNull] Label? ui_LabelMemoryError = default;
 
     TerminalSubscriptionClient? terminalSubscription;
     readonly StringBuilder _terminalBuilder = new();
@@ -406,6 +412,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     Awaitable<RemoteFile>? _memoryDownloadTask;
     string? _scheduledSource;
     float _terminalCursorBlinkRestart;
+    UnitLogSystemClient.UnitLog? _unitLog;
 
     void Update()
     {
@@ -440,6 +447,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         refreshAt = Time.time + .2f;
         selectingFile = ImmutableArray<string>.Empty;
         _memory = null;
+        _unitLog?.Dispose();
+        _unitLog = null;
         _memoryDownloadProgress = null;
         // try { _memoryDownloadTask?.Cancel(); } catch { }
         _memoryDownloadTask = null;
@@ -452,7 +461,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonHalt = ui.rootVisualElement.Q<Button>("button-halt");
         ui_ButtonReset = ui.rootVisualElement.Q<Button>("button-reset");
         ui_ButtonContinue = ui.rootVisualElement.Q<Button>("button-continue");
-        ui_ButtonDebugStop = ui.rootVisualElement.Q<Button>("button-stop-debug");
+        ui_ButtonDebugAttach = ui.rootVisualElement.Q<Button>("button-start-debug");
+        ui_ButtonDebugDetach = ui.rootVisualElement.Q<Button>("button-stop-debug");
         ui_LabelTerminal = ui.rootVisualElement.Q<Label>("label-terminal");
         ui_PanelDebug = ui.rootVisualElement.Q<VisualElement>("panel-debug");
         ui_ScrollTerminal = ui.rootVisualElement.Q<ScrollView>("scroll-terminal");
@@ -463,7 +473,12 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ScrollDiagnostics = ui.rootVisualElement.Q<ScrollView>("scroll-diagnostics");
         ui_TabView = ui.rootVisualElement.Q<TabView>("tabs");
         ui_ProgressCompilation = ui.rootVisualElement.Q<ProgressBar>("progress-compilation");
+        ui_ProgressMemory = ui.rootVisualElement.Q<ProgressBar>("memory-progress");
+        ui_ButtonMemoryAnalyze = ui.rootVisualElement.Q<Button>("memory-button-analyze");
+        ui_LabelMemoryError = ui.rootVisualElement.Q<Label>("memory-error");
+        ui_LogsScrollView = ui.rootVisualElement.Q<ScrollView>("scroll-logs");
 
+        ui_PanelDebug.style.display = DisplayStyle.None;
         ui_LabelTerminal.text = string.Empty;
         ui_ScrollFiles.Clear();
         ui_ScrollProgresses.Clear();
@@ -607,13 +622,127 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             });
         });
 
-        ui_ButtonDebugStop.clickable = new Clickable(() =>
+        ui_ButtonMemoryAnalyze.clickable = new Clickable(() =>
+        {
+            ui_LabelMemoryError.text = "";
+
+            if (!ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal())
+            {
+                ui_LabelMemoryError.text = "Can't";
+                return;
+            }
+
+            Processor processor = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<Processor>(unitEntity);
+            if (!ConnectionManager.ClientOrDefaultWorld.GetSystem<CompilerSystemServer>().CompiledSources.TryGetValue(processor.SourceFile, out var source))
+            {
+                ui_LabelMemoryError.text = "Couldn't get the source";
+                return;
+            }
+
+            BytecodeProcessor bytecodeProcessor = new(
+                ProcessorSystemServer.BytecodeInterpreterSettings,
+                source.Generated.Code,
+                processor.Memory.Memory.ToBytes(),
+                source.Generated.DebugInfo,
+                source.Compiled.ExternalFunctions,
+                source.GeneratedFunctions?.ToArray().AsImmutableArrayUnsafe() ?? default
+            );
+
+            ImmutableArray<HeapUtils.HeapBlock> blocks;
+
+            if (false)
+            {
+                if (!HeapUtils.AnalyzeMemoryTask.Create(bytecodeProcessor, source.Generated.ExposedFunctions, out HeapUtils.AnalyzeMemoryTask? task, out string? error))
+                {
+                    ui_LabelMemoryError.text = error;
+                    return;
+                }
+
+                try
+                {
+                    int endlessSafe = 0;
+                    while (!task.Tick(1000))
+                    {
+                        endlessSafe++;
+                        if (endlessSafe > 10000)
+                        {
+                            ui_LabelMemoryError.text = "Timed out";
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ui_LabelMemoryError.text = ex.Message;
+                    return;
+                }
+
+                if (task.Error is not null)
+                {
+                    ui_LabelMemoryError.text = task.Error;
+                    return;
+                }
+
+                blocks = task.Blocks.ToImmutableArray();
+            }
+            else
+            {
+                try
+                {
+                    if (!HeapUtils.AnalyzeMemorySync(bytecodeProcessor, source.Generated.ExposedFunctions, out blocks, out string? error))
+                    {
+                        ui_LabelMemoryError.text = error;
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ui_LabelMemoryError.text = ex.Message;
+                    return;
+                }
+            }
+
+            ui_LabelMemoryError.text = "";
+
+            VisualElement container = ui.rootVisualElement.Q<VisualElement>("heap-container");
+            container.Clear();
+
+            int totalMemory = blocks.Sum(v => v.Size);
+            if (totalMemory == 0) return;
+
+            foreach (HeapUtils.HeapBlock block in blocks)
+            {
+                VisualElement e = new();
+                container.Add(e);
+
+                e.AddToClassList("heap-block");
+                e.style.backgroundColor = block.IsUsed ? Color.red : Color.white;
+                e.style.flexBasis = new StyleLength(new Length((float)block.Size / (float)totalMemory, LengthUnit.Percent));
+            }
+        });
+
+        ui_ButtonDebugDetach.clickable = new Clickable(() =>
         {
             World world = ConnectionManager.ClientOrDefaultWorld;
             NetcodeUtils.CreateRPC(world.Unmanaged, new StopDebugRequestRpc()
             {
                 Entity = world.EntityManager.GetComponentData<GhostInstance>(unitEntity),
             });
+        });
+
+        ui_ButtonDebugAttach.SetEnabled(true);
+        ui_ButtonDebugAttach.clickable = new Clickable(() =>
+        {
+            World world = ConnectionManager.ClientOrDefaultWorld;
+            Guid guid = PlayerSystemClient.GetInstance(world.Unmanaged).PlayerGuid;
+            if (guid == default)
+            {
+                Debug.LogError($"{DebugEx.ClientPrefix} Invalid local guid {guid}");
+                return;
+            }
+            SpawnedGhost ghost = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+            ui_ButtonDebugAttach.SetEnabled(false);
+            Application.OpenURL($"vscode://banszky.nothingame/debug?ghost={ghost.ghostId}:{ghost.spawnTick.TickIndexForValidTick}&token={guid}");
         });
 
         ui_LabelTerminal.RegisterCallback<FocusInEvent>(e =>
@@ -662,6 +791,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     {
         Terminal,
         Source,
+        Memory,
+        Logs,
     }
 
     static bool ReadKey(out char c)
@@ -746,12 +877,39 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         return true;
     }
 
+    bool TryDownloadMemory()
+    {
+        if (ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal()) return false;
+        if (_memoryDownloadTask is not null && !_memoryDownloadTask.GetAwaiter().IsCompleted) return false;
+
+        GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
+        Debug.Log($"{DebugEx.ClientPrefix} Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
+        _memoryDownloadProgress = new ProgressRecord<(int, int)>(null);
+        _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld)
+            .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}.{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
+
+        return true;
+    }
+
     public void RefreshUI(Entity unitEntity)
     {
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
 
         ui_PanelDebug.style.display = processor.DebugContext.IsBeingDebugged ? DisplayStyle.Flex : DisplayStyle.None;
+        ui_ButtonDebugAttach.style.display = processor.DebugContext.IsBeingDebugged ? DisplayStyle.None : DisplayStyle.Flex;
+        ui_ButtonDebugAttach.SetEnabled(!processor.DebugContext.IsBeingDebugged);
+
+        if (_memoryDownloadProgress is not null)
+        {
+            ui_ProgressMemory.value = (_memoryDownloadProgress.Progress.Item2 == 0) ? 0 : (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2;
+            ui_ButtonMemoryAnalyze.SetEnabled(false);
+        }
+        else
+        {
+            ui_ProgressMemory.value = 0f;
+            ui_ButtonMemoryAnalyze.SetEnabled(true);
+        }
 
         if (!selectingFile.IsEmpty)
         {
@@ -1028,38 +1186,46 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                     {
                                         _memoryDownloadProgress ??= new ProgressRecord<(int, int)>(null);
 
-                                        if (_memoryDownloadTask == null)
+                                        if (_memoryDownloadTask is null)
                                         {
-                                            GhostInstance ghostInstance = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(selectedUnitEntity);
-                                            Debug.Log($"{DebugEx.ClientPrefix} Requesting memory for ghost {{ id: {ghostInstance.ghostId} spawnTick: {ghostInstance.spawnTick} ({ghostInstance.spawnTick.SerializedData}) }} ...");
-                                            _memoryDownloadTask = FileChunkManagerSystem.GetInstance(ConnectionManager.ClientOrDefaultWorld)
-                                                .RequestFile(new FileId($"/i/e/{ghostInstance.ghostId}.{ghostInstance.spawnTick.SerializedData}/m", NetcodeEndPoint.Server), _memoryDownloadProgress);
+                                            if (!TryDownloadMemory())
+                                            {
+                                                Debug.LogError($"{DebugEx.ClientPrefix} Cannot download memory");
+                                            }
                                         }
 
-                                        Awaitable<RemoteFile>.Awaiter awaiter = _memoryDownloadTask.GetAwaiter();
-                                        if (awaiter.IsCompleted)
+                                        if (_memoryDownloadTask is not null)
                                         {
-                                            Debug.Log($"{DebugEx.ClientPrefix} Memory loaded");
-                                            RemoteFile result = awaiter.GetResult();
-                                            switch (result.Kind)
+                                            Awaitable<RemoteFile>.Awaiter awaiter = _memoryDownloadTask.GetAwaiter();
+                                            if (awaiter.IsCompleted)
                                             {
-                                                case FileResponseStatus.NotFound:
-                                                case FileResponseStatus.Unknown:
-                                                case FileResponseStatus.ErrorDisconnected:
-                                                    ui_ProgressCompilation.title = "Crashed (no memory)";
-                                                    ui_ProgressCompilation.value = 1f;
-                                                    break;
-                                                case FileResponseStatus.OK:
-                                                case FileResponseStatus.NotChanged:
-                                                default:
-                                                    _memory = result.File.Data;
-                                                    break;
+                                                Debug.Log($"{DebugEx.ClientPrefix} Memory loaded");
+                                                RemoteFile result = awaiter.GetResult();
+                                                switch (result.Status)
+                                                {
+                                                    case FileResponseStatus.NotFound:
+                                                    case FileResponseStatus.Unknown:
+                                                    case FileResponseStatus.ErrorDisconnected:
+                                                        ui_ProgressCompilation.title = "Crashed (no memory)";
+                                                        ui_ProgressCompilation.value = 1f;
+                                                        break;
+                                                    case FileResponseStatus.OK:
+                                                    case FileResponseStatus.NotChanged:
+                                                    default:
+                                                        _memory = result.Data.Data;
+                                                        break;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                ui_ProgressCompilation.title = "Crashed (loading memory)";
+                                                ui_ProgressCompilation.value = (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2;
                                             }
                                         }
                                         else
                                         {
-                                            ui_ProgressCompilation.title = "Crashed (loading memory)";
-                                            ui_ProgressCompilation.value = (float)_memoryDownloadProgress.Progress.Item1 / (float)_memoryDownloadProgress.Progress.Item2;
+                                            ui_ProgressCompilation.title = "Crashed (no memory)";
+                                            ui_ProgressCompilation.value = 1f;
                                         }
                                     }
                                 }
@@ -1148,6 +1314,175 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                 ui_ScrollTerminal.scrollOffset = ui_LabelTerminal.layout.max - ui_ScrollTerminal.contentViewport.layout.size;
             }
         }
+
+        if (ui_TabView.selectedTabIndex == (int)Tab.Logs)
+        {
+            if (_unitLog is null)
+            {
+                if (ConnectionManager.ClientOrDefaultWorld.EntityManager.HasComponent<GhostInstance>(unitEntity))
+                {
+                    GhostInstance ghost = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+                    _unitLog = ConnectionManager.ClientOrDefaultWorld.GetSystem<UnitLogSystemClient>().GetUnitLog(ghost);
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            _unitLog.WindowStart = MonoTime.UnixSeconds;
+            _unitLog.WindowLength = 20;
+
+            List<(long Timestamp, object Item)> _logs = new();
+
+            static int ItemComparison((long Timestamp, object Item) a, (long Timestamp, object Item) b) => (int)(a.Timestamp - b.Timestamp);
+
+            foreach ((_, _, byte[] logData) in _unitLog.Data)
+            {
+                ReadOnlySpan<byte> buffer = logData.AsSpan();
+
+                int i = 0;
+                while (i < buffer.Length)
+                {
+                    LogPieceType type = (LogPieceType)buffer[i];
+                    switch (type)
+                    {
+                        case LogPieceType.Message: { var v = UnitLog_Message.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        case LogPieceType.CombatTurret_Shoot: { var v = UnitLog_CombatTurret_Shoot.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        case LogPieceType.Command: { var v = UnitLog_Command.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        case LogPieceType.Radar: { var v = UnitLog_Radar.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        case LogPieceType.Transmission_WiredOut: { var v = UnitLog_Transmission_WiredOut.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        case LogPieceType.Transmission_WiredIn: { var v = UnitLog_Transmission_WiredIn.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        case LogPieceType.Transmission_WirelessOut: { var v = UnitLog_Transmission_WirelessOut.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        case LogPieceType.Transmission_WirelessIn: { var v = UnitLog_Transmission_WirelessIn.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        case LogPieceType.ProcessorSignal: { var v = UnitLog_ProcessorSignal.Read(buffer, ref i); _logs.AddSorted((v.Header.Timestamp, v), ItemComparison); break; }
+                        default: Debug.LogError($"Invalid log piece type {(int)type}"); goto skip;
+                    }
+                }
+            }
+
+        skip:;
+
+            ui_LogsScrollView.SyncList(_logs, LogItem, (item, element, _) =>
+            {
+                LogPieceHeader header = default;
+                switch (item.Item)
+                {
+                    case UnitLog_Message v:
+                        header = v.Header;
+                        element.Q<Label>("log-summary-label").text = $"Message";
+                        element.Q<Foldout>("log-details-foldout").style.display = DisplayStyle.None;
+                        element.Q<Label>("log-icon").style.display = DisplayStyle.None;
+                        break;
+                    case UnitLog_CombatTurret_Shoot v:
+                        header = v.Header;
+                        element.Q<Label>("log-summary-label").text = $"Turret Shoot";
+                        element.Q<Foldout>("log-details-foldout").style.display = DisplayStyle.None;
+                        element.Q<Label>("log-icon").text = $"\uf05b";
+                        break;
+                    case UnitLog_Command v:
+                        header = v.Header;
+                        element.Q<Label>("log-summary-label").text = $"Command";
+                        element.Q<Label>("log-icon").text = $"\uf007";
+                        break;
+                    case UnitLog_Radar v:
+                        header = v.Header;
+                        element.Q<Label>("log-icon").text = $"\uf7c0";
+                        if (v.Success)
+                        {
+                            element.Q<Label>("log-summary-label").text = $"Radar (DETECTED)";
+                            element.Q<Label>("log-details-label").text =
+                                $"Point: {v.RadarResponse.Point}\n" +
+                                $"Clutter: {v.RadarResponse.Clutter}\n" +
+                                $"Fingerprint: {v.RadarResponse.Fingerprint}\n" +
+                                $"Meta: {v.RadarResponse.Meta}\n" +
+                                $"SpeedSignal: {v.RadarResponse.SpeedSignal}\n";
+                        }
+                        else
+                        {
+                            element.Q<Label>("log-summary-label").text = $"Radar (none)";
+                            element.Q<Foldout>("log-details-foldout").style.display = DisplayStyle.None;
+                        }
+                        break;
+                    case UnitLog_Transmission_WiredOut v:
+                        header = v.Header;
+                        element.Q<Label>("log-icon").text = $"\uf796";
+                        element.Q<Label>("log-summary-label").text = $"Transmission Out (Wired)";
+                        element.Q<Label>("log-details-label").text =
+                            $"Port: {v.Metadata.Port}\n" +
+                            $"Data: {string.Join(" ", v.Data.ToArray().Select(v => Convert.ToString(v, 16).PadLeft(2, '0')))}";
+                        break;
+                    case UnitLog_Transmission_WiredIn v:
+                        header = v.Header;
+                        element.Q<Label>("log-icon").text = $"\uf796";
+                        element.Q<Label>("log-summary-label").text = $"Transmission In (Wired)";
+                        element.Q<Label>("log-details-label").text =
+                            $"Port: {v.Metadata.Port}\n" +
+                            $"Data: {string.Join(" ", v.Data.ToArray().Select(v => Convert.ToString(v, 16).PadLeft(2, '0')))}";
+                        break;
+                    case UnitLog_Transmission_WirelessOut v:
+                        header = v.Header;
+                        element.Q<Label>("log-icon").text = $"\uf519";
+                        element.Q<Label>("log-summary-label").text = $"Transmission Out (Wireless)";
+                        element.Q<Label>("log-details-label").text =
+                            $"Angle: {v.Metadata.Angle}\n" +
+                            $"Direction: {v.Metadata.Direction}\n" +
+                            $"Data: {string.Join(" ", v.Data.ToArray().Select(v => Convert.ToString(v, 16).PadLeft(2, '0')))}";
+                        break;
+                    case UnitLog_Transmission_WirelessIn v:
+                        header = v.Header;
+                        element.Q<Label>("log-icon").text = $"\uf519";
+                        element.Q<Label>("log-summary-label").text = $"Transmission In (Wireless)";
+                        element.Q<Label>("log-details-label").text =
+                            $"Data: {string.Join(" ", v.Data.ToArray().Select(v => Convert.ToString(v, 16).PadLeft(2, '0')))}";
+                        break;
+                    case UnitLog_ProcessorSignal v:
+                        header = v.Header;
+                        element.Q<Label>("log-icon").text = v.Signal switch
+                        {
+                            Signal.None => $"\uf2db",
+                            Signal.UserCrash => $"<color=red>\uf06a</color>",
+                            Signal.StackOverflow => $"<color=red>\uf06a</color>",
+                            Signal.Halt => $"\uf04c",
+                            Signal.UndefinedExternalFunction => $"<color=red>\uf06a</color>",
+                            Signal.PointerOutOfRange => $"<color=red>\uf06a</color>",
+                            _ => $"<color=red>\uf06a</color>",
+                        };
+                        element.Q<Label>("log-summary-label").text = $"Processor: {v.Signal switch
+                        {
+                            Signal.None => $"Signal: None",
+                            Signal.UserCrash => $"Signal: UserCrash",
+                            Signal.StackOverflow => $"Signal: StackOverflow",
+                            Signal.Halt => $"Signal: Halt",
+                            Signal.UndefinedExternalFunction => $"Signal: UndefinedExternalFunction",
+                            Signal.PointerOutOfRange => $"Signal: PointerOutOfRange",
+                            _ => $"Signal: {(int)v.Signal}",
+                        }}";
+                        element.Q<Label>("log-details-label").style.display = DisplayStyle.None;
+                        break;
+                    default:
+                        element.Q<Label>("log-summary-label").text = item.GetType().Name;
+                        element.Q<Foldout>("log-details-foldout").style.display = DisplayStyle.None;
+                        break;
+                }
+
+                if (header.Timestamp != default)
+                {
+                    try
+                    {
+                        element.Q<Label>("log-time-label").text = DateTimeOffset.FromUnixTimeSeconds(header.Timestamp).ToString("yyyy-MM-dd HH:mm:ss.ff");
+                    }
+                    catch (Exception)
+                    {
+                        element.Q<Label>("log-time-label").text = header.Timestamp.ToString();
+                    }
+                }
+                else
+                {
+                    element.Q<Label>("log-time-label").style.display = DisplayStyle.None;
+                }
+            });
+        }
     }
 
     public void Cleanup(UIDocument ui)
@@ -1156,6 +1491,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         refreshAt = float.PositiveInfinity;
         selectingFile = ImmutableArray<string>.Empty;
         _memory = null;
+        _unitLog?.Dispose();
+        _unitLog = null;
         _memoryDownloadProgress = null;
         // try { _memoryDownloadTask?.Cancel(); } catch { }
         _memoryDownloadTask = null;
@@ -1175,7 +1512,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             ui_ButtonHalt.clickable = null;
             ui_ButtonReset.clickable = null;
             ui_ButtonContinue.clickable = null;
-            ui_ButtonDebugStop.clickable = null;
+            ui_ButtonDebugAttach.clickable = null;
+            ui_ButtonDebugDetach.clickable = null;
             ui_LabelTerminal.text = string.Empty;
             EndFileSelection();
         }

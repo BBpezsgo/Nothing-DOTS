@@ -18,6 +18,9 @@ class ExtensionHost : MonoBehaviour
     CancellationTokenSource? CancellationTokenSource;
     EntityQuery ProcessorQ;
 
+    static EntityManager E => ConnectionManager.ServerOrDefaultWorld.EntityManager;
+    static World W => ConnectionManager.ServerOrDefaultWorld;
+
     void OnEnable()
     {
         CancellationTokenSource = new CancellationTokenSource();
@@ -90,7 +93,7 @@ class ExtensionHost : MonoBehaviour
         {
             if (ProcessorQ == default)
             {
-                ProcessorQ = ConnectionManager.ServerOrDefaultWorld.EntityManager.CreateEntityQuery(typeof(Processor));
+                ProcessorQ = E.CreateEntityQuery(typeof(Processor));
             }
 
             Debug.Log($"{DebugEx.ServerPrefix} [LSP] Creating server");
@@ -111,17 +114,27 @@ class ExtensionHost : MonoBehaviour
 
                 options.WithServices(x => x.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace)));
 
-                options.OnRequest("units", () => MainThreadManager.Instance.ScheduleAsync(() =>
+                options.OnRequest("units", (UnitsRequestParams request) => MainThreadManager.Instance.ScheduleAsync(() =>
                 {
+                    if (!Guid.TryParse(request.Token, out Guid token)) return new();
+
+                    if (!PlayerSystemServer.FindPlayer(W.Unmanaged, token, out Player player)) return new();
+
                     using NativeArray<Entity> entities = ProcessorQ.ToEntityArray(Allocator.Temp);
                     List<object> res = new(entities.Length);
                     for (int i = 0; i < entities.Length; i++)
                     {
                         Entity entity = entities[i];
-                        Processor processor = ConnectionManager.ServerOrDefaultWorld.EntityManager.GetComponentData<Processor>(entity);
-                        int team = ConnectionManager.ServerOrDefaultWorld.EntityManager.HasComponent<UnitTeam>(entity) ? ConnectionManager.ServerOrDefaultWorld.EntityManager.GetComponentData<UnitTeam>(entity).Team : -1;
 
-                        string? source = DebugHost.GetFilePath(processor.SourceFile, team) ?? processor.SourceFile.ToString();
+                        if (E.HasComponent<UnitTeam>(entity))
+                        {
+                            int team = E.GetComponentData<UnitTeam>(entity).Team;
+                            if (team != player.Team) continue;
+                        }
+
+                        Processor processor = E.GetComponentData<Processor>(entity);
+
+                        string? source = DebugHost.GetFilePath(processor.SourceFile, token) ?? processor.SourceFile.ToString();
 
                         res.Add(new
                         {
