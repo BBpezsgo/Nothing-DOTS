@@ -97,7 +97,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
             {
                 AwaitableCompletionSource<Stream> result = new();
-                Awaitable<RemoteFile> task = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).RequestFile(fileId, progress, cancellationToken);
+                Awaitable<RemoteFile> task = FileChunkManagerSystem.GetInstance(World.DefaultGameObjectInjectionWorld).RequestFileAsync(fileId, progress, cancellationToken);
                 task.GetAwaiter().OnCompleted(() =>
                 {
                     progress.Report((1, 1));

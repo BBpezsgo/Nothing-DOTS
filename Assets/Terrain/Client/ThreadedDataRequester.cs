@@ -32,7 +32,7 @@ public class ThreadedDataRequester : Singleton<ThreadedDataRequester>
         {
             if (task.IsFaulted) Debug.LogError(task.Exception);
             else if (!task.IsCanceled) DataQueue.Enqueue(new TaskInfo(v => callback.Invoke((T)v!), task.Result, _task!));
-        });
+        }, TaskScheduler.Default);
         Tasks.Add(_task);
     }
 

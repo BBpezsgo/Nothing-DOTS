@@ -312,7 +312,7 @@ partial class FileChunkManagerSystem : SystemBase
         return FileStatus.NotRequested;
     }
 
-    public Awaitable<RemoteFile> RequestFile(FileId fileId, IProgress<(int Current, int Total)>? progress, CancellationToken cancellationToken = default)
+    public Awaitable<RemoteFile> RequestFileAsync(FileId fileId, IProgress<(int Current, int Total)>? progress, CancellationToken cancellationToken = default)
     {
         for (int i = 0; i < Requests.Count; i++)
         {

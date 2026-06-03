@@ -53,7 +53,7 @@ public readonly struct LogPieceHeader
         long timestamp = buffer.ReadUnsafe<long>(ref index);
         uint _index = buffer.ReadUnsafe<uint>(ref index);
 
-        DateTimeOffset.FromUnixTimeSeconds(timestamp);
+        //DateTimeOffset.FromUnixTimeSeconds(timestamp);
         if (type is <= LogPieceType.Unknown0 or >= LogPieceType.Unknown1) throw new Exception($"Invalid log piece header type {(int)type}");
 
         return new LogPieceHeader(type, timestamp, _index);

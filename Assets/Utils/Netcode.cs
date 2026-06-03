@@ -8,7 +8,6 @@ public static class NetcodeUtils
     [BurstCompile]
     public static bool IsLocal(this in WorldUnmanaged world) => !world.IsServer() && !world.IsClient();
 
-    [BurstCompile]
     public static bool IsLocal(this World world) => !world.IsServer() && !world.IsClient();
 
     [BurstCompile]

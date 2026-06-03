@@ -11,6 +11,7 @@ using Unity.NetCode;
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct PlayerSystemClient : ISystem
 {
+    const bool SaveSessions = false;
     const string SessionsDirectoryPath = "sessions";
 
     bool _guidRequestSent;
@@ -292,6 +293,12 @@ public partial struct PlayerSystemClient : ISystem
 
     static void SaveSession(Guid serverGuid, Guid playerGuid)
     {
+        if (!SaveSessions)
+        {
+            Debug.Log($"{DebugEx.ClientPrefix} Would save session to file");
+            return;
+        }
+
         if (!Directory.Exists(SessionsDirectoryPath))
         {
             Directory.CreateDirectory(SessionsDirectoryPath);

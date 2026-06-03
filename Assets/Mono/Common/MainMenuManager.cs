@@ -12,28 +12,29 @@ public class MainMenuManager : Singleton<MainMenuManager>, IUISetup, IUICleanup
         ui.rootVisualElement.Q<Button>("button-singleplayer").clicked += () =>
         {
             if (!HandleInput(ui, out _, out FixedString32Bytes nickname)) return;
-            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartSingleplayerAsync(nickname, null));
+            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartSingleplayer(nickname, null));
         };
         ui.rootVisualElement.Q<Button>("button-host").clicked += () =>
         {
             if (!HandleInput(ui, out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
-            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartHostAsync(endpoint, nickname, null));
+            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartHost(endpoint, nickname, null));
         };
         ui.rootVisualElement.Q<Button>("button-client").clicked += () =>
         {
             if (!HandleInput(ui, out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
-            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartClientAsync(endpoint, nickname));
+            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartClient(endpoint, nickname));
         };
         ui.rootVisualElement.Q<Button>("button-server").clicked += () =>
         {
             if (!HandleInput(ui, out NetworkEndpoint endpoint, out _)) return;
-            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartServerAsync(endpoint, null));
+            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartServer(endpoint, null));
         };
         ui.rootVisualElement.Q<Button>("button-staging").clicked += () =>
         {
             if (!HandleInput(ui, out _, out FixedString32Bytes nickname)) return;
-            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartStagingAsync(nickname, null));
+            ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartStaging(nickname, null));
         };
+        ui.rootVisualElement.Q<Button>("button-exit").clicked += UnityUtils.Quit;
 
         if (ConnectionError is not null)
         {

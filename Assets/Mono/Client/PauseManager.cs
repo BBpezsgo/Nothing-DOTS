@@ -55,11 +55,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
     void OnButtonExit()
     {
         ConnectionManager.DisconnectEveryone();
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.ExitPlaymode();
-#else
-        Application.Quit();
-#endif
+        UnityUtils.Quit();
     }
 
     void OnButtonSave()

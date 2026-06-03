@@ -45,15 +45,15 @@ public class ConnectionManager : Singleton<ConnectionManager>
         {
             if (Singleplayer)
             {
-                StartCoroutine(StartSingleplayerAsync(DebugNickname, string.IsNullOrWhiteSpace(DebugSavefile) || !File.Exists(DebugSavefile) ? null : DebugSavefile));
+                StartCoroutine(StartSingleplayer(DebugNickname, string.IsNullOrWhiteSpace(DebugSavefile) || !File.Exists(DebugSavefile) ? null : DebugSavefile));
             }
             else if (NoClient)
             {
-                StartCoroutine(StartServerAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), string.IsNullOrWhiteSpace(DebugSavefile) || !File.Exists(DebugSavefile) ? null : DebugSavefile));
+                StartCoroutine(StartServer(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), string.IsNullOrWhiteSpace(DebugSavefile) || !File.Exists(DebugSavefile) ? null : DebugSavefile));
             }
             else
             {
-                StartCoroutine(StartHostAsync(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), DebugNickname, string.IsNullOrWhiteSpace(DebugSavefile) || !File.Exists(DebugSavefile) ? null : DebugSavefile));
+                StartCoroutine(StartHost(DebugPort == 0 ? NetworkEndpoint.AnyIpv4 : NetworkEndpoint.Parse("127.0.0.1", DebugPort), DebugNickname, string.IsNullOrWhiteSpace(DebugSavefile) || !File.Exists(DebugSavefile) ? null : DebugSavefile));
             }
             return;
         }
@@ -64,7 +64,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
     IEnumerator FirstStart()
     {
-        yield return new WaitForEndOfFrame();
+        yield return null;
         UIManager.Instance.OpenUI(MainMenuUI)
             .Setup(MainMenuManager.Instance);
     }
@@ -77,7 +77,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
     IEnumerator LateUIRefresh(NetCodeConnectionEvent e)
     {
-        yield return new WaitForEndOfFrame();
+        yield return null;
         RefreshUI(e);
     }
 
@@ -117,7 +117,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         }
     }
 
-    public IEnumerator StartSingleplayerAsync(FixedString32Bytes nickname, string? savefile)
+    public IEnumerator StartSingleplayer(FixedString32Bytes nickname, string? savefile)
     {
         yield return new WaitForFixedUpdate();
 
@@ -140,7 +140,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         ClientObjects.SetActive(true);
         Debug.Log($" -> Disabling staging objects");
         StagingObjects.SetActive(false);
-        yield return new WaitForEndOfFrame();
+        yield return null;
 
         Debug.Log($" -> Set nickname to \"{nickname}\"");
         PlayerSystemClient.GetInstance(LocalWorld!.Unmanaged).SetNickname(nickname);
@@ -157,13 +157,15 @@ public class ConnectionManager : Singleton<ConnectionManager>
 #endif
     }
 
-    public IEnumerator StartHostAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname, string? savefile)
+    public IEnumerator StartHost(NetworkEndpoint endpoint, FixedString32Bytes nickname, string? savefile)
     {
         yield return new WaitForFixedUpdate();
 
         Debug.Log($"{DebugEx.AnyPrefix} Start host on `{endpoint}`");
 
         UIManager.Instance.OpenUI(NetworkUI);
+
+        NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Creating server ...";
 
         Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -173,6 +175,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint, savefile, success));
         if (!success.Value)
         {
+            NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Error";
             UIManager.Instance.OpenUI(MainMenuUI)
                 .Setup<MainMenuManager>();
             yield break;
@@ -185,7 +188,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         ServerObjects.SetActive(true);
         Debug.Log($" -> Disabling staging objects");
         StagingObjects.SetActive(false);
-        yield return new WaitForEndOfFrame();
+        yield return null;
+
+        NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Creating client ...";
 
         using (EntityQuery driverQ = ServerWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
         {
@@ -203,7 +208,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         Debug.Log($" -> Enabling client objects");
         ClientObjects.SetActive(true);
-        yield return new WaitForEndOfFrame();
+        yield return null;
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled && savefile is null)
@@ -214,13 +219,15 @@ public class ConnectionManager : Singleton<ConnectionManager>
 #endif
     }
 
-    public IEnumerator StartClientAsync(NetworkEndpoint endpoint, FixedString32Bytes nickname)
+    public IEnumerator StartClient(NetworkEndpoint endpoint, FixedString32Bytes nickname)
     {
         yield return new WaitForFixedUpdate();
 
         Debug.Log($"{DebugEx.AnyPrefix} Start client on `{endpoint}`");
 
         UIManager.Instance.OpenUI(NetworkUI);
+
+        NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Creating client ...";
 
         Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -238,19 +245,21 @@ public class ConnectionManager : Singleton<ConnectionManager>
         ClientObjects.SetActive(true);
         Debug.Log($" -> Disabling staging objects");
         StagingObjects.SetActive(false);
-        yield return new WaitForEndOfFrame();
+        yield return null;
 
         Debug.Log($" -> Set nickname to {nickname}");
         PlayerSystemClient.GetInstance(ClientWorld!.Unmanaged).SetNickname(nickname);
     }
 
-    public IEnumerator StartServerAsync(NetworkEndpoint endpoint, string? savefile)
+    public IEnumerator StartServer(NetworkEndpoint endpoint, string? savefile)
     {
         yield return new WaitForFixedUpdate();
 
         Debug.Log($"{DebugEx.EditorPrefix} Start server on `{endpoint}`");
 
         UIManager.Instance.OpenUI(NetworkUI);
+
+        NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Creating server ...";
 
         Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -274,10 +283,13 @@ public class ConnectionManager : Singleton<ConnectionManager>
         ClientObjects.SetActive(false);
         Debug.Log($" -> Disabling staging objects");
         StagingObjects.SetActive(false);
-        yield return new WaitForEndOfFrame();
+        yield return null;
 
         Debug.Log($" -> Disabling UI");
         UIManager.Instance.CloseUI(MainMenuUI);
+
+        NetworkUI.rootVisualElement.Q<Label>("label-status").text = string.Empty;
+        UIManager.Instance.CloseUI(NetworkUI);
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled && savefile is null)
@@ -288,7 +300,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 #endif
     }
 
-    public IEnumerator StartStagingAsync(FixedString32Bytes nickname, string? savefile)
+    public IEnumerator StartStaging(FixedString32Bytes nickname, string? savefile)
     {
         yield return new WaitForFixedUpdate();
 
@@ -311,7 +323,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         ClientObjects.SetActive(true);
         Debug.Log($" -> Enabling staging objects");
         StagingObjects.SetActive(true);
-        yield return new WaitForEndOfFrame();
+        yield return null;
 
         Debug.Log($" -> Set nickname to \"{nickname}\"");
         PlayerSystemClient.GetInstance(StagingWorld!.Unmanaged).SetNickname(nickname);

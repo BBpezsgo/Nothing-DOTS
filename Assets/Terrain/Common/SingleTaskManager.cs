@@ -7,7 +7,7 @@ public static class SingleTaskManager<TKey, TResult>
     static readonly Dictionary<TKey, Task<TResult>> Requests = new();
     static readonly Dictionary<TKey, TResult> Cache = new();
 
-    public static Task<TResult> Run(TKey key, Func<TKey, Task<TResult>> taskFactory)
+    public static Task<TResult> RunAsync(TKey key, Func<TKey, Task<TResult>> taskFactory)
     {
         lock (Requests)
         {
@@ -32,7 +32,7 @@ public static class SingleTaskManager<TKey, TResult>
         }
     }
 
-    public static Task<TResult> RunCached(TKey key, Func<TKey, Task<TResult>> taskFactory)
+    public static Task<TResult> RunCachedAsync(TKey key, Func<TKey, Task<TResult>> taskFactory)
     {
         if (Cache.TryGetValue(key, out var cached))
         {
@@ -41,7 +41,7 @@ public static class SingleTaskManager<TKey, TResult>
 
         return Task.Run(async () =>
         {
-            TResult? result = await Run(key, taskFactory);
+            TResult? result = await RunAsync(key, taskFactory);
             Cache[key] = result;
             return result;
         });

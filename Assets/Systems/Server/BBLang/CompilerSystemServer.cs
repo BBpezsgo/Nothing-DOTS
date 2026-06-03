@@ -88,7 +88,7 @@ public partial class CompilerSystemServer : SystemBase
                                         Debug.LogException(ex);
                                     }
                                 }
-                            }), cancellationTokenSource));
+                            }, TaskScheduler.Default), cancellationTokenSource));
                         if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
                         SendCompilationStatus(source, commandBuffer);
                         break;

@@ -5,8 +5,6 @@ using UnityEngine;
 
 class BBLangUtils : MonoBehaviour
 {
-    const string FilePath = "/home/bb/Projects/Nothing-DOTS/Assets/StreamingAssets/lib/bbl.conf";
-
     [SaintsField.Playa.Button("Generate Config")]
     public void GenerateConfig()
     {
@@ -15,6 +13,6 @@ class BBLangUtils : MonoBehaviour
         {
             result.AppendLine($"externalfunc={externalFunction.Name} {externalFunction.ReturnValueSize} {externalFunction.ParametersSize}");
         }
-        File.WriteAllText(FilePath, result.ToString());
+        File.WriteAllText(Path.Combine(Application.streamingAssetsPath, "lib", "bbl.conf"), result.ToString());
     }
 }

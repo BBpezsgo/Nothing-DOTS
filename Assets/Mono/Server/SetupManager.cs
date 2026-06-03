@@ -151,7 +151,13 @@ public class SetupManager : Singleton<SetupManager>
     {
         World world = ConnectionManager.ServerOrDefaultWorld;
 
-        if (!Prefabs.From(world.EntityManager, out Prefabs prefabs)) return;
+        Debug.Log($"{DebugEx.ServerPrefix} Spawning test prefabs");
+
+        if (!Prefabs.From(world.EntityManager, out Prefabs prefabs))
+        {
+            Debug.LogError($"{DebugEx.ServerPrefix} Couldn't gather all the necessary entity prefabs for the testing setup");
+            return;
+        }
 
         if (SpawnExactUnits)
         {
@@ -200,6 +206,8 @@ public class SetupManager : Singleton<SetupManager>
 
         int c = 0;
 
+        Debug.Log($"{DebugEx.ServerPrefix} --> Spawning random units started");
+
         foreach ((Vector2 position, float rotation) in GetPositions(spreadUnitSetup))
         {
             if (c++ > 50)
@@ -222,6 +230,8 @@ public class SetupManager : Singleton<SetupManager>
 
             ApplyUnit(world.EntityManager, newUnit, spreadUnitSetup);
         }
+
+        Debug.Log($"{DebugEx.ServerPrefix} --> Spawning random units finished");
     }
 
     IEnumerable<(Vector2 Position, float Rotation)> GetPositions(SpreadUnitSetup spreadUnitSetup)

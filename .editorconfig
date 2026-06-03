@@ -54,3 +54,7 @@ dotnet_diagnostic.IDE0011.severity = silent
 
 # IDE0037: Use inferred member name
 dotnet_diagnostic.IDE0037.severity = silent
+
+dotnet_diagnostic.VSTHRD002.severity = silent
+dotnet_diagnostic.VSTHRD003.severity = silent
+dotnet_diagnostic.VSTHRD105.severity = silent

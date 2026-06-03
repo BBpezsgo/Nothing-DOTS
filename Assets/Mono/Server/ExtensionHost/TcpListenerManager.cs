@@ -56,7 +56,14 @@ class TcpListenerManager : IDisposable
             }
             catch (SocketException socketException)
             {
-                Debug.LogException(socketException);
+                if (socketException.Message == "interrupted")
+                {
+                    Debug.Log($"{DebugEx.ServerPrefix} [{_category}] Listening stopped");
+                }
+                else
+                {
+                    Debug.LogException(socketException);
+                }
             }
         }))
         {

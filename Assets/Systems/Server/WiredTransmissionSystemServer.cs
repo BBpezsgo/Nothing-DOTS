@@ -72,7 +72,7 @@ partial struct WiredTransmissionSystemServer : ISystem
 
             if (metadata.Port < 0 || metadata.Port >= originConnector.PortPositions.Length)
             {
-                Debug.LogWarning($"{DebugEx.ServerPrefix} Processor tried to send data on port {metadata.Port} but theres only {originConnector.PortPositions.Length} ports avaliable");
+                Debug.LogWarning(string.Format($"{DebugEx.ServerPrefix} Processor tried to send data on port {{0}} but theres only {{1}} ports avaliable", metadata.Port, originConnector.PortPositions.Length));
                 continue;
             }
 

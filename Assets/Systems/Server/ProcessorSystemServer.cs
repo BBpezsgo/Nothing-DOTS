@@ -429,7 +429,6 @@ unsafe partial struct ProcessorSystemServer : ISystem
     }
 }
 
-[BurstCompile(CompileSynchronously = true)]
 [WithAll(typeof(Processor))]
 partial struct ProcessorJob : IJobEntity
 {
@@ -446,7 +445,6 @@ partial struct ProcessorJob : IJobEntity
     [ReadOnly] public ComponentLookup<Radar> QRadar;
     [ReadOnly] public ComponentLookup<Facility> QFacility;
 
-    [BurstCompile(CompileSynchronously = true)]
     unsafe void Execute(
         ref Processor processor,
         in UnitTeam team,

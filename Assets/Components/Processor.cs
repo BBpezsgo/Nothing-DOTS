@@ -93,6 +93,8 @@ struct ProcessorSource : IEquatable<ProcessorSource>
 
     public static bool operator ==(ProcessorSource left, ProcessorSource right) => left.Equals(right);
     public static bool operator !=(ProcessorSource left, ProcessorSource right) => !left.Equals(right);
+
+    public override int GetHashCode() => Code.GetHashCode();
 }
 
 public enum ProcessorStatus : byte
