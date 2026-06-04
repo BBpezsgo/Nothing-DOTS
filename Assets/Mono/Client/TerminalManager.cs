@@ -406,7 +406,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     TerminalSubscriptionClient? terminalSubscription;
     readonly StringBuilder _terminalBuilder = new();
     readonly TerminalRenderer _terminalRenderer = new();
-    readonly Queue<char> StandardInput = new();
+    readonly Queue<byte> StandardInput = new();
     byte[]? _memory;
     ProgressRecord<(int, int)>? _memoryDownloadProgress;
     Awaitable<RemoteFile>? _memoryDownloadTask;
@@ -734,15 +734,23 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui_ButtonDebugAttach.clickable = new Clickable(() =>
         {
             World world = ConnectionManager.ClientOrDefaultWorld;
-            Guid guid = PlayerSystemClient.GetInstance(world.Unmanaged).PlayerGuid;
-            if (guid == default)
+            if (world.IsLocal())
             {
-                Debug.LogError($"{DebugEx.ClientPrefix} Invalid local guid {guid}");
-                return;
+                ui_ButtonDebugAttach.SetEnabled(false);
+                Application.OpenURL($"vscode://banszky.nothingame/debug?entity={ExtensionHostUtils.Stringify(unitEntity)}&token={default(Guid)}");
             }
-            SpawnedGhost ghost = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-            ui_ButtonDebugAttach.SetEnabled(false);
-            Application.OpenURL($"vscode://banszky.nothingame/debug?ghost={ghost.ghostId}:{ghost.spawnTick.TickIndexForValidTick}&token={guid}");
+            else
+            {
+                Guid guid = PlayerSystemClient.GetInstance(world.Unmanaged).PlayerGuid;
+                if (guid == default)
+                {
+                    Debug.LogError($"{DebugEx.ClientPrefix} Invalid local guid {guid}");
+                    return;
+                }
+                SpawnedGhost ghost = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
+                ui_ButtonDebugAttach.SetEnabled(false);
+                Application.OpenURL($"vscode://banszky.nothingame/debug?ghost={ExtensionHostUtils.Stringify(ghost)}&token={guid}");
+            }
         });
 
         ui_LabelTerminal.RegisterCallback<FocusInEvent>(e =>
@@ -1132,7 +1140,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     {
                         if (ui_TabView.selectedTabIndex == (int)Tab.Terminal && ui_LabelTerminal.panel.focusController.focusedElement == ui_LabelTerminal)
                         {
-                            foreach (char c in Input.inputString)
+                            foreach (byte c in Encoding.UTF8.GetBytes(Input.inputString))
                             {
                                 StandardInput.Enqueue(c);
                             }
@@ -1150,7 +1158,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                                 // try { _memoryDownloadTask?.Cancel(); } catch { }
                                 _memoryDownloadTask = null;
 
-                                if (StandardInput.TryDequeue(out char c))
+                                if (StandardInput.TryDequeue(out byte c))
                                 {
                                     NetcodeUtils.CreateRPC(ConnectionManager.ClientOrDefaultWorld.Unmanaged, new ProcessorCommandRequestRpc()
                                     {

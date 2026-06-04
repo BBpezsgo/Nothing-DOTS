@@ -36,6 +36,10 @@ partial class ProcessorSourceSystemServer : SystemBase
                     case ProcessorCommand.Continue:
                         processor.ValueRW.Signal = Signal.None;
                         processor.ValueRW.Crash = 0;
+                        if (processor.ValueRO.DebugContext.IsBeingDebugged)
+                        {
+                            processor.ValueRW.DebugContext.IsContinueUnhandled = true;
+                        }
                         break;
                     case ProcessorCommand.Key:
                         if (processor.ValueRW.InputKey.Length >= processor.ValueRW.InputKey.Capacity)
@@ -43,7 +47,7 @@ partial class ProcessorSourceSystemServer : SystemBase
                             Debug.LogWarning($"{DebugEx.ServerPrefix} Standard input buffer is full");
                             break;
                         }
-                        processor.ValueRW.InputKey.Add(unchecked((char)command.ValueRO.Data));
+                        processor.ValueRW.InputKey.Add((byte)command.ValueRO.Data);
                         break;
                     default: throw new UnreachableException();
                 }

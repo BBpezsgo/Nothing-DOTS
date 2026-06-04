@@ -404,7 +404,7 @@ class SaveManager : MonoBehaviour
                     writer.Write(v.RadarRequest);
                     writer.WriteUnsafe(v.RadarResponse);
                     writer.Write(v.StdOutBufferCursor);
-                    writer.Write(v.StdOutBuffer);
+                    writer.WriteUnsafe(v.StdOutBuffer);
                 },
                 (BinaryReader reader, ref Processor v) =>
                 {
@@ -440,11 +440,11 @@ class SaveManager : MonoBehaviour
                     v.PendrivePlugRequested = reader.ReadBool();
                     v.PendriveUnplugRequested = reader.ReadBool();
                     v.IsKeyRequested = reader.ReadBool();
-                    v.InputKey = reader.ReadFixedList128Unsafe<char>();
+                    v.InputKey = reader.ReadFixedList128Unsafe<byte>();
                     v.RadarRequest = reader.ReadFloat2();
                     v.RadarResponse = reader.ReadUnsafe<RadarResponse>();
                     v.StdOutBufferCursor = reader.ReadUlong();
-                    v.StdOutBuffer = reader.ReadFixedString512();
+                    v.StdOutBuffer = reader.ReadFixedList512Unsafe<byte>();
                 }
             ),
             TypeSerializer.ForDynamicBufferItem<BufferedDamage>(

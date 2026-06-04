@@ -80,7 +80,7 @@ partial struct UnitLogSystemServer : ISystem
                             if (data.Length + length > data.Capacity) break;
                             data.AddRange(ptr, length);
 
-                            Debug.Log($"R {string.Join(" ", logBuffer.Slice(start, length).ToArray())}");
+                            //Debug.Log($"R {string.Join(" ", logBuffer.Slice(start, length).ToArray())}");
                         }
                     }
 

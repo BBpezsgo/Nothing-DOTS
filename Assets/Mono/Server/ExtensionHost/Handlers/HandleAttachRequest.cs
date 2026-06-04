@@ -136,9 +136,6 @@ partial class DebugHost
         {
             IsBeingDebugged = true,
             Breakpoints = new FixedList128Bytes<ushort>(),
-            Stopped = ProcessorJob.StopReason.No,
-            IsStopUnhandled = false,
-            SkipCurrentBreakpoint = false,
         };
 
         e.SetComponentData(_entity, _processor);

@@ -133,7 +133,7 @@ partial class ProcessorScreenSystemClient : SystemBase
 
                 unsafe
                 {
-                    System.ReadOnlySpan<byte> stdout = new(processor.ValueRO.StdOutBuffer.GetUnsafePtr(), processor.ValueRO.StdOutBuffer.Length);
+                    System.ReadOnlySpan<byte> stdout = processor.ValueRO.StdOutBuffer.AsReadOnlySpan();
                     screenInstance.Renderer.Rerender(stdout, screenInstance.Builder, (int)(screenInstance.Screen.Canvas.renderingDisplaySize.y / screenInstance.Screen.Text.fontSize));
                 }
             }

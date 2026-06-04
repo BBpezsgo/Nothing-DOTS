@@ -12,6 +12,7 @@
             <ui:Button text="Server" name="button-server"/>
             <ui:Button text="Client" name="button-client"/>
             <ui:Button text="Staging" name="button-staging"/>
+            <ui:Button text="Exit" name="button-exit"/>
         </ui:GroupBox>
     </ui:VisualElement>
 </ui:UXML>

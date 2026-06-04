@@ -6,7 +6,7 @@ partial class DebugHost
     {
         Log.Trace("[Handler] Disconnect");
 
-        IsDisconnected = true;
+        _isDisconnected = true;
 
         Continue(null);
 

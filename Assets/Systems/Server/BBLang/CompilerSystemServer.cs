@@ -25,13 +25,13 @@ public partial class CompilerSystemServer : SystemBase
 {
     const bool EnableLogging = false;
 
-    static readonly CompilerSettings CompilerSettings = new(CodeGeneratorForMain.DefaultCompilerSettings)
+    public static readonly CompilerSettings CompilerSettings = new(CodeGeneratorForMain.DefaultCompilerSettings)
     {
         Optimizations = OptimizationSettings.All,
         Cache = CompilerCache,
     };
 
-    static readonly MainGeneratorSettings GeneratorSettings = new(MainGeneratorSettings.Default)
+    public static readonly MainGeneratorSettings GeneratorSettings = new(MainGeneratorSettings.Default)
     {
         StackSize = ProcessorSystemServer.BytecodeInterpreterSettings.StackSize,
         //ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
@@ -273,25 +273,9 @@ public partial class CompilerSystemServer : SystemBase
 
     static readonly ConcurrentDictionary<Uri, CacheItem> CompilerCache = new();
 
-    static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSourceServer Source, CancellationToken CancellationToken) args)
+    public static unsafe ImmutableArray<UserDefinedAttribute> GetUserAttributes()
     {
-        using ProfilerMarker.AutoScope _m = _markerCompiler.Auto();
-
-        (FileId file, bool force, CompiledSourceServer source, CancellationToken cancellationToken) = args;
-
-        Uri sourceUri = file.ToUri();
-        if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} [{nameof(CompilerSystemServer)}] Compilation started for \"{sourceUri}\" ...");
-
-        lock (source)
-        {
-            source.Diagnostics = new DiagnosticsCollection();
-            source.Status = CompilationStatus.Uploading;
-            source.StatusChanged = true;
-        }
-
-        List<ProgressRecord<(int, int)>> progresses = new();
-
-        ImmutableArray<UserDefinedAttribute> attributes = ImmutableArray.Create(
+        return ImmutableArray.Create(
             UserDefinedAttribute.Create<CompiledStruct>("UnitCommand", ImmutableArray.Create(LiteralType.Integer, LiteralType.String), CanUseOn.Struct, static (CompiledStruct context, AttributeUsage attribute, [NotNullWhen(false)] out PossibleDiagnostic? error) =>
             {
                 error = null;
@@ -354,6 +338,27 @@ public partial class CompilerSystemServer : SystemBase
                 return true;
             })
         );
+    }
+
+    static unsafe void CompileSourceTask((FileId File, bool Force, CompiledSourceServer Source, CancellationToken CancellationToken) args)
+    {
+        using ProfilerMarker.AutoScope _m = _markerCompiler.Auto();
+
+        (FileId file, bool force, CompiledSourceServer source, CancellationToken cancellationToken) = args;
+
+        Uri sourceUri = file.ToUri();
+        if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} [{nameof(CompilerSystemServer)}] Compilation started for \"{sourceUri}\" ...");
+
+        lock (source)
+        {
+            source.Diagnostics = new DiagnosticsCollection();
+            source.Status = CompilationStatus.Uploading;
+            source.StatusChanged = true;
+        }
+
+        List<ProgressRecord<(int, int)>> progresses = new();
+
+        ImmutableArray<UserDefinedAttribute> attributes = GetUserAttributes();
 
         CompilerResult compiled = CompilerResult.MakeEmpty(sourceUri);
         BBLangGeneratorResult generated = new()

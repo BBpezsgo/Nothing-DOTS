@@ -138,7 +138,7 @@ struct Processor : IComponentData
     public (bool Write, Pendrive Pendrive, Entity Entity) PluggedPendrive;
 
     public bool IsKeyRequested;
-    public FixedList128Bytes<char> InputKey;
+    public FixedList128Bytes<byte> InputKey;
 
     /// <summary>
     /// XZ direction in local space
@@ -147,7 +147,7 @@ struct Processor : IComponentData
     public RadarResponse RadarResponse;
 
     public ulong StdOutBufferCursor;
-    public FixedString512Bytes StdOutBuffer;
+    public FixedList512Bytes<byte> StdOutBuffer;
 
     [GhostField] public StatusLED<ProcessorStatus> StatusLED;
     [GhostField] public BlinkingLED NetworkReceiveLED;

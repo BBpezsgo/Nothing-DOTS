@@ -225,7 +225,8 @@ static unsafe class ProcessorAPI
             byte output = arguments.To<byte>();
             if (output == '\r') return;
             Processor* p = ((FunctionScope*)_scope)->EntityRef.Processor;
-            p->StdOutBuffer.AppendShift((char)output);
+            if (p->StdOutBuffer.Length >= p->StdOutBuffer.Capacity) p->StdOutBuffer.RemoveAt(0);
+            p->StdOutBuffer.Add(output);
             p->StdOutBufferCursor++;
         }
 

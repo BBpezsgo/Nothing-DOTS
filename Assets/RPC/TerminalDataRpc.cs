@@ -6,6 +6,6 @@ using Unity.NetCode;
 public struct TerminalDataRpc : IRpcCommand
 {
     public required SpawnedGhost Entity;
-    public required FixedString64Bytes Data;
+    public required FixedList64Bytes<byte> Data;
     public required ulong Offset;
 }

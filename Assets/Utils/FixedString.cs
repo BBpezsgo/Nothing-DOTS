@@ -8,7 +8,7 @@ public static partial class FixedStringExtensions
 {
     [BurstCompile]
     public static FormatError AppendShift<T>(ref this T fs, Unicode.Rune rune)
-         where T : unmanaged, INativeList<byte>, IUTF8Bytes
+        where T : unmanaged, INativeList<byte>, IUTF8Bytes
     {
         int index = fs.Length;
         int num = rune.LengthInUtf8Bytes();

@@ -27,6 +27,33 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
     readonly DebugHostManager _manager;
     StopContext? _lastStopContext;
     uint _unitLogPosition;
+    protected bool _isDisconnected;
+
+    protected override bool IsStopped
+    {
+        get
+        {
+            EntityManager e = ConnectionManager.ServerOrDefaultWorld.EntityManager;
+            if (!e.Exists(_entity)) return false;
+
+            Processor processor = e.GetComponentData<Processor>(_entity);
+            return processor.DebugContext.IsBeingDebugged
+                && processor.DebugContext.Stopped
+                is ProcessorJob.StopReason.Pause
+                or ProcessorJob.StopReason.Breakpoint
+                or ProcessorJob.StopReason.Signal
+                or ProcessorJob.StopReason.RuntimeException
+                or ProcessorJob.StopReason.StepForward
+                or ProcessorJob.StopReason.StepIn
+                or ProcessorJob.StopReason.StepOut
+                or ProcessorJob.StopReason.StepInstruction;
+        }
+    }
+
+    ulong _unitTerminalPosition;
+    readonly List<byte> _unitTerminalBuilder = new();
+
+    protected override CompilerSettings CompilerSettings => CompilerSystemServer.CompilerSettings;
 
     public DebugHost(DebugHostManager manager, Stream stdIn, Stream stdOut, Logger log) : base(stdIn, stdOut, log)
     {
@@ -153,8 +180,11 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         return null;
     }
 
-    protected override Source ToSource(Uri file)
+    [return: NotNullIfNotNull(nameof(file))]
+    protected override Source? ToSource(Uri? file)
     {
+        if (file is null) return null;
+
         if (!FileId.FromUri(file, out FileId fileId))
         {
             return new Source()
@@ -188,8 +218,11 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         };
     }
 
-    protected override Uri ToUri(Source source)
+    [return: NotNullIfNotNull(nameof(source))]
+    protected override Uri? ToUri(Source? source)
     {
+        if (source is null) return null;
+
         if (source.AdapterData is string adapterData && Uri.TryCreate(adapterData, UriKind.Absolute, out Uri? result))
         {
             return result;
@@ -206,6 +239,13 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
 
         Processor processor = e.GetComponentData<Processor>(_entity);
 
+        Continue(step, ref processor);
+
+        e.SetComponentData(_entity, processor);
+    }
+
+    void Continue(StopReason? step, ref Processor processor)
+    {
         if (step is not null)
         {
             processor.DebugContext.SkipCurrentBreakpoint = true;
@@ -213,16 +253,11 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         }
         else
         {
-            if (e.Exists(_entity))
-            {
-                processor.DebugContext.Stopped = ProcessorJob.StopReason.No;
-                processor.DebugContext.IsStopUnhandled = false;
-                processor.DebugContext.SkipCurrentBreakpoint = true;
-                _lastStopContext = null;
-            }
+            processor.DebugContext.Stopped = ProcessorJob.StopReason.No;
+            processor.DebugContext.IsStopUnhandled = false;
+            processor.DebugContext.SkipCurrentBreakpoint = true;
+            _lastStopContext = null;
         }
-
-        e.SetComponentData(_entity, processor);
     }
 
     protected override void RequestStop(StopReason reason)
@@ -259,17 +294,16 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         EntityManager e = ConnectionManager.ServerOrDefaultWorld.EntityManager;
         if (!e.Exists(_entity)) return;
 
-        Processor _processor = e.GetComponentData<Processor>(_entity);
-        if (_processor.Source != _originalSource) return;
+        Processor processor = e.GetComponentData<Processor>(_entity);
 
-        if (_processor.InputKey.Length >= _processor.InputKey.Capacity)
+        if (processor.InputKey.Length >= processor.InputKey.Capacity)
         {
             Debug.LogWarning($"{DebugEx.ServerPrefix} Standard input buffer is full");
             return;
         }
 
-        _processor.InputKey.Add((char)c);
-        e.SetComponentData(_entity, _processor);
+        processor.InputKey.Add(c);
+        e.SetComponentData(_entity, processor);
     }
 
     public override void Run()
@@ -280,7 +314,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
 
     public void Update()
     {
-        if (Protocol.IsRunning && IsDisconnected)
+        if (Protocol.IsRunning && _isDisconnected)
         {
             Debug.Log($"{DebugEx.ServerPrefix} [DAP] Stopping protocol");
             Protocol.Stop();
@@ -308,6 +342,37 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             Protocol.SendEvent(new TerminatedEvent());
             _entity = Entity.Null;
             return;
+        }
+
+        {
+            ulong beginOffset = Math.Max(0, processor.StdOutBufferCursor - (ulong)processor.StdOutBuffer.Length);
+            ulong endOffset = processor.StdOutBufferCursor;
+
+            Debug.Assert(endOffset >= beginOffset);
+            Debug.Assert(endOffset - beginOffset == (ulong)processor.StdOutBuffer.Length);
+
+            if (endOffset > _unitTerminalPosition)
+            {
+                ulong sendStart = Math.Max(_unitTerminalPosition, beginOffset);
+                int offset = (int)(sendStart - beginOffset);
+                ReadOnlySpan<byte> data = processor.StdOutBuffer.AsReadOnlySpan()[offset..];
+
+                _unitTerminalPosition = sendStart + (ulong)data.Length;
+                _unitTerminalBuilder.AddRange(data.ToArray());
+
+                int i;
+                while ((i = _unitTerminalBuilder.IndexOf((byte)'\n')) != -1)
+                {
+                    string line = Encoding.UTF8.GetString(_unitTerminalBuilder.ToArray().AsSpan()[..(i + 1)]);
+                    _unitTerminalBuilder.RemoveRange(0, i + 1);
+
+                    Protocol.SendEvent(new OutputEvent()
+                    {
+                        Category = OutputEvent.CategoryValue.Stdout,
+                        Output = line,
+                    });
+                }
+            }
         }
 
         {
@@ -769,6 +834,19 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             }
             e.SetComponentData(_entity, processor);
         }
+
+        if (processor.DebugContext.IsContinueUnhandled)
+        {
+            processor.DebugContext.IsContinueUnhandled = false;
+            Continue(null, ref processor);
+            Protocol.SendEvent(new ContinuedEvent()
+            {
+                AllThreadsContinued = true,
+                ThreadId = 1,
+            });
+
+            e.SetComponentData(_entity, processor);
+        }
     }
 
     protected override void ResetSession()
@@ -796,7 +874,10 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
         _playerGuid = default;
         _playerConnectionId = default;
         _playerEntity = default;
-        _unitLogPosition = 0;
+        _unitLogPosition = default;
+        _unitTerminalPosition = default;
+        _unitTerminalBuilder.Clear();
+        _isDisconnected = false;
     }
 
     public void Dispose()

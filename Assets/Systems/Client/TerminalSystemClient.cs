@@ -117,10 +117,14 @@ partial class TerminalSystemClient : SystemBase
             {
                 subscription.Data.Clear();
             }
-            int dispose = subscription.Data.Length + command.ValueRO.Data.Length - TerminalSubscriptionClient.MaxLength;
+
+            FixedList64Bytes<byte> data = command.ValueRO.Data;
+
+            int dispose = subscription.Data.Length + data.Length - TerminalSubscriptionClient.MaxLength;
             if (dispose > 0) subscription.Data.RemoveRange(0, dispose);
-            subscription.Data.AddRange(command.ValueRO.Data.GetUnsafePtr(), command.ValueRO.Data.Length);
-            subscription.Offset = command.ValueRO.Offset + (ulong)command.ValueRO.Data.Length;
+
+            subscription.Data.AddRange(data.GetUnsafePtr(), data.Length);
+            subscription.Offset = command.ValueRO.Offset + (ulong)data.Length;
             subscription.Version++;
         }
 

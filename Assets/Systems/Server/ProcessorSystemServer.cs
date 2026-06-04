@@ -396,7 +396,8 @@ unsafe partial struct ProcessorSystemServer : ISystem
                     ulong sendStart = Math.Max(subscription.Offset, beginOffset);
                     int offset = (int)(sendStart - beginOffset);
                     int bytesToSend = (int)Math.Min((ulong)FixedString64Bytes.UTF8MaxLengthInBytes, endOffset - sendStart);
-                    FixedString64Bytes data = new(processor.ValueRW.StdOutBuffer.Substring(offset, bytesToSend));
+                    FixedList64Bytes<byte> data = new();
+                    data.AddRange(processor.ValueRW.StdOutBuffer.GetUnsafePtr() + offset, bytesToSend);
 
                     NetcodeUtils.CreateRPC<TerminalDataRpc>(commandBuffer, state.WorldUnmanaged, new()
                     {
@@ -613,7 +614,7 @@ partial struct ProcessorJob : IJobEntity
                 if (processor.IsKeyRequested)
                 {
                     if (processor.InputKey.Length == 0) break;
-                    char key = processor.InputKey[0];
+                    byte key = processor.InputKey[0];
                     processor.InputKey.RemoveAt(0);
                     processor.IsKeyRequested = false;
                     processorState.Pop(1);
@@ -651,10 +652,11 @@ partial struct ProcessorJob : IJobEntity
     public struct DebugContext
     {
         [GhostField] public required bool IsBeingDebugged;
-        [GhostField(SendData = false)] public required StopReason Stopped;
-        [GhostField(SendData = false)] public required bool SkipCurrentBreakpoint;
-        [GhostField(SendData = false)] public required bool IsStopUnhandled;
         [GhostField(SendData = false)] public required FixedList128Bytes<ushort> Breakpoints;
+        [GhostField(SendData = false)] public StopReason Stopped;
+        [GhostField(SendData = false)] public bool SkipCurrentBreakpoint;
+        [GhostField(SendData = false)] public bool IsStopUnhandled;
+        [GhostField(SendData = false)] public bool IsContinueUnhandled;
     }
 
     static void HandleTickDebug(ref Processor processor, ref ProcessorState processorState)
@@ -705,7 +707,7 @@ partial struct ProcessorJob : IJobEntity
                 if (processor.IsKeyRequested)
                 {
                     if (processor.InputKey.Length == 0) break;
-                    char key = processor.InputKey[0];
+                    byte key = processor.InputKey[0];
                     processor.InputKey.RemoveAt(0);
                     processor.IsKeyRequested = false;
                     processorState.Pop(1);
