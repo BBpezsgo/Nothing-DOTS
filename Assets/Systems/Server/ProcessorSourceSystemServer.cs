@@ -32,6 +32,10 @@ partial class ProcessorSourceSystemServer : SystemBase
                         break;
                     case ProcessorCommand.Reset:
                         ResetProcessor(ref processor.ValueRW);
+                        if (processor.ValueRO.DebugContext.IsBeingDebugged)
+                        {
+                            processor.ValueRW.DebugContext.IsContinueUnhandled = true;
+                        }
                         break;
                     case ProcessorCommand.Continue:
                         processor.ValueRW.Signal = Signal.None;

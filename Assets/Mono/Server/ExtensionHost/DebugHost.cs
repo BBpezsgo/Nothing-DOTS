@@ -228,7 +228,6 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
             return result;
         }
 
-        Debug.LogWarning($"Invalid source {source.Path} (adapterData: {source.AdapterData})");
         return base.ToUri(source);
     }
 
@@ -608,7 +607,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                         {
                             DiagnosticsCollection diagnostics = new();
 
-                            if (TryEvaluate(breakpoint.Condition, StackFrames.Count > 0 ? StackFrames[0].Id : null, diagnostics, out bool result))
+                            if (TryEvaluate(breakpoint.Condition, StackFrames.Count > 0 ? StackFrames[0].Id : null, diagnostics, out bool result, out var error))
                             {
                                 if (!result) goto skip;
                             }
@@ -617,6 +616,7 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                                 StringBuilder b = new();
                                 b.AppendLine($"Failed to evaluate breakpoint condition `{breakpoint.Condition}` at {breakpoint.SourceBreakpoint.Line}:{breakpoint.SourceBreakpoint.Column} in {breakpoint.Breakpoint.Source.Name}");
                                 diagnostics.WriteErrorsTo(b);
+                                if (error is not null) b.AppendLine(error.ToString());
                                 Protocol.SendEvent(new OutputEvent()
                                 {
                                     Output = b.ToString(),
