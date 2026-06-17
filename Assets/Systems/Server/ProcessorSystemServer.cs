@@ -21,22 +21,42 @@ using System.Linq;
 enum UserUIElementType : byte
 {
     MIN,
+    Box,
     Label,
     Image,
     MAX,
 }
 
+enum UserUIDirection : byte
+{
+    Horizontal,
+    Vertical,
+    HorizontalReverse,
+    VerticalReverse,
+}
+
 [BurstCompile]
-[StructLayout(LayoutKind.Explicit)]
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
 struct UserUIElement
 {
-    [FieldOffset(0)] public bool IsDirty;
-    [FieldOffset(1)] public int Id;
-    [FieldOffset(5)] public UserUIElementType Type;
-    [FieldOffset(6)] public int2 Position;
-    [FieldOffset(14)] public int2 Size;
-    [FieldOffset(22)] public UserUIElementLabel Label;
-    [FieldOffset(22)] public UserUIElementImage Image;
+    public bool IsDirty;
+    public int Id;
+    public int Parent;
+    public int Index;
+    public UserUIDirection Direction;
+    public int Margin;
+    public int Padding;
+    public int2 Size;
+    public UserUIElementType Type;
+    public UserUIElementMeta Meta;
+}
+
+[BurstCompile]
+[StructLayout(LayoutKind.Explicit)]
+struct UserUIElementMeta
+{
+    [FieldOffset(0)] public UserUIElementLabel Label;
+    [FieldOffset(0)] public UserUIElementImage Image;
 }
 
 [BurstCompile]
@@ -64,6 +84,20 @@ struct OwnedData<T>
     public OwnedData(int owner, T value)
     {
         Owner = owner;
+        Value = value;
+    }
+}
+
+struct EntityOwnedData<T>
+{
+    public readonly int OwnerTeam;
+    public readonly Entity OwnerEntity;
+    public T Value;
+
+    public EntityOwnedData(int ownerTeam, Entity ownerEntity, T value)
+    {
+        OwnerTeam = ownerTeam;
+        OwnerEntity = ownerEntity;
         Value = value;
     }
 }
@@ -154,7 +188,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     {
         public required NativeList<OwnedData<BufferedLine>>.ParallelWriter DebugLines;
         public required NativeList<OwnedData<BufferedWorldLabel>>.ParallelWriter WorldLabels;
-        public required NativeList<OwnedData<UserUIElement>>.ParallelWriter UIElements;
+        public required NativeList<EntityOwnedData<UserUIElement>>.ParallelWriter UIElements;
         public required ProcessorRef ProcessorRef;
         public required EntityRef EntityRef;
         public required FixedList128Bytes<BufferedLogPiece>* Log;
@@ -163,7 +197,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
     NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     NativeList<OwnedData<BufferedLine>> debugLines;
     NativeList<OwnedData<BufferedWorldLabel>> worldLabels;
-    NativeList<OwnedData<UserUIElement>> uiElements;
+    public NativeList<EntityOwnedData<UserUIElement>> uiElements;
     NativeList<TerminalSubscriptionServer> subscribedTerminals;
 
     void ISystem.OnCreate(ref SystemState state)
@@ -232,7 +266,7 @@ unsafe partial struct ProcessorSystemServer : ISystem
 
                 for (int i = 0; i < uiElements.Length; i++)
                 {
-                    if (uiElements[i].Owner != player.ValueRO.Team) continue;
+                    if (uiElements[i].OwnerTeam != player.ValueRO.Team) continue;
                     if (!uiElements[i].Value.IsDirty && uiElements[i].Value.Id != 0) continue;
 
                     if (uiElements[i].Value.Id == 0)
@@ -297,6 +331,33 @@ unsafe partial struct ProcessorSystemServer : ISystem
                         DieAt = (float)SystemAPI.Time.ElapsedTime + DebugLabelSystemClient.Lifetime
                     });
                 next:;
+                }
+
+                for (int i = 0; i < uiElements.Length; i++)
+                {
+                    if (uiElements[i].OwnerTeam != player.ValueRO.Team) continue;
+                    if (!uiElements[i].Value.IsDirty && uiElements[i].Value.Id != 0) continue;
+
+                    if (uiElements[i].Value.Id == 0)
+                    {
+                        // Debug.Log($"{DebugEx.ServerPrefix} {uiElements[i]} destroyed");
+
+                        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new UIElementDestroyRpc()
+                        {
+                            Id = uiElements[i].Value.Id,
+                        });
+                        uiElements.RemoveAt(i--);
+                    }
+                    else
+                    {
+                        // Debug.Log($"{DebugEx.ServerPrefix} {uiElements[i]} updated, {uiElements[i].Value.Label.Text.AsString()}");
+
+                        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new UIElementUpdateRpc()
+                        {
+                            UIElement = uiElements[i].Value,
+                        });
+                        uiElements.AsArray().AsSpan()[i].Value.IsDirty = false;
+                    }
                 }
             }
 
@@ -441,7 +502,7 @@ partial struct ProcessorJob : IJobEntity
     [ReadOnly] public NativeArray<ExternalFunctionScopedSync> scopedExternalFunctions;
     public NativeList<OwnedData<BufferedLine>>.ParallelWriter debugLines;
     public NativeList<OwnedData<BufferedWorldLabel>>.ParallelWriter worldLabels;
-    public NativeList<OwnedData<UserUIElement>>.ParallelWriter uiElements;
+    public NativeList<EntityOwnedData<UserUIElement>>.ParallelWriter uiElements;
     [ReadOnly] public ComponentLookup<CoreComputer> QCoreComputer;
     [ReadOnly] public ComponentLookup<Radar> QRadar;
     [ReadOnly] public ComponentLookup<Facility> QFacility;

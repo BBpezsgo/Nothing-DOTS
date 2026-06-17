@@ -184,6 +184,20 @@ partial struct WirelessTransmissionSystemServer : ISystem
                                     Wireless = otherIncomingMetadata,
                                 },
                             });
+
+                            foreach (var player in SystemAPI.Query<RefRO<Player>>())
+                            {
+                                if (math.distance(player.ValueRO.Position, transform.ValueRO.Position) < 50f ||
+                                    math.distance(player.ValueRO.Position, cell[i].Position) < 50f)
+                                {
+                                    NetcodeUtils.CreateRPC(state.WorldUnmanaged, new WirelessTransmissionEventRpc()
+                                    {
+                                        Origin = transform.ValueRO.Position,
+                                        Destination = cell[i].Position,
+                                        Data = transmission.Data,
+                                    }, player.ValueRO.Connection);
+                                }
+                            }
                         }
                     }
                 }

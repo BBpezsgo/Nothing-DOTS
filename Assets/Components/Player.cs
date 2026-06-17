@@ -25,6 +25,7 @@ public struct Player : IComponentData
 {
     public const int UnassignedTeam = -1;
 
+    public Entity Connection;
     [GhostField] public int ConnectionId;
     [GhostField] public PlayerConnectionState ConnectionState;
     [GhostField] public int Team;

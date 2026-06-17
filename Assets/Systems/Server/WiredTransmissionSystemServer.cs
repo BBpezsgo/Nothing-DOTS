@@ -90,6 +90,14 @@ partial struct WiredTransmissionSystemServer : ISystem
                 for (int i = 0; i < buffer.Length; i++)
                 {
                     BufferedWire wire = buffer[i];
+
+                    if (wire.EntityA == Entity.Null || wire.EntityB == Entity.Null)
+                    {
+                        Debug.LogWarning($"Invalid wire");
+                        DebugEx.DrawSphere(SystemAPI.GetComponentRO<LocalTransform>(next.Entity).ValueRO.Position, 0.52f, Color.yellow, 1f, false);
+                        continue;
+                    }
+
                     if (wire.PortIdentifierA == next)
                     {
                         if (closedSet.Add(wire.PortIdentifierB))

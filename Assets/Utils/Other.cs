@@ -132,4 +132,11 @@ public static partial class Utils
     }
 
     public static ImmutableArray<T> AsImmutableArrayUnsafe<T>(this T[]? array) => System.Runtime.InteropServices.ImmutableCollectionsMarshal.AsImmutableArray(array);
+
+    public static ReadOnlySpan<byte> TrimStart(this ReadOnlySpan<byte> v)
+    {
+        int i = 0;
+        while (v[i] is (byte)' ' or (byte)'\r' or (byte)'\n' or (byte)'\t') i++;
+        return v[i..];
+    }
 }

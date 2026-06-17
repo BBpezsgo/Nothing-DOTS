@@ -782,7 +782,7 @@ static unsafe class ProcessorAPI
                 for (int i = 0; i < scope->UIElements.ListData->Length; i++)
                 {
                     if ((*scope->UIElements.ListData)[i].Value.Id != id) continue;
-                    if ((*scope->UIElements.ListData)[i].Owner != scope->EntityRef.Team.Team) continue;
+                    if ((*scope->UIElements.ListData)[i].OwnerTeam != scope->EntityRef.Team.Team) continue;
                     exists = true;
                     break;
                 }
@@ -791,51 +791,12 @@ static unsafe class ProcessorAPI
                 id++;
             }
 
-            switch (ptr->Type)
-            {
-                case UserUIElementType.Label:
-                    char* text = (char*)&ptr->Label.Text;
-                    scope->UIElements.AddNoResize(new(
-                        scope->EntityRef.Team.Team,
-                        *ptr = new UserUIElement()
-                        {
-                            IsDirty = true,
-                            Type = UserUIElementType.Label,
-                            Id = id,
-                            Position = ptr->Position,
-                            Size = ptr->Size,
-                            Label = new UserUIElementLabel()
-                            {
-                                Color = ptr->Label.Color,
-                                Text = ptr->Label.Text,
-                            },
-                        }
-                    ));
-                    break;
-                case UserUIElementType.Image:
-                    scope->UIElements.AddNoResize(new(
-                        scope->EntityRef.Team.Team,
-                        *ptr = new UserUIElement()
-                        {
-                            IsDirty = true,
-                            Type = UserUIElementType.Image,
-                            Id = id,
-                            Position = ptr->Position,
-                            Size = ptr->Size,
-                            Image = new UserUIElementImage()
-                            {
-                                Width = ptr->Image.Width,
-                                Height = ptr->Image.Height,
-                                Image = ptr->Image.Image,
-                            },
-                        }
-                    ));
-                    break;
-                case UserUIElementType.MIN:
-                case UserUIElementType.MAX:
-                default:
-                    break;
-            }
+            UserUIElement element = *ptr;
+
+            element.IsDirty = true;
+            element.Id = id;
+
+            scope->UIElements.AddNoResize(new(scope->EntityRef.Team.Team, scope->EntityRef.Entity, *ptr = element));
         }
 
         [BurstCompile]
@@ -848,7 +809,7 @@ static unsafe class ProcessorAPI
             for (int i = 0; i < scope->UIElements.ListData->Length; i++)
             {
                 if ((*scope->UIElements.ListData)[i].Value.Id != id) continue;
-                if ((*scope->UIElements.ListData)[i].Owner != scope->EntityRef.Team.Team) continue;
+                if ((*scope->UIElements.ListData)[i].OwnerTeam != scope->EntityRef.Team.Team) continue;
                 (*scope->UIElements.ListData)[i] = default;
                 break;
             }
@@ -865,43 +826,11 @@ static unsafe class ProcessorAPI
 
             for (int i = 0; i < scope->UIElements.ListData->Length; i++)
             {
-                ref OwnedData<UserUIElement> uiElement = ref (*scope->UIElements.ListData).Ptr[i];
+                ref EntityOwnedData<UserUIElement> uiElement = ref (*scope->UIElements.ListData).Ptr[i];
                 if (uiElement.Value.Id != ptr->Id) continue;
-                if (uiElement.Owner != scope->EntityRef.Team.Team) continue;
-                switch (ptr->Type)
-                {
-                    case UserUIElementType.Label:
-                        char* text = (char*)&ptr->Label.Text;
-                        uiElement = new OwnedData<UserUIElement>(
-                            scope->EntityRef.Team.Team,
-                            *ptr = new UserUIElement()
-                            {
-                                IsDirty = true,
-                                Type = UserUIElementType.Label,
-                                Id = ptr->Id,
-                                Position = ptr->Position,
-                                Size = ptr->Size,
-                                Label = ptr->Label,
-                            }
-                        );
-                        break;
-                    case UserUIElementType.Image:
-                        uiElement = new OwnedData<UserUIElement>(
-                            scope->EntityRef.Team.Team,
-                            *ptr = new UserUIElement()
-                            {
-                                IsDirty = true,
-                                Type = UserUIElementType.Image,
-                                Id = ptr->Id,
-                                Position = ptr->Position,
-                                Size = ptr->Size,
-                                Image = ptr->Image,
-                            }
-                        );
-                        break;
-                    default:
-                        throw new UnreachableException();
-                }
+                if (uiElement.OwnerTeam != scope->EntityRef.Team.Team) continue;
+                ptr->IsDirty = true;
+                uiElement = new EntityOwnedData<UserUIElement>(scope->EntityRef.Team.Team, scope->EntityRef.Entity, *ptr);
                 break;
             }
         }

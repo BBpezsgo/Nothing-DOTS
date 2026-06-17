@@ -1,6 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" editor-extension-mode="False">
     <ui:Template name="TerminalDiagnosticsItem" src="project://database/Assets/UI/TerminalDiagnosticsItem.uxml?fileID=9197481963319205126&amp;guid=a1e4e6549353cff66b9c74b990c63867&amp;type=3#TerminalDiagnosticsItem"/>
     <ui:Template name="TerminalFileItem" src="project://database/Assets/UI/TerminalFileItem.uxml?fileID=9197481963319205126&amp;guid=f38b8fac42e49f32f9b892e445389217&amp;type=3#TerminalFileItem"/>
+    <ui:Template name="TerminalLogItem" src="project://database/Assets/UI/TerminalLogItem.uxml?fileID=9197481963319205126&amp;guid=b1c32650a8dd1485da7adfb200dc69f9&amp;type=3#TerminalLogItem"/>
     <ui:Template name="TerminalProgressItem" src="project://database/Assets/UI/TerminalProgressItem.uxml?fileID=9197481963319205126&amp;guid=9eea0e1bced7ce10ba2cf37db8517d65&amp;type=3#TerminalProgressItem"/>
     <Style src="project://database/Assets/UI/Styles/Processor.uss?fileID=7433441132597879392&amp;guid=913710a6a48cfd2aa9a2b83710b5d436&amp;type=3#Processor"/>
     <Style src="project://database/Assets/UI/Styles/Style.uss?fileID=7433441132597879392&amp;guid=c2d58f7c49026b5c192353093602f48b&amp;type=3#Style"/>
@@ -40,6 +41,20 @@
                 </ui:ScrollView>
                 <ui:ScrollView name="scroll-diagnostics">
                     <ui:Instance template="TerminalDiagnosticsItem" name="TerminalDiagnosticsItem"/>
+                </ui:ScrollView>
+            </ui:Tab>
+            <ui:Tab label="Memory" class="unity-fill-tab" style="flex-grow: 1;">
+                <ui:VisualElement style="flex-grow: 0; flex-direction: row; flex-shrink: 0;">
+                    <ui:ProgressBar value="0" name="memory-progress" high-value="1" style="flex-grow: 1;"/>
+                    <ui:Button text="Analyze" name="memory-button-analyze"/>
+                </ui:VisualElement>
+                <ui:Label name="memory-error" style="font-size: 12px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; color: rgb(255, 0, 0);"/>
+                <ui:VisualElement name="heap-container" style="flex-grow: 1;">
+                </ui:VisualElement>
+            </ui:Tab>
+            <ui:Tab label="Logs" enabled="true" style="flex-grow: 1;">
+                <ui:ScrollView name="scroll-logs">
+                    <ui:Instance template="TerminalLogItem"/>
                 </ui:ScrollView>
             </ui:Tab>
         </ui:TabView>

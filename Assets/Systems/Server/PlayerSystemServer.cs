@@ -109,6 +109,7 @@ public partial struct PlayerSystemServer : ISystem
                 Entity newPlayer = commandBuffer.Instantiate(prefabs.Player);
                 commandBuffer.SetComponent<Player>(newPlayer, new()
                 {
+                    Connection = request.ValueRO.SourceConnection,
                     ConnectionId = source.Value,
                     ConnectionState = PlayerConnectionState.Connected,
                     Team = Player.UnassignedTeam,
@@ -150,6 +151,7 @@ public partial struct PlayerSystemServer : ISystem
                 bool loggedIn = player.ValueRO.ConnectionId != -1;
                 if (!loggedIn)
                 {
+                    player.ValueRW.Connection = request.ValueRO.SourceConnection;
                     player.ValueRW.ConnectionId = source.Value;
                     player.ValueRW.ConnectionState = PlayerConnectionState.Connected;
                     ChatSystemServer.SendChatMessage(commandBuffer, state.WorldUnmanaged, $"Player {player.ValueRO.Nickname} reconnected", MonoTime.UnixSeconds);
@@ -214,6 +216,7 @@ public partial struct PlayerSystemServer : ISystem
                 Debug.Log($"{DebugEx.ServerPrefix} Client {player.ValueRO.ConnectionId} disconnected");
                 ChatSystemServer.SendChatMessage(commandBuffer, state.WorldUnmanaged, $"Player {player.ValueRO.Nickname} disconnected", MonoTime.UnixSeconds);
 
+                player.ValueRW.Connection = Entity.Null;
                 player.ValueRW.ConnectionId = -1;
                 player.ValueRW.ConnectionState = PlayerConnectionState.Disconnected;
             }

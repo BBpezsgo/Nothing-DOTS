@@ -9,10 +9,11 @@ struct CommandAttackAt
 
 const int MaxCommandDataSize = 8;
 
-void Receive()
+void receive()
 {
     byte[MaxPacketLength] v;
     float3 direction;
+    byte port = 0;
 
     while (1)
     {
@@ -68,6 +69,8 @@ void Receive()
         {
             EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
 
+            printline("E");
+
             Unit unit;
             unit.position = packet.position;
             unit.recorded = 0f;
@@ -103,17 +106,113 @@ void Receive()
             update_unit(&allies, unit);
         }
     }
+
+    while (1)
+    {
+        int receivedLength = receive(&v, MaxPacketLength, port);
+        if (!receivedLength) { break; }
+
+        if (v[0] == (byte)PacketHeader.request &&
+            receivedLength == sizeof(VerificationRequestPacket))
+        {
+            VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
+
+            VerificationResponsePacket responsePacket = new VerificationResponsePacket;
+            responsePacket.header = PacketHeader.response;
+
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdLargeSq)
+            {
+                responsePacket.position = packet.position;
+                debug(packet.position, Color.Cyan);
+                send(&responsePacket as byte[]*, sizeof(VerificationResponsePacket), port);
+            }
+            else
+            {
+                for (int i = 0; i < (&allies).length(); i++)
+                {
+                    float distanceSqr = distancesqr((&allies).raw()[i].position, packet.position);
+                    if (distanceSqr < DistanceThresholdSq)
+                    {
+                        IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
+                        indirectResponsePacket.header = PacketHeader.indirect_response;
+                        indirectResponsePacket.position = (&allies).raw()[i].position;
+                        indirectResponsePacket.expires = (&allies).raw()[i].expires;
+                        send(&indirectResponsePacket as byte[]*, sizeof(IndirectVerificationResponsePacket), port);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (v[0] == (byte)PacketHeader.response &&
+                 receivedLength == sizeof(VerificationResponsePacket))
+        {
+            VerificationResponsePacket* packet = &v as VerificationResponsePacket*;
+
+            Unit unit;
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = time() + 10f;
+            unit.verification_sent_at = time();
+            remove_unit_at(&enemies, unit.position);
+            update_unit(&allies, unit);
+        }
+        else if (v[0] == (byte)PacketHeader.enemy &&
+                 receivedLength == sizeof(EnemyNotificationPacket))
+        {
+            EnemyNotificationPacket* packet = &v as EnemyNotificationPacket*;
+
+            printline("E");
+
+            Unit unit;
+            unit.position = packet.position;
+            unit.recorded = 0f;
+            unit.expires = time() + 5f;
+            unit.verification_sent_at = time();
+            int j = update_unit(&enemies, unit);
+
+            for (int i = 0; i < (&allies).length(); i++)
+            {
+                if (i != j)
+                {
+                    var direction = (&allies).raw()[i].position;
+                    tolocal(&direction);
+                    normalise(&direction);
+
+                    printline("NTFY");
+
+                    wsend(&packet as byte[]*, sizeof(EnemyNotificationPacket), &direction);
+                }
+            }
+        }
+        else if (v[0] == (byte)PacketHeader.indirect_response &&
+                 receivedLength == sizeof(IndirectVerificationResponsePacket))
+        {
+            IndirectVerificationResponsePacket* packet = &v as IndirectVerificationResponsePacket*;
+
+            Unit unit;
+            unit.position = packet.position;
+            unit.recorded = time();
+            unit.expires = packet.expires;
+            unit.verification_sent_at = time();
+            remove_unit_at(&enemies, unit.position);
+            update_unit(&allies, unit);
+        }
+    }
 }
 
 List<Unit> enemies = new List<Unit>(4);
 List<Unit> allies = new List<Unit>(4);
 
+UIElement _container = new UIElement();
+_container._direction = UIDirection.VerticalReverse;
+_container.update();
+
 UIImage _minimap = new UIImage((i16)22, (i16)22);
+_minimap._parent = _container._id;
 _minimap.width = 100;
 _minimap.height = 100;
-_minimap.x = 10;
-_minimap.y = 10;
-(&_minimap).update();
+_minimap.margin = 8;
+_minimap.update();
 
 const float MinimapScale = 1f;
 
@@ -121,7 +220,7 @@ printline("Started ...");
 
 while (1)
 {
-    Receive();
+    receive();
 
     (&_minimap).fill((byte)0);
     (&_minimap).set(new float2(11f, 11f), (byte)0b_111_111_11);

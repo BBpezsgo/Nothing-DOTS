@@ -11,6 +11,7 @@ partial class DebugHost
         if (e.Exists(_entity))
         {
             Processor processor = e.GetComponentData<Processor>(_entity);
+            ProcessorSourceSystemServer.DisposeProcessorResources(e.WorldUnmanaged, _entity);
             ProcessorSourceSystemServer.ResetProcessor(ref processor);
             processor.DebugContext.Stopped = ProcessorJob.StopReason.No;
             processor.DebugContext.IsStopUnhandled = true;

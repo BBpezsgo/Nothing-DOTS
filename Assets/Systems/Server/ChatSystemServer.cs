@@ -4,11 +4,9 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
-[BurstCompile]
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 public partial struct ChatSystemServer : ISystem
 {
-    [BurstCompile]
     void ISystem.OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = default;
@@ -51,8 +49,8 @@ public partial struct ChatSystemServer : ISystem
                     Time = command.ValueRO.Time,
                 }, request.ValueRO.SourceConnection);
 
-                Span<byte> cmd = message.AsSpan()[1..];
-                if (cmd.StartsWith("creative"u8))
+                ReadOnlySpan<byte> cmd = message.AsSpan()[1..];
+                if (cmd.SequenceEqual("creative"u8))
                 {
                     if (senderPlayer.ConnectionState is PlayerConnectionState.Local or PlayerConnectionState.Server || senderPlayer.IsAdmin)
                     {
@@ -63,6 +61,119 @@ public partial struct ChatSystemServer : ISystem
                             Message = "Ok",
                             Time = MonoTime.UnixSeconds,
                         }, request.ValueRO.SourceConnection);
+                    }
+                    else
+                    {
+                        NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ChatMessageNotificationRpc()
+                        {
+                            Sender = 0,
+                            Message = "Unauthorized",
+                            Time = MonoTime.UnixSeconds,
+                        }, request.ValueRO.SourceConnection);
+                    }
+                }
+                else if (cmd.StartsWith("research"u8))
+                {
+                    if (senderPlayer.ConnectionState is PlayerConnectionState.Local or PlayerConnectionState.Server || senderPlayer.IsAdmin)
+                    {
+                        ReadOnlySpan<byte> arg = cmd["research".Length..].TrimStart();
+                        if (arg.SequenceEqual("all"u8))
+                        {
+                            DynamicBuffer<BufferedAcquiredResearch> acquiredResearches = SystemAPI.GetBuffer<BufferedAcquiredResearch>(senderPlayerE);
+                            int n = 0;
+
+                            foreach (var _research in
+                                SystemAPI.Query<RefRO<Research>>())
+                            {
+                                bool alreadyResearched = false;
+                                foreach (BufferedAcquiredResearch acquired in acquiredResearches)
+                                {
+                                    if (_research.ValueRO.Name != acquired.Name) continue;
+                                    alreadyResearched = true;
+                                    break;
+                                }
+                                if (alreadyResearched) continue;
+
+                                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+
+                                acquiredResearches.Add(new BufferedAcquiredResearch()
+                                {
+                                    Name = _research.ValueRO.Name,
+                                });
+
+                                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ResearchDoneRpc()
+                                {
+                                    Name = _research.ValueRO.Name,
+                                }, request.ValueRO.SourceConnection);
+                                n++;
+                            }
+
+                            NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ChatMessageNotificationRpc()
+                            {
+                                Sender = 0,
+                                Message = $"Researched {n} technologies",
+                                Time = MonoTime.UnixSeconds,
+                            }, request.ValueRO.SourceConnection);
+                        }
+                        else
+                        {
+                            DynamicBuffer<BufferedAcquiredResearch> acquiredResearches = SystemAPI.GetBuffer<BufferedAcquiredResearch>(senderPlayerE);
+
+                            foreach (var _research in
+                                SystemAPI.Query<RefRO<Research>>())
+                            {
+                                var n = _research.ValueRO.Name;
+                                if (!n.AsSpan().SequenceEqual(arg)) continue;
+
+                                bool alreadyResearched = false;
+                                foreach (BufferedAcquiredResearch acquired in acquiredResearches)
+                                {
+                                    if (_research.ValueRO.Name != acquired.Name) continue;
+                                    alreadyResearched = true;
+                                    break;
+                                }
+                                if (alreadyResearched)
+                                {
+                                    NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ChatMessageNotificationRpc()
+                                    {
+                                        Sender = 0,
+                                        Message = "Technology already researched",
+                                        Time = MonoTime.UnixSeconds,
+                                    }, request.ValueRO.SourceConnection);
+                                    break;
+                                }
+
+                                if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+
+                                acquiredResearches.Add(new BufferedAcquiredResearch()
+                                {
+                                    Name = _research.ValueRO.Name,
+                                });
+
+                                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ResearchDoneRpc()
+                                {
+                                    Name = _research.ValueRO.Name,
+                                }, request.ValueRO.SourceConnection);
+
+                                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ChatMessageNotificationRpc()
+                                {
+                                    Sender = 0,
+                                    Message = "Ok",
+                                    Time = MonoTime.UnixSeconds,
+                                }, request.ValueRO.SourceConnection);
+
+                                break;
+                            }
+
+                            NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new ChatMessageNotificationRpc()
+                            {
+                                Sender = 0,
+                                Message = "Technology doesn't exists",
+                                Time = MonoTime.UnixSeconds,
+                            }, request.ValueRO.SourceConnection);
+
+                        ok:;
+                        }
                     }
                     else
                     {

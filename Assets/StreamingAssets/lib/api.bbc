@@ -232,27 +232,41 @@ export byte colorto255(int r, int g, int b)
     );
 }
 
-export struct UILabel
+export enum UIDirection : byte
+{
+    Horizontal,
+    Vertical,
+    HorizontalReverse,
+    VerticalReverse,
+}
+
+export enum UIType : byte
+{
+    _,
+    Box,
+    Label,
+    Image,
+}
+
+export struct UIElement
 {
     private bool _dirty;
-    private int _id;
-    private byte _type;
-    int x;
-    int y;
+    int _id;
+    int _parent;
+    int _index;
+    UIDirection _direction;
+    int margin;
+    int padding;
     int width;
     int height;
-    float3 color;
-    char[15] text;
+    private UIType _type;
 
-    export UILabel()
+    export UIElement()
     {
-        this._type = 1;
-        this.x = 50;
-        this.y = 50;
+        this._type = UIType.Box;
         this.width = 50;
         this.height = 50;
-        this.text = "Hey";
-        gui_create(&this);
+        gui_create(this);
     }
 
     export inline void destroy()
@@ -262,28 +276,64 @@ export struct UILabel
 
     export inline void update()
     {
-        gui_update(&this);
+        gui_update(this);
+    }
+}
+
+export struct UILabel
+{
+    private bool _dirty;
+    int _id;
+    int _parent;
+    int _index;
+    UIDirection _direction;
+    int margin;
+    int padding;
+    int width;
+    int height;
+    private UIType _type;
+    float3 color;
+    char[15] text;
+
+    export UILabel()
+    {
+        this._type = UIType.Label;
+        this.width = 50;
+        this.height = 50;
+        this.text = "Hey";
+        gui_create(this);
+    }
+
+    export inline void destroy()
+    {
+        gui_destroy(this._id);
+    }
+
+    export inline void update()
+    {
+        gui_update(this);
     }
 }
 
 export struct UIImage
 {
     private bool _dirty;
-    private int _id;
-    private byte _type;
-    int x;
-    int y;
+    int _id;
+    int _parent;
+    int _index;
+    UIDirection _direction;
+    int margin;
+    int padding;
     int width;
     int height;
+    private UIType _type;
     i16 imgwidth;
     i16 imgheight;
     byte[510] img;
 
     export UIImage(i16 width, i16 height)
     {
-        this._type = 2;
-        this.x = 50;
-        this.y = 50;
+        this._type = UIType.Image;
         this.width = 50;
         this.height = 50;
         this.imgwidth = width;

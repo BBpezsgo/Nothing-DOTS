@@ -55,7 +55,7 @@ public static partial class FixedStringExtensions
     {
         FixedString32Bytes res = new();
         char* ptr = (char*)Unsafe.AsPointer(ref Unsafe.AsRef(in v));
-        for (int i = 0; i < 15 && ptr[i] != 0; i++)
+        for (int i = 0; i < 30 && ptr[i] != 0; i++)
         {
             res.Append(ptr[i]);
         }

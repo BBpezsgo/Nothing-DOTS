@@ -93,7 +93,7 @@ partial struct ProcessorSystemClient : ISystem
             for (int i = 0; i < uiElements.Length; i++)
             {
                 if (uiElements[i].Id != command.ValueRO.UIElement.Id) continue;
-                uiElements[i] = command.ValueRO.UIElement;
+                uiElements[i] = command.ValueRO.UIElement with { IsDirty = true };
                 goto next;
             }
 

@@ -1,12 +1,13 @@
 using System;
 using LanguageCore.Runtime;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.NetCode;
 
 [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
 partial class ProcessorSourceSystemServer : SystemBase
 {
-    const bool EnableLogging = false;
+    static readonly bool EnableLogging = false;
 
     protected override void OnUpdate()
     {
@@ -20,8 +21,9 @@ partial class ProcessorSourceSystemServer : SystemBase
             if (!commandBuffer.IsCreated) commandBuffer = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(World.Unmanaged);
             commandBuffer.DestroyEntity(entity);
 
-            foreach (var (ghostInstance, processor) in
-                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>())
+            foreach (var (ghostInstance, processor, processorEntity) in
+                SystemAPI.Query<RefRO<GhostInstance>, RefRW<Processor>>()
+                .WithEntityAccess())
             {
                 if (!command.ValueRO.Entity.Equals(ghostInstance.ValueRO)) continue;
 
@@ -31,6 +33,7 @@ partial class ProcessorSourceSystemServer : SystemBase
                         processor.ValueRW.Signal = Signal.Halt;
                         break;
                     case ProcessorCommand.Reset:
+                        DisposeProcessorResources(World.Unmanaged, processorEntity);
                         ResetProcessor(ref processor.ValueRW);
                         if (processor.ValueRO.DebugContext.IsBeingDebugged)
                         {
@@ -105,14 +108,16 @@ partial class ProcessorSourceSystemServer : SystemBase
             }
         }
 
-        foreach (var processor in
-            SystemAPI.Query<RefRW<Processor>>())
+        foreach (var (processor, processorEntity) in
+            SystemAPI.Query<RefRW<Processor>>()
+            .WithEntityAccess())
         {
             if (processor.ValueRO.SourceFile == default)
             {
                 if (processor.ValueRW.Source.Code.IsCreated)
                 {
                     if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} Disposing instructions (source file is null)");
+                    DisposeProcessorResources(World.Unmanaged, processorEntity);
                     processor.ValueRW.Source.Code = default;
                 }
                 continue;
@@ -121,6 +126,7 @@ partial class ProcessorSourceSystemServer : SystemBase
             if (!compilerSystem.CompiledSources.TryGetValue(processor.ValueRO.SourceFile, out CompiledSourceServer? source))
             {
                 if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} Creating new source file {processor.ValueRO.SourceFile} (internal)");
+                DisposeProcessorResources(World.Unmanaged, processorEntity);
                 compilerSystem.AddEmpty(processor.ValueRO.SourceFile, 1);
                 processor.ValueRW.CompiledSourceVersion = 0;
                 if (processor.ValueRW.Source.Code.IsCreated)
@@ -133,6 +139,7 @@ partial class ProcessorSourceSystemServer : SystemBase
 
             if (!source.Code.HasValue)
             {
+                DisposeProcessorResources(World.Unmanaged, processorEntity);
                 if (processor.ValueRW.Source.Code.IsCreated)
                 {
                     if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} Disposing instructions (source has no instructions)");
@@ -150,6 +157,7 @@ partial class ProcessorSourceSystemServer : SystemBase
                 else
                 {
                     if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} New source version avaliable ({processor.ValueRO.CompiledSourceVersion} -> {source.CompiledVersion}), reloading processor ...");
+                    DisposeProcessorResources(World.Unmanaged, processorEntity);
                     ResetProcessor(ref processor.ValueRW);
                 }
                 processor.ValueRW.CompiledSourceVersion = source.CompiledVersion;
@@ -162,12 +170,24 @@ partial class ProcessorSourceSystemServer : SystemBase
 
             if (!source.IsSuccess)
             {
+                DisposeProcessorResources(World.Unmanaged, processorEntity);
                 if (processor.ValueRW.Source.Code.IsCreated)
                 {
                     if (EnableLogging) Debug.Log($"{DebugEx.ServerPrefix} Disposing instructions (source has errors)");
                     processor.ValueRW.Source.Code = default;
                 }
             }
+        }
+    }
+
+    public static void DisposeProcessorResources(WorldUnmanaged world, Entity entity)
+    {
+        world.GetExistingSystemState<ProcessorSystemServer>().CompleteDependency();
+        NativeList<EntityOwnedData<UserUIElement>> uiElements = world.GetSystem<ProcessorSystemServer>().uiElements;
+        for (int i = 0; i < uiElements.Length; i++)
+        {
+            if (uiElements[i].OwnerEntity != entity) continue;
+            uiElements[i] = default;
         }
     }
 

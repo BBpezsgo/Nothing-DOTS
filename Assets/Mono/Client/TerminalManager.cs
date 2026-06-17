@@ -712,12 +712,19 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
             foreach (HeapUtils.HeapBlock block in blocks)
             {
+                Debug.Log($"{block.IsUsed} {block.Size}");
+
                 VisualElement e = new();
                 container.Add(e);
 
+                Label l = new();
+                e.Add(l);
+
                 e.AddToClassList("heap-block");
-                e.style.backgroundColor = block.IsUsed ? Color.red : Color.white;
-                e.style.flexBasis = new StyleLength(new Length((float)block.Size / (float)totalMemory, LengthUnit.Percent));
+                e.AddToClassList(block.IsUsed ? "heap-block-used" : "heap-block-free");
+                e.style.flexBasis = new StyleLength(new Length((float)block.Size * 100 / (float)totalMemory, LengthUnit.Percent));
+
+                l.text = $"{block.Size} bytes";
             }
         });
 

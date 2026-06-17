@@ -82,6 +82,15 @@ void Receive()
                     wsend(&indirectResponsePacket as byte[]*, sizeof(IndirectVerificationResponsePacket), &direction);
                 }
             }
+
+            {
+                printline("NTFY P0");
+                IndirectVerificationResponsePacket indirectResponsePacket = new IndirectVerificationResponsePacket;
+                indirectResponsePacket.header = PacketHeader.indirect_response;
+                indirectResponsePacket.position = packet.position;
+                indirectResponsePacket.expires = unit.expires;
+                send(&indirectResponsePacket as byte[]*, sizeof(IndirectVerificationResponsePacket));
+            }
         }
         else if (v[0] == (byte)PacketHeader.enemy &&
                  receivedLength == sizeof(EnemyNotificationPacket))

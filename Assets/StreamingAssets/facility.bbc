@@ -1,74 +1,96 @@
 using "lib/api";
+using "lib/protocol";
+using "lib/stdlib/Base64";
 
-TechnologyHash hashPtr = new byte[30];
-
-[UnitCommand(1, "Extract From USB")]
-struct ExtractUSB
+void receive()
 {
-    [Context("position")] float2 position;
+    byte[MaxPacketLength] v;
+    float3 direction;
+
+    while (1)
+    {
+        int receivedLength = wreceive(&v, MaxPacketLength, &direction);
+        if (!receivedLength) { break; }
+
+        if (v[0] == (byte)PacketHeader.request &&
+            receivedLength == sizeof(VerificationRequestPacket))
+        {
+            VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
+
+            print("I-REQ ");
+            print(packet.position);
+            printline();
+
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
+            {
+                print(" M");
+                VerificationResponsePacket responsePacket = new VerificationResponsePacket;
+                responsePacket.header = PacketHeader.response;
+                responsePacket.position = GPS.position;
+                debug(packet.position, Color.Cyan);
+                wsend(&responsePacket as byte[]*, sizeof(VerificationResponsePacket), &direction);
+            }
+        }
+    }
+
+    while (1)
+    {
+        int receivedLength = receive(&v, MaxPacketLength);
+        if (!receivedLength) { break; }
+
+        if (v[0] == (byte)PacketHeader.request &&
+            receivedLength == sizeof(VerificationRequestPacket))
+        {
+            VerificationRequestPacket* packet = &v as VerificationRequestPacket*;
+
+            print("I-REQ ");
+            print(packet.position);
+            printline();
+
+            if (distancesqr(packet.position, GPS.position) < DistanceThresholdSq)
+            {
+                print(" M");
+                VerificationResponsePacket responsePacket = new VerificationResponsePacket;
+                responsePacket.header = PacketHeader.response;
+                responsePacket.position = GPS.position;
+                debug(packet.position, Color.Cyan);
+                send(&responsePacket as byte[]*, sizeof(VerificationResponsePacket));
+            }
+        }
+    }
 }
 
-[UnitCommand(2, "Save To USB")]
-struct SaveUSB
+[UnitCommand(1, "From Terminal")]
+struct ExtractUSB
 {
-    [Context("position")] float2 position;
 }
 
 const int MaxCommandDataSize = 8;
 
 while (1)
 {
-    byte[MaxCommandDataSize] _command;
-
-    int commandId = dequeue_command(&_command);
-
-    if (commandId == 1)
-    {
-        printline("Plugging pendrive ...");
-        while (!Pendrive.plugged)
-        {
-            _pendrive_plug();
-        }
-        printline("Plugged");
-
-        _pendrive_read(0, &hashPtr, 32);
-        printline("Hash readed");
-
-        printline("Unplugging pendrive ...");
-        while (Pendrive.plugged)
-        {
-            _pendrive_unplug();
-        }
-        printline("Unplugged");
-
-        printline("Researching technology");
-        _facility_enqueue(&hashPtr);
-    }
-    else if (commandId == 2)
-    {
-        printline("Plugging pendrive ...");
-        while (!Pendrive.plugged)
-        {
-            _pendrive_plug();
-        }
-        printline("Plugged");
-
-        if (_facility_dequeue(&hashPtr))
-        {
-            printline(&hashPtr as string);
-            _pendrive_write(&hashPtr, 0, 32);
-            printline("Hash writed");
-        }
-        else
-        {
-            printline("No technology avaliable");
-        }
-
-        printline("Unplugging pendrive ...");
-        while (Pendrive.plugged)
-        {
-            _pendrive_unplug();
-        }
-        printline("Unplugged");
-    }
+    char v = stdin();
+    print(v);
+    
+    //receive();
+//
+    //byte[MaxCommandDataSize] _command;
+//
+    //int commandId = dequeue_command(&_command);
+//
+    //printline("Enter the research hash:");
+    //string input = readline();
+//
+    //if (length(input) < 30)
+    //{
+    //    printline("Invalid hash");
+    //}
+    //else
+    //{
+    //    printline("Putting research on queue ...");
+    //    _facility_enqueue((TechnologyHash*)input);
+    //    printline("Done");
+    //}
+//
+    //delete input;
 }

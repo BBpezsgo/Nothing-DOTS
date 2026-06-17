@@ -1,111 +1,196 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 public class ProcessorGUIManager : MonoBehaviour
 {
     [SerializeField, NotNull] Canvas? _canvas = default;
     [SerializeField, NotNull] GameObject? _labelPrefab = default;
     [SerializeField, NotNull] GameObject? _imagePrefab = default;
+    [SerializeField, NotNull] UIDocument? _ui = default;
 
-    [SerializeField, NonReorderable, ReadOnly] List<Text> _labels = new();
-    [SerializeField, NonReorderable, ReadOnly] List<Image> _images = new();
+    readonly Dictionary<int, Texture2D> _textures = new();
 
-    void OnGUI()
+    static void UpdateElement(VisualElement visualElement, in UserUIElement userElement)
     {
-        if (ConnectionManager.ClientWorld == null) return;
+        visualElement.style.flexDirection = userElement.Direction switch
+        {
+            UserUIDirection.Horizontal => FlexDirection.Row,
+            UserUIDirection.Vertical => FlexDirection.Column,
+            UserUIDirection.HorizontalReverse => FlexDirection.RowReverse,
+            UserUIDirection.VerticalReverse => FlexDirection.ColumnReverse,
+            _ => throw new UnreachableException(),
+        };
 
-        NativeList<UserUIElement> uiElements = ProcessorSystemClient.GetInstance(ConnectionManager.ClientWorld.Unmanaged).uiElements;
+        visualElement.style.marginTop =
+        visualElement.style.marginRight =
+        visualElement.style.marginBottom =
+        visualElement.style.marginLeft = userElement.Margin;
 
-        int labelIndex = 0;
-        int imageIndex = 0;
+        visualElement.style.paddingTop =
+        visualElement.style.paddingRight =
+        visualElement.style.paddingBottom =
+        visualElement.style.paddingLeft = userElement.Padding;
+
+        visualElement.style.width = userElement.Size.x == 0 ? new StyleLength(StyleKeyword.Auto) : new StyleLength(new Length(userElement.Size.x, LengthUnit.Pixel));
+        visualElement.style.height = userElement.Size.y == 0 ? new StyleLength(StyleKeyword.Auto) : new StyleLength(new Length(userElement.Size.y, LengthUnit.Pixel));
+    }
+
+    unsafe void OnGUI()
+    {
+        NativeList<UserUIElement> uiElements = ProcessorSystemClient.GetInstance(ConnectionManager.ClientOrDefaultWorld.Unmanaged).uiElements;
+
+        HashSet<int> ids = new();
 
         for (int i = 0; i < uiElements.Length; i++)
         {
-            UserUIElement uiElement = uiElements[i];
-            switch (uiElement.Type)
+            ref UserUIElement uiElement = ref uiElements.GetUnsafeList()->Ptr[i];
+            VisualElement? e = _ui.rootVisualElement.Q(uiElement.Id.ToString());
+
+            ids.Add(uiElement.Id);
+
+            if (e is null)
             {
-                case UserUIElementType.Label:
-                    if (labelIndex >= _labels.Count)
-                    {
-                        GameObject o = Instantiate(_labelPrefab, _canvas.transform);
-                        _labels.Add(o.GetComponent<Text>());
-                    }
-                    _labels[labelIndex].rectTransform.anchoredPosition = new Vector2(uiElement.Position.x, uiElement.Position.y);
-                    _labels[labelIndex].rectTransform.sizeDelta = new Vector2(uiElement.Size.x, uiElement.Size.y);
-                    _labels[labelIndex].text = uiElement.Label.Text.AsString().ToString();
-                    labelIndex++;
-                    break;
-                case UserUIElementType.Image:
-                    if (imageIndex >= _images.Count)
-                    {
-                        GameObject o = Instantiate(_imagePrefab, _canvas.transform);
-                        _images.Add(o.GetComponent<Image>());
-                    }
-                    _images[imageIndex].rectTransform.anchoredPosition = new Vector2(uiElement.Position.x, uiElement.Position.y);
-                    _images[imageIndex].rectTransform.sizeDelta = new Vector2(uiElement.Size.x, uiElement.Size.y);
+                VisualElement desiredParent = uiElement.Parent == 0 ? _ui.rootVisualElement : _ui.rootVisualElement.Q(uiElement.Parent.ToString());
+                if (desiredParent is null) continue;
 
-                    if (_images[imageIndex].sprite == null ||
-                        _images[imageIndex].sprite.texture.width != uiElement.Image.Width ||
-                        _images[imageIndex].sprite.texture.height != uiElement.Image.Height)
+                switch (uiElement.Type)
+                {
+                    case UserUIElementType.Box:
                     {
-                        if (_images[imageIndex].sprite != null)
-                        {
-                            if (_images[imageIndex].sprite.texture != null)
-                            {
-                                Destroy(_images[imageIndex].sprite.texture);
-                            }
-                            Destroy(_images[imageIndex].sprite);
-                        }
-                        _images[imageIndex].sprite = Sprite.Create(
-                            new Texture2D(uiElement.Image.Width, uiElement.Image.Height),
-                            new Rect(0, 0, uiElement.Image.Width, uiElement.Image.Height),
-                            new Vector2(0f, 0f)
-                        );
-                        _images[imageIndex].sprite.texture.filterMode = FilterMode.Point;
-                        _images[imageIndex].sprite.texture.wrapMode = TextureWrapMode.Clamp;
-                    }
+                        VisualElement l = new();
 
-                    for (int y = 0; y < uiElement.Image.Height; y++)
-                    {
-                        for (int x = 0; x < uiElement.Image.Width; x++)
-                        {
-                            unsafe
-                            {
-                                byte p = ((byte*)&uiElement.Image.Image)[x + y * uiElement.Image.Width];
-                                _images[imageIndex].sprite.texture.SetPixel(x, y, new Color(
-                                    (float)((p >> 5) & 0b111) / (float)0b111,
-                                    (float)((p >> 2) & 0b111) / (float)0b111,
-                                    (float)((p >> 0) & 0b011) / (float)0b011,
-                                    1f
-                                ));
-                            }
-                        }
+                        e = l;
+                        break;
                     }
-                    _images[imageIndex].sprite.texture.Apply();
-                    imageIndex++;
-                    break;
-                case UserUIElementType.MIN:
-                case UserUIElementType.MAX:
-                default: throw new UnreachableException();
+                    case UserUIElementType.Label:
+                    {
+                        Label l = new();
+
+                        l.style.color = new Color(uiElement.Meta.Label.Color.x, uiElement.Meta.Label.Color.y, uiElement.Meta.Label.Color.z);
+                        l.text = uiElement.Meta.Label.Text.AsString().ToString();
+
+                        e = l;
+                        break;
+                    }
+                    case UserUIElementType.Image:
+                    {
+                        Image l = new();
+
+                        if (!_textures.TryGetValue(uiElement.Id, out Texture2D? img))
+                        {
+                            img = _textures[uiElement.Id] = new Texture2D(uiElement.Meta.Image.Width, uiElement.Meta.Image.Height);
+                            img.filterMode = FilterMode.Point;
+                            img.wrapMode = TextureWrapMode.Clamp;
+
+                            img.SetPixels32(new Color32[img.width * img.height]);
+                            img.Apply();
+                        }
+                        l.image = img;
+
+                        e = l;
+                        break;
+                    }
+                    case UserUIElementType.MIN:
+                    case UserUIElementType.MAX:
+                    default:
+                        throw new UnreachableException();
+                }
+
+                if (uiElement.Parent == 0)
+                {
+                    e.style.flexGrow = 1;
+                }
+
+                UpdateElement(e, in uiElement);
+                e.name = uiElement.Id.ToString();
+                desiredParent.Add(e);
             }
+            else
+            {
+                if (!uiElement.IsDirty) continue;
+
+                UpdateElement(e, in uiElement);
+                switch (uiElement.Type)
+                {
+                    case UserUIElementType.Box: break;
+                    case UserUIElementType.Label:
+                    {
+                        if (e is not Label l) break;
+
+                        l.style.color = new Color(uiElement.Meta.Label.Color.x, uiElement.Meta.Label.Color.y, uiElement.Meta.Label.Color.z);
+                        l.text = uiElement.Meta.Label.Text.AsString().ToString();
+
+                        break;
+                    }
+                    case UserUIElementType.Image:
+                    {
+                        if (e is not Image l) break;
+
+                        if (!_textures.TryGetValue(uiElement.Id, out Texture2D? img))
+                        {
+                            img = _textures[uiElement.Id] = new Texture2D(uiElement.Meta.Image.Width, uiElement.Meta.Image.Height);
+                            img.filterMode = FilterMode.Point;
+                            img.wrapMode = TextureWrapMode.Clamp;
+                        }
+                        else if (img.width != uiElement.Meta.Image.Width || img.height != uiElement.Meta.Image.Height)
+                        {
+                            img.width = uiElement.Meta.Image.Width;
+                            img.height = uiElement.Meta.Image.Height;
+                        }
+
+                        for (int y = 0; y < uiElement.Meta.Image.Height; y++)
+                        {
+                            for (int x = 0; x < uiElement.Meta.Image.Width; x++)
+                            {
+                                unsafe
+                                {
+                                    byte p = ((byte*)Unsafe.AsPointer(ref uiElement.Meta.Image.Image))[x + (y * uiElement.Meta.Image.Width)];
+                                    img.SetPixel(x, y, new Color(
+                                        (float)((p >> 5) & 0b111) / (float)0b111,
+                                        (float)((p >> 2) & 0b111) / (float)0b111,
+                                        (float)((p >> 0) & 0b011) / (float)0b011,
+                                        1f
+                                    ));
+                                }
+                            }
+                        }
+
+                        img.Apply();
+
+                        l.image = img;
+                        break;
+                    }
+                    case UserUIElementType.MIN:
+                    case UserUIElementType.MAX:
+                    default:
+                        break;
+                }
+            }
+
+            uiElement.IsDirty = false;
         }
 
-        for (int i = labelIndex; i < _labels.Count; i++)
+        foreach (int id in _textures.Keys)
         {
-            Destroy(_labels[labelIndex].gameObject);
-            _labels.RemoveAt(labelIndex);
+            if (ids.Contains(id)) continue;
+
+            _textures.Remove(id);
+            break;
         }
 
-        for (int i = imageIndex; i < _images.Count; i++)
+        foreach (VisualElement item in _ui.rootVisualElement.Query().ToList())
         {
-            Destroy(_images[imageIndex].sprite.texture);
-            Destroy(_images[imageIndex].sprite);
-            Destroy(_images[imageIndex].gameObject);
-            _images.RemoveAt(imageIndex);
+            if (item.parent is null) continue;
+            if (!int.TryParse(item.name ?? string.Empty, out int id)) continue;
+            if (ids.Contains(id)) continue;
+
+            item.parent.Remove(item);
+            break;
         }
     }
 }
