@@ -8,12 +8,11 @@ using UnityEngine.UIElements;
 
 public class ProcessorGUIManager : MonoBehaviour
 {
-    [SerializeField, NotNull] Canvas? _canvas = default;
-    [SerializeField, NotNull] GameObject? _labelPrefab = default;
-    [SerializeField, NotNull] GameObject? _imagePrefab = default;
     [SerializeField, NotNull] UIDocument? _ui = default;
 
     readonly Dictionary<int, Texture2D> _textures = new();
+    readonly HashSet<int> _ids = new();
+    UQueryState<VisualElement>? _userIdQ;
 
     static void UpdateElement(VisualElement visualElement, in UserUIElement userElement)
     {
@@ -40,18 +39,19 @@ public class ProcessorGUIManager : MonoBehaviour
         visualElement.style.height = userElement.Size.y == 0 ? new StyleLength(StyleKeyword.Auto) : new StyleLength(new Length(userElement.Size.y, LengthUnit.Pixel));
     }
 
-    unsafe void OnGUI()
+    unsafe void Update()
     {
         NativeList<UserUIElement> uiElements = ProcessorSystemClient.GetInstance(ConnectionManager.ClientOrDefaultWorld.Unmanaged).uiElements;
+        _userIdQ ??= _ui.rootVisualElement.Query().Class("user-ui").Build();
 
-        HashSet<int> ids = new();
+        _ids.Clear();
 
         for (int i = 0; i < uiElements.Length; i++)
         {
             ref UserUIElement uiElement = ref uiElements.GetUnsafeList()->Ptr[i];
             VisualElement? e = _ui.rootVisualElement.Q(uiElement.Id.ToString());
 
-            ids.Add(uiElement.Id);
+            _ids.Add(uiElement.Id);
 
             if (e is null)
             {
@@ -64,6 +64,8 @@ public class ProcessorGUIManager : MonoBehaviour
                     {
                         VisualElement l = new();
 
+                        l.AddToClassList("user-ui");
+
                         e = l;
                         break;
                     }
@@ -71,6 +73,7 @@ public class ProcessorGUIManager : MonoBehaviour
                     {
                         Label l = new();
 
+                        l.AddToClassList("user-ui");
                         l.style.color = new Color(uiElement.Meta.Label.Color.x, uiElement.Meta.Label.Color.y, uiElement.Meta.Label.Color.z);
                         l.text = uiElement.Meta.Label.Text.AsString().ToString();
 
@@ -80,6 +83,8 @@ public class ProcessorGUIManager : MonoBehaviour
                     case UserUIElementType.Image:
                     {
                         Image l = new();
+
+                        l.AddToClassList("user-ui");
 
                         if (!_textures.TryGetValue(uiElement.Id, out Texture2D? img))
                         {
@@ -177,17 +182,17 @@ public class ProcessorGUIManager : MonoBehaviour
 
         foreach (int id in _textures.Keys)
         {
-            if (ids.Contains(id)) continue;
+            if (_ids.Contains(id)) continue;
 
             _textures.Remove(id);
             break;
         }
 
-        foreach (VisualElement item in _ui.rootVisualElement.Query().ToList())
+        foreach (VisualElement item in _userIdQ.Value)
         {
             if (item.parent is null) continue;
             if (!int.TryParse(item.name ?? string.Empty, out int id)) continue;
-            if (ids.Contains(id)) continue;
+            if (_ids.Contains(id)) continue;
 
             item.parent.Remove(item);
             break;
