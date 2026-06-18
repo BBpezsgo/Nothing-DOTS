@@ -13,6 +13,7 @@
 /Assets/_Recovery
 
 /Packages/packages-lock.json
+/Packages/*/tools
 
 /sessions
 /tiles
@@ -20,4 +21,5 @@
 *.csproj
 *.slnx
 *.meta
+*.vsx
 mono_crash.*.blob

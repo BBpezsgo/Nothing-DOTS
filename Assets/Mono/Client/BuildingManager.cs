@@ -20,16 +20,16 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
 {
     BufferedBuilding SelectedBuilding = default;
     [SerializeField, NotNull] AllPrefabs? Prefabs = default;
-    [SerializeField, SaintsField.ReadOnly, NotNull] GameObject? BuildingHologram = default;
+    [NotNull] GameObject? BuildingHologram = default;
 
     [SerializeField, NotNull] Material? HologramMaterial = default;
 
-    [SerializeField, SaintsField.ReadOnly] bool IsValidPosition = false;
+    bool IsValidPosition = false;
 
     [SerializeField, NotNull] LineRenderer? WirePlaceholder = default;
     [SerializeField, NotNull] RectTransform? WireConnectorBlob = default;
-    [SerializeField, SaintsField.ReadOnly] (SpawnedGhost Entity, int Connector) SelectedPort;
-    [SerializeField, SaintsField.ReadOnly] float3 SelectedPortPosition;
+    (SpawnedGhost Entity, int Connector) SelectedPort;
+    float3 SelectedPortPosition;
     [SerializeField, NotNull] RectTransform? DestroyingBlob = default;
 
     [SerializeField] Color ValidHologramColor = Color.white;

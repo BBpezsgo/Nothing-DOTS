@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Unity.Serialization;
 using UnityEngine;
 
 public static partial class DebugEx
@@ -47,7 +46,7 @@ public class DebugDrawer : Singleton<DebugDrawer>
         }
     }
 
-    [DontSerialize] public List<DebugLabel> _labels = new();
+    internal readonly List<DebugLabel> _labels = new();
 
     void OnDrawGizmos()
     {

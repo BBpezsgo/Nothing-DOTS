@@ -6,12 +6,12 @@ using UnityEngine.VFX;
 
 class VisualEffectHandlerComponent : MonoBehaviour
 {
-    public float Lifetime;
-    public float Age;
-    public BufferedVisualEffect Asset;
-    [NotNull] public VisualEffect? VisualEffect = null;
-    public Light? Light;
-    public ObjectPool<VisualEffectHandlerComponent>? Pool;
+    internal float Lifetime;
+    internal float Age;
+    internal BufferedVisualEffect Asset;
+    [NotNull] internal VisualEffect? VisualEffect = null;
+    internal Light? Light;
+    internal ObjectPool<VisualEffectHandlerComponent>? Pool;
 
     public void Reinit()
     {

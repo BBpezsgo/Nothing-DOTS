@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Serialization;
@@ -6,7 +7,7 @@ using UnityEngine;
 [AddComponentMenu("Authoring/ResearchAuthoring")]
 class ResearchAuthoring : MonoBehaviour
 {
-    [DontSerialize] public ResearchMetadata Metadata;
+    [DontSerialize, NotNull] public ResearchMetadata? Metadata = null;
 
     class Baker : Baker<ResearchAuthoring>
     {

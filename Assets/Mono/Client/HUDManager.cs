@@ -7,10 +7,10 @@ public class HUDManager : Singleton<HUDManager>
 {
     [SerializeField, NotNull] UIDocument? _ui = default;
 
-    [NotNull] public Label? _labelResources = default;
-    [NotNull] public Label? _labelTeam = default;
-    [NotNull] public Label? _labelFps = default;
-    [NotNull] public Label? _labelSelectedUnits = default;
+    [NotNull] internal Label? _labelResources = default;
+    [NotNull] internal Label? _labelTeam = default;
+    [NotNull] internal Label? _labelFps = default;
+    [NotNull] internal Label? _labelSelectedUnits = default;
 
     float _refreshAt = default;
     float _maxDeltaTime = default;

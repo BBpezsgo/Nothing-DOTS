@@ -171,8 +171,6 @@ public partial struct ChatSystemServer : ISystem
                                 Message = "Technology doesn't exists",
                                 Time = MonoTime.UnixSeconds,
                             }, request.ValueRO.SourceConnection);
-
-                        ok:;
                         }
                     }
                     else

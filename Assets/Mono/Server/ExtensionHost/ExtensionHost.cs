@@ -43,11 +43,11 @@ class ExtensionHost : MonoBehaviour
             }
         }
 
-        public IDisposable BeginScope<TState>(TState state) => new DummyScope();
+        IDisposable Microsoft.Extensions.Logging.ILogger.BeginScope<TState>(TState state) => new DummyScope();
 
-        public bool IsEnabled(LogLevel logLevel) => true;
+        bool Microsoft.Extensions.Logging.ILogger.IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        void Microsoft.Extensions.Logging.ILogger.Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             switch (logLevel)
             {
@@ -74,7 +74,7 @@ class ExtensionHost : MonoBehaviour
     {
         public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new UnityLogger(categoryName);
 
-        public void Dispose()
+        void IDisposable.Dispose()
         {
 
         }
