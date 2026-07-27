@@ -265,7 +265,7 @@ class SaveManager : MonoBehaviour
                 {
                     FixedString64Bytes name = reader.ReadFixedString64();
                     int i = researches.IndexOf(v => v.Name == name);
-                    if (i == -1)
+                    if (i == -1 && name != default)
                     {
                         Debug.LogError($"Research `{name}` not found");
                     }

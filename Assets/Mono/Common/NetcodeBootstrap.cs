@@ -64,6 +64,7 @@ class NetcodeBootstrap : ClientServerBootstrap
 
         if (savefile is not null)
         {
+            Debug.Log($" -> Loading savefile");
             EntityCommandBuffer entityCommandBuffer = new(Unity.Collections.Allocator.Temp);
             SaveManager.Load(LocalWorld, entityCommandBuffer, savefile);
             entityCommandBuffer.Playback(LocalWorld.EntityManager);
@@ -225,6 +226,7 @@ class NetcodeBootstrap : ClientServerBootstrap
 
         if (savefile is not null)
         {
+            Debug.Log($" -> Loading savefile");
             EntityCommandBuffer entityCommandBuffer = new(Unity.Collections.Allocator.Temp);
             SaveManager.Load(StagingWorld, entityCommandBuffer, savefile);
             entityCommandBuffer.Playback(StagingWorld.EntityManager);

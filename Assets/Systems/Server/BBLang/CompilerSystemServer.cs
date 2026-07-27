@@ -299,7 +299,7 @@ public partial class CompilerSystemServer : SystemBase
                 {
                     case "position2":
                     {
-                        if (!StatementCompiler.FindSize(field.Type, out int size, out error, new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new())))
+                        if (!StatementCompiler.FindSize(field.Type, out int size, out error, CodeGeneratorForMain.DefaultCompilerSettings.RuntimeInfo))
                         {
                             return false;
                         }
@@ -314,7 +314,7 @@ public partial class CompilerSystemServer : SystemBase
                     }
                     case "position3":
                     {
-                        if (!StatementCompiler.FindSize(field.Type, out int size, out error, new CodeGeneratorForMain(CompilerResult.MakeEmpty(null!), MainGeneratorSettings.Default, new())))
+                        if (!StatementCompiler.FindSize(field.Type, out int size, out error, CodeGeneratorForMain.DefaultCompilerSettings.RuntimeInfo))
                         {
                             return false;
                         }
