@@ -15,7 +15,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
     [Header("UI")]
 
-    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
 
     Entity selectedEntity = Entity.Null;
     Facility selected = default;
@@ -26,7 +26,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
     void Update()
     {
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -60,13 +60,12 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
         if (selected.Current.Name.IsEmpty) return;
 
         selected.CurrentProgress += Time.deltaTime * Factory.ProductionSpeed;
-        ui.rootVisualElement.Q<ProgressBar>("progress-current").value = selected.CurrentProgress / selected.Current.ResearchTime;
-        ui.rootVisualElement.Q<ProgressBar>("progress-current").title = selected.Current.Name.ToString();
+        ui.Element.Q<ProgressBar>("progress-current").value = selected.CurrentProgress / selected.Current.ResearchTime;
+        ui.Element.Q<ProgressBar>("progress-current").title = selected.Current.Name.ToString();
     }
 
-    public void Setup(UIDocument ui, Entity entity)
+    public void Setup(UIElementReference ui, Entity entity)
     {
-        gameObject.SetActive(true);
         this.ui = ui;
 
         syncAt = Math.Min(syncAt, Time.time + 0.5f);
@@ -77,12 +76,12 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
     public void RefreshUI(Entity entity)
     {
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
-        ScrollView avaliableList = ui.rootVisualElement.Q<ScrollView>("list-avaliable");
-        ScrollView queueList = ui.rootVisualElement.Q<ScrollView>("list-queue");
+        ScrollView avaliableList = ui.Element.Q<ScrollView>("list-avaliable");
+        ScrollView queueList = ui.Element.Q<ScrollView>("list-queue");
 
         avaliableList.Clear();
         queueList.Clear();
@@ -125,8 +124,8 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
         avaliableNotInQueue.Dispose();
 
-        ui.rootVisualElement.Q<ProgressBar>("progress-current").value = selected.CurrentProgress / selected.Current.ResearchTime;
-        ui.rootVisualElement.Q<ProgressBar>("progress-current").title = selected.Current.Name.ToString();
+        ui.Element.Q<ProgressBar>("progress-current").value = selected.CurrentProgress / selected.Current.ResearchTime;
+        ui.Element.Q<ProgressBar>("progress-current").title = selected.Current.Name.ToString();
     }
 
     void QueueResearch(in FixedString64Bytes name)
@@ -197,11 +196,10 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
         syncAt = Math.Min(syncAt, Time.time + 0.5f);
     }
 
-    public void Cleanup(UIDocument ui)
+    public void Cleanup(UIElementReference ui)
     {
         selectedEntity = Entity.Null;
         selected = default;
         refreshAt = float.PositiveInfinity;
-        gameObject.SetActive(false);
     }
 }

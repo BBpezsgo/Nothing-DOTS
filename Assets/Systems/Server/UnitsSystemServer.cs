@@ -98,7 +98,7 @@ public partial struct UnitsSystemServer : ISystem
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogError(string.Format($"{DebugEx.ServerPrefix} Player with network id {{0}} aint have a team", networkId));
+                Debug.LogError(string.Format($"{DebugEx.ServerPrefix} Player with network id {{0}} doesn't have a team", networkId));
                 continue;
             }
 

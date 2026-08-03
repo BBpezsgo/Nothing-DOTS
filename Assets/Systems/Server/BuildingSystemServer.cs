@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
 
@@ -85,7 +86,24 @@ public partial struct BuildingSystemServer : ISystem
                 if (requestPlayer.Player.Resources < building.RequiredResources)
                 {
                     Debug.Log(string.Format($"{DebugEx.ServerPrefix} Can't place building \"{{0}}\": not enought resources ({{1}} < {{2}})", building.Name, requestPlayer.Player.Resources, building.RequiredResources));
-                    break;
+                    continue;
+                }
+
+                if (SystemAPI.HasComponent<Extractor>(building.Prefab))
+                {
+                    foreach (var resource in
+                        SystemAPI.Query<RefRO<LocalTransform>>()
+                        .WithAll<ResourceNode>())
+                    {
+                        if (math.distance(resource.ValueRO.Position, command.ValueRO.Position) < 5f)
+                        {
+                            goto ok;
+                        }
+                    }
+
+                    Debug.Log(string.Format($"{DebugEx.ServerPrefix} Can't place building \"{{0}}\": needs a resource node in 5 radius", building.Name));
+                    continue;
+                ok:;
                 }
 
                 foreach (var _player in
@@ -293,7 +311,7 @@ public partial struct BuildingSystemServer : ISystem
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogWarning(string.Format($"{DebugEx.ServerPrefix} Player with network id `{{0}}` aint have a team", networkId));
+                Debug.LogWarning(string.Format($"{DebugEx.ServerPrefix} Player with network id `{{0}}` doesn't have a team", networkId));
                 continue;
             }
 

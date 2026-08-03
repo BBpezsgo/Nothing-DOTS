@@ -1,16 +1,14 @@
-using UnityEngine.UIElements;
-
 public interface IUISetup<TContext>
 {
-    void Setup(UIDocument ui, TContext context);
+    void Setup(UIElementReference ui, TContext context);
 }
 
 public interface IUISetup
 {
-    void Setup(UIDocument ui);
+    void Setup(UIElementReference ui);
 }
 
 public interface IUICleanup
 {
-    void Cleanup(UIDocument ui);
+    void Cleanup(UIElementReference ui);
 }

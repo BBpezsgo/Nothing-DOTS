@@ -375,7 +375,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
     [SerializeField, NotNull] Texture2D? DiagnosticsHintIcon = default;
     [SerializeField, NotNull] Texture2D? DiagnosticsOptimizationNoticeIcon = default;
     [SerializeField, NotNull] VisualTreeAsset? LogItem = default;
-    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
 
     [NotNull] Button? ui_ButtonSelect = default;
     [NotNull] Button? ui_ButtonCompile = default;
@@ -416,7 +416,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
     void Update()
     {
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -438,9 +438,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         }
     }
 
-    public void Setup(UIDocument ui, Entity unitEntity)
+    public void Setup(UIElementReference ui, Entity unitEntity)
     {
-        gameObject.SetActive(true);
         this.ui = ui;
 
         selectedUnitEntity = unitEntity;
@@ -454,29 +453,29 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         _memoryDownloadTask = null;
         _scheduledSource = null;
 
-        ui_InputSourcePath = ui.rootVisualElement.Q<TextField>("input-source-path");
-        ui_ButtonSelect = ui.rootVisualElement.Q<Button>("button-select");
-        ui_ButtonCompile = ui.rootVisualElement.Q<Button>("button-compile");
-        ui_ButtonHotReload = ui.rootVisualElement.Q<Button>("button-hotreload");
-        ui_ButtonHalt = ui.rootVisualElement.Q<Button>("button-halt");
-        ui_ButtonReset = ui.rootVisualElement.Q<Button>("button-reset");
-        ui_ButtonContinue = ui.rootVisualElement.Q<Button>("button-continue");
-        ui_ButtonDebugAttach = ui.rootVisualElement.Q<Button>("button-start-debug");
-        ui_ButtonDebugDetach = ui.rootVisualElement.Q<Button>("button-stop-debug");
-        ui_LabelTerminal = ui.rootVisualElement.Q<Label>("label-terminal");
-        ui_PanelDebug = ui.rootVisualElement.Q<VisualElement>("panel-debug");
-        ui_ScrollTerminal = ui.rootVisualElement.Q<ScrollView>("scroll-terminal");
-        ui_ScrollFiles = ui.rootVisualElement.Q<ScrollView>("scroll-files");
-        ui_FilesContainer = ui.rootVisualElement.Q<VisualElement>("files-container");
-        ui_LabelBasePath = ui.rootVisualElement.Q<Label>("label-base-path");
-        ui_ScrollProgresses = ui.rootVisualElement.Q<ScrollView>("scroll-progresses");
-        ui_ScrollDiagnostics = ui.rootVisualElement.Q<ScrollView>("scroll-diagnostics");
-        ui_TabView = ui.rootVisualElement.Q<TabView>("tabs");
-        ui_ProgressCompilation = ui.rootVisualElement.Q<ProgressBar>("progress-compilation");
-        ui_ProgressMemory = ui.rootVisualElement.Q<ProgressBar>("memory-progress");
-        ui_ButtonMemoryAnalyze = ui.rootVisualElement.Q<Button>("memory-button-analyze");
-        ui_LabelMemoryError = ui.rootVisualElement.Q<Label>("memory-error");
-        ui_LogsScrollView = ui.rootVisualElement.Q<ScrollView>("scroll-logs");
+        ui_InputSourcePath = ui.Element.Q<TextField>("input-source-path");
+        ui_ButtonSelect = ui.Element.Q<Button>("button-select");
+        ui_ButtonCompile = ui.Element.Q<Button>("button-compile");
+        ui_ButtonHotReload = ui.Element.Q<Button>("button-hotreload");
+        ui_ButtonHalt = ui.Element.Q<Button>("button-halt");
+        ui_ButtonReset = ui.Element.Q<Button>("button-reset");
+        ui_ButtonContinue = ui.Element.Q<Button>("button-continue");
+        ui_ButtonDebugAttach = ui.Element.Q<Button>("button-start-debug");
+        ui_ButtonDebugDetach = ui.Element.Q<Button>("button-stop-debug");
+        ui_LabelTerminal = ui.Element.Q<Label>("label-terminal");
+        ui_PanelDebug = ui.Element.Q<VisualElement>("panel-debug");
+        ui_ScrollTerminal = ui.Element.Q<ScrollView>("scroll-terminal");
+        ui_ScrollFiles = ui.Element.Q<ScrollView>("scroll-files");
+        ui_FilesContainer = ui.Element.Q<VisualElement>("files-container");
+        ui_LabelBasePath = ui.Element.Q<Label>("label-base-path");
+        ui_ScrollProgresses = ui.Element.Q<ScrollView>("scroll-progresses");
+        ui_ScrollDiagnostics = ui.Element.Q<ScrollView>("scroll-diagnostics");
+        ui_TabView = ui.Element.Q<TabView>("tabs");
+        ui_ProgressCompilation = ui.Element.Q<ProgressBar>("progress-compilation");
+        ui_ProgressMemory = ui.Element.Q<ProgressBar>("memory-progress");
+        ui_ButtonMemoryAnalyze = ui.Element.Q<Button>("memory-button-analyze");
+        ui_LabelMemoryError = ui.Element.Q<Label>("memory-error");
+        ui_LogsScrollView = ui.Element.Q<ScrollView>("scroll-logs");
 
         ui_PanelDebug.style.display = DisplayStyle.None;
         ui_LabelTerminal.text = string.Empty;
@@ -704,7 +703,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
 
             ui_LabelMemoryError.text = "";
 
-            VisualElement container = ui.rootVisualElement.Q<VisualElement>("heap-container");
+            VisualElement container = ui.Element.Q<VisualElement>("heap-container");
             container.Clear();
 
             int totalMemory = blocks.Sum(v => v.Size);
@@ -1500,7 +1499,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         }
     }
 
-    public void Cleanup(UIDocument ui)
+    public void Cleanup(UIElementReference ui)
     {
         selectedUnitEntity = Entity.Null;
         refreshAt = float.PositiveInfinity;
@@ -1518,8 +1517,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             terminalSubscription = null;
         }
 
-        if (ui != null &&
-            ui.rootVisualElement != null)
+        if (ui != null && ui.Document.rootVisualElement != null)
         {
             ui_ButtonSelect.clickable = null;
             ui_ButtonCompile.clickable = null;
@@ -1532,6 +1530,5 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             ui_LabelTerminal.text = string.Empty;
             EndFileSelection();
         }
-        gameObject.SetActive(false);
     }
 }

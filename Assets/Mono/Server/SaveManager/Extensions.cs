@@ -275,16 +275,6 @@ static unsafe class BinaryReaderExtensions
             Version = reader.ReadInt(),
         };
     }
-    public static Entity ReadEntity(this BinaryReader reader, IReadOnlyDictionary<Entity, Entity> serializedEntities)
-    {
-        Entity serializedEntity = reader.ReadEntityUnsafe();
-        if (!serializedEntities.TryGetValue(serializedEntity, out Entity entity))
-        {
-            Debug.LogError($"Invalid serialized entity `{serializedEntity}`");
-            return Entity.Null;
-        }
-        return entity;
-    }
 
     public static FixedList32Bytes<T> ReadFixedList32Unsafe<T>(this BinaryReader reader) where T : unmanaged
     {
@@ -376,6 +366,14 @@ static unsafe class BinaryReaderExtensions
         {
             deserializer(reader, ref buffer.ElementAt(i));
         }
+    }
+
+    public static NativeArray<T> ReadNativeArray<T>(this BinaryReader reader, Allocator allocator) where T : unmanaged
+    {
+        int length = reader.ReadInt();
+        NativeArray<T> result = new(length, allocator);
+        for (int i = 0; i < result.Length; i++) result[i] = reader.ReadUnsafe<T>();
+        return result;
     }
 
     public static T[] ReadArray<T>(this BinaryReader reader, ItemDeserializer<T> deserializer)

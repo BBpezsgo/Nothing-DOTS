@@ -49,7 +49,7 @@ class NetcodeSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
             if (!FileId.FromUri(uri, out FileId fileId))
             {
-                Debug.LogError($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Uri \"{uri}\" aint a netcode uri");
+                Debug.LogError($"{DebugEx.AnyPrefix} [{nameof(NetcodeSourceProvider)}] Uri \"{uri}\" isn't a netcode uri");
                 return SourceProviderResultAsync.NextHandler();
             }
 

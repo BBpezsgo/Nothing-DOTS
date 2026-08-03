@@ -49,8 +49,7 @@
                     <ui:Button text="Analyze" name="memory-button-analyze"/>
                 </ui:VisualElement>
                 <ui:Label name="memory-error" style="font-size: 12px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; color: rgb(255, 0, 0);"/>
-                <ui:VisualElement name="heap-container" style="flex-grow: 1;">
-                </ui:VisualElement>
+                <ui:VisualElement name="heap-container" style="flex-grow: 1;"/>
             </ui:Tab>
             <ui:Tab label="Logs" enabled="true" style="flex-grow: 1;">
                 <ui:ScrollView name="scroll-logs">

@@ -1,82 +1,58 @@
 .panel {
     background-color: rgb(0, 0, 0);
     min-width: 150px;
+    border-color: #26233a;
+    border-width: 1px;
 }
 
 Label {
-    color: rgb(207, 207, 207);
+    color: #e0def4;
 }
 
 Label.error {
-    color: rgb(192, 21, 66);
-}
-
-TextField {
+    color: #eb6f92;
 }
 
 TextField > #unity-text-input {
-    background-color: rgb(0, 0, 0);
-    border-left-color: rgb(48, 48, 48);
-    border-right-color: rgb(48, 48, 48);
-    border-bottom-color: rgb(48, 48, 48);
-    border-top-color: rgb(48, 48, 48);
-    color: rgb(237, 237, 237);
+    background-color: #000000;
+    border-color: #26233a;
+    color: #e0def4;
     padding-left: 2px;
     padding-right: 2px;
     padding-top: 1px;
     padding-bottom: 1px;
-    --unity-cursor-color: rgb(255, 255, 255);
-    border-top-width: 2px;
-    border-right-width: 2px;
-    border-bottom-width: 2px;
-    border-left-width: 2px;
+    --unity-cursor-color: #e0def4;
+    border-width: 1px;
 }
 
 TextField > #unity-text-input:enabled:hover,
-TextField > #unity-text-input:enabled:focus {
-    border-left-color: rgb(255, 255, 255);
-    border-right-color: rgb(255, 255, 255);
-    border-top-color: rgb(255, 255, 255);
-    border-bottom-color: rgb(255, 255, 255);
+TextField > #unity-text-input:enabled:focus,
+TextField > #unity-text-input:enabled:active {
+    border-color: #e0def4;
 }
 
 Button {
-    background-color: rgb(0, 0, 0);
-    border-left-width: 0px;
-    border-right-width: 0px;
-    border-top-width: 0px;
-    border-bottom-width: 0px;
-    background-color: rgb(32, 32, 32);
-    color: rgb(255, 255, 255);
+    background-color: #000000;
+    border-width: 1px;
+    border-color: #26233a;
+    color: #e0def4;
     padding-left: 3px;
     padding-right: 3px;
-    padding-top: 0;
-    padding-bottom: 0;
-}
-
-Button:enabled:active {
-    background-color: rgb(255, 255, 255);
-    border-left-color: rgb(255, 255, 255);
-    border-right-color: rgb(255, 255, 255);
-    border-top-color: rgb(255, 255, 255);
-    border-bottom-color: rgb(255, 255, 255);
-    color: rgb(0, 0, 0);
+    padding-top: 0px;
+    padding-bottom: 0px;
+    -unity-font-style: bold;
 }
 
 Button:enabled:hover,
 Button:enabled:focus {
-    background-color: rgb(255, 255, 255);
-    border-left-color: rgb(255, 255, 255);
-    border-right-color: rgb(255, 255, 255);
-    border-top-color: rgb(255, 255, 255);
-    border-bottom-color: rgb(255, 255, 255);
+    background-color: #000000;
+    border-color: #e0def4;
 }
 
-TextField > #unity-text-input:enabled:focus {
-    border-left-color: rgb(58, 121, 187);
-    border-right-color: rgb(58, 121, 187);
-    border-top-color: rgb(58, 121, 187);
-    border-bottom-color: rgb(58, 121, 187);
+Button:enabled:active {
+    background-color: #e0def4;
+    border-color: #e0def4;
+    color: #191724;
 }
 
 #root {

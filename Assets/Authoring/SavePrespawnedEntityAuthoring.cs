@@ -12,7 +12,7 @@ class SavePrespawnedEntityAuthoring : MonoBehaviour
             SavePrespawnedEntityAuthoring[] all = FindObjectsByType<SavePrespawnedEntityAuthoring>(FindObjectsInactive.Exclude);
             AddComponent<SavePrespawnedEntity>(entity, new()
             {
-                Id = $"{all.IndexOf(v => v == authoring)}".ToString(),
+                Id = $"{all.IndexOf(v => v == authoring)}",
             });
         }
     }

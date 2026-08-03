@@ -44,7 +44,7 @@ public partial struct FactorySystemServer : ISystem
 
             if (playerE == Entity.Null)
             {
-                Debug.LogError(string.Format($"{DebugEx.ServerPrefix} Failed to queue unit: requested by {{0}} but aint have a team", networkId));
+                Debug.LogError(string.Format($"{DebugEx.ServerPrefix} Failed to queue unit: requested by {{0}} but doesn't have a team", networkId));
                 continue;
             }
 

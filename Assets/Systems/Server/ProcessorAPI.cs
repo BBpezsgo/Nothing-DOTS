@@ -927,7 +927,7 @@ static unsafe class ProcessorAPI
 
             if (requestPlayer.Entity == Entity.Null)
             {
-                UnityEngine.Debug.LogError("Failed to place building: player aint have a team");
+                UnityEngine.Debug.LogError("Failed to place building: player doesn't have a team");
                 return;
             }
 

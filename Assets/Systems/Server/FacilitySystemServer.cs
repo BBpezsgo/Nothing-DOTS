@@ -37,7 +37,7 @@ public partial struct FacilitySystemServer : ISystem
 
             if (requestPlayer == Entity.Null)
             {
-                Debug.LogError(string.Format($"{DebugEx.ServerPrefix} Failed to start research: requested by {{0}} but aint have a team", networkId));
+                Debug.LogError(string.Format($"{DebugEx.ServerPrefix} Failed to start research: requested by {{0}} but doesn't have a team", networkId));
                 return;
             }
 

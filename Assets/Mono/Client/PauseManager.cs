@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.NetCode;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -14,15 +13,15 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
     [Header("UI")]
 
-    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
 
     float refreshAt = default;
 
     void Update()
     {
-        if (((!UIManager.Instance.AnyUIVisible && !SelectionManager.Instance.IsUnitCommandsActive) || !(ui == null || !ui.gameObject.activeSelf)) && UIManager.Instance.GrapESC())
+        if (((!UIManager.Instance.AnyUIVisible && !SelectionManager.Instance.IsUnitCommandsActive) || ui.IsVisible) && UIManager.Instance.GrapESC())
         {
-            if (ui == null || !ui.gameObject.activeSelf)
+            if (!ui.IsVisible)
             {
                 UIManager.Instance.OpenUI(UIManager.Instance.Pause)
                     .Setup(this);
@@ -34,7 +33,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
             return;
         }
 
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         if (Time.time >= refreshAt)
         {
@@ -43,13 +42,13 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
         }
     }
 
-    public void Setup(UIDocument ui)
+    public void Setup(UIElementReference ui)
     {
         this.ui = ui;
         refreshAt = 0f;
 
-        ui.rootVisualElement.Q<Button>("button-exit").clicked += OnButtonExit;
-        ui.rootVisualElement.Q<Button>("button-save").clicked += OnButtonSave;
+        ui.Element.Q<Button>("button-exit").clicked += OnButtonExit;
+        ui.Element.Q<Button>("button-save").clicked += OnButtonSave;
     }
 
     void OnButtonExit()
@@ -72,9 +71,9 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
     public void RefreshUI()
     {
-        if (ui == null || !ui.gameObject.activeSelf || ConnectionManager.ClientOrDefaultWorld == null) return;
+        if (!ui.IsVisible || ConnectionManager.ClientOrDefaultWorld == null) return;
 
-        ui.rootVisualElement.Q<Button>("button-save").style.display = (ConnectionManager.ServerWorld ?? ConnectionManager.LocalWorld) != null ? DisplayStyle.Flex : DisplayStyle.None;
+        ui.Element.Q<Button>("button-save").style.display = (ConnectionManager.ServerWorld ?? ConnectionManager.LocalWorld) != null ? DisplayStyle.Flex : DisplayStyle.None;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         using EntityQuery playersQ = entityManager.CreateEntityQuery(typeof(Player));
@@ -82,7 +81,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
         if (!PlayerSystemClient.GetInstance(ConnectionManager.ClientOrDefaultWorld.Unmanaged).TryGetLocalPlayer(out Player localPlayer)) localPlayer = default;
 
-        ui.rootVisualElement.Q<ScrollView>("list-connections").SyncList(
+        ui.Element.Q<ScrollView>("list-connections").SyncList(
             players,
             UI_ConnectionItem,
             (player, element, recycled) =>
@@ -117,10 +116,10 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
             player => player.ConnectionState is not PlayerConnectionState.Disconnected and not PlayerConnectionState.Server);
     }
 
-    public void Cleanup(UIDocument ui)
+    public void Cleanup(UIElementReference ui)
     {
         refreshAt = float.PositiveInfinity;
-        ui.rootVisualElement.Q<Button>("button-exit").clicked -= OnButtonExit;
-        ui.rootVisualElement.Q<Button>("button-save").clicked -= OnButtonSave;
+        ui.Element.Q<Button>("button-exit").clicked -= OnButtonExit;
+        ui.Element.Q<Button>("button-save").clicked -= OnButtonSave;
     }
 }

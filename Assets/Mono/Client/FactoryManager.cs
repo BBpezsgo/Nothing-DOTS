@@ -13,7 +13,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
     [Header("UI")]
 
-    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
 
     Entity selectedFactoryEntity = Entity.Null;
     Factory selectedFactory = default;
@@ -24,7 +24,7 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
     void Update()
     {
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -58,13 +58,12 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         if (selectedFactory.TotalProgress == default) return;
 
         selectedFactory.CurrentProgress += Time.deltaTime * Factory.ProductionSpeed;
-        ui.rootVisualElement.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
-        ui.rootVisualElement.Q<ProgressBar>("progress-current").title = selectedFactory.Current.Name.ToString();
+        ui.Element.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
+        ui.Element.Q<ProgressBar>("progress-current").title = selectedFactory.Current.Name.ToString();
     }
 
-    public void Setup(UIDocument ui, Entity factoryEntity)
+    public void Setup(UIElementReference ui, Entity factoryEntity)
     {
-        gameObject.SetActive(true);
         this.ui = ui;
 
         selectedFactoryEntity = factoryEntity;
@@ -75,12 +74,12 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
     public void RefreshUI(Entity factoryEntity)
     {
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
-        VisualElement avaliableList = ui.rootVisualElement.Q<VisualElement>("list-avaliable");
-        ScrollView queueList = ui.rootVisualElement.Q<ScrollView>("list-queue");
+        VisualElement avaliableList = ui.Element.Q<VisualElement>("list-avaliable");
+        ScrollView queueList = ui.Element.Q<ScrollView>("list-queue");
 
         avaliableList.Clear();
         queueList.Clear();
@@ -100,8 +99,8 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
             if (!recycled) element.Q<Button>().clicked += () => QueueUnit((string)element.userData);
         });
 
-        ui.rootVisualElement.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
-        ui.rootVisualElement.Q<ProgressBar>("progress-current").title = selectedFactory.Current.Name.ToString();
+        ui.Element.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
+        ui.Element.Q<ProgressBar>("progress-current").title = selectedFactory.Current.Name.ToString();
     }
 
     void QueueUnit(string unitName)
@@ -157,11 +156,10 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         refreshAt = Time.time + .1f;
     }
 
-    public void Cleanup(UIDocument ui)
+    public void Cleanup(UIElementReference ui)
     {
         selectedFactoryEntity = Entity.Null;
         selectedFactory = default;
         refreshAt = float.PositiveInfinity;
-        gameObject.SetActive(false);
     }
 }

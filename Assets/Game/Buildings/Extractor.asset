@@ -9,12 +9,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8c59a6ee194e90d0dabc082d2186aaf1, type: 3}
+  m_Script: {fileID: 11500000, guid: 3c5059b74c5d5a06ca2840c66ed1fda0, type: 3}
   m_Name: Extractor
   m_EditorClassIdentifier: 
   Prefab: {fileID: 1994654560244389388, guid: 96c2ae6375ccd7bb295e39d979453df5, type: 3}
+  PlaceholderPrefab: {fileID: 5692528052949456400, guid: 34e06bfcef0d0a3778699aadf714c718,
+    type: 3}
   HologramPrefab: {fileID: 7887398088158380673, guid: 193359d2645c50b2e95f512ae91d0e0e,
     type: 3}
-  ProductionTime: 1
+  ConstructionTime: 1
   RequiredResources: 1
   RequiredResearch: {fileID: 0}

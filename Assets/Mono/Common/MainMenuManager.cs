@@ -1,73 +1,69 @@
 using System.Diagnostics.CodeAnalysis;
 using Unity.Collections;
 using Unity.Networking.Transport;
+using Unity.Serialization;
 using UnityEngine.UIElements;
 
-public class MainMenuManager : Singleton<MainMenuManager>, IUISetup, IUICleanup
+public class MainMenuManager : Singleton<MainMenuManager>, IUISetup
 {
-    public string? ConnectionError;
+    [DontSerialize] public string? ConnectionError;
 
-    public void Setup(UIDocument ui)
+    public void Setup(UIElementReference ui)
     {
-        ui.rootVisualElement.Q<Button>("button-singleplayer").clicked += () =>
+        ui.Element.Q<Button>("button-singleplayer").clicked += () =>
         {
             if (!HandleInput(ui, out _, out FixedString32Bytes nickname)) return;
             ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartSingleplayer(nickname, null));
         };
-        ui.rootVisualElement.Q<Button>("button-host").clicked += () =>
+        ui.Element.Q<Button>("button-host").clicked += () =>
         {
             if (!HandleInput(ui, out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
             ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartHost(endpoint, nickname, null));
         };
-        ui.rootVisualElement.Q<Button>("button-client").clicked += () =>
+        ui.Element.Q<Button>("button-client").clicked += () =>
         {
             if (!HandleInput(ui, out NetworkEndpoint endpoint, out FixedString32Bytes nickname)) return;
             ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartClient(endpoint, nickname));
         };
-        ui.rootVisualElement.Q<Button>("button-server").clicked += () =>
+        ui.Element.Q<Button>("button-server").clicked += () =>
         {
             if (!HandleInput(ui, out NetworkEndpoint endpoint, out _)) return;
             ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartServer(endpoint, null));
         };
-        ui.rootVisualElement.Q<Button>("button-staging").clicked += () =>
+        ui.Element.Q<Button>("button-staging").clicked += () =>
         {
             if (!HandleInput(ui, out _, out FixedString32Bytes nickname)) return;
             ConnectionManager.Instance.StartCoroutine(ConnectionManager.Instance.StartStaging(nickname, null));
         };
-        ui.rootVisualElement.Q<Button>("button-exit").clicked += UnityUtils.Quit;
+        ui.Element.Q<Button>("button-exit").clicked += UnityUtils.Quit;
 
         if (ConnectionError is not null)
         {
-            ui.rootVisualElement.Q<Label>("error-connection").text = ConnectionError;
-            ui.rootVisualElement.Q<Label>("error-connection").style.display = DisplayStyle.Flex;
+            ui.Element.Q<Label>("error-connection").text = ConnectionError;
+            ui.Element.Q<Label>("error-connection").style.display = DisplayStyle.Flex;
             ConnectionError = null;
         }
         else
         {
-            ui.rootVisualElement.Q<Label>("error-connection").text = "";
-            ui.rootVisualElement.Q<Label>("error-connection").style.display = DisplayStyle.None;
+            ui.Element.Q<Label>("error-connection").text = "";
+            ui.Element.Q<Label>("error-connection").style.display = DisplayStyle.None;
         }
 
-        ui.rootVisualElement.Q<Label>("input-error-host").text = "";
-        ui.rootVisualElement.Q<Label>("input-error-host").style.display = DisplayStyle.None;
+        ui.Element.Q<Label>("input-error-host").text = "";
+        ui.Element.Q<Label>("input-error-host").style.display = DisplayStyle.None;
 
-        ui.rootVisualElement.Q<Label>("input-error-nickname").text = "";
-        ui.rootVisualElement.Q<Label>("input-error-nickname").style.display = DisplayStyle.None;
+        ui.Element.Q<Label>("input-error-nickname").text = "";
+        ui.Element.Q<Label>("input-error-nickname").style.display = DisplayStyle.None;
     }
 
-    public void Cleanup(UIDocument ui)
-    {
-
-    }
-
-    bool HandleInput(UIDocument ui, [NotNullWhen(true)] out NetworkEndpoint endpoint, out FixedString32Bytes nickname)
+    bool HandleInput(UIElementReference ui, [NotNullWhen(true)] out NetworkEndpoint endpoint, out FixedString32Bytes nickname)
     {
         bool ok = true;
 
-        Label inputErrorLabel = ui.rootVisualElement.Q<Label>("input-error-host");
+        Label inputErrorLabel = ui.Element.Q<Label>("input-error-host");
         inputErrorLabel.style.display = DisplayStyle.None;
 
-        string inputNickname = ui.rootVisualElement.Q<TextField>("input-nickname").value.Trim();
+        string inputNickname = ui.Element.Q<TextField>("input-nickname").value.Trim();
 
         if (inputNickname.Length >= FixedString32Bytes.UTF8MaxLengthInBytes)
         {
@@ -84,7 +80,7 @@ public class MainMenuManager : Singleton<MainMenuManager>, IUISetup, IUICleanup
 
         nickname = inputNickname;
 
-        string inputHost = ui.rootVisualElement.Q<TextField>("input-host").value;
+        string inputHost = ui.Element.Q<TextField>("input-host").value;
         if (!ParseInput(inputHost, out endpoint, out string? inputErrorHost))
         {
             inputErrorLabel.text = inputErrorHost;
@@ -101,10 +97,7 @@ public class MainMenuManager : Singleton<MainMenuManager>, IUISetup, IUICleanup
         }
     }
 
-    bool ParseInput(
-        string input,
-        [NotNullWhen(true)] out NetworkEndpoint endpoint,
-        [NotNullWhen(false)] out string? error)
+    static bool ParseInput(string input, [NotNullWhen(true)] out NetworkEndpoint endpoint, [NotNullWhen(false)] out string? error)
     {
         if (!input.Contains(':'))
         {

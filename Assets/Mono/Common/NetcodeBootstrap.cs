@@ -66,9 +66,14 @@ class NetcodeBootstrap : ClientServerBootstrap
         {
             Debug.Log($" -> Loading savefile");
             EntityCommandBuffer entityCommandBuffer = new(Unity.Collections.Allocator.Temp);
-            SaveManager.Load(LocalWorld, entityCommandBuffer, savefile);
+            SaveManager.Load(LocalWorld, entityCommandBuffer, savefile, out System.Action? onGhostsSpawned);
             entityCommandBuffer.Playback(LocalWorld.EntityManager);
             entityCommandBuffer.Dispose();
+            if (onGhostsSpawned is not null)
+            {
+                yield return null;
+                onGhostsSpawned();
+            }
         }
         else
         {
@@ -137,9 +142,14 @@ class NetcodeBootstrap : ClientServerBootstrap
         {
             Debug.Log($" -> Loading savefile");
             EntityCommandBuffer entityCommandBuffer = new(Unity.Collections.Allocator.Temp);
-            SaveManager.Load(ServerWorld, entityCommandBuffer, savefile);
+            SaveManager.Load(ServerWorld, entityCommandBuffer, savefile, out System.Action? onGhostsSpawned);
             entityCommandBuffer.Playback(ServerWorld.EntityManager);
             entityCommandBuffer.Dispose();
+            if (onGhostsSpawned is not null)
+            {
+                yield return null;
+                onGhostsSpawned();
+            }
         }
         else
         {
@@ -228,9 +238,14 @@ class NetcodeBootstrap : ClientServerBootstrap
         {
             Debug.Log($" -> Loading savefile");
             EntityCommandBuffer entityCommandBuffer = new(Unity.Collections.Allocator.Temp);
-            SaveManager.Load(StagingWorld, entityCommandBuffer, savefile);
+            SaveManager.Load(StagingWorld, entityCommandBuffer, savefile, out System.Action? onGhostsSpawned);
             entityCommandBuffer.Playback(StagingWorld.EntityManager);
             entityCommandBuffer.Dispose();
+            if (onGhostsSpawned is not null)
+            {
+                yield return null;
+                onGhostsSpawned();
+            }
         }
         else
         {

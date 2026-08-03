@@ -187,6 +187,7 @@ public partial struct PlayerSystemServer : ISystem
             if (player.ValueRO.Team == Player.UnassignedTeam)
             {
                 player.ValueRW.Team = TeamCounter++;
+                Debug.Log($"{DebugEx.ServerPrefix} Assigning team {player.ValueRO.Team} to player \"{player.ValueRO.Nickname}\" ({player.ValueRO.ConnectionState} {player.ValueRO.ConnectionId})");
             }
 
             if (player.ValueRO.ConnectionState is not PlayerConnectionState.Connected and not PlayerConnectionState.Local) continue;
@@ -224,6 +225,8 @@ public partial struct PlayerSystemServer : ISystem
             {
                 if (!player.ValueRO.IsCoreComputerSpawned)
                 {
+                    Debug.Log($"{DebugEx.ServerPrefix} Spawning core computer for player \"{player.ValueRO.Nickname}\" ({player.ValueRO.ConnectionState} {player.ValueRO.ConnectionId})");
+
                     for (int i = 0; i < spawns.Length; i++)
                     {
                         if (spawns[i].IsOccupied) continue;
@@ -251,8 +254,12 @@ public partial struct PlayerSystemServer : ISystem
                             NetworkId = player.ValueRO.ConnectionId,
                         });
 
-                        break;
+                        goto spawned;
                     }
+
+                    Debug.LogError($"{DebugEx.ServerPrefix} Cannot spawn core computer for player \"{player.ValueRO.Nickname}\" ({player.ValueRO.ConnectionState} {player.ValueRO.ConnectionId})");
+
+                spawned:
                     player.ValueRW.IsCoreComputerSpawned = true;
                     player.ValueRW.Resources = 30;
                 }
@@ -271,7 +278,7 @@ public partial struct PlayerSystemServer : ISystem
             {
                 if (player.ValueRO.ConnectionState is not PlayerConnectionState.Connected and not PlayerConnectionState.Local) continue;
 
-                Debug.Log(string.Format($"{DebugEx.ServerPrefix} Admin assigned to player {{0}} (connection: {{1}} nickname: `{{2}}`)", player.ValueRO.Guid, player.ValueRO.ConnectionId, player.ValueRO.Nickname));
+                Debug.Log(string.Format($"{DebugEx.ServerPrefix} Assigning admin to player {{0}} (connection: {{1}} nickname: `{{2}}`)", player.ValueRO.Guid, player.ValueRO.ConnectionId, player.ValueRO.Nickname));
                 player.ValueRW.IsAdmin = true;
                 break;
             }

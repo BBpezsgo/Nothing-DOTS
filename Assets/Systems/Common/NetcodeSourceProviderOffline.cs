@@ -35,7 +35,7 @@ class NetcodeSourceProviderOffline : ISourceProviderSync
 
             if (!FileId.FromUri(uri, out FileId fileId))
             {
-                Debug.LogError($"[{nameof(CompilerSystemServer)}] Uri \"{uri}\" aint a netcode uri");
+                Debug.LogError($"[{nameof(CompilerSystemServer)}] Uri \"{uri}\" isn't a netcode uri");
                 return SourceProviderResultSync.NextHandler();
             }
 

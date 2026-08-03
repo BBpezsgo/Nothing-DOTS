@@ -127,6 +127,11 @@ public partial class WireRendererSystemClient : SystemBase
         float distance = Vector3.Distance(startPosition, endPosition);
         int nPoints = (int)((distance / WireResolution) + 1);
 
+        if (nPoints <= 2)
+        {
+            return new Vector3[] { startPosition, endPosition };
+        }
+
         Vector3[] wirePoints = new Vector3[nPoints];
         GenerateWire(startPosition, endPosition, wirePoints);
         return wirePoints;

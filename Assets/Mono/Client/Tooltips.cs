@@ -5,14 +5,13 @@ using UnityEngine.UIElements;
 
 public class Tooltips : Singleton<Tooltips>
 {
-    [NotNull] UIDocument? ui = null;
+    [SerializeField, NotNull] UIDocument? ui = null;
     [NotNull] Label? label = null;
     VisualElement? targetVisualElement = null;
     bool visible;
 
     void OnEnable()
     {
-        ui = GetComponent<UIDocument>();
         label = ui.rootVisualElement.Q<Label>("tooltip");
     }
 
@@ -82,14 +81,14 @@ public class Tooltips : Singleton<Tooltips>
         targetVisualElement = visualElement;
     }
 
-    public void OnDocumentHidden(UIDocument uiDocument)
+    public void OnDocumentHidden(UIElementReference uiDocument)
     {
         if (!visible) return;
         if (targetVisualElement is null) return;
         VisualElement e = targetVisualElement;
         while (e is not null)
         {
-            if (e == uiDocument.rootVisualElement)
+            if (e == uiDocument.Document.rootVisualElement)
             {
                 SetTooltip(null, targetVisualElement);
                 break;

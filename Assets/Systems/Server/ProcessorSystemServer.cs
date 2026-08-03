@@ -9,7 +9,6 @@ using LanguageCore;
 using LanguageCore.Runtime;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
@@ -515,7 +514,7 @@ partial struct ProcessorJob : IJobEntity
         ref DynamicBuffer<BufferedLogPiece> _log,
         Entity entity)
     {
-        //using var _1 = __ProcessorJobOuter.Auto();
+        using var _1 = __ProcessorJobOuter.Auto();
 
         if (!processor.Source.Code.IsCreated)
         {
@@ -537,7 +536,7 @@ partial struct ProcessorJob : IJobEntity
             UIElements = uiElements,
             ProcessorRef = new ProcessorSystemServer.ProcessorRef()
             {
-                Memory = Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory)),
+                Memory = Unsafe.AsPointer(ref processor.Memory),
                 Crash = null,
                 Registers = null,
                 Signal = null,
@@ -590,7 +589,6 @@ partial struct ProcessorJob : IJobEntity
         scope.ProcessorRef.Signal = &processorState.Signal;
         scope.ProcessorRef.Registers = &processorState.Registers;
 
-        //using (var _2 = __ProcessorJobInner.Auto())
         if (processor.DebugContext.IsBeingDebugged)
         {
             HandleTickDebug(ref processor, ref processorState);
@@ -626,7 +624,7 @@ partial struct ProcessorJob : IJobEntity
             Signal.Halt => ProcessorStatus.Halted,
             _ => ProcessorStatus.Error,
         };
-#pragma warning restore IDE0072
+#pragma warning restore IDE0072 // Add missing cases
         scopedExternalFunctions.Dispose();
 
         for (int i = 0; i < log.Length; i++)
@@ -637,6 +635,7 @@ partial struct ProcessorJob : IJobEntity
 
     static void HandleTick(ref Processor processor, ref ProcessorState processorState)
     {
+        __ProcessorJobInner.Begin();
         try
         {
             for (int i = 0; i < processor.CyclesPerTick; i++)
@@ -679,7 +678,7 @@ partial struct ProcessorJob : IJobEntity
                     processor.InputKey.RemoveAt(0);
                     processor.IsKeyRequested = false;
                     processorState.Pop(1);
-                    processorState.Push((byte)key);
+                    processorState.Push(key);
                 }
 
                 processorState.Process();
@@ -689,6 +688,7 @@ partial struct ProcessorJob : IJobEntity
         {
             Debug.LogError(ex.ToString());
         }
+        __ProcessorJobInner.End();
     }
 
     public enum StopReason
@@ -772,7 +772,7 @@ partial struct ProcessorJob : IJobEntity
                     processor.InputKey.RemoveAt(0);
                     processor.IsKeyRequested = false;
                     processorState.Pop(1);
-                    processorState.Push((byte)key);
+                    processorState.Push(key);
                 }
 
                 processorState.Tick();
@@ -783,6 +783,7 @@ partial struct ProcessorJob : IJobEntity
                     or StopReason.StepOutUnfinished
                     or StopReason.StepInstructionUnfinished)
                 {
+#pragma warning disable IDE0072 // Add missing cases
                     processor.DebugContext.Stopped = processor.DebugContext.Stopped switch
                     {
                         StopReason.StepForwardUnfinished => StopReason.StepForward,
@@ -791,6 +792,7 @@ partial struct ProcessorJob : IJobEntity
                         StopReason.StepInstructionUnfinished => StopReason.StepInstruction,
                         _ => processor.DebugContext.Stopped,
                     };
+#pragma warning restore IDE0072 // Add missing cases
                     processor.DebugContext.IsStopUnhandled = true;
                     return;
                 }

@@ -24,10 +24,6 @@ public class ConnectionManager : Singleton<ConnectionManager>
     [SerializeField, NotNull] GameObject? ClientObjects = default;
     [SerializeField, NotNull] GameObject? StagingObjects = default;
 
-    [Header("UI")]
-    [SerializeField, NotNull] UIDocument? MainMenuUI = default;
-    [SerializeField, NotNull] UIDocument? NetworkUI = default;
-
 #if UNITY_EDITOR && EDITOR_DEBUG
     [Header("Debug")]
     [SerializeField] string DebugNickname = string.Empty;
@@ -65,7 +61,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
     IEnumerator FirstStart()
     {
         yield return null;
-        UIManager.Instance.OpenUI(MainMenuUI)
+        UIManager.Instance.OpenUI(UIManager.Instance.MainMenu)
             .Setup(MainMenuManager.Instance);
     }
 
@@ -87,7 +83,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         {
             MainMenuManager.Instance.ConnectionError = e.DisconnectReason.ToString();
 
-            UIManager.Instance.OpenUI(MainMenuUI)
+            UIManager.Instance.OpenUI(UIManager.Instance.MainMenu)
                 .Setup(MainMenuManager.Instance);
 
             Debug.Log($" -> Disabling client objects");
@@ -102,9 +98,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         }
         else
         {
-            UIManager.Instance.OpenUI(NetworkUI);
+            var ui = UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI;
 
-            NetworkUI.rootVisualElement.Q<Label>("label-status").text = e.State switch
+            ui.Element.Q<Label>("label-status").text = e.State switch
             {
                 ConnectionState.State.Unknown => $"?",
                 ConnectionState.State.Disconnected => throw new UnreachableException(),
@@ -125,13 +121,13 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         UIManager.Instance.CloseAllUI();
 
-        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
+        Debug.Log($" -> Destroying local world");
         NetcodeBootstrap.DestroyLocalWorld();
 
-        Debug.Log($" -> CreateLocal");
+        Debug.Log($" -> Creating local world");
         yield return StartCoroutine(NetcodeBootstrap.CreateLocal(savefile));
 
-        Debug.Log($" -> DefaultGameObjectInjectionWorld");
+        Debug.Log($" -> Setting DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= NetcodeBootstrap.LocalWorld!;
 
         Debug.Log($" -> Enabling server objects");
@@ -146,12 +142,12 @@ public class ConnectionManager : Singleton<ConnectionManager>
         PlayerSystemClient.GetInstance(LocalWorld!.Unmanaged).SetNickname(nickname);
 
         Debug.Log($" -> Disabling UI");
-        UIManager.Instance.CloseUI(MainMenuUI);
+        UIManager.Instance.CloseUI(UIManager.Instance.MainMenu);
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled && savefile is null)
         {
-            Debug.Log($" -> SetupManager.Instance.Setup()");
+            Debug.Log($" -> Setting up test environment");
             SetupManager.Instance.Setup();
         }
 #endif
@@ -163,25 +159,25 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         Debug.Log($"{DebugEx.AnyPrefix} Start host on `{endpoint}`");
 
-        UIManager.Instance.OpenUI(NetworkUI);
+        var networkUi = UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI;
 
-        NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Creating server ...";
+        networkUi.Element.Q<Label>("label-status").text = "Creating server ...";
 
-        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
+        Debug.Log($" -> Destroying local world");
         NetcodeBootstrap.DestroyLocalWorld();
 
-        Debug.Log($" -> NetcodeBootstrap.CreateServer({endpoint})");
+        Debug.Log($" -> Creating server ({endpoint})");
         Ref<bool> success = new(true);
         yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint, savefile, success));
         if (!success.Value)
         {
-            NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Error";
-            UIManager.Instance.OpenUI(MainMenuUI)
+            networkUi.Element.Q<Label>("label-status").text = "Error";
+            UIManager.Instance.OpenUI(UIManager.Instance.MainMenu)
                 .Setup<MainMenuManager>();
             yield break;
         }
 
-        Debug.Log($" -> DefaultGameObjectInjectionWorld");
+        Debug.Log($" -> Setting DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
         Debug.Log($" -> Enabling server objects");
@@ -190,16 +186,14 @@ public class ConnectionManager : Singleton<ConnectionManager>
         StagingObjects.SetActive(false);
         yield return null;
 
-        NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Creating client ...";
+        networkUi.Element.Q<Label>("label-status").text = "Creating client ...";
 
         using (EntityQuery driverQ = ServerWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
         {
             endpoint = driverQ.GetSingletonRW<NetworkStreamDriver>().ValueRW.GetLocalEndPoint();
         }
 
-        Debug.Log($" -> endpoint = {endpoint}");
-
-        Debug.Log($" -> NetcodeBootstrap.CreateClient({endpoint})");
+        Debug.Log($" -> Creating client ({endpoint})");
         Ref<Entity> connectionEntity = new(Entity.Null);
         yield return StartCoroutine(NetcodeBootstrap.CreateClient(endpoint, connectionEntity));
 
@@ -213,7 +207,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled && savefile is null)
         {
-            Debug.Log($" -> SetupManager.Instance.Setup()");
+            Debug.Log($" -> Setting up test environment");
             SetupManager.Instance.Setup();
         }
 #endif
@@ -225,18 +219,18 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         Debug.Log($"{DebugEx.AnyPrefix} Start client on `{endpoint}`");
 
-        UIManager.Instance.OpenUI(NetworkUI);
+        var networkUi = UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI;
 
-        NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Creating client ...";
+        networkUi.Element.Q<Label>("label-status").text = "Creating client ...";
 
-        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
+        Debug.Log($" -> Destroying local world");
         NetcodeBootstrap.DestroyLocalWorld();
 
         Debug.Log($" -> NetcodeBootstrap.CreateClient({endpoint})");
         Ref<Entity> connectionEntity = new(Entity.Null);
         yield return StartCoroutine(NetcodeBootstrap.CreateClient(endpoint, connectionEntity));
 
-        Debug.Log($" -> DefaultGameObjectInjectionWorld");
+        Debug.Log($" -> Setting DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ClientWorld!;
 
         Debug.Log($" -> Disabling server objects");
@@ -257,24 +251,24 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         Debug.Log($"{DebugEx.EditorPrefix} Start server on `{endpoint}`");
 
-        UIManager.Instance.OpenUI(NetworkUI);
+        var networkUi = UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI;
 
-        NetworkUI.rootVisualElement.Q<Label>("label-status").text = "Creating server ...";
+        networkUi.Element.Q<Label>("label-status").text = "Creating server ...";
 
-        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
+        Debug.Log($" -> Destroying local world");
         NetcodeBootstrap.DestroyLocalWorld();
 
-        Debug.Log($" -> NetcodeBootstrap.CreateServer({endpoint})");
+        Debug.Log($" -> Creating server ({endpoint})");
         Ref<bool> success = new(false);
         yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint, savefile, success));
         if (!success.Value)
         {
-            UIManager.Instance.OpenUI(MainMenuUI)
+            UIManager.Instance.OpenUI(UIManager.Instance.MainMenu)
                 .Setup<MainMenuManager>();
             yield break;
         }
 
-        Debug.Log($" -> DefaultGameObjectInjectionWorld");
+        Debug.Log($" -> Setting DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= ServerWorld!;
 
         Debug.Log($" -> Enabling server objects");
@@ -286,15 +280,15 @@ public class ConnectionManager : Singleton<ConnectionManager>
         yield return null;
 
         Debug.Log($" -> Disabling UI");
-        UIManager.Instance.CloseUI(MainMenuUI);
+        UIManager.Instance.CloseUI(UIManager.Instance.MainMenu);
 
-        NetworkUI.rootVisualElement.Q<Label>("label-status").text = string.Empty;
-        UIManager.Instance.CloseUI(NetworkUI);
+        networkUi.Element.Q<Label>("label-status").text = string.Empty;
+        UIManager.Instance.CloseUI(UIManager.Instance.NetworkStatus);
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled && savefile is null)
         {
-            Debug.Log($" -> SetupManager.Instance.Setup()");
+            Debug.Log($" -> Setting up test environment");
             SetupManager.Instance.Setup();
         }
 #endif
@@ -308,13 +302,13 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         UIManager.Instance.CloseAllUI();
 
-        Debug.Log($" -> NetcodeBootstrap.DestroyLocalWorld");
+        Debug.Log($" -> Destroying local world");
         NetcodeBootstrap.DestroyLocalWorld();
 
-        Debug.Log($" -> CreateLocal");
+        Debug.Log($" -> Creating local world");
         yield return StartCoroutine(NetcodeBootstrap.CreateStaging(savefile));
 
-        Debug.Log($" -> DefaultGameObjectInjectionWorld");
+        Debug.Log($" -> Setting DefaultGameObjectInjectionWorld");
         World.DefaultGameObjectInjectionWorld ??= NetcodeBootstrap.StagingWorld!;
 
         Debug.Log($" -> Enabling server objects");
@@ -329,12 +323,12 @@ public class ConnectionManager : Singleton<ConnectionManager>
         PlayerSystemClient.GetInstance(StagingWorld!.Unmanaged).SetNickname(nickname);
 
         Debug.Log($" -> Disabling UI");
-        UIManager.Instance.CloseUI(MainMenuUI);
+        UIManager.Instance.CloseUI(UIManager.Instance.MainMenu);
 
 #if UNITY_EDITOR && EDITOR_DEBUG
         if (SetupManager.Instance.isActiveAndEnabled && savefile is null)
         {
-            Debug.Log($" -> SetupManager.Instance.Setup()");
+            Debug.Log($" -> Setting up test environment");
             SetupManager.Instance.Setup();
         }
 #endif

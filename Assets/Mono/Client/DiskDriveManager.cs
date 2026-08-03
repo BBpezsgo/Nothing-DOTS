@@ -8,13 +8,13 @@ public class DiskDriveManager : Singleton<DiskDriveManager>, IUISetup<Entity>, I
 {
     [Header("UI")]
 
-    [SerializeField, SaintsField.ReadOnly] UIDocument? ui = default;
+    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
 
     Pendrive selected = default;
 
     void Update()
     {
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -23,21 +23,20 @@ public class DiskDriveManager : Singleton<DiskDriveManager>, IUISetup<Entity>, I
         }
     }
 
-    public void Setup(UIDocument ui, Entity entity)
+    public void Setup(UIElementReference ui, Entity entity)
     {
-        gameObject.SetActive(true);
         this.ui = ui;
         RefreshUI(entity);
     }
 
     public void RefreshUI(Entity entity)
     {
-        if (ui == null || !ui.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         selected = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<Pendrive>(entity);
 
-        Label labelHex = ui.rootVisualElement.Q<Label>("label-hex");
-        Label labelAscii = ui.rootVisualElement.Q<Label>("label-ascii");
+        Label labelHex = ui.Element.Q<Label>("label-hex");
+        Label labelAscii = ui.Element.Q<Label>("label-ascii");
 
         StringBuilder builderHex = new();
         StringBuilder builderAscii = new();
@@ -71,9 +70,8 @@ public class DiskDriveManager : Singleton<DiskDriveManager>, IUISetup<Entity>, I
         labelAscii.text = builderAscii.ToString();
     }
 
-    public void Cleanup(UIDocument ui)
+    public void Cleanup(UIElementReference ui)
     {
         selected = default;
-        gameObject.SetActive(false);
     }
 }

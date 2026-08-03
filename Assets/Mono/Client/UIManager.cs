@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -5,61 +6,108 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+[Serializable]
+public struct UIElementReference : IEquatable<UIElementReference>
+{
+    [SerializeField] public UIDocument Document;
+    [SerializeField] public string ElementName;
+
+    public readonly VisualElement? ElementOrNull
+    {
+        get
+        {
+            if (Document == null || !Document.isActiveAndEnabled || string.IsNullOrEmpty(ElementName)) return null;
+            if (Document.rootVisualElement == null) return null;
+            return Document.rootVisualElement.Q(ElementName) ?? throw new Exception($"Element #{ElementName} wasn't found on {Document}");
+        }
+    }
+
+    public readonly VisualElement Element
+    {
+        get
+        {
+            if (Document == null || !Document.isActiveAndEnabled || string.IsNullOrEmpty(ElementName)) throw new InvalidOperationException($"UI is null");
+            if (Document.rootVisualElement == null) throw new InvalidOperationException($"UI wasn't opened yet");
+            return Document.rootVisualElement.Q(ElementName) ?? throw new Exception($"Element #{ElementName} wasn't found on {Document}");
+        }
+    }
+
+    public readonly bool IsVisible
+    {
+        get => ElementOrNull?.resolvedStyle.display == DisplayStyle.Flex;
+        set => Element.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
+    }
+
+    public override readonly bool Equals(object? obj) => obj is UIElementReference other && Equals(other);
+    public readonly bool Equals(UIElementReference other) => other.Document == Document && other.ElementName == ElementName;
+
+    public override readonly int GetHashCode() => HashCode.Combine(Document, ElementName);
+
+    public static bool operator ==(UIElementReference left, UIElementReference right) => left.Equals(right);
+    public static bool operator !=(UIElementReference left, UIElementReference right) => !left.Equals(right);
+}
+
 public class UIManager : Singleton<UIManager>
 {
     public readonly struct UISetup
     {
-        readonly UIDocument _ui;
-        readonly UIManager _manager;
+        public readonly UIElementReference UI;
+        readonly UIManager Manager;
 
-        public UISetup(UIDocument ui, UIManager manager)
+        public UISetup(UIElementReference ui, UIManager manager)
         {
-            _ui = ui;
-            _manager = manager;
+            UI = ui;
+            Manager = manager;
         }
 
         public UISetup Setup<TManager, TContext>(TManager manager, TContext context)
-            where TManager : IUISetup<TContext>, IUICleanup
+            where TManager : IUISetup<TContext>
         {
-            manager.Setup(_ui, context);
-            _manager.OpenedUIs.TryAdd(_ui, new List<IUICleanup>());
-            _manager.OpenedUIs[_ui].Add(manager);
+            manager.Setup(UI, context);
+            if (manager is IUICleanup cleanup)
+            {
+                Manager.OpenedUIs.TryAdd(UI, new List<IUICleanup>());
+                Manager.OpenedUIs[UI].Add(cleanup);
+            }
             return this;
         }
 
         public UISetup Setup<TManager>(TManager manager)
-            where TManager : IUISetup, IUICleanup
+            where TManager : IUISetup
         {
-            manager.Setup(_ui);
-            _manager.OpenedUIs.TryAdd(_ui, new List<IUICleanup>());
-            _manager.OpenedUIs[_ui].Add(manager);
+            manager.Setup(UI);
+            if (manager is IUICleanup cleanup)
+            {
+                Manager.OpenedUIs.TryAdd(UI, new List<IUICleanup>());
+                Manager.OpenedUIs[UI].Add(cleanup);
+            }
             return this;
         }
 
         public UISetup Setup<TManager>()
-            where TManager : Singleton<TManager>, IUISetup, IUICleanup
+            where TManager : Singleton<TManager>, IUISetup
             => Setup(Singleton<TManager>.Instance);
 
         public UISetup Setup<TManager, TContext>(TContext context)
-            where TManager : Singleton<TManager>, IUISetup<TContext>, IUICleanup
+            where TManager : Singleton<TManager>, IUISetup<TContext>
             => Setup(Singleton<TManager>.Instance, context);
     }
 
     [Header("Documents")]
 
-    [SerializeField, NotNull] public UIDocument? MainMenu = default;
-    [SerializeField, NotNull] public UIDocument? NetworkStatus = default;
-    [SerializeField, NotNull] public UIDocument? Unit = default;
-    [SerializeField, NotNull] public UIDocument? Factory = default;
-    [SerializeField, NotNull] public UIDocument? Facility = default;
-    [SerializeField, NotNull] public UIDocument? Pause = default;
-    [SerializeField, NotNull] public UIDocument? Buildings = default;
-    [SerializeField, NotNull] public UIDocument? Units = default;
-    [SerializeField, NotNull] public UIDocument? DiskDrive = default;
+    [SerializeField, NotNull] public UIElementReference MainMenu = default;
+    [SerializeField, NotNull] public UIElementReference NetworkStatus = default;
+    [SerializeField, NotNull] public UIElementReference Unit = default;
+    [SerializeField, NotNull] public UIElementReference Factory = default;
+    [SerializeField, NotNull] public UIElementReference Facility = default;
+    [SerializeField, NotNull] public UIElementReference Pause = default;
+    [SerializeField, NotNull] public UIElementReference Buildings = default;
+    [SerializeField, NotNull] public UIElementReference Units = default;
+    [SerializeField, NotNull] public UIElementReference DiskDrive = default;
 
-    ImmutableArray<UIDocument>? _uis = default;
+    ImmutableArray<UIElementReference>? _uis = default;
 
-    public ImmutableArray<UIDocument> UIs => _uis ?? (_uis = ImmutableArray.Create(
+    public ImmutableArray<UIElementReference> UIs => _uis ?? (_uis = ImmutableArray.Create(
         MainMenu,
         NetworkStatus,
         Unit,
@@ -71,16 +119,16 @@ public class UIManager : Singleton<UIManager>
         DiskDrive
     )).Value;
 
-    [NotNull] Dictionary<UIDocument, List<IUICleanup>>? OpenedUIs = default;
+    [NotNull] Dictionary<UIElementReference, List<IUICleanup>>? OpenedUIs = default;
 
     public bool AnyUIVisible
     {
         get
         {
-            ImmutableArray<UIDocument> uis = UIs;
+            ImmutableArray<UIElementReference> uis = UIs;
             for (int i = 0; i < uis.Length; i++)
             {
-                if (uis[i].enabled && uis[i].gameObject.activeSelf) return true;
+                if (uis[i].IsVisible) return true;
             }
             return false;
         }
@@ -93,6 +141,13 @@ public class UIManager : Singleton<UIManager>
     void Start()
     {
         OpenedUIs = new();
+
+        foreach (var ui in UIs)
+        {
+            if (ui.Document == null) Debug.LogError($"UI document is null");
+            if (string.IsNullOrEmpty(ui.ElementName)) Debug.LogError($"Element name is null");
+            CloseUI(ui);
+        }
     }
 
     void Update()
@@ -121,7 +176,7 @@ public class UIManager : Singleton<UIManager>
         }
     }
 
-    public void CloseAllUI(UIDocument except)
+    public void CloseAllUI(UIElementReference except)
     {
         for (int i = 0; i < UIs.Length; i++)
         {
@@ -130,31 +185,34 @@ public class UIManager : Singleton<UIManager>
         }
     }
 
-    public void CloseUI(UIDocument ui)
+    public void CloseUI(UIElementReference ui)
     {
         Tooltips.Instance.OnDocumentHidden(ui);
         if (OpenedUIs.TryGetValue(ui, out List<IUICleanup>? cleanup))
         {
-            foreach (IUICleanup item in cleanup) item.Cleanup(ui);
+            foreach (IUICleanup item in cleanup)
+            {
+                item.Cleanup(ui);
+            }
             OpenedUIs.Remove(ui);
         }
-        ui.rootVisualElement?.focusController.focusedElement?.Blur();
-        ui.ForceSetActive(false);
+        ui.Document.rootVisualElement?.focusController.focusedElement?.Blur();
+        ui.IsVisible = false;
     }
 
     public void CloseUI(IUICleanup ui)
     {
-        foreach (KeyValuePair<UIDocument, List<IUICleanup>> item in OpenedUIs.ToArray())
+        foreach (KeyValuePair<UIElementReference, List<IUICleanup>> item in OpenedUIs.ToArray())
         {
             if (!item.Value.Contains(ui)) continue;
             CloseUI(item.Key);
         }
     }
 
-    public UISetup OpenUI(UIDocument ui)
+    public UISetup OpenUI(UIElementReference ui)
     {
         CloseAllUI();
-        ui.ForceSetActive(true);
+        ui.IsVisible = true;
         return new UISetup(ui, this);
     }
 }

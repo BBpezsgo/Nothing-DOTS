@@ -4,7 +4,6 @@ using System.Linq;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.NetCode;
-using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -35,15 +34,15 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
     [Header("UI")]
 
     [SerializeField, NotNull] VisualTreeAsset? UnitButton = default;
-    [SerializeField, NotNull] UIDocument? UnitsUI = default;
 
     float refreshAt = default;
     float refreshedBySyncAt = default;
     float syncAt = default;
+    UIElementReference ui;
 
     void RefreshUI()
     {
-        VisualElement container = UnitsUI.rootVisualElement.Q<VisualElement>("unity-content-container");
+        VisualElement container = ui.Element.Q<VisualElement>("unity-content-container");
         container.Clear();
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -108,25 +107,25 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.U) && (!UI.IsUIFocused || UnitsUI.gameObject.activeSelf))
+        if (Input.GetKeyDown(KeyCode.U) && (!UI.IsUIFocused || ui.IsVisible))
         {
             SelectedUnit = default;
             if (UnitHologram != null) Destroy(UnitHologram);
             UnitHologram = null;
 
-            if (UnitsUI.gameObject.activeSelf)
+            if (ui.IsVisible)
             {
                 UIManager.Instance.CloseUI(this);
                 return;
             }
             else if (!UIManager.Instance.AnyUIVisible)
             {
-                UIManager.Instance.OpenUI(UnitsUI)
+                UIManager.Instance.OpenUI(UIManager.Instance.Units)
                     .Setup(this);
             }
         }
 
-        if (!UnitsUI.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -140,7 +139,7 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
 
         if (Mouse.current.rightButton.wasReleasedThisFrame &&
             !UI.IsMouseHandled &&
-            (IsPlacing || UnitsUI.gameObject.activeSelf) &&
+            (IsPlacing || ui.IsVisible) &&
             !CameraControl.Instance.IsDragging)
         {
             if (SelectedUnit.Prefab != Entity.Null)
@@ -156,7 +155,7 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
             return;
         }
 
-        if (UnitsUI == null || !UnitsUI.gameObject.activeSelf) return;
+        if (!ui.IsVisible) return;
 
         if (Time.time >= refreshAt ||
             refreshedBySyncAt != UnitsSystemClient.LastSynced.Data)
@@ -290,13 +289,14 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
         return hologramModels.gameObject;
     }
 
-    public void Setup(UIDocument ui)
+    public void Setup(UIElementReference ui)
     {
-        RefreshUI();
+        this.ui = ui;
         syncAt = 0f;
+        RefreshUI();
     }
 
-    public void Cleanup(UIDocument ui)
+    public void Cleanup(UIElementReference ui)
     {
         SelectedUnit = default;
         if (UnitHologram != null) Destroy(UnitHologram);

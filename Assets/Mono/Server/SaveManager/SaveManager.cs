@@ -6,40 +6,49 @@ using Unity.Entities;
 using Unity.Entities.Serialization;
 using Unity.NetCode;
 using Unity.Transforms;
-using UnityEngine;
 using BinaryReader = Unity.Entities.Serialization.BinaryReader;
 using BinaryWriter = Unity.Entities.Serialization.BinaryWriter;
 
-class SaveManager : MonoBehaviour
+static class SaveManager
 {
-    readonly struct TypeSerializer
+    public delegate void BasicSerializer(BinaryWriter writer, Entity entity, EntityManager entityManager);
+    public delegate void BasicDeserializer(BinaryReader reader, Entity entity, EntityManager entityManager);
+
+    public delegate void EntityReferencePopulatorSimple(Entity entity, EntityManager entityManager, EntityReferenceResolver entityReferenceResolver);
+    public delegate void EntityReferencePopulator<T>(ref T component, EntityReferenceResolver entityReferenceResolver);
+    public delegate Entity EntityReferenceResolver(Entity entity);
+
+    public delegate void GhostReferencePopulatorSimple(Entity entity, EntityManager entityManager, GhostReferenceResolver ghostReferenceResolver);
+    public delegate void GhostReferencePopulator<T>(ref T component, GhostReferenceResolver ghostReferenceResolver);
+    public delegate SpawnedGhost GhostReferenceResolver(Entity entity);
+
+    public delegate void ComponentSerializer<T>(BinaryWriter writer, T component);
+    public delegate void ComponentDeserializer<T>(BinaryReader reader, ref T component);
+    public delegate T ComponentDeserializerSimple<T>(BinaryReader reader);
+
+    public delegate void DynamicBufferSerializer<T>(BinaryWriter writer, DynamicBuffer<T> buffer) where T : unmanaged, IBufferElementData;
+    public delegate void DynamicBufferDeserializer<T>(BinaryReader reader, DynamicBuffer<T> buffer) where T : unmanaged, IBufferElementData;
+
+    readonly unsafe struct TypeSerializer
     {
         public readonly ComponentType Type;
         public readonly BasicSerializer Serializer;
         public readonly BasicDeserializer Deserializer;
-        public readonly bool ContainsEntityReferences;
+        public readonly EntityReferencePopulatorSimple? EntityReferencePopulator;
+        public readonly GhostReferencePopulatorSimple? GhostReferencePopulator;
 
-        public delegate void BasicSerializer(BinaryWriter writer, Entity entity, EntityManager entityManager);
-        public delegate void BasicDeserializer(BinaryReader reader, Entity entity, EntityManager entityManager);
-
-        public delegate void ComponentSerializer<T>(BinaryWriter writer, T component);
-        public delegate void ComponentDeserializer<T>(BinaryReader reader, ref T component);
-        public delegate T ComponentDeserializerSimple<T>(BinaryReader reader);
-
-        public delegate void DynamicBufferSerializer<T>(BinaryWriter writer, DynamicBuffer<T> buffer) where T : unmanaged, IBufferElementData;
-        public delegate void DynamicBufferDeserializer<T>(BinaryReader reader, DynamicBuffer<T> buffer) where T : unmanaged, IBufferElementData;
-
-        public TypeSerializer(ComponentType type, BasicSerializer serializer, BasicDeserializer deserializer, bool containsEntityReferences)
+        public TypeSerializer(ComponentType type, BasicSerializer serializer, BasicDeserializer deserializer, EntityReferencePopulatorSimple? entityReferencePopulator = null, GhostReferencePopulatorSimple? ghostReferencePopulator = null)
         {
             Type = type;
             Serializer = serializer;
             Deserializer = deserializer;
-            ContainsEntityReferences = containsEntityReferences;
+            EntityReferencePopulator = entityReferencePopulator;
+            GhostReferencePopulator = ghostReferencePopulator;
         }
 
-        public static TypeSerializer Simple<T>(BasicSerializer serializer, BasicDeserializer deserializer, bool containsEntityReferences = false) => new(typeof(T), serializer, deserializer, containsEntityReferences);
+        public static TypeSerializer Simple<T>(BasicSerializer serializer, BasicDeserializer deserializer) => new(typeof(T), serializer, deserializer);
 
-        public static TypeSerializer ForDynamicBuffer<T>(DynamicBufferSerializer<T> serializer, DynamicBufferDeserializer<T> deserializer, bool containsEntityReferences = false) where T : unmanaged, IBufferElementData
+        public static TypeSerializer ForDynamicBuffer<T>(DynamicBufferSerializer<T> serializer, DynamicBufferDeserializer<T> deserializer, EntityReferencePopulator<T>? entityReferencePopulator = null, GhostReferencePopulator<T>? ghostReferencePopulator = null) where T : unmanaged, IBufferElementData
         {
             if (((ComponentType)typeof(T)).IsZeroSized) throw new InvalidOperationException($"{typeof(T)} is zero sized");
 
@@ -47,11 +56,28 @@ class SaveManager : MonoBehaviour
                 typeof(T),
                 (writer, entity, entityManager) => serializer(writer, entityManager.GetBuffer<T>(entity)),
                 (reader, entity, entityManager) => deserializer(reader, entityManager.GetBuffer<T>(entity)),
-                containsEntityReferences
+                entityReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, EntityReferenceResolver entityReferenceResolver) =>
+                {
+                    var buffer = entityManager.GetBuffer<T>(entity);
+                    var ptr = (T*)buffer.GetUnsafePtr();
+                    for (int i = 0; i < buffer.Length; i++)
+                    {
+                        entityReferencePopulator(ref ptr[i], entityReferenceResolver);
+                    }
+                },
+                ghostReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, GhostReferenceResolver ghostReferenceResolver) =>
+                {
+                    var buffer = entityManager.GetBuffer<T>(entity);
+                    var ptr = (T*)buffer.GetUnsafePtr();
+                    for (int i = 0; i < buffer.Length; i++)
+                    {
+                        ghostReferencePopulator(ref ptr[i], ghostReferenceResolver);
+                    }
+                }
             );
         }
 
-        public static TypeSerializer ForDynamicBufferItem<T>(BinaryWriterExtensions.ItemSerializer<T> serializer, BinaryReaderExtensions.ItemDeserializer<T> deserializer, bool containsEntityReferences = false) where T : unmanaged, IBufferElementData
+        public static TypeSerializer ForDynamicBufferItem<T>(BinaryWriterExtensions.ItemSerializer<T> serializer, BinaryReaderExtensions.ItemDeserializer<T> deserializer, EntityReferencePopulator<T>? entityReferencePopulator = null, GhostReferencePopulator<T>? ghostReferencePopulator = null) where T : unmanaged, IBufferElementData
         {
             if (((ComponentType)typeof(T)).IsZeroSized) throw new InvalidOperationException($"{typeof(T)} is zero sized");
 
@@ -59,11 +85,28 @@ class SaveManager : MonoBehaviour
                 typeof(T),
                 (writer, entity, entityManager) => writer.Write(entityManager.GetBuffer<T>(entity), serializer),
                 (reader, entity, entityManager) => reader.ReadDynamicBuffer<T>(entityManager.GetBuffer<T>(entity), deserializer),
-                containsEntityReferences
+                entityReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, EntityReferenceResolver entityReferenceResolver) =>
+                {
+                    var buffer = entityManager.GetBuffer<T>(entity);
+                    var ptr = (T*)buffer.GetUnsafePtr();
+                    for (int i = 0; i < buffer.Length; i++)
+                    {
+                        entityReferencePopulator(ref ptr[i], entityReferenceResolver);
+                    }
+                },
+                ghostReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, GhostReferenceResolver ghostReferenceResolver) =>
+                {
+                    var buffer = entityManager.GetBuffer<T>(entity);
+                    var ptr = (T*)buffer.GetUnsafePtr();
+                    for (int i = 0; i < buffer.Length; i++)
+                    {
+                        ghostReferencePopulator(ref ptr[i], ghostReferenceResolver);
+                    }
+                }
             );
         }
 
-        public static TypeSerializer ForComponentSimple<T>(ComponentSerializer<T> serializer, ComponentDeserializerSimple<T> deserializer, bool containsEntityReferences = false) where T : unmanaged, IComponentData
+        public static TypeSerializer ForComponentSimple<T>(ComponentSerializer<T> serializer, ComponentDeserializerSimple<T> deserializer, EntityReferencePopulator<T>? entityReferencePopulator = null, GhostReferencePopulator<T>? ghostReferencePopulator = null) where T : unmanaged, IComponentData
         {
             if (((ComponentType)typeof(T)).IsZeroSized)
             {
@@ -71,7 +114,18 @@ class SaveManager : MonoBehaviour
                     typeof(T),
                     (writer, entity, entityManager) => serializer(writer, default),
                     (reader, entity, entityManager) => deserializer(reader),
-                    containsEntityReferences
+                    entityReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, EntityReferenceResolver entityReferenceResolver) =>
+                    {
+                        T componentData = entityManager.GetComponentData<T>(entity);
+                        entityReferencePopulator(ref componentData, entityReferenceResolver);
+                        entityManager.SetComponentData<T>(entity, componentData);
+                    },
+                    ghostReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, GhostReferenceResolver ghostReferenceResolver) =>
+                    {
+                        T componentData = entityManager.GetComponentData<T>(entity);
+                        ghostReferencePopulator(ref componentData, ghostReferenceResolver);
+                        entityManager.SetComponentData<T>(entity, componentData);
+                    }
                 );
             }
             else
@@ -80,12 +134,23 @@ class SaveManager : MonoBehaviour
                     typeof(T),
                     (writer, entity, entityManager) => serializer(writer, entityManager.GetComponentData<T>(entity)),
                     (reader, entity, entityManager) => entityManager.SetComponentData(entity, deserializer(reader)),
-                    containsEntityReferences
+                    entityReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, EntityReferenceResolver entityReferenceResolver) =>
+                    {
+                        T componentData = entityManager.GetComponentData<T>(entity);
+                        entityReferencePopulator(ref componentData, entityReferenceResolver);
+                        entityManager.SetComponentData<T>(entity, componentData);
+                    },
+                    ghostReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, GhostReferenceResolver ghostReferenceResolver) =>
+                    {
+                        T componentData = entityManager.GetComponentData<T>(entity);
+                        ghostReferencePopulator(ref componentData, ghostReferenceResolver);
+                        entityManager.SetComponentData<T>(entity, componentData);
+                    }
                 );
             }
         }
 
-        public static TypeSerializer ForComponent<T>(ComponentSerializer<T> serializer, ComponentDeserializer<T> deserializer, bool containsEntityReferences = false) where T : unmanaged, IComponentData
+        public static TypeSerializer ForComponent<T>(ComponentSerializer<T> serializer, ComponentDeserializer<T> deserializer, EntityReferencePopulator<T>? entityReferencePopulator = null, GhostReferencePopulator<T>? ghostReferencePopulator = null) where T : unmanaged, IComponentData
         {
             if (((ComponentType)typeof(T)).IsZeroSized) throw new UnreachableException();
             return new TypeSerializer(
@@ -100,7 +165,18 @@ class SaveManager : MonoBehaviour
                     deserializer(reader, ref v);
                     entityManager.SetComponentData(entity, v);
                 },
-                containsEntityReferences
+                entityReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, EntityReferenceResolver entityReferenceResolver) =>
+                {
+                    T componentData = entityManager.GetComponentData<T>(entity);
+                    entityReferencePopulator(ref componentData, entityReferenceResolver);
+                    entityManager.SetComponentData<T>(entity, componentData);
+                },
+                ghostReferencePopulator is null ? null : (Entity entity, EntityManager entityManager, GhostReferenceResolver ghostReferenceResolver) =>
+                {
+                    T componentData = entityManager.GetComponentData<T>(entity);
+                    ghostReferencePopulator(ref componentData, ghostReferenceResolver);
+                    entityManager.SetComponentData<T>(entity, componentData);
+                }
             );
         }
     }
@@ -163,7 +239,7 @@ class SaveManager : MonoBehaviour
         return query.GetSingleton<TSingleton>();
     }
 
-    static unsafe List<TypeSerializer> GetSerializers(EntityManager entityManager, Dictionary<Entity, Entity> serializedEntities)
+    static List<TypeSerializer> GetSerializers(EntityManager entityManager)
     {
         DynamicBuffer<BufferedBuilding> buildings = GetSingletonBuffer<BuildingDatabase, BufferedBuilding>(entityManager, false);
         DynamicBuffer<BufferedUnit> units = GetSingletonBuffer<UnitDatabase, BufferedUnit>(entityManager, false);
@@ -539,8 +615,6 @@ class SaveManager : MonoBehaviour
             TypeSerializer.ForDynamicBufferItem<BufferedWire>(
                 (writer, v) =>
                 {
-                    if (!serializedEntities.ContainsKey(v.EntityA)) Debug.LogError($"Referenced entity `{v.EntityA}` not serialized");
-                    if (!serializedEntities.ContainsKey(v.EntityB)) Debug.LogError($"Referenced entity `{v.EntityB}` not serialized");
                     writer.Write(v.EntityA);
                     writer.Write(v.EntityB);
                     writer.Write(v.PortA);
@@ -548,8 +622,8 @@ class SaveManager : MonoBehaviour
                 },
                 (reader) =>
                 {
-                    Entity ea = reader.ReadEntity(serializedEntities);
-                    Entity eb = reader.ReadEntity(serializedEntities);
+                    Entity ea = reader.ReadEntityUnsafe();
+                    Entity eb = reader.ReadEntityUnsafe();
                     byte pa = reader.ReadByte();
                     byte pb = reader.ReadByte();
 
@@ -559,9 +633,19 @@ class SaveManager : MonoBehaviour
                         EntityB = eb,
                         PortA = pa,
                         PortB = pb,
-                        GhostA = ea == Entity.Null ? default : entityManager.GetComponentData<GhostInstance>(ea),
-                        GhostB = eb == Entity.Null ? default : entityManager.GetComponentData<GhostInstance>(eb),
+                        GhostA = default,
+                        GhostB = default,
                     };
+                },
+                (ref BufferedWire component, EntityReferenceResolver entityReferenceResolver) =>
+                {
+                    component.EntityA = entityReferenceResolver(component.EntityA);
+                    component.EntityB = entityReferenceResolver(component.EntityB);
+                },
+                (ref BufferedWire component, GhostReferenceResolver ghostReferenceResolver) =>
+                {
+                    component.GhostA = ghostReferenceResolver(component.EntityA);
+                    component.GhostB = ghostReferenceResolver(component.EntityB);
                 }
             ),
         };
@@ -705,11 +789,26 @@ class SaveManager : MonoBehaviour
             {
                 writer.Write(v.Key.Name);
                 writer.Write(v.Key.Source.ConnectionId.Value);
+
+                if (v.Value.Code.HasValue && v.Value.GeneratedFunctions!.Value.Length == 0)
+                {
+                    writer.Write(true);
+                    writer.WriteArray(v.Value.Code.Value);
+                    writer.Write(v.Value.CompiledVersion);
+                    writer.Write(v.Value.HotReloadVersion);
+                    writer.Write(v.Value.IsSuccess);
+                    writer.Write(v.Value.LatestVersion);
+                    writer.Write((int)v.Value.Status);
+                    writer.WriteArray(v.Value.UnitCommandDefinitions!.Value);
+                }
+                else
+                {
+                    writer.Write(false);
+                }
             });
         }
 
-        Dictionary<Entity, Entity> serializedEntities = new();
-        List<TypeSerializer> types = GetSerializers(entityManager, serializedEntities);
+        List<TypeSerializer> types = GetSerializers(entityManager);
         List<PrefabIdSerializer> prefabTypes = GetPrefabInstanceIdSerializers(entityManager, new());
 
         NativeList<EntityArchetype> archetypes = new(Allocator.Temp);
@@ -735,8 +834,6 @@ class SaveManager : MonoBehaviour
 
         writer.Write(saveableArchetypes.Count);
 
-        int saveableArchetypesCountWithER = 0;
-
         foreach ((EntityArchetype archetype, int prefabIndex) in saveableArchetypes)
         {
             NativeArray<ComponentType> componentTypes = archetype.GetComponentTypes(Allocator.Temp);
@@ -751,62 +848,37 @@ class SaveManager : MonoBehaviour
 
             writer.Write(entityCount);
 
-            if (typeIndices.Any(i => types[i].ContainsEntityReferences))
-            {
-                saveableArchetypesCountWithER++;
-            }
-
             foreach (ArchetypeChunk chunk in archetypeChunks)
             {
                 using NativeArray<Entity> entities = chunk.GetNativeArray(entityManager.GetEntityTypeHandle());
                 foreach (Entity entity in entities)
                 {
                     writer.Write(entity);
-                    serializedEntities.Add(entity, entity);
                     prefabTypes[prefabIndex].Serializer(writer, entity, entityManager);
                     foreach (int typeIndex in typeIndices)
                     {
-                        if (types[typeIndex].ContainsEntityReferences) continue;
                         types[typeIndex].Serializer(writer, entity, entityManager);
                     }
                 }
             }
         }
 
-        writer.Write(saveableArchetypesCountWithER);
+        /*
+        using var prespawnedEntityQ = entityManager.CreateEntityQuery(typeof(SavePrespawnedEntity));
+        using var prespawnedEntities = prespawnedEntityQ.ToEntityArray(Allocator.Temp);
 
-        foreach ((EntityArchetype archetype, int prefabIndex) in saveableArchetypes)
+        writer.Write(prespawnedEntities.Length);
+
+        for (int i = 0; i < prespawnedEntities.Length; i++)
         {
-            NativeArray<ComponentType> componentTypes = archetype.GetComponentTypes(Allocator.Temp);
-
-            int[] typeIndices = componentTypes.Select(v => types.FindIndex(w => v == w.Type && w.ContainsEntityReferences)).Where(v => v != -1).ToArray();
-
-            if (typeIndices.Length == 0) continue;
-
-            writer.Write(typeIndices, (w, v) => w.Write(v));
-
-            ArchetypeChunk[] archetypeChunks = chunks.Where(v => v.Archetype == archetype).ToArray();
-            int entityCount = archetypeChunks.Sum(v => v.Count);
-
-            writer.Write(entityCount);
-
-            foreach (ArchetypeChunk chunk in archetypeChunks)
-            {
-                using NativeArray<Entity> entities = chunk.GetNativeArray(entityManager.GetEntityTypeHandle());
-                foreach (Entity entity in entities)
-                {
-                    writer.Write(entity);
-                    foreach (int typeIndex in typeIndices)
-                    {
-                        if (!types[typeIndex].ContainsEntityReferences) continue;
-                        types[typeIndex].Serializer(writer, entity, entityManager);
-                    }
-                }
-            }
+            var entity = prespawnedEntities[i];
+            var component = entityManager.GetComponentData<SavePrespawnedEntity>(entity);
+            writer.Write(component.Id);
         }
+        */
     }
 
-    public static void Load(World serverWorld, EntityCommandBuffer commandBuffer, string filename)
+    public static void Load(World serverWorld, EntityCommandBuffer commandBuffer, string filename, out Action? onGhostsSpawned)
     {
         EntityManager entityManager = serverWorld.EntityManager;
 
@@ -837,7 +909,8 @@ class SaveManager : MonoBehaviour
 
                 player.Guid = reader.ReadGuid();
                 PlayerConnectionState connectionState = (PlayerConnectionState)reader.ReadByte();
-                if (connectionState == PlayerConnectionState.Connected) connectionState = PlayerConnectionState.Disconnected;
+                if (connectionState is PlayerConnectionState.Connected) connectionState = PlayerConnectionState.Disconnected;
+                if (connectionState is PlayerConnectionState.Local or PlayerConnectionState.Server) player.ConnectionId = 0;
                 player.ConnectionState = connectionState;
                 player.InCreative = reader.ReadBool();
                 player.IsAdmin = reader.ReadBool();
@@ -878,38 +951,48 @@ class SaveManager : MonoBehaviour
             }
         }
 
+        CompilerSystemServer compilerSystem = serverWorld.GetExistingSystemManaged<CompilerSystemServer>();
+        foreach (FileId source in reader.ReadArray((reader) =>
         {
-            CompilerSystemServer compilerSystem = serverWorld.GetExistingSystemManaged<CompilerSystemServer>();
-            foreach (FileId source in reader.ReadArray((reader) =>
+            return new FileId(reader.ReadFixedString128(), new NetcodeEndPoint(new Unity.NetCode.NetworkId() { Value = reader.ReadInt() }, Entity.Null));
+        }))
+        {
+            bool ok = reader.ReadBool();
+            var v = new CompiledSourceServer(
+                source,
+                default,
+                1,
+                1,
+                CompilationStatus.Secuedued,
+                0,
+                false,
+                default,
+                default,
+                default,
+                new LanguageCore.DiagnosticsCollection()
+            );
+
+            if (ok)
             {
-                return new FileId(reader.ReadFixedString128(), new NetcodeEndPoint(new Unity.NetCode.NetworkId() { Value = reader.ReadInt() }, Entity.Null));
-            }))
-            {
-                compilerSystem.CompiledSources.Add(source, new(
-                    source,
-                    default,
-                    1,
-                    1,
-                    CompilationStatus.Secuedued,
-                    0,
-                    false,
-                    default,
-                    default,
-                    default,
-                    new LanguageCore.DiagnosticsCollection()
-                ));
+                v.Code = reader.ReadNativeArray<LanguageCore.Runtime.Instruction>(Allocator.Persistent);
+                v.CompiledVersion = reader.ReadLong();
+                v.HotReloadVersion = reader.ReadLong();
+                v.IsSuccess = reader.ReadBool();
+                v.LatestVersion = reader.ReadLong();
+                v.Status = (CompilationStatus)reader.ReadInt();
+                v.UnitCommandDefinitions = reader.ReadNativeArray<UnitCommandDefinition>(Allocator.Persistent);
             }
 
-            while (compilerSystem.CompiledSources.Any(v => v.Value.Status != CompilationStatus.Done))
-            {
-                serverWorld.Update();
-            }
+            compilerSystem.CompiledSources.Add(source, v);
         }
 
-        Dictionary<Entity, Entity> serializedEntities = new();
+        Dictionary<Entity, Entity> deserializedEntities = new();
         List<FixedString128Bytes> serializedPrespawnedEntities = new();
-        List<TypeSerializer> types = GetSerializers(entityManager, serializedEntities);
+        List<TypeSerializer> types = GetSerializers(entityManager);
         List<PrefabIdSerializer> prefabTypes = GetPrefabInstanceIdSerializers(entityManager, serializedPrespawnedEntities);
+
+        List<(Entity Entity, EntityReferencePopulatorSimple EntityReferencePopulator)> entityReferencePopulators = new();
+        List<(Entity Entity, GhostReferencePopulatorSimple GhostReferencePopulator)> ghostReferencePopulators = new();
 
         int saveableArchetypesCount = reader.ReadInt();
 
@@ -926,41 +1009,47 @@ class SaveManager : MonoBehaviour
                 Entity serialized = reader.ReadEntityUnsafe();
 
                 Entity entity = prefabTypes[prefabIndex].Deserializer(reader, entityManager);
-                serializedEntities.Add(serialized, entity);
+                deserializedEntities.Add(serialized, entity);
 
                 foreach (int typeIndex in typeIndices)
                 {
-                    if (types[typeIndex].ContainsEntityReferences) continue;
                     types[typeIndex].Deserializer(reader, entity, entityManager);
+                    if (types[typeIndex].EntityReferencePopulator is not null)
+                    {
+                        entityReferencePopulators.Add((entity, types[typeIndex].EntityReferencePopulator!));
+                    }
+                    if (types[typeIndex].GhostReferencePopulator is not null)
+                    {
+                        ghostReferencePopulators.Add((entity, types[typeIndex].GhostReferencePopulator!));
+                    }
                 }
             }
         }
 
-        int saveableArchetypesCountWithER = reader.ReadInt();
+        /*
+        int prespawnedEntitiesCount = reader.ReadInt();
 
-        for (int i = 0; i < saveableArchetypesCountWithER; i++)
+        using var prespawnedEntityQ = entityManager.CreateEntityQuery(typeof(SavePrespawnedEntity));
+        using var prespawnedEntities = prespawnedEntityQ.ToEntityArray(Allocator.Temp);
+
+        List<Entity> savedPrespawnedEntities = new();
+
+        for (int i = 0; i < prespawnedEntitiesCount; i++)
         {
-            int[] typeIndices = reader.ReadArray(static v => v.ReadInt());
+            var id = reader.ReadFixedString128();
 
-            int entityCount = reader.ReadInt();
-
-            for (int j = 0; j < entityCount; j++)
+            for (int j = 0; j < prespawnedEntities.Length; j++)
             {
-                Entity entity = reader.ReadEntity(serializedEntities);
-
-                if (!entityManager.Exists(entity))
+                var entity = prespawnedEntities[j];
+                var component = entityManager.GetComponentData<SavePrespawnedEntity>(entity);
+                if (id == component.Id)
                 {
-                    Debug.LogError($"Invalid late serialized entity {entity}");
-                    continue;
-                }
-
-                foreach (int typeIndex in typeIndices)
-                {
-                    if (!types[typeIndex].ContainsEntityReferences) continue;
-                    types[typeIndex].Deserializer(reader, entity, entityManager);
+                    savedPrespawnedEntities.Add(entity);
+                    break;
                 }
             }
         }
+        */
 
         {
             using EntityQuery q = entityManager.CreateEntityQuery(typeof(SavePrespawnedEntity));
@@ -970,9 +1059,48 @@ class SaveManager : MonoBehaviour
                 FixedString128Bytes other = entityManager.GetComponentData<SavePrespawnedEntity>(entity).Id;
                 if (!serializedPrespawnedEntities.Any(v => v == other))
                 {
+                    if (deserializedEntities.ContainsKey(entity)) Debug.LogError($"Prespawned entity is being destroyed");
                     entityManager.DestroyEntity(entity);
                 }
             }
+        }
+
+        Entity EntityReferenceResolver(Entity entity)
+        {
+            if (entity == Entity.Null) return Entity.Null;
+            if (deserializedEntities.TryGetValue(entity, out Entity res)) return res;
+            Debug.LogError($"Referenced entity was not serialized");
+            return Entity.Null;
+        }
+
+        foreach ((Entity entity, EntityReferencePopulatorSimple entityReferencePopulator) in entityReferencePopulators)
+        {
+            entityReferencePopulator(entity, entityManager, EntityReferenceResolver);
+        }
+
+        SpawnedGhost GhostReferenceResolver(Entity entity)
+        {
+            if (entity == Entity.Null) return default;
+            GhostInstance ghost = entityManager.GetComponentData<GhostInstance>(entity);
+            if (!ghost.spawnTick.IsValid)
+            {
+                Debug.LogError($"Ghost not spawned yet");
+                return default;
+            }
+            return ghost;
+        }
+
+        onGhostsSpawned = ghostReferencePopulators.Count == 0 ? null : () =>
+        {
+            foreach ((Entity entity, GhostReferencePopulatorSimple ghostReferencePopulator) in ghostReferencePopulators)
+            {
+                ghostReferencePopulator(entity, entityManager, GhostReferenceResolver);
+            }
+        };
+
+        while (compilerSystem.CompiledSources.Any(v => v.Value.Status != CompilationStatus.Done))
+        {
+            serverWorld.Update();
         }
     }
 }
