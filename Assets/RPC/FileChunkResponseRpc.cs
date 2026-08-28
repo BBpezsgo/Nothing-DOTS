@@ -6,7 +6,7 @@ using Unity.NetCode;
 public enum FileChunkStatus : byte
 {
     OK,
-    InvalidFile,
+    InvalidTransaction,
 }
 
 [BurstCompile]

@@ -45,7 +45,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     RemotePath = default,
                 });
 
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] File \"{command.ValueRO.FileName}\" doesn't exists");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#] File \"{command.ValueRO.FileName}\" doesn't exists");
                 continue;
             }
 
@@ -88,7 +88,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     AutoSendEverything = true,
                     TotalLength = totalLength,
                 });
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Sending file header \"{command.ValueRO.FileName}\": {{ id: `{command.ValueRO.FileName.GetHashCode()}` length: `{totalLength}` }}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{transactionId}] Sending file header \"{command.ValueRO.FileName}\": {{ id: `{command.ValueRO.FileName.GetHashCode()}` length: `{totalLength}` }}");
             }
         }
 
@@ -122,7 +122,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     });
                 }
                 found = true;
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Sending chunk `{command.ValueRO.ChunkIndex}` of file \"{sendingFiles[i].FileName}\"");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Sending chunk `{command.ValueRO.ChunkIndex}` of file \"{sendingFiles[i].FileName}\"");
 
                 break;
             }
@@ -131,13 +131,13 @@ partial struct BufferedFileSenderSystem : ISystem
             {
                 NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new FileChunkResponseRpc
                 {
-                    Status = FileChunkStatus.InvalidFile,
-                    TransactionId = default,
+                    Status = FileChunkStatus.InvalidTransaction,
+                    TransactionId = command.ValueRO.TransactionId,
                     ChunkIndex = command.ValueRO.ChunkIndex,
                     Data = default,
                 });
 
-                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Chunk requested for transaction `{command.ValueRO.TransactionId}` but it doesn't exists");
+                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Chunk requested but the transaction doesn't exists");
             }
         }
 
@@ -150,7 +150,7 @@ partial struct BufferedFileSenderSystem : ISystem
             NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
-            if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Closing file \"{command.ValueRO.FileName}\"");
+            if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#] Closing file \"{command.ValueRO.FileName}\"");
 
             for (int i = sendingFiles.Length - 1; i >= 0; i--)
             {
@@ -178,7 +178,7 @@ partial struct BufferedFileSenderSystem : ISystem
             NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
-            if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Closing transaction `{command.ValueRO.TransactionId}`");
+            if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Closing transaction `{command.ValueRO.TransactionId}`");
 
             for (int i = sendingFiles.Length - 1; i >= 0; i--)
             {
@@ -239,7 +239,7 @@ partial struct BufferedFileSenderSystem : ISystem
                     ChunkIndex = j,
                 });
 
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [{nameof(BufferedFileSenderSystem)}] Sending chunk `{j}` for file \"{sendingFiles[i].FileName}\"");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{sendingFiles[i].TransactionId}] Sending chunk `{j}` for file \"{sendingFiles[i].FileName}\"");
 
                 if (++sent >= ChunkSendingLimit) break;
             }

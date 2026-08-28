@@ -202,7 +202,18 @@ partial class FileChunkManagerSystem : SystemBase
 
                     return;
                 }
+                case FileResponseStatus.ErrorInvalidTransaction:
+                {
+                    Debug.LogWarning($"{DebugEx.Prefix(World.Unmanaged)} [{nameof(FileChunkManagerSystem)}] Failed to receive remote file \"{request.File.ToUri()}\": invalid transaction");
+
+                    RemoteFiles.Remove(request.File);
+                    shouldDelete = true;
+                    request.Task.SetException(new NotImplementedException("Invalid transaction"));
+
+                    return;
+                }
                 case FileResponseStatus.Unknown: throw new NotImplementedException();
+                case FileResponseStatus.HoldOn: break;
                 default: throw new UnreachableException();
             }
         }
@@ -301,10 +312,12 @@ partial class FileChunkManagerSystem : SystemBase
             return status.Status switch
             {
                 FileResponseStatus.OK => FileStatus.Received,
+                FileResponseStatus.HoldOn => FileStatus.Receiving,
                 FileResponseStatus.NotFound => FileStatus.NotFound,
                 FileResponseStatus.NotChanged => FileStatus.Received,
                 FileResponseStatus.Unknown => throw new NotImplementedException(),
                 FileResponseStatus.ErrorDisconnected => FileStatus.Error,
+                FileResponseStatus.ErrorInvalidTransaction => FileStatus.Error,
                 _ => throw new UnreachableException(),
             };
         }

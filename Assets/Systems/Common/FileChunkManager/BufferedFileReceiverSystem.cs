@@ -52,14 +52,14 @@ partial struct BufferedFileReceiverSystem : ISystem
 
                 receivingFiles[i] = fileHeader;
                 added = true;
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Received file header \"{fileHeader.FileName}\" from {fileHeader.Source} (again)");
+                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Received file header \"{fileHeader.FileName}\" from {fileHeader.Source} (again)");
 
                 break;
             }
 
             if (!added)
             {
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Received file header \"{fileHeader.FileName}\" from {fileHeader.Source}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Received file header \"{fileHeader.FileName}\" from {fileHeader.Source}");
                 receivingFiles.Add(fileHeader);
             }
         }
@@ -73,7 +73,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
-            bool fileFound = false;
+            int fileIndex = -1;
             for (int i = 0; i < receivingFiles.Length; i++)
             {
                 if (receivingFiles[i].Source != ep) continue;
@@ -83,26 +83,43 @@ partial struct BufferedFileReceiverSystem : ISystem
                 {
                     LastReceivedAt = SystemAPI.Time.ElapsedTime
                 };
-                fileFound = true;
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} {receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength)}");
+                fileIndex = i;
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] {receivingFiles[i].FileName} {command.ValueRO.ChunkIndex}/{FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength)}");
 
                 break;
             }
 
-            if (!fileFound)
+            if (command.ValueRO.Status == FileChunkStatus.InvalidTransaction)
             {
-                NetcodeUtils.CreateRPC(commandBuffer, state.WorldUnmanaged, new CloseTransactionRpc()
+                if (fileIndex == -1)
                 {
-                    TransactionId = command.ValueRO.TransactionId,
-                }, request.ValueRO.SourceConnection);
-                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} Unexpected file chunk, closing transaction ...");
+                    Debug.LogError($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Failed to request file chunk: Invalid transaction and also the transaction doesn't exists on the receiver");
+                }
+                else
+                {
+                    Debug.LogError($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Failed to request file chunk: Invalid transaction. Closing file");
+                    receivingFiles[fileIndex] = receivingFiles[fileIndex] with
+                    {
+                        Status = FileResponseStatus.ErrorInvalidTransaction,
+                    };
+                }
                 continue;
             }
 
-            if (command.ValueRO.Status == FileChunkStatus.InvalidFile)
+            if (fileIndex == -1)
             {
-                Debug.LogError($"{DebugEx.Prefix(state.WorldUnmanaged)} Failed to request file chunk: invalid file");
-                continue;
+                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Unexpected file chunk, creating file placeholder ...");
+                receivingFiles.Add(new BufferedReceivingFile()
+                {
+                    Status = FileResponseStatus.HoldOn,
+                    Source = ep,
+                    TransactionId = command.ValueRO.TransactionId,
+                    FileName = default,
+                    TotalLength = default,
+                    LastReceivedAt = SystemAPI.Time.ElapsedTime,
+                    Version = -1,
+                    RemotePath = default,
+                });
             }
 
             bool added = false;
@@ -122,14 +139,14 @@ partial struct BufferedFileReceiverSystem : ISystem
 
                 fileChunks[i] = fileChunk;
                 added = true;
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Received chunk {fileChunk.ChunkIndex} (again)");
+                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Received chunk {fileChunk.ChunkIndex} (again)");
                 break;
             }
 
             if (!added)
             {
                 fileChunks.Add(fileChunk);
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Received chunk {fileChunk.ChunkIndex}");
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{command.ValueRO.TransactionId}] Received chunk {fileChunk.ChunkIndex}");
             }
         }
 
@@ -138,6 +155,23 @@ partial struct BufferedFileReceiverSystem : ISystem
         {
             if (SystemAPI.Time.ElapsedTime - receivingFiles[i].LastReceivedAt < ChunkRequestsCooldown) continue;
             if (receivingFiles[i].Status != FileResponseStatus.OK) continue;
+
+            if (receivingFiles[i].Status == FileResponseStatus.HoldOn)
+            {
+                Entity connection = receivingFiles[i].Source.GetEntity(ref state);
+
+                if (connection != Entity.Null && !SystemAPI.Exists(connection))
+                {
+                    Debug.LogError($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{receivingFiles[i].TransactionId}] Cannot request chunk for file \"{receivingFiles[i].FileName}\": remote disconnected");
+                    receivingFiles[i] = receivingFiles[i] with
+                    {
+                        Status = FileResponseStatus.ErrorDisconnected,
+                    };
+                    continue;
+                }
+
+                continue;
+            }
 
             NativeArray<bool> receivedChunks = new(FileChunkManagerSystem.GetChunkLength(receivingFiles[i].TotalLength), Allocator.Temp);
 
@@ -157,7 +191,7 @@ partial struct BufferedFileReceiverSystem : ISystem
 
                 if (connection != Entity.Null && !SystemAPI.Exists(connection))
                 {
-                    if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Cannot request chunk `{j}` for file \"{receivingFiles[i].FileName}\": remote disconnected");
+                    Debug.LogError($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{receivingFiles[i].TransactionId}] Cannot request chunk `{j}` for file \"{receivingFiles[i].FileName}\": remote disconnected");
                     receivingFiles[i] = receivingFiles[i] with
                     {
                         Status = FileResponseStatus.ErrorDisconnected,
@@ -171,7 +205,7 @@ partial struct BufferedFileReceiverSystem : ISystem
                     TransactionId = receivingFiles[i].TransactionId,
                     ChunkIndex = j,
                 }, connection);
-                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} Requesting chunk `{j}` for file \"{receivingFiles[i].FileName}\"");
+                Debug.LogWarning($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{receivingFiles[i].TransactionId}] Requesting chunk `{j}` for file \"{receivingFiles[i].FileName}\"");
                 if (++requested >= ChunkRequestsLimit) break;
             }
 
