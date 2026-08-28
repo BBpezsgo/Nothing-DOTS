@@ -13,18 +13,18 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
     [Header("UI")]
 
-    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
+    FactorySchema? ui;
 
     Entity selectedFactoryEntity = Entity.Null;
-    Factory selectedFactory = default;
+    Factory selectedFactory;
 
-    float refreshAt = default;
-    float refreshedBySyncAt = default;
-    float syncAt = default;
+    float refreshAt;
+    float refreshedBySyncAt;
+    float syncAt;
 
     void Update()
     {
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -58,13 +58,13 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
         if (selectedFactory.TotalProgress == default) return;
 
         selectedFactory.CurrentProgress += Time.deltaTime * Factory.ProductionSpeed;
-        ui.Element.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
-        ui.Element.Q<ProgressBar>("progress-current").title = selectedFactory.Current.Name.ToString();
+        ui.ProgressCurrent.value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
+        ui.ProgressCurrent.title = selectedFactory.Current.Name.ToString();
     }
 
     public void Setup(UIElementReference ui, Entity factoryEntity)
     {
-        this.ui = ui;
+        this.ui = new(ui.Element);
 
         selectedFactoryEntity = factoryEntity;
         RefreshUI(factoryEntity);
@@ -74,33 +74,33 @@ public class FactoryManager : Singleton<FactoryManager>, IUISetup<Entity>, IUICl
 
     public void RefreshUI(Entity factoryEntity)
     {
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
-        VisualElement avaliableList = ui.Element.Q<VisualElement>("list-avaliable");
-        ScrollView queueList = ui.Element.Q<ScrollView>("list-queue");
+        VisualElement avaliableList = ui.ListAvaliable;
+        ScrollView queueList = ui.ListQueue;
 
         avaliableList.Clear();
         queueList.Clear();
 
         DynamicBuffer<BufferedProducingUnit> queue = entityManager.GetBuffer<BufferedProducingUnit>(factoryEntity);
 
-        queueList.SyncList(queue, UI_QueueItem, (item, element, recycled) =>
+        queueList.SyncList<BufferedProducingUnit, FactoryQueueItemSchema>(queue, UI_QueueItem, (item, element, recycled) =>
         {
-            element.Q<Label>("label-unit-name").text = item.Name.ToString();
+            element.LabelUnitName.text = item.Name.ToString();
         });
 
-        avaliableList.SyncList(UnitsSystemClient.GetInstance(entityManager.WorldUnmanaged).Units, UI_AvaliableItem, (item, element, recycled) =>
+        avaliableList.SyncList<BufferedUnit, FactoryAvaliableItemSchema>(UnitsSystemClient.GetInstance(entityManager.WorldUnmanaged).Units, UI_AvaliableItem, (item, element, recycled) =>
         {
-            element.userData = item.Name.ToString();
-            element.Q<Label>("label-name").text = item.Name.ToString();
-            element.Q<Label>("label-resources").text = item.RequiredResources.ToString();
-            if (!recycled) element.Q<Button>().clicked += () => QueueUnit((string)element.userData);
+            element.Root.userData = item.Name.ToString();
+            element.LabelName.text = item.Name.ToString();
+            element.LabelResources.text = item.RequiredResources.ToString();
+            if (!recycled) element.ButtonSelect.clicked += () => QueueUnit((string)element.Root.userData);
         });
 
-        ui.Element.Q<ProgressBar>("progress-current").value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
-        ui.Element.Q<ProgressBar>("progress-current").title = selectedFactory.Current.Name.ToString();
+        ui.ProgressCurrent.value = selectedFactory.CurrentProgress / selectedFactory.TotalProgress;
+        ui.ProgressCurrent.title = selectedFactory.Current.Name.ToString();
     }
 
     void QueueUnit(string unitName)

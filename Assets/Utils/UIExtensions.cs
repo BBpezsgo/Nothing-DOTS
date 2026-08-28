@@ -146,4 +146,161 @@ public static class UIExtensions
             container.Remove(childrenElement[i]);
         }
     }
+
+    public static void SyncList<T, TSchema>(
+        this VisualElement container,
+        DynamicBuffer<T> collection,
+        VisualTreeAsset itemAsset,
+        Action<T, TSchema, bool> updater,
+        Predicate<T>? predicate = null,
+        int startIndex = 0)
+        where T : unmanaged
+        where TSchema : IDocumentSchema
+        => SyncList<T, TSchema>(
+            container,
+            collection.AsNativeArray(),
+            itemAsset,
+            updater,
+            predicate,
+            startIndex
+        );
+
+    public static void SyncList<T, TSchema>(
+        this VisualElement container,
+        NativeList<T> collection,
+        VisualTreeAsset itemAsset,
+        Action<T, TSchema, bool> updater,
+        Predicate<T>? predicate = null,
+        int startIndex = 0)
+        where T : unmanaged
+        where TSchema : IDocumentSchema
+        => SyncList<T, TSchema>(
+            container,
+            collection.AsArray(),
+            itemAsset,
+            updater,
+            predicate,
+            startIndex
+        );
+
+    public static void SyncList<T, TSchema>(
+        this VisualElement container,
+        NativeArray<T> collection,
+        VisualTreeAsset itemAsset,
+        Action<T, TSchema, bool> updater,
+        Predicate<T>? predicate = null,
+        int startIndex = 0)
+        where T : unmanaged
+        where TSchema : IDocumentSchema
+    {
+        VisualElement[] childrenElement = container.Children().Skip(startIndex).ToArray();
+        int n = 0;
+
+        for (int i = 0; i < collection.Length; i++)
+        {
+            if (predicate is not null && !predicate(collection[i])) continue;
+
+            if (n < childrenElement.Length)
+            {
+                VisualElement element = childrenElement[n];
+                TSchema schema = Activator.CreateInstance<TSchema>();
+                schema.Q(element);
+                updater.Invoke(collection[i], schema, true);
+            }
+            else
+            {
+                VisualElement element = itemAsset.Instantiate();
+                container.Add(element);
+                TSchema schema = Activator.CreateInstance<TSchema>();
+                schema.Q(element);
+                updater.Invoke(collection[i], schema, false);
+            }
+
+            n++;
+        }
+
+        for (int i = n; i < childrenElement.Length; i++)
+        {
+            container.Remove(childrenElement[i]);
+        }
+    }
+
+    public static void SyncList<T, TSchema>(
+        this VisualElement container,
+        IReadOnlyList<T> collection,
+        VisualTreeAsset itemAsset,
+        Action<T, TSchema, bool> updater,
+        Predicate<T>? predicate = null,
+        int startIndex = 0)
+        where TSchema : IDocumentSchema
+    {
+        VisualElement[] childrenElement = container.Children().Skip(startIndex).ToArray();
+        int n = 0;
+
+        for (int i = 0; i < collection.Count; i++)
+        {
+            if (predicate is not null && !predicate(collection[i])) continue;
+
+            if (n < childrenElement.Length)
+            {
+                VisualElement element = childrenElement[n];
+                TSchema schema = Activator.CreateInstance<TSchema>();
+                schema.Q(element);
+                updater.Invoke(collection[i], schema, true);
+            }
+            else
+            {
+                VisualElement element = itemAsset.Instantiate();
+                container.Add(element);
+                TSchema schema = Activator.CreateInstance<TSchema>();
+                schema.Q(element);
+                updater.Invoke(collection[i], schema, false);
+            }
+
+            n++;
+        }
+
+        for (int i = n; i < childrenElement.Length; i++)
+        {
+            container.Remove(childrenElement[i]);
+        }
+    }
+
+    public static void SyncList<T, TSchema>(
+        this VisualElement container,
+        IEnumerable<T> collection,
+        VisualTreeAsset itemAsset,
+        Action<T, TSchema, bool> updater,
+        int startIndex = 0)
+        where TSchema : IDocumentSchema
+    {
+        VisualElement[] childrenElement = container.Children().Skip(startIndex).ToArray();
+        int i = 0;
+
+        foreach (T item in collection)
+        {
+            if (i < childrenElement.Length)
+            {
+                VisualElement element = childrenElement[i];
+                TSchema schema = Activator.CreateInstance<TSchema>();
+                schema.Q(element);
+                updater.Invoke(item, schema, true);
+            }
+            else
+            {
+                VisualElement element = itemAsset.Instantiate();
+                container.Add(element);
+                TSchema schema = Activator.CreateInstance<TSchema>();
+                schema.Q(element);
+                updater.Invoke(item, schema, false);
+            }
+
+            i++;
+        }
+
+        for (; i < childrenElement.Length; i++)
+        {
+            container.Remove(childrenElement[i]);
+        }
+    }
 }

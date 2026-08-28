@@ -9,10 +9,10 @@ using UnityEngine.UIElements;
 [Serializable]
 public struct UIElementReference : IEquatable<UIElementReference>
 {
-    [SerializeField] public UIDocument Document;
-    [SerializeField] public string ElementName;
+    [SerializeField, NotNull] public UIDocument? Document;
+    [SerializeField, NotNull] public string? ElementName;
 
-    public readonly VisualElement? ElementOrNull
+    public VisualElement? ElementOrNull
     {
         get
         {
@@ -22,7 +22,7 @@ public struct UIElementReference : IEquatable<UIElementReference>
         }
     }
 
-    public readonly VisualElement Element
+    public VisualElement Element
     {
         get
         {
@@ -32,16 +32,16 @@ public struct UIElementReference : IEquatable<UIElementReference>
         }
     }
 
-    public readonly bool IsVisible
+    public bool IsVisible
     {
         get => ElementOrNull?.resolvedStyle.display == DisplayStyle.Flex;
         set => Element.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
     }
 
-    public override readonly bool Equals(object? obj) => obj is UIElementReference other && Equals(other);
-    public readonly bool Equals(UIElementReference other) => other.Document == Document && other.ElementName == ElementName;
+    public override bool Equals(object? obj) => obj is UIElementReference other && Equals(other);
+    public bool Equals(UIElementReference other) => other.Document == Document && other.ElementName == ElementName;
 
-    public override readonly int GetHashCode() => HashCode.Combine(Document, ElementName);
+    public override int GetHashCode() => HashCode.Combine(Document, ElementName);
 
     public static bool operator ==(UIElementReference left, UIElementReference right) => left.Equals(right);
     public static bool operator !=(UIElementReference left, UIElementReference right) => !left.Equals(right);

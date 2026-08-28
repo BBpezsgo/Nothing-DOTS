@@ -41,7 +41,7 @@ public class ProcessorGUIManager : MonoBehaviour
 
     unsafe void Update()
     {
-        NativeList<UserUIElement> uiElements = ProcessorSystemClient.GetInstance(ConnectionManager.ClientOrDefaultWorld.Unmanaged).uiElements;
+        NativeList<UserUIElement> uiElements = ConnectionManager.ClientOrDefaultWorld.Unmanaged.GetSystem<ProcessorSystemClient>().uiElements;
         _userIdQ ??= _ui.rootVisualElement.Query().Class("user-ui").Build();
 
         _ids.Clear();

@@ -5,8 +5,8 @@ using UnityEngine.UIElements;
 public class GameOutcomeManager : MonoBehaviour
 {
     [SerializeField, NotNull] UIDocument? _ui = default;
+    GameOutcomeSchema? ui;
 
-    [NotNull] Label? _labelOutcome = default;
     float _refreshAt = default;
 
     void Update()
@@ -21,9 +21,13 @@ public class GameOutcomeManager : MonoBehaviour
         _ui.ForceSetActive(uiActive);
         if (uiActive)
         {
-            _labelOutcome = _ui.rootVisualElement.Q<Label>("label-outcome");
-            _labelOutcome.text = localPlayer.Outcome.ToString();
+            ui ??= new(_ui.rootVisualElement);
+            ui.LabelOutcome.text = localPlayer.Outcome.ToString();
             _refreshAt = now + 0.1f;
+        }
+        else
+        {
+            ui = null;
         }
     }
 }

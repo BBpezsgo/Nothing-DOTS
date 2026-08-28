@@ -36,19 +36,20 @@ public class SelectionManager : Singleton<SelectionManager>
 {
     const uint Layer = Layers.Selectable | Layers.BuildingPlaceholder;
 
-    [SerializeField] float BoxSelectDistanceThreshold = default;
+    [SerializeField] float BoxSelectDistanceThreshold;
     [SerializeField, NotNull] RectTransform? SelectBox = default;
     [SerializeField, NotNull] UIDocument? UnitCommandsUI = default;
+    UnitCommandsSchema? commandsUi;
     [SerializeField, NotNull] VisualTreeAsset? UnitCommandItemUI = default;
 
     bool _isSelectBoxVisible;
-    Vector3 _selectionStart = default;
-    Vector3 _rightClick = default;
+    Vector3 _selectionStart;
+    Vector3 _rightClick;
     HashSet<VirtualGhostEntity> _selected = new();
     HashSet<Entity> _candidates = new();
     Entity _firstHit = Entity.Null;
-    Vector3 _unitCommandUIWorldPositionData = default;
-    Vector3 _unitCommandUIPosition = default;
+    Vector3 _unitCommandUIWorldPositionData;
+    Vector3 _unitCommandUIPosition;
 
     public bool IsUnitCommandsActive => UnitCommandsUI.isActiveAndEnabled;
 
@@ -80,7 +81,7 @@ public class SelectionManager : Singleton<SelectionManager>
                 {
                     screenPoint.z = 0f;
                     screenPoint.y = MainCamera.Camera.pixelHeight - screenPoint.y;
-                    UnitCommandsUI.rootVisualElement.style.translate = screenPoint;
+                    commandsUi.Root.style.translate = screenPoint;
                 }
             }
         }
@@ -471,18 +472,20 @@ public class SelectionManager : Singleton<SelectionManager>
 
         UnitCommandsUI.ForceSetActive(true);
 
-        UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").style.display = DisplayStyle.None;
-        UnitCommandsUI.rootVisualElement.Q<ProgressBar>("progress").value = 0f;
+        commandsUi = new(UnitCommandsUI.rootVisualElement);
+
+        commandsUi.Progress.style.display = DisplayStyle.None;
+        commandsUi.Progress.value = 0f;
 
         Vector3 screenPoint = MainCamera.Camera.WorldToScreenPoint(_unitCommandUIPosition);
         if (screenPoint.z >= 0f)
         {
             screenPoint.z = 0f;
             screenPoint.y = MainCamera.Camera.pixelHeight - screenPoint.y;
-            UnitCommandsUI.rootVisualElement.style.translate = screenPoint;
+            commandsUi.Root.style.translate = screenPoint;
         }
 
-        VisualElement container = UnitCommandsUI.rootVisualElement.Q("container-unit-commands");
+        VisualElement container = commandsUi.ContainerUnitCommands;
         container.Clear();
 
         foreach (VirtualGhostEntity selected in _selected)
@@ -499,21 +502,20 @@ public class SelectionManager : Singleton<SelectionManager>
                     continue;
                 }
 
-                VisualElement? added = container.Children().FirstOrDefault(v =>
+                VisualElement? _added = container.Children().FirstOrDefault(v =>
                 {
                     (UnitCommandDefinition, int) d = ((UnitCommandDefinition, int))v.userData;
                     return d.Item1.Id == command.Id && d.Item1.Label == command.Label;
                 });
+                UnitCommandItemSchema? added = _added is null ? null : new(_added);
 
                 string name = command.Label.ToString();
                 int id = command.Id;
 
-                VisualElement itemUi = added ?? UnitCommandItemUI.Instantiate();
-                itemUi.Q<Button>("unit-command-name").text = $"#{id} {name}{(added is null ? null : $" ({(((UnitCommandDefinition, int))added.userData).Item2 + 1})")}";
-                itemUi.Q<Button>("unit-command-name").clicked += () => HandleUnitCommandClick(id);
-                itemUi.userData = (command, added is null ? 1 : (((UnitCommandDefinition, int))added.userData).Item2 + 1);
-
-                if (added is null) container.Add(itemUi);
+                UnitCommandItemSchema itemUi = added ?? container.AddNew<UnitCommandItemSchema>(UnitCommandItemUI);
+                itemUi.UnitCommandName.text = $"#{id} {name}{(added is null ? null : $" ({(((UnitCommandDefinition, int))added.Root.userData).Item2 + 1})")}";
+                itemUi.UnitCommandName.clicked += () => HandleUnitCommandClick(id);
+                itemUi.Root.userData = (command, added is null ? 1 : (((UnitCommandDefinition, int))added.Root.userData).Item2 + 1);
             }
         }
 
@@ -664,8 +666,8 @@ public class SelectionManager : Singleton<SelectionManager>
         });
         _selected.Add(unit);
 
-        HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
-        HUDManager.Instance._labelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
+        HUDManager.Instance.ui.LabelSelectedUnits.text = _selected.Count.ToString();
+        HUDManager.Instance.ui.LabelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
     }
 
     void DeselectUnit(VirtualGhostEntity unit)
@@ -676,8 +678,8 @@ public class SelectionManager : Singleton<SelectionManager>
         });
         _selected.Remove(unit);
 
-        HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
-        HUDManager.Instance._labelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
+        HUDManager.Instance.ui.LabelSelectedUnits.text = _selected.Count.ToString();
+        HUDManager.Instance.ui.LabelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
     }
 
     void ClearSelection()
@@ -691,8 +693,8 @@ public class SelectionManager : Singleton<SelectionManager>
         }
         _selected.Clear();
 
-        HUDManager.Instance._labelSelectedUnits.text = _selected.Count.ToString();
-        HUDManager.Instance._labelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
+        HUDManager.Instance.ui.LabelSelectedUnits.text = _selected.Count.ToString();
+        HUDManager.Instance.ui.LabelSelectedUnits.parent.style.display = _selected.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
     }
 
     public static bool WorldRaycast(UnityEngine.Ray ray, out float distance)

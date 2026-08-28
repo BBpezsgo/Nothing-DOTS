@@ -27,7 +27,8 @@ class TimeoutManager : MonoBehaviour
         double now = DateTimeOffset.UtcNow.TimeOfDay.TotalSeconds;
 
         using EntityQuery q = ConnectionManager.ClientWorld.EntityManager.CreateEntityQuery(typeof(NetworkSnapshotAck));
-        NetworkSnapshotAck ack = q.GetSingleton<NetworkSnapshotAck>();
+        if (!q.TryGetSingleton(out NetworkSnapshotAck ack)) return;
+
         uint t = ack.LastReceiveTimestamp;
         if (t != Snapshot)
         {

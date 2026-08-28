@@ -118,8 +118,6 @@ partial struct ProcessorSystemClient : ISystem
         }
     }
 
-    public static ref ProcessorSystemClient GetInstance(in WorldUnmanaged world) => ref world.GetSystem<ProcessorSystemClient>();
-
     public void OnDisconnect()
     {
         Debug.Log($"{DebugEx.ClientPrefix} Clearing user UI elements");

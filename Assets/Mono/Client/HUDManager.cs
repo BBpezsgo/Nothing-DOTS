@@ -6,21 +6,14 @@ using UnityEngine.UIElements;
 public class HUDManager : Singleton<HUDManager>
 {
     [SerializeField, NotNull] UIDocument? _ui = default;
+    internal HUDSchema? ui;
 
-    [NotNull] internal Label? _labelResources = default;
-    [NotNull] internal Label? _labelTeam = default;
-    [NotNull] internal Label? _labelFps = default;
-    [NotNull] internal Label? _labelSelectedUnits = default;
-
-    float _refreshAt = default;
-    float _maxDeltaTime = default;
+    float _refreshAt;
+    float _maxDeltaTime;
 
     void OnEnable()
     {
-        _labelResources = _ui.rootVisualElement.Q<Label>("label-resources");
-        _labelFps = _ui.rootVisualElement.Q<Label>("label-fps");
-        _labelTeam = _ui.rootVisualElement.Q<Label>("label-team");
-        _labelSelectedUnits = _ui.rootVisualElement.Q<Label>("label-selected-units");
+        ui = new(_ui.rootVisualElement);
     }
 
     void Update()
@@ -30,22 +23,24 @@ public class HUDManager : Singleton<HUDManager>
         if (now < _refreshAt) return;
         _refreshAt = now + 1f;
 
+        if (!ui.IsVisible()) return;
+
         float fps = 1f / _maxDeltaTime;
-        _labelFps.text = float.IsInfinity(fps) || float.IsNaN(fps) ? "N/A" : MathF.Round(1f / _maxDeltaTime).ToString();
+        ui.LabelFps.text = float.IsInfinity(fps) || float.IsNaN(fps) ? "N/A" : MathF.Round(1f / _maxDeltaTime).ToString();
         _maxDeltaTime = 0f;
 
         if (PlayerSystemClient.GetInstance(ConnectionManager.ClientOrDefaultWorld.Unmanaged).TryGetLocalPlayer(out Player localPlayer))
         {
-            _labelResources.text = localPlayer.Resources.ToString();
-            _labelTeam.text = localPlayer.Team.ToString();
+            ui.LabelResources.text = localPlayer.Resources.ToString();
+            ui.LabelTeam.text = localPlayer.Team.ToString();
 
-            _labelResources.parent.style.display = DisplayStyle.Flex;
-            _labelTeam.parent.style.display = DisplayStyle.Flex;
+            ui.LabelResources.parent.style.display = DisplayStyle.Flex;
+            ui.LabelTeam.parent.style.display = DisplayStyle.Flex;
         }
         else
         {
-            _labelResources.parent.style.display = DisplayStyle.None;
-            _labelTeam.parent.style.display = DisplayStyle.None;
+            ui.LabelResources.parent.style.display = DisplayStyle.None;
+            ui.LabelTeam.parent.style.display = DisplayStyle.None;
         }
     }
 }

@@ -13,15 +13,15 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
     [Header("UI")]
 
-    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
+    PauseMenuSchema? ui;
 
-    float refreshAt = default;
+    float refreshAt;
 
     void Update()
     {
-        if (((!UIManager.Instance.AnyUIVisible && !SelectionManager.Instance.IsUnitCommandsActive) || ui.IsVisible) && UIManager.Instance.GrapESC())
+        if (((!UIManager.Instance.AnyUIVisible && !SelectionManager.Instance.IsUnitCommandsActive) || ui.IsVisible()) && UIManager.Instance.GrapESC())
         {
-            if (!ui.IsVisible)
+            if (!ui.IsVisible())
             {
                 UIManager.Instance.OpenUI(UIManager.Instance.Pause)
                     .Setup(this);
@@ -33,7 +33,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
             return;
         }
 
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         if (Time.time >= refreshAt)
         {
@@ -44,11 +44,11 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
     public void Setup(UIElementReference ui)
     {
-        this.ui = ui;
+        this.ui = new(ui.Element);
         refreshAt = 0f;
 
-        ui.Element.Q<Button>("button-exit").clicked += OnButtonExit;
-        ui.Element.Q<Button>("button-save").clicked += OnButtonSave;
+        this.ui.ButtonExit.clicked += OnButtonExit;
+        this.ui.ButtonSave.clicked += OnButtonSave;
     }
 
     void OnButtonExit()
@@ -71,9 +71,9 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
     public void RefreshUI()
     {
-        if (!ui.IsVisible || ConnectionManager.ClientOrDefaultWorld == null) return;
+        if (!ui.IsVisible() || ConnectionManager.ClientOrDefaultWorld == null) return;
 
-        ui.Element.Q<Button>("button-save").style.display = (ConnectionManager.ServerWorld ?? ConnectionManager.LocalWorld) != null ? DisplayStyle.Flex : DisplayStyle.None;
+        ui.ButtonSave.style.display = (ConnectionManager.ServerWorld ?? ConnectionManager.LocalWorld) != null ? DisplayStyle.Flex : DisplayStyle.None;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
         using EntityQuery playersQ = entityManager.CreateEntityQuery(typeof(Player));
@@ -81,23 +81,23 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
 
         if (!PlayerSystemClient.GetInstance(ConnectionManager.ClientOrDefaultWorld.Unmanaged).TryGetLocalPlayer(out Player localPlayer)) localPlayer = default;
 
-        ui.Element.Q<ScrollView>("list-connections").SyncList(
+        ui.ListConnections.SyncList<Player, ConnectionItemSchema>(
             players,
             UI_ConnectionItem,
             (player, element, recycled) =>
             {
-                element.userData = player.ConnectionId;
-                element.Q<Label>("label-nickname").text = player.Nickname.ToString();
-                element.Q<Label>("label-team").text = player.Team.ToString();
+                element.Root.userData = player.ConnectionId;
+                element.LabelNickname.text = player.Nickname.ToString();
+                element.LabelTeam.text = player.Team.ToString();
                 if (ConnectionManager.ClientOrDefaultWorld.Unmanaged.IsLocal())
                 {
-                    element.Q<Label>("label-ping").style.display = DisplayStyle.None;
+                    element.LabelPing.style.display = DisplayStyle.None;
                 }
                 else
                 {
                     double ping = TimeSpan.FromTicks(player.Ping).TotalMilliseconds;
-                    element.Q<Label>("label-ping").text = $"{Math.Ceiling(ping)} ms";
-                    element.Q<Label>("label-ping").style.color = ping switch
+                    element.LabelPing.text = $"{Math.Ceiling(ping)} ms";
+                    element.LabelPing.style.color = ping switch
                     {
                         <= 0 => new StyleColor(StyleKeyword.Null),
                         <= 30 => new StyleColor(Color.green),
@@ -105,13 +105,13 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
                         _ => new StyleColor(Color.red),
                     };
                 }
-                element.Q<VisualElement>("icon-admin").style.display = player.IsAdmin ? DisplayStyle.Flex : DisplayStyle.None;
-                if (!recycled) element.Q<Button>("button-kick").clicked += () =>
+                element.IconAdmin.style.display = player.IsAdmin ? DisplayStyle.Flex : DisplayStyle.None;
+                if (!recycled) element.ButtonKick.clicked += () =>
                 {
-                    ConnectionManager.KickClient((int)element.userData);
+                    ConnectionManager.KickClient((int)element.Root.userData);
                     RefreshUI();
                 };
-                element.Q<Button>("button-kick").style.display = (ConnectionManager.ServerWorld != null && player.ConnectionId != 0 && player.ConnectionId != localPlayer.ConnectionId) ? DisplayStyle.Flex : DisplayStyle.None;
+                element.ButtonKick.style.display = (ConnectionManager.ServerWorld != null && player.ConnectionId != 0 && player.ConnectionId != localPlayer.ConnectionId) ? DisplayStyle.Flex : DisplayStyle.None;
             },
             player => player.ConnectionState is not PlayerConnectionState.Disconnected and not PlayerConnectionState.Server);
     }
@@ -119,7 +119,7 @@ public class PauseManager : Singleton<PauseManager>, IUISetup, IUICleanup
     public void Cleanup(UIElementReference ui)
     {
         refreshAt = float.PositiveInfinity;
-        ui.Element.Q<Button>("button-exit").clicked -= OnButtonExit;
-        ui.Element.Q<Button>("button-save").clicked -= OnButtonSave;
+        this.ui.ButtonExit.clicked -= OnButtonExit;
+        this.ui.ButtonSave.clicked -= OnButtonSave;
     }
 }

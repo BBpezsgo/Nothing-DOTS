@@ -15,7 +15,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
     [Header("UI")]
 
-    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
+    FacilitySchema? ui;
 
     Entity selectedEntity = Entity.Null;
     Facility selected = default;
@@ -26,7 +26,7 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
     void Update()
     {
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -60,13 +60,13 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
         if (selected.Current.Name.IsEmpty) return;
 
         selected.CurrentProgress += Time.deltaTime * Factory.ProductionSpeed;
-        ui.Element.Q<ProgressBar>("progress-current").value = selected.CurrentProgress / selected.Current.ResearchTime;
-        ui.Element.Q<ProgressBar>("progress-current").title = selected.Current.Name.ToString();
+        ui.ProgressCurrent.value = selected.CurrentProgress / selected.Current.ResearchTime;
+        ui.ProgressCurrent.title = selected.Current.Name.ToString();
     }
 
     public void Setup(UIElementReference ui, Entity entity)
     {
-        this.ui = ui;
+        this.ui = new(ui.Element);
 
         syncAt = Math.Min(syncAt, Time.time + 0.5f);
 
@@ -76,21 +76,21 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
 
     public void RefreshUI(Entity entity)
     {
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
 
-        ScrollView avaliableList = ui.Element.Q<ScrollView>("list-avaliable");
-        ScrollView queueList = ui.Element.Q<ScrollView>("list-queue");
+        ScrollView avaliableList = ui.ListAvaliable;
+        ScrollView queueList = ui.ListQueue;
 
         avaliableList.Clear();
         queueList.Clear();
 
         DynamicBuffer<BufferedResearch> queue = entityManager.GetBuffer<BufferedResearch>(entity);
 
-        queueList.SyncList(queue, UI_QueueItem, (item, element, recycled) =>
+        queueList.SyncList<BufferedResearch, FacilityQueueItemSchema>(queue, UI_QueueItem, (item, element, recycled) =>
         {
-            element.Q<Label>("label-name").text = item.Name.ToString();
+            element.LabelName.text = item.Name.ToString();
         });
 
         NativeList<FixedString64Bytes> avaliable = ResearchSystemClient.GetInstance(entityManager.WorldUnmanaged).AvaliableResearches;
@@ -115,17 +115,17 @@ public class FacilityManager : Singleton<FacilityManager>, IUISetup<Entity>, IUI
         inQueue:;
         }
 
-        avaliableList.SyncList(avaliableNotInQueue, UI_AvaliableResearch, (item, element, recycled) =>
+        avaliableList.SyncList<FixedString64Bytes, FacilityAvaliableItemSchema>(avaliableNotInQueue, UI_AvaliableResearch, (item, element, recycled) =>
         {
-            element.userData = item.ToString();
-            element.Q<Label>("label-name").text = item.ToString();
-            if (!recycled) element.Q<Button>("button-queue").clicked += () => QueueResearch((string)element.userData);
+            element.Root.userData = item.ToString();
+            element.LabelName.text = item.ToString();
+            if (!recycled) element.ButtonQueue.clicked += () => QueueResearch((string)element.Root.userData);
         });
 
         avaliableNotInQueue.Dispose();
 
-        ui.Element.Q<ProgressBar>("progress-current").value = selected.CurrentProgress / selected.Current.ResearchTime;
-        ui.Element.Q<ProgressBar>("progress-current").title = selected.Current.Name.ToString();
+        ui.ProgressCurrent.value = selected.CurrentProgress / selected.Current.ResearchTime;
+        ui.ProgressCurrent.title = selected.Current.Name.ToString();
     }
 
     void QueueResearch(in FixedString64Bytes name)

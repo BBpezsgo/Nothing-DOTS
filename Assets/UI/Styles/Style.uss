@@ -40,7 +40,6 @@ Button {
     padding-right: 3px;
     padding-top: 0px;
     padding-bottom: 0px;
-    -unity-font-style: bold;
 }
 
 Button:enabled:hover,
@@ -268,14 +267,14 @@ Scroller {
 
 ProgressBar > #unity-progress-bar > .unity-progress-bar__background {
     background-color: rgb(0, 0, 0);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    border-left-color: rgb(48, 48, 48);
-    border-right-color: rgb(48, 48, 48);
-    border-top-color: rgb(48, 48, 48);
-    border-bottom-color: rgb(48, 48, 48);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: #26233a;
+    border-right-color: #26233a;
+    border-top-color: #26233a;
+    border-bottom-color: #26233a;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
     border-top-right-radius: 0;
@@ -284,7 +283,7 @@ ProgressBar > #unity-progress-bar > .unity-progress-bar__background {
 }
 
 ProgressBar > #unity-progress-bar > .unity-progress-bar__background > .unity-progress-bar__progress {
-    background-color: rgb(0, 100, 255);
+    background-color: #6e6a86;
     margin-left: 0;
     margin-right: 0;
     margin-top: 0;
@@ -292,7 +291,7 @@ ProgressBar > #unity-progress-bar > .unity-progress-bar__background > .unity-pro
 }
 
 ProgressBar.error > #unity-progress-bar > .unity-progress-bar__background > .unity-progress-bar__progress {
-    background-color: rgb(173, 0, 0);
+    background-color: #eb6f92;
     margin-left: 0;
     margin-right: 0;
     margin-top: 0;
@@ -300,7 +299,7 @@ ProgressBar.error > #unity-progress-bar > .unity-progress-bar__background > .uni
 }
 
 ProgressBar.warning > #unity-progress-bar > .unity-progress-bar__background > .unity-progress-bar__progress {
-    background-color: rgb(195, 177, 0);
+    background-color: #f6c177;
     margin-left: 0;
     margin-right: 0;
     margin-top: 0;
@@ -308,7 +307,7 @@ ProgressBar.warning > #unity-progress-bar > .unity-progress-bar__background > .u
 }
 
 ProgressBar.success > #unity-progress-bar > .unity-progress-bar__background > .unity-progress-bar__progress {
-    background-color: rgb(0, 159, 47);
+    background-color: #31748f;
     margin-left: 0;
     margin-right: 0;
     margin-top: 0;
@@ -320,12 +319,15 @@ ProgressBar > #unity-progress-bar {
     min-height: 15px;
 }
 
+ProgressBar .unity-progress-bar__title-container {
+    justify-content: flex-start;
+}
+
 ProgressBar Label {
-    padding-left: 0;
-    padding-right: 0;
-    padding-top: 0;
-    padding-bottom: 0;
+    padding: 0px;
+    padding-left: 2px;
     font-size: 8px;
+    --unity-text-align: left;
 }
 
 .unity-tab__header {

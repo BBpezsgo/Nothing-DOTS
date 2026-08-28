@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: DefaultHeightMap
   m_EditorClassIdentifier: 
   noiseSettings:
-    scale: 200
-    octaves: 12
-    persistance: 0.694
-    lacunarity: 2
+    scale: 1000
+    octaves: 8
+    persistance: 0.448
+    lacunarity: 4
     seed: 1
     offset: {x: 0, y: 0}
-  heightMultiplier: 30
+  heightMultiplier: 400

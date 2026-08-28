@@ -8,13 +8,13 @@ public class DiskDriveManager : Singleton<DiskDriveManager>, IUISetup<Entity>, I
 {
     [Header("UI")]
 
-    [SerializeField, SaintsField.ReadOnly] UIElementReference ui = default;
+    DiskDriveSchema? ui;
 
-    Pendrive selected = default;
+    Pendrive selected;
 
     void Update()
     {
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -25,18 +25,18 @@ public class DiskDriveManager : Singleton<DiskDriveManager>, IUISetup<Entity>, I
 
     public void Setup(UIElementReference ui, Entity entity)
     {
-        this.ui = ui;
+        this.ui = new(ui.Element);
         RefreshUI(entity);
     }
 
     public void RefreshUI(Entity entity)
     {
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         selected = ConnectionManager.ClientOrDefaultWorld.EntityManager.GetComponentData<Pendrive>(entity);
 
-        Label labelHex = ui.Element.Q<Label>("label-hex");
-        Label labelAscii = ui.Element.Q<Label>("label-ascii");
+        Label labelHex = ui.LabelHex;
+        Label labelAscii = ui.LabelAscii;
 
         StringBuilder builderHex = new();
         StringBuilder builderAscii = new();

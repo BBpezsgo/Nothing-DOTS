@@ -31,34 +31,28 @@ public class ChatManager : Singleton<ChatManager>
     }
 
     [SerializeField, NotNull] UIDocument? _ui = default;
+    ChatSchema? ui = default;
 
     [SerializeField, NotNull] VisualTreeAsset? _chatMessageTemplate = default;
 
-    [NotNull] TextField? _inputMessage = default;
-    [NotNull] Button? _buttonSend = default;
-    [NotNull] ScrollView? _containerMessages = default;
-    [NotNull] VisualElement? _containerInput = default;
     readonly List<ChatMessage> _chatMessages = new();
 
     void OnEnable()
     {
-        _inputMessage = _ui.rootVisualElement.Q<TextField>("input-message");
-        _buttonSend = _ui.rootVisualElement.Q<Button>("button-send");
-        _containerMessages = _ui.rootVisualElement.Q<ScrollView>("container-messages");
-        _containerInput = _ui.rootVisualElement.Q<VisualElement>("container-input");
+        ui = new ChatSchema(_ui.rootVisualElement);
 
-        _buttonSend.clicked += OnButtonSend;
+        ui.ButtonSend.clicked += OnButtonSend;
 
-        _containerMessages.Clear();
-        _containerInput.style.display = DisplayStyle.None;
+        ui.ContainerMessages.Clear();
+        ui.ContainerInput.style.display = DisplayStyle.None;
     }
 
     void Update()
     {
-        if (_containerMessages.childCount > 0)
+        if (ui.ContainerMessages.childCount > 0)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
-            foreach (VisualElement child in _containerMessages.Children())
+            foreach (VisualElement child in ui.ContainerMessages.Children())
             {
                 ChatMessage message = (ChatMessage)child.userData;
                 child.EnableInClassList("old", (now - message.Time).TotalSeconds > 3);
@@ -66,32 +60,32 @@ public class ChatManager : Singleton<ChatManager>
             }
         }
 
-        if (_containerInput.style.display != DisplayStyle.None && UIManager.Instance.GrapESC())
+        if (ui.ContainerInput.style.display != DisplayStyle.None && UIManager.Instance.GrapESC())
         {
-            _containerInput.style.display = DisplayStyle.None;
-            _containerMessages.EnableInClassList("show", false);
+            ui.ContainerInput.style.display = DisplayStyle.None;
+            ui.ContainerMessages.EnableInClassList("show", false);
         }
 
         if (!Input.GetKeyDown(KeyCode.Return) || UIManager.Instance.AnyUIVisible || SelectionManager.Instance.IsUnitCommandsActive) return;
 
-        if (_containerInput.style.display == DisplayStyle.None)
+        if (ui.ContainerInput.style.display == DisplayStyle.None)
         {
-            _containerInput.style.display = DisplayStyle.Flex;
-            _inputMessage.Focus();
-            _containerMessages.EnableInClassList("show", true);
-            if (_containerMessages.childCount > 0) _containerMessages.ScrollTo(_containerMessages.Children().Last());
+            ui.ContainerInput.style.display = DisplayStyle.Flex;
+            ui.InputMessage.Focus();
+            ui.ContainerMessages.EnableInClassList("show", true);
+            if (ui.ContainerMessages.childCount > 0) ui.ContainerMessages.ScrollTo(ui.ContainerMessages.Children().Last());
         }
         else
         {
             OnButtonSend();
-            _containerInput.style.display = DisplayStyle.None;
-            _containerMessages.EnableInClassList("show", false);
+            ui.ContainerInput.style.display = DisplayStyle.None;
+            ui.ContainerMessages.EnableInClassList("show", false);
         }
     }
 
     void OnButtonSend()
     {
-        ReadOnlySpan<char> message = _inputMessage.value.Trim();
+        ReadOnlySpan<char> message = ui.InputMessage.value.Trim();
         if (message.Length is 0) return;
 
         long time = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -118,7 +112,7 @@ public class ChatManager : Singleton<ChatManager>
             });
         }
 
-        _inputMessage.value = string.Empty;
+        ui.InputMessage.value = string.Empty;
     }
 
     public void AppendChatMessageElement(int sender, string? message, DateTimeOffset time)
@@ -141,7 +135,7 @@ public class ChatManager : Singleton<ChatManager>
 
     void RefreshChatContainer()
     {
-        _containerMessages.SyncList(_chatMessages, _chatMessageTemplate, (item, element, reuse) =>
+        ui.ContainerMessages.SyncList<ChatMessage, ChatMessageSchema>(_chatMessages, _chatMessageTemplate, (item, element, reuse) =>
         {
             ChatMessageSenderKind senderKind = item.Sender switch
             {
@@ -149,10 +143,10 @@ public class ChatManager : Singleton<ChatManager>
                 0 => World.DefaultGameObjectInjectionWorld.Unmanaged.IsLocal() ? ChatMessageSenderKind.Player : ChatMessageSenderKind.Server,
                 _ => ChatMessageSenderKind.Player,
             };
-            element.EnableInClassList("server-message", senderKind == ChatMessageSenderKind.Server);
-            element.EnableInClassList("system-message", senderKind == ChatMessageSenderKind.System);
-            element.EnableInClassList("player-message", senderKind == ChatMessageSenderKind.Player);
-            element.userData = item;
+            element.Root.EnableInClassList("server-message", senderKind == ChatMessageSenderKind.Server);
+            element.Root.EnableInClassList("system-message", senderKind == ChatMessageSenderKind.System);
+            element.Root.EnableInClassList("player-message", senderKind == ChatMessageSenderKind.Player);
+            element.Root.userData = item;
 
             if (item.Sender > 0)
             {
@@ -171,11 +165,11 @@ public class ChatManager : Singleton<ChatManager>
 
                 senderDisplayName ??= $"Client#{item.Sender}";
 
-                element.Q<Label>("label-message").text = $"<{senderDisplayName}> {item.Message}";
+                element.LabelMessage.text = $"<{senderDisplayName}> {item.Message}";
             }
             else
             {
-                element.Q<Label>("label-message").text = item.Message;
+                element.LabelMessage.text = item.Message;
             }
         });
     }

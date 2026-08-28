@@ -11,19 +11,19 @@ using UnityEngine.UIElements;
 [Serializable]
 class UnitPlaceholderItem
 {
-    [NotNull] public string? Name = default;
-    [NotNull] public GameObject? Prefab = default;
+    [NotNull] public string? Name = null;
+    [NotNull] public GameObject? Prefab = null;
 }
 
 public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
 {
-    BufferedUnit SelectedUnit = default;
+    BufferedUnit SelectedUnit;
     [SerializeField, NotNull] AllPrefabs? Prefabs = default;
     [SerializeField, SaintsField.ReadOnly, NotNull] GameObject? UnitHologram = default;
 
     [SerializeField, NotNull] Material? HologramMaterial = default;
 
-    [SerializeField, SaintsField.ReadOnly] bool IsValidPosition = false;
+    [SerializeField, SaintsField.ReadOnly] bool IsValidPosition;
 
     [SerializeField] Color ValidHologramColor = Color.white;
     [SerializeField] Color InvalidHologramColor = Color.red;
@@ -35,14 +35,14 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
 
     [SerializeField, NotNull] VisualTreeAsset? UnitButton = default;
 
-    float refreshAt = default;
-    float refreshedBySyncAt = default;
-    float syncAt = default;
-    UIElementReference ui;
+    float refreshAt;
+    float refreshedBySyncAt;
+    float syncAt;
+    UnitsSchema? ui;
 
     void RefreshUI()
     {
-        VisualElement container = ui.Element.Q<VisualElement>("unity-content-container");
+        VisualElement container = ui.UnitsPanel.contentContainer;
         container.Clear();
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -53,22 +53,21 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
             return;
         }
 
-        container.SyncList(UnitsSystemClient.GetInstance(entityManager.WorldUnmanaged).Units, UnitButton, (item, element, recycled) =>
+        container.SyncList<BufferedUnit, UnitItemSchema>(UnitsSystemClient.GetInstance(entityManager.WorldUnmanaged).Units, UnitButton, (item, element, recycled) =>
         {
-            element.userData = item.Name;
+            element.Root.userData = item.Name;
 
-            Button button = element.Q<Button>();
             if (!recycled)
             {
-                button.clicked += () =>
+                element.ButtonSelect.clicked += () =>
                 {
-                    SelectUnit((Unity.Collections.FixedString32Bytes)element.userData);
-                    button.Blur();
+                    SelectUnit((Unity.Collections.FixedString32Bytes)element.Root.userData);
+                    element.ButtonSelect.Blur();
                 };
             }
 
-            element.Q<Label>("label-name").text = item.Name.ToString();
-            element.Q<Label>("label-resources").text = item.RequiredResources.ToString();
+            element.LabelName.text = item.Name.ToString();
+            element.LabelResources.text = item.RequiredResources.ToString();
         });
     }
 
@@ -107,13 +106,13 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.U) && (!UI.IsUIFocused || ui.IsVisible))
+        if (Input.GetKeyDown(KeyCode.U) && (!UI.IsUIFocused || ui.IsVisible()))
         {
             SelectedUnit = default;
             if (UnitHologram != null) Destroy(UnitHologram);
             UnitHologram = null;
 
-            if (ui.IsVisible)
+            if (ui.IsVisible())
             {
                 UIManager.Instance.CloseUI(this);
                 return;
@@ -125,7 +124,7 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
             }
         }
 
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -139,7 +138,7 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
 
         if (Mouse.current.rightButton.wasReleasedThisFrame &&
             !UI.IsMouseHandled &&
-            (IsPlacing || ui.IsVisible) &&
+            (IsPlacing || ui.IsVisible()) &&
             !CameraControl.Instance.IsDragging)
         {
             if (SelectedUnit.Prefab != Entity.Null)
@@ -155,7 +154,7 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
             return;
         }
 
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         if (Time.time >= refreshAt ||
             refreshedBySyncAt != UnitsSystemClient.LastSynced.Data)
@@ -291,7 +290,7 @@ public class UnitManager : Singleton<UnitManager>, IUISetup, IUICleanup
 
     public void Setup(UIElementReference ui)
     {
-        this.ui = ui;
+        this.ui = new(ui.Element);
         syncAt = 0f;
         RefreshUI();
     }

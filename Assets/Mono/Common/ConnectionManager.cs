@@ -7,7 +7,6 @@ using Unity.Entities;
 using Unity.NetCode;
 using Unity.Networking.Transport;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class ConnectionManager : Singleton<ConnectionManager>
 {
@@ -28,10 +27,10 @@ public class ConnectionManager : Singleton<ConnectionManager>
     [Header("Debug")]
     [SerializeField] string DebugNickname = string.Empty;
     [SerializeField] string DebugSavefile = string.Empty;
-    [SerializeField] ushort DebugPort = default;
-    [SerializeField] bool AutoHost = false;
-    [SerializeField] bool Singleplayer = false;
-    [SerializeField] bool NoClient = false;
+    [SerializeField] ushort DebugPort;
+    [SerializeField] bool AutoHost;
+    [SerializeField] bool Singleplayer;
+    [SerializeField] bool NoClient;
 #endif
 
     void Start()
@@ -98,9 +97,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
         }
         else
         {
-            var ui = UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI;
+            var ui = new NetworkStatusSchema(UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI.Element);
 
-            ui.Element.Q<Label>("label-status").text = e.State switch
+            ui.LabelStatus.text = e.State switch
             {
                 ConnectionState.State.Unknown => $"?",
                 ConnectionState.State.Disconnected => throw new UnreachableException(),
@@ -159,9 +158,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         Debug.Log($"{DebugEx.AnyPrefix} Start host on `{endpoint}`");
 
-        var networkUi = UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI;
+        var networkUi = new NetworkStatusSchema(UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI.Element);
 
-        networkUi.Element.Q<Label>("label-status").text = "Creating server ...";
+        networkUi.LabelStatus.text = "Creating server ...";
 
         Debug.Log($" -> Destroying local world");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -171,7 +170,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         yield return StartCoroutine(NetcodeBootstrap.CreateServer(endpoint, savefile, success));
         if (!success.Value)
         {
-            networkUi.Element.Q<Label>("label-status").text = "Error";
+            networkUi.LabelStatus.text = "Error";
             UIManager.Instance.OpenUI(UIManager.Instance.MainMenu)
                 .Setup<MainMenuManager>();
             yield break;
@@ -186,7 +185,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         StagingObjects.SetActive(false);
         yield return null;
 
-        networkUi.Element.Q<Label>("label-status").text = "Creating client ...";
+        networkUi.LabelStatus.text = "Creating client ...";
 
         using (EntityQuery driverQ = ServerWorld!.EntityManager.CreateEntityQuery(ComponentType.ReadWrite<NetworkStreamDriver>()))
         {
@@ -219,9 +218,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         Debug.Log($"{DebugEx.AnyPrefix} Start client on `{endpoint}`");
 
-        var networkUi = UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI;
+        var networkUi = new NetworkStatusSchema(UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI.Element);
 
-        networkUi.Element.Q<Label>("label-status").text = "Creating client ...";
+        networkUi.LabelStatus.text = "Creating client ...";
 
         Debug.Log($" -> Destroying local world");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -251,9 +250,9 @@ public class ConnectionManager : Singleton<ConnectionManager>
 
         Debug.Log($"{DebugEx.EditorPrefix} Start server on `{endpoint}`");
 
-        var networkUi = UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI;
+        var networkUi = new NetworkStatusSchema(UIManager.Instance.OpenUI(UIManager.Instance.NetworkStatus).UI.Element);
 
-        networkUi.Element.Q<Label>("label-status").text = "Creating server ...";
+        networkUi.LabelStatus.text = "Creating server ...";
 
         Debug.Log($" -> Destroying local world");
         NetcodeBootstrap.DestroyLocalWorld();
@@ -282,7 +281,7 @@ public class ConnectionManager : Singleton<ConnectionManager>
         Debug.Log($" -> Disabling UI");
         UIManager.Instance.CloseUI(UIManager.Instance.MainMenu);
 
-        networkUi.Element.Q<Label>("label-status").text = string.Empty;
+        networkUi.LabelStatus.text = string.Empty;
         UIManager.Instance.CloseUI(UIManager.Instance.NetworkStatus);
 
 #if UNITY_EDITOR && EDITOR_DEBUG

@@ -48,13 +48,13 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
     float refreshAt = default;
     float refreshedBySyncAt = default;
     float syncAt = default;
-    UIElementReference ui;
+    BuildingsSchema? ui;
 
     void RefreshUI()
     {
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
-        VisualElement container = ui.Element.Q<VisualElement>("unity-content-container");
+        VisualElement container = ui.BuildingsContainer.contentContainer;
         container.Clear();
 
         EntityManager entityManager = ConnectionManager.ClientOrDefaultWorld.EntityManager;
@@ -66,35 +66,32 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
         }
 
         {
-            VisualElement element = BuildingButton.Instantiate();
-            container.Add(element);
-            Button button = element.Q<Button>();
-            button.clicked += () =>
+            BuildingsItemSchema e = container.AddNew<BuildingsItemSchema>(BuildingButton);
+            e.ButtonSelect.clicked += () =>
             {
                 SelectedBuilding = default;
                 IsDestroying = true;
-                button.Blur();
+                e.ButtonSelect.Blur();
             };
-            element.Q<Label>("label-name").text = "Destroy";
-            element.Q<Label>("label-resources").text = 0.ToString();
+            e.LabelName.text = "Destroy";
+            e.LabelResources.text = 0.ToString();
         }
 
-        container.SyncList(BuildingsSystemClient.GetInstance(entityManager.WorldUnmanaged).Buildings, BuildingButton, (item, element, recycled) =>
+        container.SyncList<BufferedBuilding, BuildingsItemSchema>(BuildingsSystemClient.GetInstance(entityManager.WorldUnmanaged).Buildings, BuildingButton, (item, element, recycled) =>
         {
-            element.userData = item.Name;
+            element.Root.userData = item.Name;
 
             if (!recycled)
             {
-                Button button = element.Q<Button>();
-                button.clicked += () =>
+                element.ButtonSelect.clicked += () =>
                 {
-                    SelectBuilding((Unity.Collections.FixedString32Bytes)element.userData);
-                    button.Blur();
+                    SelectBuilding((Unity.Collections.FixedString32Bytes)element.Root.userData);
+                    element.ButtonSelect.Blur();
                 };
             }
 
-            element.Q<Label>("label-name").text = item.Name.ToString();
-            element.Q<Label>("label-resources").text = item.RequiredResources.ToString();
+            element.LabelName.text = item.Name.ToString();
+            element.LabelResources.text = item.RequiredResources.ToString();
         },
         startIndex: 1);
     }
@@ -135,7 +132,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.B) && (!UI.IsUIFocused || ui.IsVisible))
+        if (Input.GetKeyDown(KeyCode.B) && (!UI.IsUIFocused || ui.IsVisible()))
         {
             SelectedBuilding = default;
             SelectedPort = default;
@@ -146,7 +143,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
             WirePlaceholder.gameObject.SetActive(false);
             WireConnectorBlob.gameObject.SetActive(false);
 
-            if (ui.IsVisible)
+            if (ui.IsVisible())
             {
                 UIManager.Instance.CloseUI(this);
                 return;
@@ -158,7 +155,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
             }
         }
 
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         if (UIManager.Instance.GrapESC())
         {
@@ -175,7 +172,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
 
         if (Mouse.current.rightButton.wasReleasedThisFrame &&
             !UI.IsMouseHandled &&
-            (IsBuilding || ui.IsVisible) &&
+            (IsBuilding || ui.IsVisible()) &&
             !CameraControl.Instance.IsDragging)
         {
             if (SelectedBuilding.Prefab != Entity.Null || !SelectedPort.Equals(default) || IsDestroying)
@@ -196,7 +193,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
             return;
         }
 
-        if (!ui.IsVisible) return;
+        if (!ui.IsVisible()) return;
 
         if (Time.time >= refreshAt ||
             refreshedBySyncAt != BuildingsSystemClient.LastSynced.Data)
@@ -575,7 +572,7 @@ public class BuildingManager : Singleton<BuildingManager>, IUISetup, IUICleanup
 
     public void Setup(UIElementReference ui)
     {
-        this.ui = ui;
+        this.ui = new BuildingsSchema(ui.Element);
         RefreshUI();
         syncAt = 0f;
     }

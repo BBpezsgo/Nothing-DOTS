@@ -15,7 +15,7 @@ unsafe struct UIElementUpdateRpc : IComponentData, IRpcCommandSerializer<UIEleme
         writer.WriteInt(data.UIElement.Id);
         writer.WriteInt(data.UIElement.Parent);
         writer.WriteInt(data.UIElement.Index);
-        writer.WriteInt((byte)data.UIElement.Direction);
+        writer.WriteByte((byte)data.UIElement.Direction);
         writer.WriteInt(data.UIElement.Margin);
         writer.WriteInt(data.UIElement.Padding);
         writer.WriteInt(data.UIElement.Size.x);
