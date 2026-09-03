@@ -150,7 +150,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             }
         }
 
-        int requested = 0;
+        int requestedTotal = 0;
         for (int i = 0; i < receivingFiles.Length; i++)
         {
             if (SystemAPI.Time.ElapsedTime - receivingFiles[i].LastReceivedAt < ChunkRequestsCooldown) continue;
@@ -183,6 +183,8 @@ partial struct BufferedFileReceiverSystem : ISystem
                 receivedChunks[fileChunks[j].ChunkIndex] = true;
             }
 
+            int requested = 0;
+
             for (int j = 0; j < receivedChunks.Length; j++)
             {
                 if (receivedChunks[j]) continue;
@@ -212,6 +214,7 @@ partial struct BufferedFileReceiverSystem : ISystem
             receivedChunks.Dispose();
 
             if (requested == 0) continue;
+            requestedTotal += requested;
 
             receivingFiles[i] = receivingFiles[i] with
             {

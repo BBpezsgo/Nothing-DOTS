@@ -150,12 +150,11 @@ partial struct BufferedFileSenderSystem : ISystem
             NetcodeEndPoint ep = new(request.ValueRO.SourceConnection == default ? default : SystemAPI.GetComponentRO<NetworkId>(request.ValueRO.SourceConnection).ValueRO, request.ValueRO.SourceConnection);
             if (!state.World.IsServer()) ep = NetcodeEndPoint.Server;
 
-            if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#] Closing file \"{command.ValueRO.FileName}\"");
-
             for (int i = sendingFiles.Length - 1; i >= 0; i--)
             {
                 if (sendingFiles[i].Destination != ep) continue;
                 if (sendingFiles[i].FileName != command.ValueRO.FileName) continue;
+                if (DebugLog) Debug.Log($"{DebugEx.Prefix(state.WorldUnmanaged)} [T#{sendingFiles[i].TransactionId}] Closing file \"{command.ValueRO.FileName}\"");
 
                 for (int j = sentChunks.Length - 1; j >= 0; j--)
                 {
@@ -199,6 +198,7 @@ partial struct BufferedFileSenderSystem : ISystem
 
         int sent = 0;
         NativeList<bool> currentSentChunks = default;
+
         for (int i = 0; i < sendingFiles.Length; i++)
         {
             if (!sendingFiles[i].AutoSendEverything) continue;
@@ -244,6 +244,7 @@ partial struct BufferedFileSenderSystem : ISystem
                 if (++sent >= ChunkSendingLimit) break;
             }
         }
+
         currentSentChunks.Dispose();
     }
 }

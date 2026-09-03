@@ -40,6 +40,7 @@ partial struct NetworkEventsSystemClient : ISystem
                 state.WorldUnmanaged.GetSystem<UnitsSystemClient>().OnDisconnect();
 
                 state.World.GetSystem<FileChunkManagerSystem>().OnDisconnect();
+                state.World.GetSystem<RpcStreamManagerSystem>().OnDisconnect();
                 state.World.GetSystem<CompilerSystemClient>().OnDisconnect();
                 state.World.GetSystem<EntityInfoUISystemClient>().OnDisconnect();
                 state.World.GetSystem<VisualEffectSystemClient>().OnDisconnect();

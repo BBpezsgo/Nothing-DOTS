@@ -39,6 +39,7 @@ partial struct GameOutcomeSystemServer : ISystem
             }
             else
             {
+                player.ValueRW.Outcome = GameOutcome.None;
                 nonlosers++;
             }
         }

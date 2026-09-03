@@ -688,13 +688,13 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
             });
         });
 
-        ui.ButtonStopDebug.SetEnabled(true);
-        ui.ButtonStopDebug.clickable = new Clickable(() =>
+        ui.ButtonStartDebug.SetEnabled(true);
+        ui.ButtonStartDebug.clickable = new Clickable(() =>
         {
             World world = ConnectionManager.ClientOrDefaultWorld;
             if (world.IsLocal())
             {
-                ui.ButtonStopDebug.SetEnabled(false);
+                ui.ButtonStartDebug.SetEnabled(false);
                 Application.OpenURL($"vscode://banszky.nothingame/debug?entity={ExtensionHostUtils.Stringify(unitEntity)}&token={default(Guid)}");
             }
             else
@@ -706,7 +706,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
                     return;
                 }
                 SpawnedGhost ghost = world.EntityManager.GetComponentData<GhostInstance>(unitEntity);
-                ui.ButtonStopDebug.SetEnabled(false);
+                ui.ButtonStartDebug.SetEnabled(false);
                 Application.OpenURL($"vscode://banszky.nothingame/debug?ghost={ExtensionHostUtils.Stringify(ghost)}&token={guid}");
             }
         });
@@ -863,8 +863,8 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         Processor processor = entityManager.GetComponentData<Processor>(unitEntity);
 
         ui.PanelDebug.style.display = processor.DebugContext.IsBeingDebugged ? DisplayStyle.Flex : DisplayStyle.None;
-        ui.ButtonStopDebug.style.display = processor.DebugContext.IsBeingDebugged ? DisplayStyle.None : DisplayStyle.Flex;
-        ui.ButtonStopDebug.SetEnabled(!processor.DebugContext.IsBeingDebugged);
+        ui.ButtonStartDebug.style.display = processor.DebugContext.IsBeingDebugged ? DisplayStyle.None : DisplayStyle.Flex;
+        ui.ButtonStartDebug.SetEnabled(!processor.DebugContext.IsBeingDebugged);
 
         if (_memoryDownloadProgress is not null)
         {
@@ -1478,7 +1478,7 @@ public class TerminalManager : Singleton<TerminalManager>, IUISetup<Entity>, IUI
         ui.ButtonReset.clickable = null;
         ui.ButtonContinue.clickable = null;
         ui.ButtonStopDebug.clickable = null;
-        ui.ButtonStopDebug.clickable = null;
+        ui.ButtonStartDebug.clickable = null;
         ui.LabelTerminal.text = string.Empty;
         EndFileSelection();
     }

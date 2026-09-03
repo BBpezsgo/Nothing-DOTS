@@ -214,7 +214,9 @@ export function activate(context: vscode.ExtensionContext) {
 
                 return res
             } else {
-                if (typeof element.value === 'object') {
+                if (element.value === null) {
+                    return new vscode.TreeItem(`${element.key} = null`, vscode.TreeItemCollapsibleState.None)
+                } else if (typeof element.value === 'object') {
                     return new vscode.TreeItem(`${element.key} = ...`, vscode.TreeItemCollapsibleState.Collapsed)
                 } else {
                     return new vscode.TreeItem(`${element.key} = ${element.value}`, vscode.TreeItemCollapsibleState.None)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.VisualStudio.Shared.VSCodeDebugProtocol;
@@ -9,7 +10,11 @@ using UnityEngine;
 class DebugHostManager : MonoBehaviour
 {
     TcpListenerManager? Listener;
-    readonly List<(DebugHost Host, TcpListenerManager Listener)> Hosts = new();
+    readonly List<(DebugHost Host, TcpListenerManager Listener)> TcpHosts = new();
+    readonly List<(DebugHost Host, RpcStream Listener)> RpcHosts = new();
+    readonly bool UseRpc = false;
+    readonly bool UseTcp = true;
+
     readonly ConcurrentQueue<(Func<Microsoft.VisualStudio.Shared.VSCodeDebugProtocol.Messages.ResponseBody> Task, IRequestResponder RequestResponder)> PendingRequests = new();
 
     class UnityLogger : Logger
@@ -51,16 +56,16 @@ class DebugHostManager : MonoBehaviour
         }
 
         bool didDisposeSome = false;
-        for (int i = 0; i < Hosts.Count; i++)
+        for (int i = 0; i < TcpHosts.Count; i++)
         {
-            (DebugHost host, TcpListenerManager listener) = Hosts[i];
+            (DebugHost host, TcpListenerManager listener) = TcpHosts[i];
 
             if (!host.Protocol.IsRunning || listener.ConnectedClient is null)
             {
                 Debug.Log($"{DebugEx.ServerPrefix} [DAP] Disposing dead session");
                 host.Dispose();
                 listener.Dispose();
-                Hosts.RemoveAt(i--);
+                TcpHosts.RemoveAt(i--);
                 didDisposeSome = true;
                 continue;
             }
@@ -68,46 +73,86 @@ class DebugHostManager : MonoBehaviour
             host.Update();
         }
 
-        if (Listener?.ConnectedClient is not null && Listener.ConnectedClient.Connected)
+        if (UseTcp)
         {
-            Debug.Log($"{DebugEx.ServerPrefix} [DAP] Starting new session");
-            NetworkStream stream = Listener.ConnectedClient.GetStream();
-            DebugHost host = new(this, stream, stream, new UnityLogger());
-            Hosts.Add((host, Listener));
-            host.Run();
+            if (Listener?.ConnectedClient is not null && Listener.ConnectedClient.Connected)
+            {
+                Debug.Log($"{DebugEx.ServerPrefix} [DAP] Starting new session");
+                NetworkStream stream = Listener.ConnectedClient.GetStream();
+                DebugHost host = new(this, stream, stream, new UnityLogger());
+                TcpHosts.Add((host, Listener));
+                host.Run();
 
-            Listener = null;
+                Listener = null;
+            }
+            else if (Listener is not null && !Listener.IsListening)
+            {
+                Debug.Log($"{DebugEx.ServerPrefix} [DAP] Destroying TCP listener");
+                Listener?.Dispose();
+                Listener = null;
+            }
+            else if (didDisposeSome)
+            {
+                Debug.Log($"{DebugEx.ServerPrefix} [DAP] Destroying TCP listener (and will trying to reopen it on a better port)");
+                Listener?.Dispose();
+                Listener = null;
+            }
+
+            if (Listener is null)
+            {
+                Debug.Log($"{DebugEx.ServerPrefix} [DAP] Creating new TCP listener");
+                for (int i = 8053; i <= 65535; i++)
+                {
+                    try
+                    {
+                        Listener = TcpListenerManager.Listen(IPAddress.Parse("127.0.0.1"), i, "DAP");
+                        goto ok;
+                    }
+                    catch (SocketException)
+                    {
+
+                    }
+                }
+                throw new UnreachableException();
+            ok:;
+            }
         }
-        else if (Listener is not null && !Listener.IsListening)
+        else if (Listener is not null)
         {
             Debug.Log($"{DebugEx.ServerPrefix} [DAP] Destroying TCP listener");
             Listener?.Dispose();
             Listener = null;
         }
-        else if (didDisposeSome)
+
+        for (int i = 0; i < RpcHosts.Count; i++)
         {
-            Debug.Log($"{DebugEx.ServerPrefix} [DAP] Destroying TCP listener (and will trying to reopen it on a better port)");
-            Listener?.Dispose();
-            Listener = null;
+            (DebugHost host, RpcStream stream) = RpcHosts[i];
+
+            if (!host.Protocol.IsRunning)
+            {
+                Debug.Log($"{DebugEx.ServerPrefix} [DAP] Disposing dead session");
+                host.Dispose();
+                stream.Complete();
+                RpcHosts.RemoveAt(i--);
+                continue;
+            }
+
+            host.Update();
         }
 
-        if (Listener is null)
+        if (UseRpc)
         {
-            Debug.Log($"{DebugEx.ServerPrefix} [DAP] Creating new TCP listener");
-            for (int i = 8053; i <= 65535; i++)
+            foreach (var stream in RpcStreamManagerSystem.GetInstance(ConnectionManager.ServerWorld).Streams)
             {
-                try
-                {
-                    Listener = TcpListenerManager.Listen(IPAddress.Parse("127.0.0.1"), i, "DAP");
-                    goto ok;
-                }
-                catch (SocketException)
-                {
+                if (RpcHosts.Any(v => v.Listener == stream)) continue;
+                if (!stream.RemoteIdentifier.Name.ToString().StartsWith("bbl_ext_dap_")) continue;
 
-                }
+                Debug.Log($"{DebugEx.ServerPrefix} [DAP] Starting new session");
+                NetcodeStreamAdapter streamAdapter = new(stream);
+                DebugHost host = new(this, streamAdapter, streamAdapter, new UnityLogger());
+                RpcHosts.Add((host, stream));
+                host.Run();
             }
-            throw new UnreachableException();
-        ok:;
         }
     }
 
@@ -122,15 +167,24 @@ class DebugHostManager : MonoBehaviour
         }
         PendingRequests.Clear();
 
-        Debug.Log($"{DebugEx.ServerPrefix} [DAP] Disposing sessions");
-        foreach ((DebugHost host, TcpListenerManager listener) in Hosts)
+        Debug.Log($"{DebugEx.ServerPrefix} [DAP] Disposing TCP listener");
+        Listener?.Dispose();
+        Listener = null;
+
+        foreach ((DebugHost host, TcpListenerManager listener) in TcpHosts)
         {
+            Debug.Log($"{DebugEx.ServerPrefix} [DAP] Disposing session");
             host.Dispose();
             listener.Dispose();
         }
-        Hosts.Clear();
+        TcpHosts.Clear();
 
-        Listener?.Dispose();
-        Listener = null;
+        foreach ((DebugHost host, RpcStream stream) in RpcHosts)
+        {
+            Debug.Log($"{DebugEx.ServerPrefix} [DAP] Disposing session");
+            host.Dispose();
+            stream.Complete();
+        }
+        RpcHosts.Clear();
     }
 }

@@ -460,17 +460,17 @@ partial class DebugHost : BytecodeDebugAdapterBase, IDisposable
                         UnitLog_Radar log = UnitLog_Radar.Read(logBuffer, ref i);
                         if (log.Header.Index <= _unitLogPosition) continue;
                         _unitLogPosition = log.Header.Index;
-                        Protocol.SendEvent(new UnitLogEvent(log.Header, new
+                        Protocol.SendEvent(new UnitLogEvent(log.Header, log.Success ? new
                         {
-                            response = log.Success ? new
+                            response = new
                             {
                                 point = new { log.RadarResponse.Point.x, log.RadarResponse.Point.y, log.RadarResponse.Point.z },
                                 speedSignal = log.RadarResponse.SpeedSignal,
                                 clutter = log.RadarResponse.Clutter,
                                 fingerprint = log.RadarResponse.Fingerprint,
                                 meta = log.RadarResponse.Meta,
-                            } : null,
-                        }));
+                            },
+                        } : null));
                         break;
                     }
                     case LogPieceType.Transmission_WiredOut:

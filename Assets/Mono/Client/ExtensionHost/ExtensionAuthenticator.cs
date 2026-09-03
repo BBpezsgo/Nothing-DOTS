@@ -20,21 +20,21 @@ class ExtensionAuthenticator : MonoBehaviour
     {
         if (Listener is null || (Listener.ConnectedClient is null && !Listener.IsListening))
         {
-            Debug.Log($"{DebugEx.ServerPrefix} [ExtClient] Disposing old TCP listener, creating new one");
+            Debug.Log($"{DebugEx.ClientPrefix} [ExtClient] Disposing old TCP listener, creating new one");
             Listener?.Dispose();
             Listener = TcpListenerManager.Listen(IPAddress.Parse("127.0.0.1"), 8051, "ExtClient");
         }
 
         if (Listener.ConnectedClient is null && Server is not null)
         {
-            Debug.Log($"{DebugEx.ServerPrefix} [ExtClient] Disposing server");
+            Debug.Log($"{DebugEx.ClientPrefix} [ExtClient] Disposing server");
             Server?.Dispose();
             Server = null;
         }
 
         if (Listener.ConnectedClient is not null && Server is null)
         {
-            Debug.Log($"{DebugEx.ServerPrefix} [ExtClient] Creating server");
+            Debug.Log($"{DebugEx.ClientPrefix} [ExtClient] Creating server");
 
             NetworkStream stream = Listener.ConnectedClient.GetStream();
             Server = JsonRpcServer.Create(options =>
@@ -53,16 +53,16 @@ class ExtensionAuthenticator : MonoBehaviour
                 {
                     if (task.IsCanceled)
                     {
-                        Debug.LogWarning($"{DebugEx.ServerPrefix} [ExtClient] Server initialization canceled");
+                        Debug.LogWarning($"{DebugEx.ClientPrefix} [ExtClient] Server initialization canceled");
                     }
                     else if (task.IsFaulted)
                     {
-                        Debug.LogError($"{DebugEx.ServerPrefix} [ExtClient] Server initialization failed");
+                        Debug.LogError($"{DebugEx.ClientPrefix} [ExtClient] Server initialization failed");
                         Debug.LogException(task.Exception);
                     }
                     else
                     {
-                        Debug.Log($"{DebugEx.ServerPrefix} [ExtClient] Server initialized");
+                        Debug.Log($"{DebugEx.ClientPrefix} [ExtClient] Server initialized");
                     }
                 }, TaskScheduler.Default);
         }
@@ -78,14 +78,14 @@ class ExtensionAuthenticator : MonoBehaviour
 
         if (Server is not null)
         {
-            Debug.Log($"{DebugEx.ServerPrefix} [ExtClient] Disposing server");
+            Debug.Log($"{DebugEx.ClientPrefix} [ExtClient] Disposing server");
             Server.Dispose();
             Server = null;
         }
 
         if (Listener is not null)
         {
-            Debug.Log($"{DebugEx.ServerPrefix} [ExtClient] Disposing TCP listener");
+            Debug.Log($"{DebugEx.ClientPrefix} [ExtClient] Disposing TCP listener");
             Listener.Dispose();
             Listener = null;
         }
